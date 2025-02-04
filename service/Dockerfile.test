@@ -1,0 +1,23 @@
+FROM golang:1.23-alpine AS builder
+
+RUN apk add --no-cache make curl postgresql-client
+
+# Install golang-migrate
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+RUN ln -s /go/bin/linux_amd64/migrate /usr/local/bin/migrate
+
+# Set the Current Working Directory inside the container
+WORKDIR /app
+
+# Copy go.mod and go.sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy the source code
+COPY . .
+
+# Run tests
+# CMD ["go", "test", "-v", "./internal/tests/..."]
+CMD ["go", "run", "main.go"]

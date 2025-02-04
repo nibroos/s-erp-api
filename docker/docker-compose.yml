@@ -1,0 +1,114 @@
+name: s-erp-api
+
+services:
+
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+    image: nibroos/s-erp-gateway:1.0.250204
+    volumes:
+      - ./logs/nginx:/var/log/nginx
+    ports:
+      - "50061:50051" # Expose gRPC port
+      - "4011:4001"   # Expose HTTP REST port
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - service
+
+  service:
+    build: 
+      context: ../service
+      dockerfile: Dockerfile
+    image: nibroos/s-erp-service:1.0.250204
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - postgres
+    volumes:
+      - public-s-erp-api:/apps/public
+    ports:
+      - "50051"
+      - "4001"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB_TEST: ${POSTGRES_DB_TEST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      SERVICE_GRPC_PORT: ${SERVICE_GRPC_PORT}
+      SERVICE_REST_PORT: ${SERVICE_REST_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      SERVICE_TYPE: main
+
+  postgres:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-s_erp_api}
+      SEEDER_DIR: /apps/internal/database/seeders
+    container_name: postgres-prod-s-erp-api
+    networks:
+      - s-erp-api-network
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-s-erp-api:/var/lib/postgresql/data
+
+  # redis:
+  #   image: "redis:alpine"
+  #   container_name: redis-s-erp-api
+  #   networks:
+  #     - s-erp-api-network
+  #   ports:
+  #     - "${REDIS_PORT:-6379}:6379"
+  #   volumes:
+  #     - ./redis.conf:/usr/local/etc/redis/redis.conf
+  #   command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
+  #   environment:
+  #     REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  # scheduler:
+  #   build:
+  #     context: ../service
+  #     dockerfile: Dockerfile
+  #   networks:
+  #     - s-erp-api-network
+  #   depends_on:
+  #     - postgres
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #     POSTGRES_DB: ${POSTGRES_DB}
+  #     POSTGRES_DB_TEST: ${POSTGRES_DB_TEST}
+  #     POSTGRES_PORT: ${POSTGRES_PORT}
+  #     POSTGRES_HOST: ${POSTGRES_HOST}
+  #     GATEWAY_PORT: ${GATEWAY_PORT}
+  #     SERVICE_GRPC_PORT: ${SERVICE_GRPC_PORT}
+  #     SERVICE_REST_PORT: ${SERVICE_REST_PORT}
+  #     MASTER_SERVICE_GRPC_PORT: ${MASTER_SERVICE_GRPC_PORT}
+  #     MASTER_SERVICE_REST_PORT: ${MASTER_SERVICE_REST_PORT}
+  #     ACTIVITIES_SERVICE_GRPC_PORT: ${ACTIVITIES_SERVICE_GRPC_PORT}
+  #     ACTIVITIES_SERVICE_REST_PORT: ${ACTIVITIES_SERVICE_REST_PORT}
+  #     JWT_SECRET: ${JWT_SECRET}
+  #     REDIS_HOST: ${REDIS_HOST}
+  #     REDIS_PORT: ${REDIS_PORT}
+  #     REDIS_PASSWORD: ${REDIS_PASSWORD}
+  #     REDIS_DB: ${REDIS_DB}
+  #     SERVICE_TYPE: scheduler
+
+volumes:
+  postgres-s-erp-api:
+  public-s-erp-api:
+
+networks:
+  s-erp-api-network:
+    driver: bridge

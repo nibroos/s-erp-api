@@ -1,0 +1,31 @@
+# Development Dockerfile
+
+FROM golang:1.23-alpine AS base
+
+# Install necessary packages including Make
+RUN apk add --no-cache make curl postgresql-client tzdata
+
+# Set the timezone to GMT+7
+RUN cp /usr/share/zoneinfo/Asia/Bangkok /etc/localtime && \
+    echo "Asia/Bangkok" > /etc/timezone
+
+# Install Air for hot-reloading
+RUN go install github.com/air-verse/air@latest
+
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+RUN ln -s /go/bin/linux_amd64/migrate /usr/local/bin/migrate
+
+# Set the Current Working Directory inside the container
+WORKDIR /app
+
+# Copy go.mod and go.sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy the source code
+COPY . .
+
+# Command to run Air for hot-reloading
+CMD ["air"]
