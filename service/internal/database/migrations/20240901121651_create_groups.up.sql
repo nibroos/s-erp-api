@@ -2,8 +2,9 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS groups (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  description VARCHAR(255),
+  name VARCHAR(500) NOT NULL,
+  description TEXT,
+  remark TEXT,
   status INT,
   options_json JSONB,
   created_by_id INT REFERENCES users(id),
