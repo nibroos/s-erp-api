@@ -16,7 +16,7 @@ RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate
 RUN ln -s /go/bin/linux_amd64/migrate /usr/local/bin/migrate
 
 # Set the Current Working Directory inside the container
-WORKDIR /app
+WORKDIR /apps
 
 # Copy go.mod and go.sum files
 COPY go.mod go.sum ./

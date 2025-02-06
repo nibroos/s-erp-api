@@ -45,7 +45,7 @@ services:
     depends_on:
       - postgres
     volumes:
-      - ./../service:/app
+      - ./../service:/apps
     env_file:
       - .env
     environment:

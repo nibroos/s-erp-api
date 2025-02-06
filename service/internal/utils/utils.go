@@ -299,7 +299,10 @@ func executeSQLFile(db *sql.DB, filePath string) error {
 	}
 
 	_, err = db.Exec(string(sqlBytes))
-	return err
+	if err != nil {
+		return fmt.Errorf("error executing SQL file %s: %v", filePath, err)
+	}
+	return nil
 }
 
 // BodyParserWithNull converts empty strings to null and parses the request body into the provided struct.
