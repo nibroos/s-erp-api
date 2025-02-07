@@ -6,7 +6,6 @@ INSERT INTO
     name,
     description,
     status,
-    options_json,
     created_at,
     updated_at
   )
@@ -18,13 +17,10 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'permissions'
-    ),
-    'create_users',
-    'Permission to create users',
-    1,
-    '{}',
-    CURRENT_TIMESTAMP,
+        name = 'currencies'
+      LIMIT
+        1
+    ), 'IDR', 'Indonesian Rupiah', 1, CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -34,13 +30,10 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'permissions'
-    ),
-    'read_users',
-    'Permission to read users',
-    1,
-    '{}',
-    CURRENT_TIMESTAMP,
+        name = 'currencies'
+      LIMIT
+        1
+    ), 'USD', 'United States Dollar', 1, CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -50,13 +43,10 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'permissions'
-    ),
-    'update_users',
-    'Permission to update users',
-    1,
-    '{}',
-    CURRENT_TIMESTAMP,
+        name = 'currencies'
+      LIMIT
+        1
+    ), 'EUR', 'Euro', 1, CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -66,13 +56,10 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'permissions'
-    ),
-    'delete_users',
-    'Permission to delete users',
-    1,
-    '{}',
-    CURRENT_TIMESTAMP,
+        name = 'currencies'
+      LIMIT
+        1
+    ), 'SGD', 'Singapore Dollar', 1, CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   );
 

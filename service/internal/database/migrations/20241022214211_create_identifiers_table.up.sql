@@ -13,3 +13,5 @@ CREATE TABLE IF NOT EXISTS identifiers (
 );
 
 COMMIT;
+
+ROLLBACK;

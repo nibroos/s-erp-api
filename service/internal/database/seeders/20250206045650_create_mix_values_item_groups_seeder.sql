@@ -6,7 +6,6 @@ INSERT INTO
     name,
     description,
     status,
-    options_json,
     created_at,
     updated_at
   )
@@ -18,12 +17,11 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'roles'
+        name = 'item_groups'
     ),
-    'superadmin',
-    'Super Admin Role',
+    'Office',
+    'Office',
     1,
-    '{}',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
@@ -34,12 +32,11 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'roles'
+        name = 'item_groups'
     ),
-    'manager',
-    'Manager Role',
+    'Production',
+    'Production',
     1,
-    '{}',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
@@ -50,12 +47,26 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'roles'
+        name = 'item_groups'
     ),
-    'user',
-    'User Role',
+    'Packaging',
+    'Packaging',
     1,
-    '{}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'item_groups'
+    ),
+    'Service',
+    'Service',
+    1,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   );

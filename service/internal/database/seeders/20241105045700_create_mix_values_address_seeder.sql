@@ -1,29 +1,6 @@
 BEGIN;
 
 INSERT INTO
-  groups (
-    id,
-    name,
-    description,
-    status,
-    created_by_id,
-    updated_by_id,
-    created_at,
-    updated_at
-  )
-VALUES
-  (
-    5,
-    'addresses',
-    'Alamat',
-    1,
-    1,
-    1,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  );
-
-INSERT INTO
   mix_values (
     group_id,
     name,
@@ -34,7 +11,7 @@ INSERT INTO
   )
 VALUES
   (
-    5,
+    35,
     'Rumah',
     'Alamat - Rumah',
     1,
@@ -42,7 +19,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    5,
+    35,
     'Kantor',
     'Alamat - Kantor',
     1,
@@ -50,7 +27,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    5,
+    35,
     'Saudara',
     'Alamat - Saudara',
     1,
@@ -58,7 +35,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    5,
+    35,
     'Lainnya',
     'Alamat - Lainnya',
     1,
@@ -67,3 +44,5 @@ VALUES
   );
 
 COMMIT;
+
+ROLLBACK;

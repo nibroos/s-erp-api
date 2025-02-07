@@ -13,3 +13,5 @@ CREATE TABLE IF NOT EXISTS contacts (
 );
 
 COMMIT;
+
+ROLLBACK;

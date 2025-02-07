@@ -287,7 +287,7 @@ type ListAddressesResult struct {
 // type Scheduler struct {
 // 	ID          uint       `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 // 	Name        string     `json:"name" gorm:"column:name"`
-// 	Description string     `json:"description" gorm:"column:description"`
+// 	Description *string     `json:"description" gorm:"column:description"`
 // 	Cron        string     `json:"cron" gorm:"column:cron"`
 // 	Payload     string     `json:"payload" gorm:"column:payload"`
 // 	Status      string     `json:"status" gorm:"column:status"`
@@ -298,10 +298,140 @@ type ListAddressesResult struct {
 type SchedulerListDTO struct {
 	ID          int     `json:"id" db:"id"`
 	Name        string  `json:"name" db:"name"`
-	Description string  `json:"description" db:"description"`
+	Description *string `json:"description" db:"description"`
 	Cron        string  `json:"cron" db:"cron"`
 	Payload     string  `json:"payload" db:"payload"`
 	Status      string  `json:"status" db:"status"`
 	StartAt     *string `json:"start_at" db:"start_at"`
 	EndAt       *string `json:"end_at" db:"end_at"`
+}
+
+type GetItemGroupsRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateItemGroupRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type UpdateItemGroupRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type GetItemGroupByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type DeleteItemGroupRequest struct {
+	ID uint `json:"id"`
+}
+
+type ItemGroupListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   string  `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type ItemGroupDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   string  `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetItemGroupsResult struct {
+	ItemGroups []ItemGroupListDTO
+	Total      int
+	Err        error
+}
+
+type GetItemSubGroupsRequest struct {
+	Global         string  `json:"global"`
+	Name           string  `json:"name"`
+	PerPage        *string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           *string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string  `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string  `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateItemSubGroupRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+	ItemGroupID uint    `json:"item_group_id"`
+}
+
+type UpdateItemSubGroupRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+	ItemGroupID uint    `json:"item_group_id"`
+}
+
+type GetItemSubGroupByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type DeleteItemSubGroupRequest struct {
+	ID uint `json:"id"`
+}
+
+type ItemSubGroupListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   string  `json:"description" db:"description"`
+	Remark        string  `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type ItemSubGroupDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   string  `json:"description" db:"description"`
+	Remark        string  `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByID   uint    `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetItemSubGroupsResult struct {
+	ItemSubGroups []ItemSubGroupListDTO
+	Total         int
+	Err           error
 }

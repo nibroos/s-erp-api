@@ -52,3 +52,5 @@ WHERE
   );
 
 COMMIT;
+
+ROLLBACK;

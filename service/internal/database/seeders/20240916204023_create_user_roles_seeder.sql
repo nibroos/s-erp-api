@@ -165,3 +165,5 @@ VALUES
   );
 
 COMMIT;
+
+ROLLBACK;

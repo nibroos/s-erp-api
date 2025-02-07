@@ -7,11 +7,14 @@ CREATE TABLE IF NOT EXISTS groups (
   remark TEXT,
   status INT,
   options_json JSONB,
-  created_by_id INT REFERENCES users(id),
-  updated_by_id INT REFERENCES users(id),
+  created_by_id INT,
+  updated_by_id INT,
+  deleted_by_id INT,
   created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
 
 COMMIT;
+
+ROLLBACK;

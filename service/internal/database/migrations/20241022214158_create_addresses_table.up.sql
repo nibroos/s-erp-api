@@ -13,3 +13,5 @@ CREATE TABLE IF NOT EXISTS addresses (
 );
 
 COMMIT;
+
+ROLLBACK;

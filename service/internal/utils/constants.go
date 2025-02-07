@@ -9,4 +9,7 @@ const (
 	GroupIDUsers = 3
 
 	RoleStudent = 2
+
+	ItemGroupID    = 9
+	ItemSubGroupID = 11
 )

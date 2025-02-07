@@ -3,3 +3,5 @@ BEGIN;
 DROP TABLE IF EXISTS addresses;
 
 COMMIT;
+
+ROLLBACK;
