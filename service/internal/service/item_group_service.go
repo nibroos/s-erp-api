@@ -53,12 +53,12 @@ func (s *ItemGroupService) CreateItemGroup(ctx context.Context, itemGroup *model
 	return itemGroup, nil
 }
 
-func (s *ItemGroupService) GetItemGroupByID(ctx context.Context, id uint) (*dtos.ItemGroupDetailDTO, error) {
+func (s *ItemGroupService) GetItemGroupByID(ctx context.Context, params *dtos.GetItemGroupParams) (*dtos.ItemGroupDetailDTO, error) {
 	itemGroupChan := make(chan *dtos.ItemGroupDetailDTO, 1)
 	errChan := make(chan error, 1)
 
 	go func() {
-		itemGroup, err := s.repo.GetItemGroupByID(ctx, id)
+		itemGroup, err := s.repo.GetItemGroupByID(ctx, params)
 		if err != nil {
 			errChan <- err
 			return

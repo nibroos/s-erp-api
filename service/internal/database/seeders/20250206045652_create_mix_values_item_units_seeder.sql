@@ -43,7 +43,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'KG',
     'Kilogram',
@@ -58,7 +58,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'GRAM',
     'Gram',
@@ -73,7 +73,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'CM',
     'Centimeter',
@@ -88,7 +88,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'METER',
     'Meter',
@@ -103,7 +103,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'PIECE',
     'Piece',
@@ -118,7 +118,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'YARD',
     'Yard',
@@ -133,7 +133,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'CONE',
     'Cone',
@@ -148,7 +148,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'ROLL',
     'Roll',
@@ -163,7 +163,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'EA',
     'EA',
@@ -178,7 +178,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'SET',
     'Set',
@@ -193,7 +193,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'PACK',
     'Pack',
@@ -208,7 +208,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'BOX',
     'Box',
@@ -223,7 +223,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'DRUM',
     'Drum',
@@ -238,7 +238,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'CAN',
     'Can',
@@ -253,7 +253,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'P1',
     'P1',
@@ -268,7 +268,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'LITER',
     'Liter',
@@ -283,7 +283,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'UNIT',
     'Unit',
@@ -298,7 +298,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'DOZEN',
     'Dozen',
@@ -313,7 +313,7 @@ VALUES
       FROM
         groups
       WHERE
-        name = 'item_units'
+        name = 'units'
     ),
     'RIM',
     'Rim',

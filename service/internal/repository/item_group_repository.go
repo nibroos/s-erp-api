@@ -117,7 +117,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 	return modules, total, nil
 }
 
-func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, id uint) (*dtos.ItemGroupDetailDTO, error) {
+func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, params *dtos.GetItemGroupParams) (*dtos.ItemGroupDetailDTO, error) {
 	var itemGroup dtos.ItemGroupDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
@@ -128,9 +128,23 @@ func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, id uint) (*d
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	LEFT JOIN groups g ON m.group_id = g.id
-	WHERE m.id = $1 AND g.name = 'item_groups' AND m.deleted_at IS NULL`
+	WHERE g.name = 'item_groups'`
 
-	if err := r.sqlDB.Get(&itemGroup, query, id); err != nil {
+	var args []interface{}
+
+	i := 1
+	query += " AND m.id = $1"
+	args = append(args, params.ID)
+	i++
+
+	isDeletedQuery := ` AND m.deleted_at IS NULL`
+	if params.IsDeleted != nil && *params.IsDeleted == 1 {
+		isDeletedQuery = " AND m.deleted_at IS NOT NULL"
+	}
+
+	query += isDeletedQuery
+
+	if err := r.sqlDB.Get(&itemGroup, query, args...); err != nil {
 		return nil, err
 	}
 

@@ -71,7 +71,8 @@ func (c *ItemGroupController) CreateItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create item group", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	getItemGroup, err := c.service.GetItemGroupByID(ctx.Context(), createdItemGroup.ID)
+	params := &dtos.GetItemGroupParams{ID: createdItemGroup.ID}
+	getItemGroup, err := c.service.GetItemGroupByID(ctx.Context(), params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -92,7 +93,8 @@ func (c *ItemGroupController) GetItemGroupByID(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	itemGroup, err := c.service.GetItemGroupByID(ctx.Context(), req.ID)
+	params := &dtos.GetItemGroupParams{ID: req.ID}
+	itemGroup, err := c.service.GetItemGroupByID(ctx.Context(), params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -151,7 +153,8 @@ func (c *ItemGroupController) UpdateItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update Item group", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	getItemGroup, err := c.service.GetItemGroupByID(ctx.Context(), updatedItemGroup.ID)
+	params := &dtos.GetItemGroupParams{ID: updatedItemGroup.ID}
+	getItemGroup, err := c.service.GetItemGroupByID(ctx.Context(), params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -174,8 +177,9 @@ func (c *ItemGroupController) DeleteItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
+	params := &dtos.GetItemGroupParams{ID: req.ID}
 	// GET itemGroup by ID
-	_, err := c.service.GetItemGroupByID(ctx.Context(), req.ID)
+	_, err := c.service.GetItemGroupByID(ctx.Context(), params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -200,8 +204,9 @@ func (c *ItemGroupController) RestoreItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
+	params := &dtos.GetItemGroupParams{ID: req.ID}
 	// GET itemGroup by ID
-	_, err := c.service.GetItemGroupByID(ctx.Context(), req.ID)
+	_, err := c.service.GetItemGroupByID(ctx.Context(), params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusNotFound, err.Error(), nil)
 	}

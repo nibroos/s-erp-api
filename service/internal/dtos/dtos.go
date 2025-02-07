@@ -334,6 +334,19 @@ type GetItemGroupByIDRequest struct {
 	ID uint `json:"id"`
 }
 
+type GetItemGroupParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetItemGroupParams(id uint) *GetItemGroupParams {
+	defaultIsDeleted := 0
+	return &GetItemGroupParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
 type DeleteItemGroupRequest struct {
 	ID uint `json:"id"`
 }
