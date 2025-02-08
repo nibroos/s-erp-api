@@ -463,3 +463,11 @@ func ContainsIgnoreCase(str, substr string) bool {
 	substr = strings.ToLower(substr)
 	return strings.Contains(str, substr)
 }
+
+// GetPtrVal safely dereferences a string pointer
+func GetPtrVal(ptr *string) string {
+	if ptr != nil {
+		return *ptr
+	}
+	return ""
+}

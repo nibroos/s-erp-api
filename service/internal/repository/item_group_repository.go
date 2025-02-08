@@ -82,8 +82,12 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 
 	// Goroutine for count query
 	go func() {
-		err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-		countChan <- err
+		if filters["is_csv"] != "1" {
+			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			countChan <- err
+		} else {
+			countChan <- nil
+		}
 	}()
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
@@ -93,8 +97,11 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
 	currentPage := utils.GetIntOrDefault(filters["page"], 1)
 
-	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
-	args = append(args, perPage, (currentPage-1)*perPage)
+	// if is_csv
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
 
 	// Goroutine for select query
 	go func() {

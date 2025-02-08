@@ -221,13 +221,27 @@ func (c *ItemGroupController) RestoreItemGroup(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, nil, nil, "Item group restored successfully", http.StatusOK, nil, nil)
 }
 
-func (c *ItemGroupController) GetItemGroupsExcel(ctx *fiber.Ctx) error {
+func (c *ItemGroupController) ExcelGetItemGroups(ctx *fiber.Ctx) error {
 	filters, ok := ctx.Locals("filters").(map[string]string)
 	if !ok {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	itemGroups, err := c.service.GetItemGroupsExcel(ctx.Context(), filters)
+	itemGroups, err := c.service.ExcelGetItemGroups(ctx.Context(), filters)
+	if err != nil {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	return ctx.Send(itemGroups)
+}
+
+func (c *ItemGroupController) CsvGetItemGroups(ctx *fiber.Ctx) error {
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	itemGroups, err := c.service.CsvGetItemGroups(ctx.Context(), filters)
 	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}

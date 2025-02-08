@@ -57,6 +57,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB) {
 	itemSubGroup := version.Group("/item-sub-groups")
 	SetupItemSubGroupRoutes(itemSubGroup, gormDB, sqlDB)
 
+	companyProfile := version.Group("/company-profiles")
+	SetupCompanyProfileRoutes(companyProfile, gormDB, sqlDB)
+
 	// Scheduler route
 	// cron := cron.New()
 	// schedulerController := rest.NewSchedulerController(cron, gormDB, sqlDB)

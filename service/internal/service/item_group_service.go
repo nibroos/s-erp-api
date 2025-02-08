@@ -7,6 +7,7 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
+	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -139,7 +140,7 @@ func (s *ItemGroupService) RestoreItemGroup(ctx context.Context, params *dtos.Ge
 }
 
 // github.com/xuri/excelize/v2
-func (s *ItemGroupService) GetItemGroupsExcel(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *ItemGroupService) ExcelGetItemGroups(ctx context.Context, filters map[string]string) ([]byte, error) {
 	itemGroups, _, err := s.GetItemGroups(ctx, filters)
 	if err != nil {
 		return nil, err
@@ -181,4 +182,42 @@ func (s *ItemGroupService) GetItemGroupsExcel(ctx context.Context, filters map[s
 		return nil, err
 	}
 	return buffer.Bytes(), nil
+}
+
+// github.com/xuri/excelize/v2
+func (s *ItemGroupService) CsvGetItemGroups(ctx context.Context, filters map[string]string) ([]byte, error) {
+	// filters is_csv
+	filters["is_csv"] = "1"
+	itemGroups, _, err := s.GetItemGroups(ctx, filters)
+	if err != nil {
+		return nil, err
+	}
+
+	// get company profile
+	// companyProfile, err := helpers.GetCompanyProfileByID(ctx, s.CompanyProfileRepository, companyProfileParams)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// app name
+	// csv := fmt.Sprintf("%s\n", companyProfile.CompanyName)
+	csv := "App\n"
+	csv += "\n"
+	csv += "Item Groups\n"
+	csv += "\n"
+
+	csv += "ID,Name,Description,Remark,Created At,Updated At\n"
+	// Build CSV rows
+	for _, itemGroup := range itemGroups {
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s\n",
+			itemGroup.ID,
+			itemGroup.Name,
+			utils.GetPtrVal(itemGroup.Description),
+			utils.GetPtrVal(itemGroup.Remark),
+			utils.GetPtrVal(itemGroup.CreatedAt),
+			utils.GetPtrVal(itemGroup.UpdatedAt),
+		)
+	}
+
+	return []byte(csv), nil
 }

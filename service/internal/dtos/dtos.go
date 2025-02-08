@@ -354,7 +354,7 @@ type DeleteItemGroupRequest struct {
 type ItemGroupListDTO struct {
 	ID            int     `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
@@ -447,4 +447,100 @@ type GetItemSubGroupsResult struct {
 	ItemSubGroups []ItemSubGroupListDTO
 	Total         int
 	Err           error
+}
+
+type GetCompanyProfilesRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateCompanyProfileRequest struct {
+	CompanyName        string `json:"company_name" db:"company_name"`
+	CompanyAddress     string `json:"company_address" db:"company_address"`
+	CompanyPhone       string `json:"company_phone" db:"company_phone"`
+	CompanyEmail       string `json:"company_email" db:"company_email"`
+	CompanyWebsite     string `json:"company_website" db:"company_website"`
+	CompanyLogo        string `json:"company_logo" db:"company_logo"`
+	CompanyDescription string `json:"company_description" db:"company_description"`
+	CompanyRemark      string `json:"company_remark" db:"company_remark"`
+	CompanyStatus      int    `json:"company_status" db:"company_status"`
+}
+
+type UpdateCompanyProfileRequest struct {
+	ID                 uint   `json:"id"`
+	CompanyName        string `json:"company_name" db:"company_name"`
+	CompanyAddress     string `json:"company_address" db:"company_address"`
+	CompanyPhone       string `json:"company_phone" db:"company_phone"`
+	CompanyEmail       string `json:"company_email" db:"company_email"`
+	CompanyWebsite     string `json:"company_website" db:"company_website"`
+	CompanyLogo        string `json:"company_logo" db:"company_logo"`
+	CompanyDescription string `json:"company_description" db:"company_description"`
+	CompanyRemark      string `json:"company_remark" db:"company_remark"`
+	CompanyStatus      int    `json:"company_status" db:"company_status"`
+}
+
+type GetCompanyProfileByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetCompanyProfileParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetCompanyProfileParams(id uint) *GetCompanyProfileParams {
+	defaultIsDeleted := 0
+	return &GetCompanyProfileParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteCompanyProfileRequest struct {
+	ID uint `json:"id"`
+}
+
+type CompanyProfileListDTO struct {
+	ID                 int     `json:"id" db:"id"`
+	CompanyName        string  `json:"company_name" db:"company_name"`
+	CompanyAddress     string  `json:"company_address" db:"company_address"`
+	CompanyPhone       string  `json:"company_phone" db:"company_phone"`
+	CompanyEmail       string  `json:"company_email" db:"company_email"`
+	CompanyWebsite     string  `json:"company_website" db:"company_website"`
+	CompanyLogo        string  `json:"company_logo" db:"company_logo"`
+	CompanyDescription string  `json:"company_description" db:"company_description"`
+	CompanyRemark      string  `json:"company_remark" db:"company_remark"`
+	CompanyStatus      int     `json:"company_status" db:"company_status"`
+	CreatedByName      *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName      *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt          *string `json:"created_at" db:"created_at"`
+	UpdatedAt          *string `json:"updated_at" db:"updated_at"`
+	DeleteAt           *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type CompanyProfileDetailDTO struct {
+	ID                 uint    `json:"id" db:"id"`
+	CompanyName        string  `json:"company_name" db:"company_name"`
+	CompanyAddress     string  `json:"company_address" db:"company_address"`
+	CompanyPhone       string  `json:"company_phone" db:"company_phone"`
+	CompanyEmail       string  `json:"company_email" db:"company_email"`
+	CompanyWebsite     string  `json:"company_website" db:"company_website"`
+	CompanyLogo        string  `json:"company_logo" db:"company_logo"`
+	CompanyDescription string  `json:"company_description" db:"company_description"`
+	CompanyRemark      string  `json:"company_remark" db:"company_remark"`
+	CompanyStatus      int     `json:"company_status" db:"company_status"`
+	CreatedByName      *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName      *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt          *string `json:"created_at" db:"created_at"`
+	UpdatedAt          *string `json:"updated_at" db:"updated_at"`
+	DeletedAt          *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetCompanyProfilesResult struct {
+	CompanyProfiles []CompanyProfileListDTO
+	Total           int
+	Err             error
 }
