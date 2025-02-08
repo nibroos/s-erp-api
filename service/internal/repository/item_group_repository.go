@@ -173,20 +173,20 @@ func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.Mix
 
 }
 
-func (r *ItemGroupRepository) DeleteItemGroup(tx *gorm.DB, id uint) error {
+func (r *ItemGroupRepository) DeleteItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// if err := tx.Unscoped().Delete(&models.MixValue{}, id).Error; err != nil {
-		if err := tx.Delete(&models.MixValue{}, id).Error; err != nil {
+		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *ItemGroupRepository) RestoreItemGroup(tx *gorm.DB, id uint) error {
+func (s *ItemGroupRepository) RestoreItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var itemGroup models.MixValue
-		if err := tx.Unscoped().First(&itemGroup, id).Error; err != nil {
+		if err := tx.Unscoped().First(&itemGroup, params.ID).Error; err != nil {
 			return err
 		}
 		return tx.Model(&itemGroup).Update("deleted_at", nil).Error

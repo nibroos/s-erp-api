@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
+	"github.com/xuri/excelize/v2"
 )
 
 type ItemGroupService struct {
@@ -96,7 +98,7 @@ func (s *ItemGroupService) UpdateItemGroup(ctx context.Context, itemGroup *model
 	return itemGroup, nil
 }
 
-func (s *ItemGroupService) DeleteItemGroup(ctx context.Context, id uint) error {
+func (s *ItemGroupService) DeleteItemGroup(ctx context.Context, params *dtos.GetItemGroupParams) error {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {
@@ -104,7 +106,7 @@ func (s *ItemGroupService) DeleteItemGroup(ctx context.Context, id uint) error {
 	}
 
 	// Delete itemGroup
-	if err := s.repo.DeleteItemGroup(tx, id); err != nil {
+	if err := s.repo.DeleteItemGroup(tx, params); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -116,7 +118,7 @@ func (s *ItemGroupService) DeleteItemGroup(ctx context.Context, id uint) error {
 	return nil
 }
 
-func (s *ItemGroupService) RestoreItemGroup(ctx context.Context, id uint) error {
+func (s *ItemGroupService) RestoreItemGroup(ctx context.Context, params *dtos.GetItemGroupParams) error {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {
@@ -124,7 +126,7 @@ func (s *ItemGroupService) RestoreItemGroup(ctx context.Context, id uint) error 
 	}
 
 	// Restore itemGroup
-	if err := s.repo.RestoreItemGroup(tx, id); err != nil {
+	if err := s.repo.RestoreItemGroup(tx, params); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -134,4 +136,49 @@ func (s *ItemGroupService) RestoreItemGroup(ctx context.Context, id uint) error 
 	}
 
 	return nil
+}
+
+// github.com/xuri/excelize/v2
+func (s *ItemGroupService) GetItemGroupsExcel(ctx context.Context, filters map[string]string) ([]byte, error) {
+	itemGroups, _, err := s.GetItemGroups(ctx, filters)
+	if err != nil {
+		return nil, err
+	}
+
+	file := excelize.NewFile()
+
+	// Create a new sheet
+	sheetName := "item-groups"
+	index, err := file.NewSheet(sheetName)
+	if err != nil {
+		return nil, err
+	}
+
+	file.SetSheetRow("ItemGroups", "A1", &[]string{"ID", "Name", "Description", "Created At", "Updated At"})
+
+	for i, itemGroup := range itemGroups {
+		row := []interface{}{
+			itemGroup.ID,
+			itemGroup.Name,
+			itemGroup.Description,
+			itemGroup.CreatedAt,
+			itemGroup.UpdatedAt,
+		}
+		file.SetSheetRow("ItemGroups", fmt.Sprintf("A%d", i+2), &row)
+	}
+
+	// Set active sheet of the workbook
+	file.SetActiveSheet(index)
+
+	// Save the file
+	if err := file.SaveAs("output.xlsx"); err != nil {
+		fmt.Println("Error saving file:", err)
+		return nil, err
+	}
+
+	buffer, err := file.WriteToBuffer()
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
 }

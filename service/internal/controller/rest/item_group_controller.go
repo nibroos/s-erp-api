@@ -35,6 +35,7 @@ func (c *ItemGroupController) GetItemGroups(ctx *fiber.Ctx) error {
 
 	return utils.GetResponse(ctx, itemGroups, paginationMeta, "Item group fetched successfully", http.StatusOK, nil, nil)
 }
+
 func (c *ItemGroupController) CreateItemGroup(ctx *fiber.Ctx) error {
 	var req dtos.CreateItemGroupRequest
 
@@ -184,7 +185,7 @@ func (c *ItemGroupController) DeleteItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.DeleteItemGroup(ctx.Context(), req.ID)
+	err = c.service.DeleteItemGroup(ctx.Context(), params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete Item group", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -204,17 +205,32 @@ func (c *ItemGroupController) RestoreItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	params := &dtos.GetItemGroupParams{ID: req.ID}
+	isDeleted := 1
+	params := &dtos.GetItemGroupParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET itemGroup by ID
 	_, err := c.service.GetItemGroupByID(ctx.Context(), params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreItemGroup(ctx.Context(), req.ID)
+	err = c.service.RestoreItemGroup(ctx.Context(), params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore Item group", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	return utils.GetResponse(ctx, nil, nil, "Item group restored successfully", http.StatusOK, nil, nil)
+}
+
+func (c *ItemGroupController) GetItemGroupsExcel(ctx *fiber.Ctx) error {
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	itemGroups, err := c.service.GetItemGroupsExcel(ctx.Context(), filters)
+	if err != nil {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	return ctx.Send(itemGroups)
 }

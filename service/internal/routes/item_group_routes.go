@@ -23,4 +23,5 @@ func SetupItemGroupRoutes(itemGroups fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.
 	itemGroups.Post("/update-item-group", itemGroupController.UpdateItemGroup)
 	itemGroups.Post("/delete-item-group", itemGroupController.DeleteItemGroup)
 	itemGroups.Post("/restore-item-group", itemGroupController.RestoreItemGroup)
+	itemGroups.Post("/excel-item-group", itemGroupController.GetItemGroupsExcel)
 }
