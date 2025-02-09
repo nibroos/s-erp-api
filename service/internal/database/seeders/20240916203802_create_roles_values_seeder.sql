@@ -1,5 +1,6 @@
 BEGIN;
 
+-- marketing, sales, purchase, inventory, production, exim, accounting, beacukai
 INSERT INTO
   mix_values (
     group_id,
@@ -52,8 +53,120 @@ VALUES
       WHERE
         name = 'roles'
     ),
-    'user',
-    'User Role',
+    'marketing',
+    'Marketing Role',
+    1,
+    '{}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    'sales',
+    'Sales Role',
+    1,
+    '{}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    'purchase',
+    'Purchase Role',
+    1,
+    '{}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    'inventory',
+    'Inventory Role',
+    1,
+    '{}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    'production',
+    'Production Role',
+    1,
+    '{}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    'exim',
+    'Exim Role',
+    1,
+    '{}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    'accounting',
+    'Accounting Role',
+    1,
+    '{}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    'beacukai',
+    'Beacukai Role',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -61,5 +174,3 @@ VALUES
   );
 
 COMMIT;
-
-ROLLBACK;

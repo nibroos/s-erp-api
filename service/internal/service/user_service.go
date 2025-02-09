@@ -21,20 +21,11 @@ func NewUserService(repo repository.UserRepository) *UserService {
 }
 
 func (s *UserService) GetUsers(ctx context.Context, filters map[string]string) ([]dtos.UserListDTO, int, error) {
-
-	resultChan := make(chan dtos.GetUsersResult, 1)
-
-	go func() {
-		users, total, err := s.repo.GetUsers(ctx, filters)
-		resultChan <- dtos.GetUsersResult{Users: users, Total: total, Err: err}
-	}()
-
-	select {
-	case res := <-resultChan:
-		return res.Users, res.Total, res.Err
-	case <-ctx.Done():
-		return nil, 0, ctx.Err()
+	users, total, err := s.repo.GetUsers(ctx, filters)
+	if err != nil {
+		return nil, 0, err
 	}
+	return users, total, nil
 }
 
 func (s *UserService) CreateUser(ctx context.Context, user *models.User, roleIDs []uint32) (*models.User, error) {
@@ -79,26 +70,11 @@ func (s *UserService) CreateUser(ctx context.Context, user *models.User, roleIDs
 }
 
 func (s *UserService) GetUserByID(ctx context.Context, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
-	userChan := make(chan *dtos.UserDetailDTO, 1)
-	errChan := make(chan error, 1)
-
-	go func() {
-		user, err := s.repo.GetUserByID(ctx, params)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		userChan <- user
-	}()
-
-	select {
-	case user := <-userChan:
-		return user, nil
-	case err := <-errChan:
+	user, err := s.repo.GetUserByID(ctx, params)
+	if err != nil {
 		return nil, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
+	return user, nil
 }
 
 func (s *UserService) UpdateUser(ctx context.Context, user *models.User, roleIDs []uint32) (*models.User, error) {

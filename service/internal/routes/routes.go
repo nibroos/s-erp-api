@@ -38,6 +38,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB) {
 	app.Use(middleware.JWTMiddleware())
 	app.Use(middleware.ConvertToClientTimezone())
 
+	// util service
+	utilRepo := repository.NewUtilRepository(gormDB, sqlDB)
+
 	// Grouped routes
 	users := version.Group("/users")
 	SetupUserRoutes(users, gormDB, sqlDB)
@@ -52,7 +55,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB) {
 	SetupAddressRoutes(addresses, gormDB, sqlDB)
 
 	itemGroup := version.Group("/item-groups")
-	SetupItemGroupRoutes(itemGroup, gormDB, sqlDB)
+	SetupItemGroupRoutes(itemGroup, gormDB, sqlDB, utilRepo)
 
 	itemSubGroup := version.Group("/item-sub-groups")
 	SetupItemSubGroupRoutes(itemSubGroup, gormDB, sqlDB)

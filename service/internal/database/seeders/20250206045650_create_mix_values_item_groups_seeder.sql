@@ -72,5 +72,3 @@ VALUES
   );
 
 COMMIT;
-
-ROLLBACK;

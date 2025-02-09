@@ -17,20 +17,11 @@ func NewCompanyProfileService(repo *repository.CompanyProfileRepository) *Compan
 }
 
 func (s *CompanyProfileService) GetCompanyProfiles(ctx context.Context, filters map[string]string) ([]dtos.CompanyProfileListDTO, int, error) {
-
-	resultChan := make(chan dtos.GetCompanyProfilesResult, 1)
-
-	go func() {
-		companyProfiles, total, err := s.repo.GetCompanyProfiles(ctx, filters)
-		resultChan <- dtos.GetCompanyProfilesResult{CompanyProfiles: companyProfiles, Total: total, Err: err}
-	}()
-
-	select {
-	case res := <-resultChan:
-		return res.CompanyProfiles, res.Total, res.Err
-	case <-ctx.Done():
-		return nil, 0, ctx.Err()
+	companyProfiles, total, err := s.repo.GetCompanyProfiles(ctx, filters)
+	if err != nil {
+		return nil, 0, err
 	}
+	return companyProfiles, total, nil
 }
 
 func (s *CompanyProfileService) CreateCompanyProfile(ctx context.Context, companyProfile *models.CompanyProfile) (*models.CompanyProfile, error) {
@@ -54,26 +45,11 @@ func (s *CompanyProfileService) CreateCompanyProfile(ctx context.Context, compan
 }
 
 func (s *CompanyProfileService) GetCompanyProfileByID(ctx context.Context, params *dtos.GetCompanyProfileParams) (*dtos.CompanyProfileDetailDTO, error) {
-	companyProfileChan := make(chan *dtos.CompanyProfileDetailDTO, 1)
-	errChan := make(chan error, 1)
-
-	go func() {
-		companyProfile, err := s.repo.GetCompanyProfileByID(ctx, params)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		companyProfileChan <- companyProfile
-	}()
-
-	select {
-	case companyProfile := <-companyProfileChan:
-		return companyProfile, nil
-	case err := <-errChan:
+	companyProfile, err := s.repo.GetCompanyProfileByID(ctx, params)
+	if err != nil {
 		return nil, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
+	return companyProfile, nil
 }
 
 func (s *CompanyProfileService) UpdateCompanyProfile(ctx context.Context, companyProfile *models.CompanyProfile) (*models.CompanyProfile, error) {

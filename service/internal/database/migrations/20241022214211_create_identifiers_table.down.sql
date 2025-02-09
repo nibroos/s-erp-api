@@ -3,5 +3,3 @@ BEGIN;
 DROP TABLE IF EXISTS identifiers;
 
 COMMIT;
-
-ROLLBACK;

@@ -10,17 +10,17 @@ import (
 )
 
 func SetupCompanyProfileRoutes(companyProfile fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB) {
-	itemGroupRepo := repository.NewCompanyProfileRepository(gormDB, sqlDB)
-	itemGroupService := service.NewCompanyProfileService(itemGroupRepo)
-	itemGroupController := rest.NewCompanyProfileController(itemGroupService)
+	companyProfileRepo := repository.NewCompanyProfileRepository(gormDB, sqlDB)
+	companyProfileService := service.NewCompanyProfileService(companyProfileRepo)
+	companyProfileController := rest.NewCompanyProfileController(companyProfileService)
 
 	// prefix /companyProfile
 
-	// companyProfile.Post("/index-company-profile", middleware.PermissionMiddleware("index-company-profile"), itemGroupController.GetCompanyProfiles)
-	companyProfile.Post("/index-company-profile", itemGroupController.GetCompanyProfiles)
-	companyProfile.Post("/show-company-profile", itemGroupController.GetCompanyProfileByID)
-	companyProfile.Post("/create-company-profile", itemGroupController.CreateCompanyProfile)
-	companyProfile.Post("/update-company-profile", itemGroupController.UpdateCompanyProfile)
-	companyProfile.Post("/delete-company-profile", itemGroupController.DeleteCompanyProfile)
-	companyProfile.Post("/restore-company-profile", itemGroupController.RestoreCompanyProfile)
+	// companyProfile.Post("/index-company-profile", middleware.PermissionMiddleware("index-company-profile"), companyProfileController.GetCompanyProfiles)
+	companyProfile.Post("/index-company-profile", companyProfileController.GetCompanyProfiles)
+	companyProfile.Post("/show-company-profile", companyProfileController.GetCompanyProfileByID)
+	companyProfile.Post("/create-company-profile", companyProfileController.CreateCompanyProfile)
+	companyProfile.Post("/update-company-profile", companyProfileController.UpdateCompanyProfile)
+	companyProfile.Post("/delete-company-profile", companyProfileController.DeleteCompanyProfile)
+	companyProfile.Post("/restore-company-profile", companyProfileController.RestoreCompanyProfile)
 }

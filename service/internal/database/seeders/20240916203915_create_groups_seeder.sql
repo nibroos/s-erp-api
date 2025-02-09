@@ -342,7 +342,6 @@ VALUES
     1,
     1
   ),
-  -- contacts, addresses
   (
     34,
     'contacts',
@@ -358,6 +357,26 @@ VALUES
     'addresses',
     'Addresses',
     'Rumah, Kantor, Saudara, etc',
+    1,
+    '{}',
+    1,
+    1
+  ),
+  (
+    36,
+    'ingoing_types',
+    'Ingoing types',
+    'Ingoing types table for storing user data',
+    1,
+    '{}',
+    1,
+    1
+  ),
+  (
+    37,
+    'outgoing_types',
+    'Outgoing types',
+    'Outgoing types table for storing user data',
     1,
     '{}',
     1,

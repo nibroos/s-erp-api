@@ -13,7 +13,8 @@ import (
 )
 
 type ItemGroupController struct {
-	service *service.ItemGroupService
+	service     *service.ItemGroupService
+	utilService *service.UtilService
 }
 
 func NewItemGroupController(service *service.ItemGroupService) *ItemGroupController {

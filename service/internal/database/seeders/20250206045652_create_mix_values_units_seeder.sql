@@ -323,5 +323,3 @@ VALUES
   );
 
 COMMIT;
-
-ROLLBACK;

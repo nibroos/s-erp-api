@@ -12,8 +12,6 @@ BEGIN;
 -- 2	Peralatan Pabrik	0	\N	1
 -- 2	Scrap	\N	\N	1
 -- 2	Reject	\N	\N	1
--- 3	KL-S	0	\N	1
--- 3	FUTURA	0	\N	1
 INSERT INTO
   mix_values (
     group_id,
@@ -280,5 +278,3 @@ VALUES
   );
 
 COMMIT;
-
-ROLLBACK;

@@ -21,5 +21,3 @@ CREATE TABLE IF NOT EXISTS company_profiles (
 );
 
 COMMIT;
-
-ROLLBACK;

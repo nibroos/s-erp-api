@@ -16,5 +16,3 @@ CREATE TABLE IF NOT EXISTS schedulers (
 );
 
 COMMIT;
-
-ROLLBACK;

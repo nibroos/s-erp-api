@@ -19,5 +19,3 @@ CREATE TABLE IF NOT EXISTS mix_values (
 );
 
 COMMIT;
-
-ROLLBACK;

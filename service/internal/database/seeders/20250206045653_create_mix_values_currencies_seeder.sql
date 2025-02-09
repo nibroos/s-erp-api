@@ -64,5 +64,3 @@ VALUES
   );
 
 COMMIT;
-
-ROLLBACK;

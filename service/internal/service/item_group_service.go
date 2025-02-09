@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -12,28 +13,23 @@ import (
 )
 
 type ItemGroupService struct {
-	repo *repository.ItemGroupRepository
+	repo     *repository.ItemGroupRepository
+	utilRepo *repository.UtilRepository
 }
 
-func NewItemGroupService(repo *repository.ItemGroupRepository) *ItemGroupService {
-	return &ItemGroupService{repo: repo}
+func NewItemGroupService(repo *repository.ItemGroupRepository, utilRepo *repository.UtilRepository) *ItemGroupService {
+	return &ItemGroupService{
+		repo:     repo,
+		utilRepo: utilRepo,
+	}
 }
 
 func (s *ItemGroupService) GetItemGroups(ctx context.Context, filters map[string]string) ([]dtos.ItemGroupListDTO, int, error) {
-
-	resultChan := make(chan dtos.GetItemGroupsResult, 1)
-
-	go func() {
-		itemGroups, total, err := s.repo.GetItemGroups(ctx, filters)
-		resultChan <- dtos.GetItemGroupsResult{ItemGroups: itemGroups, Total: total, Err: err}
-	}()
-
-	select {
-	case res := <-resultChan:
-		return res.ItemGroups, res.Total, res.Err
-	case <-ctx.Done():
-		return nil, 0, ctx.Err()
+	itemGroups, total, err := s.repo.GetItemGroups(ctx, filters)
+	if err != nil {
+		return nil, 0, err
 	}
+	return itemGroups, total, nil
 }
 
 func (s *ItemGroupService) CreateItemGroup(ctx context.Context, itemGroup *models.MixValue) (*models.MixValue, error) {
@@ -57,26 +53,11 @@ func (s *ItemGroupService) CreateItemGroup(ctx context.Context, itemGroup *model
 }
 
 func (s *ItemGroupService) GetItemGroupByID(ctx context.Context, params *dtos.GetItemGroupParams) (*dtos.ItemGroupDetailDTO, error) {
-	itemGroupChan := make(chan *dtos.ItemGroupDetailDTO, 1)
-	errChan := make(chan error, 1)
-
-	go func() {
-		itemGroup, err := s.repo.GetItemGroupByID(ctx, params)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		itemGroupChan <- itemGroup
-	}()
-
-	select {
-	case itemGroup := <-itemGroupChan:
-		return itemGroup, nil
-	case err := <-errChan:
+	itemGroup, err := s.repo.GetItemGroupByID(ctx, params)
+	if err != nil {
 		return nil, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
+	return itemGroup, nil
 }
 
 func (s *ItemGroupService) UpdateItemGroup(ctx context.Context, itemGroup *models.MixValue) (*models.MixValue, error) {
@@ -194,14 +175,18 @@ func (s *ItemGroupService) CsvGetItemGroups(ctx context.Context, filters map[str
 	}
 
 	// get company profile
-	// companyProfile, err := helpers.GetCompanyProfileByID(ctx, s.CompanyProfileRepository, companyProfileParams)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err != nil {
+		log.Println("Company profile not found, using default app name:", appName)
+		log.Println("CsvGetItemGroups error:", err)
+	} else {
+		appName = companyProfile.CompanyName
+		log.Println("companyProfile.CompanyName", companyProfile.CompanyName)
+	}
 
-	// app name
-	// csv := fmt.Sprintf("%s\n", companyProfile.CompanyName)
-	csv := "App\n"
+	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
 	csv += "Item Groups\n"
 	csv += "\n"

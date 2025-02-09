@@ -289,16 +289,19 @@ func ExecuteSeeders(db *sql.DB, seedFiles []string) error {
 func executeSQLFile(db *sql.DB, filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("error opening SQL file %s: %v", filePath, err)
 	}
 	defer file.Close()
 
 	sqlBytes, err := ioutil.ReadAll(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading SQL file %s: %v", filePath, err)
 	}
 
-	_, err = db.Exec(string(sqlBytes))
+	sqlContent := string(sqlBytes)
+	fmt.Printf("Executing SQL file %s:\n%s\n", filePath, sqlContent)
+
+	_, err = db.Exec(sqlContent)
 	if err != nil {
 		return fmt.Errorf("error executing SQL file %s: %v", filePath, err)
 	}

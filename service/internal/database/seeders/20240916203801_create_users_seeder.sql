@@ -1,6 +1,6 @@
 BEGIN;
 
--- Insert users into users table
+-- marketing, sales, purchasing, inventory, production, exim, accounting, beacukai
 INSERT INTO
   users (
     username,
@@ -13,105 +13,94 @@ INSERT INTO
   )
 VALUES
   (
-    'nibros',
-    'nibros@example.com',
-    'Nibros',
-    crypt('admel', gen_salt('bf')),
-    '123 Main St',
+    'admin',
+    'admin@yubipro.com',
+    'Admin',
+    crypt('adminyubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
-    'user1',
-    'user1@example.com',
-    'User One',
-    crypt('password1', gen_salt('bf')),
-    '456 Elm St',
+    'manager',
+    'manager@yubipro.com',
+    'Manager',
+    crypt('manageryubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
-    'user2',
-    'user2@example.com',
-    'User Two',
-    crypt('password2', gen_salt('bf')),
-    '789 Oak St',
+    'marketing',
+    'marketing@yubipro.com',
+    'Marketing',
+    crypt('marketingyubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
-    'user3',
-    'user3@example.com',
-    'User Three',
-    crypt('password3', gen_salt('bf')),
-    '101 Pine St',
+    'sales',
+    'sales@yubipro.com',
+    'Sales',
+    crypt('salesyubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
-    'user4',
-    'user4@example.com',
-    'User Four',
-    crypt('password4', gen_salt('bf')),
-    '202 Maple St',
+    'purchasing',
+    'purchasing@yubipro.com',
+    'Purchasing',
+    crypt('purchasingyubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
-    'user5',
-    'user5@example.com',
-    'User Five',
-    crypt('password5', gen_salt('bf')),
-    '303 Birch St',
+    'inventory',
+    'inventory@yubipro.com',
+    'Inventory',
+    crypt('inventoryyubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
-    'user6',
-    'user6@example.com',
-    'User Six',
-    crypt('password6', gen_salt('bf')),
-    '404 Cedar St',
+    'production',
+    'production@yubipro.com',
+    'Production',
+    crypt('productionyubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
-    'user7',
-    'user7@example.com',
-    'User Seven',
-    crypt('password7', gen_salt('bf')),
-    '505 Walnut St',
+    'exim',
+    'exim@yubipro.com',
+    'Exim',
+    crypt('eximyubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
-    'user8',
-    'user8@example.com',
-    'User Eight',
-    crypt('password8', gen_salt('bf')),
-    '606 Chestnut St',
+    'accounting',
+    'accounting@yubipro.com',
+    'Accounting',
+    crypt('accountingyubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
-    'user9',
-    'user9@example.com',
-    'User Nine',
-    crypt('password9', gen_salt('bf')),
-    '707 Ash St',
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    'user10',
-    'user10@example.com',
-    'User Ten',
-    crypt('password10', gen_salt('bf')),
-    '808 Poplar St',
+    'beacukai',
+    'beacukai@yubipro.com',
+    'Beacukai',
+    crypt('beacukaiyubi', gen_salt('bf')),
+    'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   );
 
 COMMIT;
-
-ROLLBACK;

@@ -1,4 +1,5 @@
 -- Insert user-role relationships into pools table
+-- marketing, sales, purchasing, inventory, production, exim, accounting, beacukai
 INSERT INTO
   pools (
     group1_id,
@@ -34,7 +35,7 @@ VALUES
       FROM
         users
       WHERE
-        username = 'nibros'
+        username = 'admin'
     ),
     (
       SELECT
@@ -72,45 +73,7 @@ VALUES
       FROM
         users
       WHERE
-        username = 'user1'
-    ),
-    (
-      SELECT
-        id
-      FROM
-        mix_values
-      WHERE
-        name = 'student'
-    ),
-    1,
-    1,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    (
-      SELECT
-        id
-      FROM
-        groups
-      WHERE
-        name = 'users'
-    ),
-    (
-      SELECT
-        id
-      FROM
-        groups
-      WHERE
-        name = 'roles'
-    ),
-    (
-      SELECT
-        id
-      FROM
-        users
-      WHERE
-        username = 'user2'
+        username = 'manager'
     ),
     (
       SELECT
@@ -148,7 +111,7 @@ VALUES
       FROM
         users
       WHERE
-        username = 'user3'
+        username = 'marketing'
     ),
     (
       SELECT
@@ -156,7 +119,273 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'user'
+        name = 'marketing'
+    ),
+    1,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'users'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        users
+      WHERE
+        username = 'sales'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'sales'
+    ),
+    1,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'users'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        users
+      WHERE
+        username = 'purchasing'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'purchasing'
+    ),
+    1,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'users'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        users
+      WHERE
+        username = 'inventory'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'inventory'
+    ),
+    1,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'users'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        users
+      WHERE
+        username = 'production'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'production'
+    ),
+    1,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'users'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        users
+      WHERE
+        username = 'exim'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'exim'
+    ),
+    1,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'users'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        users
+      WHERE
+        username = 'accounting'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'accounting'
+    ),
+    1,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'users'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        users
+      WHERE
+        username = 'beacukai'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'beacukai'
     ),
     1,
     1,
@@ -165,5 +394,3 @@ VALUES
   );
 
 COMMIT;
-
-ROLLBACK;

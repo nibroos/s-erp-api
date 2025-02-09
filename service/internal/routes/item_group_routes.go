@@ -9,9 +9,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupItemGroupRoutes(itemGroups fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB) {
+func SetupItemGroupRoutes(itemGroups fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository) {
 	itemGroupRepo := repository.NewItemGroupRepository(gormDB, sqlDB)
-	itemGroupService := service.NewItemGroupService(itemGroupRepo)
+	itemGroupService := service.NewItemGroupService(itemGroupRepo, utilRepo)
 	itemGroupController := rest.NewItemGroupController(itemGroupService)
 
 	// prefix /itemGroups

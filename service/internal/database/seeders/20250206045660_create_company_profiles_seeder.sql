@@ -38,5 +38,3 @@ VALUES
   );
 
 COMMIT;
-
-ROLLBACK;

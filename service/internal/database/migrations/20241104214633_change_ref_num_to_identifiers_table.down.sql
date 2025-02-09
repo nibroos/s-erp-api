@@ -16,5 +16,3 @@ ALTER COLUMN
   ref_num TYPE INT USING ref_num :: INTEGER;
 
 COMMIT;
-
-ROLLBACK;
