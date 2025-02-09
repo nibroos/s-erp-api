@@ -125,9 +125,7 @@ func ConvertEmptyStringsToNull() fiber.Handler {
 
 // PermissionMiddleware checks if the user has the required permission
 func PermissionMiddleware(requiredPermission string) fiber.Handler {
-	log.Printf("Checking permission: %s", requiredPermission)
 	return func(ctx *fiber.Ctx) error {
-		log.Println("Checking permission 2")
 		if !utils.HasPermission(ctx, requiredPermission) {
 			return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "Forbidden"})
 		}

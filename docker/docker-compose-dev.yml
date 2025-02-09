@@ -149,8 +149,49 @@ services:
   #     REDIS_PASSWORD: ${REDIS_PASSWORD}
   #     REDIS_DB: ${REDIS_DB}
 
+  postgres-exporter:
+    image: bitnami/postgres-exporter:0.16.0
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - postgres
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - postgres-exporter
+      - service
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    ports:
+      - "3005:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - prometheus
+    environment:
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: postgres:5432
+      GF_DATABASE_NAME: grafana
+      GF_DATABASE_USER: grafana
+      GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+
 volumes:
   postgres-s-erp-api:
+  grafana-storage:
 
 networks:
   s-erp-api-network:

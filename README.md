@@ -64,6 +64,12 @@ Change the 'version' column name on schema_migrations to latest succeed migratio
 ### 📗 API Document
 All endpoints stored in  `-.json`
 
+### 🖥️ Prometheus & Grafana
+- Grafana will fail at first run, because user credentials need to be created manually in the postgres database.
+- Login with the user and password. The default user and password is `admin` and `admin`.
+- Use `vegeta` to generate the load test. look up `target.txt` for the target URL, then run `vegeta attack -targets=target.txt -rate=1000 -duration=30s -output /dev/null`, change the rate and duration as you need.
+
+
 <h1 align="center">
     <br>
   Features

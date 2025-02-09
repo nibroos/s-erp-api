@@ -1,0 +1,29 @@
+import http from 'k6/http';
+import { check } from 'k6';
+
+const payload = JSON.parse(open('./payload.json'));
+
+export let options = {
+  stages: [
+    { duration: '1m', target: 50 }, // Ramp up to 50 users over 1 minute
+    { duration: '3m', target: 50 }, // Stay at 50 users for 3 minutes
+    { duration: '1m', target: 0 },  // Ramp down to 0 users over 1 minute
+  ],
+};
+
+export default function () {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzkzNjY0MzEsInBlcm1pc3Npb25zIjpbInVzZXJzIiwicm9sZV9wZXJtaXNzaW9ucyIsImNvbXBhbnlfcHJvZmlsZXMiLCJjdXN0b21lcnMiLCJtYXN0ZXJzIiwiaXRlbXMiLCJzYWxlc19vcmRlcnMiLCJwdXJjaGFzZV9vcmRlcnMiLCJpbnZlbnRvcmllcyIsImNyZWF0ZV91c2VycyIsInJlYWRfdXNlcnMiLCJ1cGRhdGVfdXNlcnMiLCJkZWxldGVfdXNlcnMiLCJyZXN0b3JlX3VzZXJzIiwiY3JlYXRlX3JvbGVfcGVybWlzc2lvbnMiLCJyZWFkX3JvbGVfcGVybWlzc2lvbnMiLCJ1cGRhdGVfcm9sZV9wZXJtaXNzaW9ucyIsImRlbGV0ZV9yb2xlX3Blcm1pc3Npb25zIiwicmVzdG9yZV9yb2xlX3Blcm1pc3Npb25zIiwiY3JlYXRlX2NvbXBhbnlfcHJvZmlsZXMiLCJyZWFkX2NvbXBhbnlfcHJvZmlsZXMiLCJ1cGRhdGVfY29tcGFueV9wcm9maWxlcyIsImRlbGV0ZV9jb21wYW55X3Byb2ZpbGVzIiwicmVzdG9yZV9jb21wYW55X3Byb2ZpbGVzIiwiY3JlYXRlX2N1c3RvbWVycyIsInJlYWRfY3VzdG9tZXJzIiwidXBkYXRlX2N1c3RvbWVycyIsImRlbGV0ZV9jdXN0b21lcnMiLCJyZXN0b3JlX2N1c3RvbWVycyIsImNyZWF0ZV9tYXN0ZXJzIiwicmVhZF9tYXN0ZXJzIiwidXBkYXRlX21hc3RlcnMiLCJkZWxldGVfbWFzdGVycyIsInJlc3RvcmVfbWFzdGVycyIsImNyZWF0ZV9pdGVtcyIsInJlYWRfaXRlbXMiLCJ1cGRhdGVfaXRlbXMiLCJkZWxldGVfaXRlbXMiLCJyZXN0b3JlX2l0ZW1zIiwiY3JlYXRlX3NhbGVzX29yZGVycyIsInJlYWRfc2FsZXNfb3JkZXJzIiwidXBkYXRlX3NhbGVzX29yZGVycyIsImRlbGV0ZV9zYWxlc19vcmRlcnMiLCJyZXN0b3JlX3NhbGVzX29yZGVycyIsImNyZWF0ZV9wdXJjaGFzZV9vcmRlcnMiLCJyZWFkX3B1cmNoYXNlX29yZGVycyIsInVwZGF0ZV9wdXJjaGFzZV9vcmRlcnMiLCJkZWxldGVfcHVyY2hhc2Vfb3JkZXJzIiwicmVzdG9yZV9wdXJjaGFzZV9vcmRlcnMiLCJjcmVhdGVfaW52ZW50b3JpZXMiLCJyZWFkX2ludmVudG9yaWVzIiwidXBkYXRlX2ludmVudG9yaWVzIiwiZGVsZXRlX2ludmVudG9yaWVzIiwicmVzdG9yZV9pbnZlbnRvcmllcyJdLCJyb2xlcyI6WyJzdXBlcmFkbWluIl0sInVzZXJfaWQiOjF9.dOv8r9PRW8I8D2DYsqsttol0aOIhWls0NRt6-d5vpb8',
+  };
+
+  const response = http.post(
+    'http://localhost:4001/api/v1/users/index-user',
+    JSON.stringify(payload),
+    { headers: headers }
+  );
+
+  check(response, {
+    'Status is 200': (r) => r.status === 200,
+  });
+}

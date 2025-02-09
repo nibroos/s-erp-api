@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -16,10 +18,70 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/middleware"
 	"github.com/nibroos/s-erp-api/service/internal/routes"
 	"github.com/nibroos/s-erp-api/service/internal/validators"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robfig/cron/v3"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+// Use middleware to track metrics
+// app.Use(func(c *fiber.Ctx) error {
+// func PromDurationMiddleware(next fiber.Handler) fiber.Handler {
+// 	return func(c *fiber.Ctx) error {
+// 		start := time.Now()
+// 		err := c.Next()
+// 		respStatus := c.Response().StatusCode()
+// 		duration := time.Since(start)
+// 		httpRequestDuration.With(map[string]string{
+// 			"response_status": strconv.Itoa(respStatus),
+// 		}).Observe(duration.Seconds())
+// 		httpRequestsTotal.With(map[string]string{
+// 			"response_status": strconv.Itoa(respStatus),
+// 		}).Inc()
+
+//			return err
+//		}
+//	}
+
+var (
+	httpRequestsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "endpoint", "response_status"},
+	)
+	// httpRequestDuration = promauto.NewHistogramVec(
+	// 	prometheus.HistogramOpts{
+	// 		Name:    "request_duration_seconds",
+	// 		Buckets: []float64{.00005, .0005, .005, .01, .025, .05, .1, .25, .5, 1, 2.5},
+	// 	},
+	// 	[]string{"method", "endpoint", "response_status"},
+	// )
+	httpRequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "http_request_duration_seconds",
+			Help:    "Duration of HTTP requests",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "endpoint", "response_status"},
+	)
+)
+
+func PromDurationMiddleware(c *fiber.Ctx) error {
+	start := time.Now()
+	err := c.Next() // Call the next handler
+	respStatus := c.Response().StatusCode()
+	duration := time.Since(start)
+
+	// Record metrics
+	httpRequestDuration.WithLabelValues(c.Method(), c.Path(), strconv.Itoa(respStatus)).Observe(duration.Seconds())
+	httpRequestsTotal.WithLabelValues(c.Method(), c.Path(), strconv.Itoa(respStatus)).Inc()
+
+	return err
+}
 
 func main() {
 	// Load environment variables from .env file
@@ -27,6 +89,19 @@ func main() {
 	if err != nil {
 		log.Println("No .env file found")
 	}
+
+	// Create a Prometheus registry
+	registry := prometheus.NewRegistry()
+	prometheus.DefaultRegisterer = registry
+
+	// Expose Prometheus metrics endpoint
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		log.Println("Starting Prometheus metrics server on :9090")
+		if err := http.ListenAndServe(":9090", nil); err != nil {
+			log.Fatalf("Failed to start Prometheus metrics server: %v", err)
+		}
+	}()
 
 	// Determine the environment (production or test)
 	env := os.Getenv("APP_ENV")
@@ -80,6 +155,8 @@ func main() {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: middleware.ErrorHandler,
 	})
+
+	app.Use(PromDurationMiddleware)
 
 	// Attach middleware
 	app.Use(middleware.ConvertEmptyStringsToNull())
