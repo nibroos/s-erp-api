@@ -12,7 +12,7 @@ import (
 func SetupItemGroupRoutes(itemGroups fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository) {
 	itemGroupRepo := repository.NewItemGroupRepository(gormDB, sqlDB)
 	itemGroupService := service.NewItemGroupService(itemGroupRepo, utilRepo)
-	itemGroupController := rest.NewItemGroupController(itemGroupService)
+	itemGroupController := rest.NewItemGroupController(itemGroupService, itemGroupRepo)
 
 	// prefix /itemGroups
 

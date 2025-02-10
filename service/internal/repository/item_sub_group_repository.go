@@ -24,7 +24,7 @@ func NewItemSubGroupRepository(db *gorm.DB, sqlDB *sqlx.DB) *ItemSubGroupReposit
 }
 
 func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters map[string]string) ([]dtos.ItemSubGroupListDTO, int, error) {
-	modules := []dtos.ItemSubGroupListDTO{}
+	itemSubGroups := []dtos.ItemSubGroupListDTO{}
 	var total int
 
 	query := `SELECT *
@@ -37,7 +37,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 				LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'item_groups'
+				WHERE g.name = 'item_sub_groups'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -49,7 +49,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
 				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'item_groups'
+				WHERE g.name = 'item_sub_groups'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -98,7 +98,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 
 	// Goroutine for select query
 	go func() {
-		err := r.sqlDB.SelectContext(ctx, &modules, query, args...)
+		err := r.sqlDB.SelectContext(ctx, &itemSubGroups, query, args...)
 		selectChan <- err
 	}()
 
@@ -114,13 +114,13 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 		return nil, 0, selectErr
 	}
 
-	return modules, total, nil
+	return itemSubGroups, total, nil
 }
 
-func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx context.Context, id uint) (*dtos.ItemSubGroupDetailDTO, error) {
-	var module dtos.ItemSubGroupDetailDTO
+func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx context.Context, params *dtos.GetItemSubGroupParams) (*dtos.ItemSubGroupDetailDTO, error) {
+	var itemSubGroup dtos.ItemSubGroupDetailDTO
 
-	query := `SELECT m.*,
+	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
@@ -128,13 +128,27 @@ func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx context.Context, id uin
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	LEFT JOIN groups g ON m.group_id = g.id
-	WHERE m.id = $1 AND g.name = 'item_groups' AND m.deleted_at IS NULL`
+	WHERE g.name = 'item_sub_groups'`
 
-	if err := r.sqlDB.Get(&module, query, id); err != nil {
+	var args []interface{}
+
+	i := 1
+	query += " AND m.id = $1"
+	args = append(args, params.ID)
+	i++
+
+	isDeletedQuery := ` AND m.deleted_at IS NULL`
+	if params.IsDeleted != nil && *params.IsDeleted == 1 {
+		isDeletedQuery = " AND m.deleted_at IS NOT NULL"
+	}
+
+	query += isDeletedQuery
+
+	if err := r.sqlDB.Get(&itemSubGroup, query, args...); err != nil {
 		return nil, err
 	}
 
-	return &module, nil
+	return &itemSubGroup, nil
 }
 
 // BeginTransaction starts a new transaction
@@ -142,16 +156,16 @@ func (r *ItemSubGroupRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *ItemSubGroupRepository) CreateItemSubGroup(tx *gorm.DB, module *models.MixValue) error {
-	if err := tx.Create(module).Error; err != nil {
+func (r *ItemSubGroupRepository) CreateItemSubGroup(tx *gorm.DB, itemSubGroup *models.MixValue) error {
+	if err := tx.Create(itemSubGroup).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *ItemSubGroupRepository) UpdateItemSubGroup(tx *gorm.DB, module *models.MixValue) error {
+func (r *ItemSubGroupRepository) UpdateItemSubGroup(tx *gorm.DB, itemSubGroup *models.MixValue) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(module).Error; err != nil {
+		if err := tx.Updates(itemSubGroup).Error; err != nil {
 			return err
 		}
 		return nil
@@ -161,7 +175,6 @@ func (r *ItemSubGroupRepository) UpdateItemSubGroup(tx *gorm.DB, module *models.
 
 func (r *ItemSubGroupRepository) DeleteItemSubGroup(tx *gorm.DB, id uint) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.MixValue{}, id).Error; err != nil {
 		if err := tx.Delete(&models.MixValue{}, id).Error; err != nil {
 			return err
 		}
@@ -171,10 +184,10 @@ func (r *ItemSubGroupRepository) DeleteItemSubGroup(tx *gorm.DB, id uint) error 
 
 func (s *ItemSubGroupRepository) RestoreItemSubGroup(tx *gorm.DB, id uint) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		var module models.MixValue
-		if err := tx.Unscoped().First(&module, id).Error; err != nil {
+		var itemSubGroup models.MixValue
+		if err := tx.Unscoped().Model(&itemSubGroup).Where("id = ?", id).Update("deleted_at", nil).Error; err != nil {
 			return err
 		}
-		return tx.Model(&module).Update("deleted_at", nil).Error
+		return nil
 	})
 }

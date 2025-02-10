@@ -126,7 +126,7 @@ func (sc *SchedulerController) StopCron(name string) error {
 	sc.Cron.Remove(cron.EntryID(scheduler.EntryID))
 	scheduler.Status = "stopped"
 	scheduler.UpdatedAt = time.Now()
-	if err := sc.DB.Save(&scheduler).Error; err != nil {
+	if err := sc.DB.Updates(&scheduler).Error; err != nil {
 		return err
 	}
 

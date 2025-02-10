@@ -58,7 +58,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB) {
 	SetupItemGroupRoutes(itemGroup, gormDB, sqlDB, utilRepo)
 
 	itemSubGroup := version.Group("/item-sub-groups")
-	SetupItemSubGroupRoutes(itemSubGroup, gormDB, sqlDB)
+	SetupItemSubGroupRoutes(itemSubGroup, gormDB, sqlDB, utilRepo)
 
 	companyProfile := version.Group("/company-profiles")
 	SetupCompanyProfileRoutes(companyProfile, gormDB, sqlDB)

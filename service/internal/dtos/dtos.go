@@ -416,11 +416,16 @@ type DeleteItemSubGroupRequest struct {
 	ID uint `json:"id"`
 }
 
+type GetItemSubGroupParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
 type ItemSubGroupListDTO struct {
 	ID            int     `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
 	Description   string  `json:"description" db:"description"`
-	Remark        string  `json:"remark" db:"remark"`
+	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
@@ -433,7 +438,7 @@ type ItemSubGroupDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
 	Description   string  `json:"description" db:"description"`
-	Remark        string  `json:"remark" db:"remark"`
+	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByID   uint    `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`

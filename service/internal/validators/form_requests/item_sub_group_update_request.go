@@ -22,10 +22,11 @@ func NewItemSubGroupUpdateRequest() *ItemSubGroupUpdateRequest {
 func (r *ItemSubGroupUpdateRequest) Validate(req *dtos.UpdateItemSubGroupRequest, ctx context.Context) map[string]string {
 	rules := govalidator.MapData{
 		// "name":        []string{"required", fmt.Sprintf("unique_ig:mix_values,name,%d", req.ID)},
-		"name":        []string{"required"},
-		"description": []string{},
-		"remarks":     []string{},
-		"status":      []string{},
+		"name":          []string{"required"},
+		"item_group_id": []string{"required"},
+		"description":   []string{},
+		"remarks":       []string{},
+		"status":        []string{},
 	}
 
 	opts := govalidator.Options{

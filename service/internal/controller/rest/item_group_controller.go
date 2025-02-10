@@ -78,6 +78,7 @@ func (c *ItemGroupController) CreateItemGroup(ctx *fiber.Ctx) error {
 	createdItemGroup, err := c.service.CreateItemGroup(ctx.Context(), &itemGroup, tx)
 
 	if err != nil {
+		tx.Rollback()
 		return utils.GetResponse(ctx, nil, nil, "Failed to create item group", http.StatusInternalServerError, err.Error(), nil)
 	}
 
@@ -167,6 +168,7 @@ func (c *ItemGroupController) UpdateItemGroup(ctx *fiber.Ctx) error {
 	updatedItemGroup, err := c.service.UpdateItemGroup(ctx.Context(), &itemGroup, tx)
 
 	if err != nil {
+		tx.Rollback()
 		if err.Error() == "itemGroup name already exists" {
 			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Item group already exists", "status": http.StatusConflict})
 		}
@@ -217,6 +219,7 @@ func (c *ItemGroupController) DeleteItemGroup(ctx *fiber.Ctx) error {
 	err = c.service.DeleteItemGroup(ctx.Context(), params, tx)
 
 	if err != nil {
+		tx.Rollback()
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete Item group", http.StatusInternalServerError, err.Error(), nil)
 	}
 
@@ -254,6 +257,7 @@ func (c *ItemGroupController) RestoreItemGroup(ctx *fiber.Ctx) error {
 
 	err = c.service.RestoreItemGroup(ctx.Context(), params, tx)
 	if err != nil {
+		tx.Rollback()
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore Item group", http.StatusInternalServerError, err.Error(), nil)
 	}
 
