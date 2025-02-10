@@ -10,6 +10,9 @@ const (
 
 	RoleStudent = 2
 
+	CustomerTypeID = 7
+	CurrencyID     = 8
 	ItemGroupID    = 9
+	UnitID         = 10
 	ItemSubGroupID = 11
 )

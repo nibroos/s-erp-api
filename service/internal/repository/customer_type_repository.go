@@ -11,20 +11,20 @@ import (
 	"gorm.io/gorm"
 )
 
-type ItemGroupRepository struct {
+type CustomerTypeRepository struct {
 	db    *gorm.DB
 	sqlDB *sqlx.DB
 }
 
-func NewItemGroupRepository(db *gorm.DB, sqlDB *sqlx.DB) *ItemGroupRepository {
-	return &ItemGroupRepository{
+func NewCustomerTypeRepository(db *gorm.DB, sqlDB *sqlx.DB) *CustomerTypeRepository {
+	return &CustomerTypeRepository{
 		db:    db,
 		sqlDB: sqlDB,
 	}
 }
 
-func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[string]string) ([]dtos.ItemGroupListDTO, int, error) {
-	itemGroups := []dtos.ItemGroupListDTO{}
+func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters map[string]string) ([]dtos.CustomerTypeListDTO, int, error) {
+	customerTypes := []dtos.CustomerTypeListDTO{}
 	var total int
 
 	query := `SELECT *
@@ -37,7 +37,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 				LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'item_groups'
+				WHERE g.name = 'customer_types'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -49,7 +49,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
 				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'item_groups'
+				WHERE g.name = 'customer_types'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -105,7 +105,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 
 	// Goroutine for select query
 	go func() {
-		err := r.sqlDB.SelectContext(ctx, &itemGroups, query, args...)
+		err := r.sqlDB.SelectContext(ctx, &customerTypes, query, args...)
 		selectChan <- err
 	}()
 
@@ -121,11 +121,11 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 		return nil, 0, selectErr
 	}
 
-	return itemGroups, total, nil
+	return customerTypes, total, nil
 }
 
-func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, params *dtos.GetItemGroupParams) (*dtos.ItemGroupDetailDTO, error) {
-	var itemGroup dtos.ItemGroupDetailDTO
+func (r *CustomerTypeRepository) GetCustomerTypeByID(ctx context.Context, params *dtos.GetCustomerTypeParams) (*dtos.CustomerTypeDetailDTO, error) {
+	var customerType dtos.CustomerTypeDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 	cu.name as created_by_name,
@@ -135,7 +135,7 @@ func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, params *dtos
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	LEFT JOIN groups g ON m.group_id = g.id
-	WHERE g.name = 'item_groups'`
+	WHERE g.name = 'customer_types'`
 
 	var args []interface{}
 
@@ -151,28 +151,28 @@ func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, params *dtos
 
 	query += isDeletedQuery
 
-	if err := r.sqlDB.Get(&itemGroup, query, args...); err != nil {
+	if err := r.sqlDB.Get(&customerType, query, args...); err != nil {
 		return nil, err
 	}
 
-	return &itemGroup, nil
+	return &customerType, nil
 }
 
 // BeginTransaction starts a new transaction
-func (r *ItemGroupRepository) BeginTransaction() *gorm.DB {
+func (r *CustomerTypeRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *ItemGroupRepository) CreateItemGroup(tx *gorm.DB, itemGroup *models.MixValue) error {
-	if err := tx.Create(itemGroup).Error; err != nil {
+func (r *CustomerTypeRepository) CreateCustomerType(tx *gorm.DB, customerType *models.MixValue) error {
+	if err := tx.Create(customerType).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.MixValue) error {
+func (r *CustomerTypeRepository) UpdateCustomerType(tx *gorm.DB, customerType *models.MixValue) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(itemGroup).Error; err != nil {
+		if err := tx.Updates(customerType).Error; err != nil {
 			return err
 		}
 		return nil
@@ -180,7 +180,7 @@ func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.Mix
 
 }
 
-func (r *ItemGroupRepository) DeleteItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams) error {
+func (r *CustomerTypeRepository) DeleteCustomerType(tx *gorm.DB, params *dtos.GetCustomerTypeParams) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
 			return err
@@ -189,10 +189,10 @@ func (r *ItemGroupRepository) DeleteItemGroup(tx *gorm.DB, params *dtos.GetItemG
 	})
 }
 
-func (s *ItemGroupRepository) RestoreItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams) error {
+func (s *CustomerTypeRepository) RestoreCustomerType(tx *gorm.DB, params *dtos.GetCustomerTypeParams) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		var itemGroup models.MixValue
-		if err := tx.Unscoped().Model(&itemGroup).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		var customerType models.MixValue
+		if err := tx.Unscoped().Model(&customerType).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
 			return err
 		}
 		return nil
