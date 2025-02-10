@@ -161,7 +161,7 @@ func (r *IdentifierRepository) CreateIdentifier(tx *gorm.DB, identifier *models.
 
 func (r *IdentifierRepository) UpdateIdentifier(tx *gorm.DB, identifier *models.Identifier) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(identifier).Error; err != nil {
+		if err := tx.Updates(identifier).Error; err != nil {
 			return err
 		}
 		return nil

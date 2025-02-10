@@ -167,7 +167,7 @@ func (r *AddressRepository) CreateAddress(tx *gorm.DB, address *models.Address) 
 
 func (r *AddressRepository) UpdateAddress(tx *gorm.DB, address *models.Address) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(address).Error; err != nil {
+		if err := tx.Updates(address).Error; err != nil {
 			return err
 		}
 		return nil

@@ -172,7 +172,7 @@ func (r *ItemGroupRepository) CreateItemGroup(tx *gorm.DB, itemGroup *models.Mix
 
 func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.MixValue) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(itemGroup).Error; err != nil {
+		if err := tx.Updates(itemGroup).Error; err != nil {
 			return err
 		}
 		return nil

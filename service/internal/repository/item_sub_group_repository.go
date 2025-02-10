@@ -151,7 +151,7 @@ func (r *ItemSubGroupRepository) CreateItemSubGroup(tx *gorm.DB, module *models.
 
 func (r *ItemSubGroupRepository) UpdateItemSubGroup(tx *gorm.DB, module *models.MixValue) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(module).Error; err != nil {
+		if err := tx.Updates(module).Error; err != nil {
 			return err
 		}
 		return nil

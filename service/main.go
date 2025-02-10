@@ -26,25 +26,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// Use middleware to track metrics
-// app.Use(func(c *fiber.Ctx) error {
-// func PromDurationMiddleware(next fiber.Handler) fiber.Handler {
-// 	return func(c *fiber.Ctx) error {
-// 		start := time.Now()
-// 		err := c.Next()
-// 		respStatus := c.Response().StatusCode()
-// 		duration := time.Since(start)
-// 		httpRequestDuration.With(map[string]string{
-// 			"response_status": strconv.Itoa(respStatus),
-// 		}).Observe(duration.Seconds())
-// 		httpRequestsTotal.With(map[string]string{
-// 			"response_status": strconv.Itoa(respStatus),
-// 		}).Inc()
-
-//			return err
-//		}
-//	}
-
 var (
 	httpRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -53,13 +34,6 @@ var (
 		},
 		[]string{"method", "endpoint", "response_status"},
 	)
-	// httpRequestDuration = promauto.NewHistogramVec(
-	// 	prometheus.HistogramOpts{
-	// 		Name:    "request_duration_seconds",
-	// 		Buckets: []float64{.00005, .0005, .005, .01, .025, .05, .1, .25, .5, 1, 2.5},
-	// 	},
-	// 	[]string{"method", "endpoint", "response_status"},
-	// )
 	httpRequestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "http_request_duration_seconds",

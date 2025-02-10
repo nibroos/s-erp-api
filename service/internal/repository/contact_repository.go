@@ -167,7 +167,7 @@ func (r *ContactRepository) CreateContact(tx *gorm.DB, contact *models.Contact) 
 
 func (r *ContactRepository) UpdateContact(tx *gorm.DB, contact *models.Contact) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(contact).Error; err != nil {
+		if err := tx.Updates(contact).Error; err != nil {
 			return err
 		}
 		return nil

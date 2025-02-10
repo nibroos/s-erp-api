@@ -167,7 +167,7 @@ func (r *CompanyProfileRepository) CreateCompanyProfile(tx *gorm.DB, CompanyProf
 
 func (r *CompanyProfileRepository) UpdateCompanyProfile(tx *gorm.DB, CompanyProfile *models.CompanyProfile) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(CompanyProfile).Error; err != nil {
+		if err := tx.Updates(CompanyProfile).Error; err != nil {
 			return err
 		}
 		return nil

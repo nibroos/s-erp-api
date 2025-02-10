@@ -369,7 +369,7 @@ func (r *userRepository) CreateUser(tx *gorm.DB, user *models.User) error {
 
 func (r *userRepository) UpdateUser(tx *gorm.DB, user *models.User) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(user).Error; err != nil {
+		if err := tx.Updates(user).Error; err != nil {
 			return err
 		}
 		return nil
