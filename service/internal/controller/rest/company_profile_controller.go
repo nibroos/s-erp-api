@@ -58,6 +58,8 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	userID := uint(claims["user_id"].(float64))
 
 	companyProfile := models.CompanyProfile{
+		ParentID:           uint(*req.ParentID),
+		IsPrimary:          *req.IsPrimary,
 		CompanyName:        req.CompanyName,
 		CompanyAddress:     req.CompanyAddress,
 		CompanyPhone:       req.CompanyPhone,
@@ -141,6 +143,8 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 
 	companyProfile := models.CompanyProfile{
 		ID:                 req.ID,
+		ParentID:           uint(*req.ParentID),
+		IsPrimary:          *req.IsPrimary,
 		CompanyName:        req.CompanyName,
 		CompanyAddress:     req.CompanyAddress,
 		CompanyPhone:       req.CompanyPhone,

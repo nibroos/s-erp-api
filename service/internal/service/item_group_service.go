@@ -10,6 +10,7 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/xuri/excelize/v2"
+	"gorm.io/gorm"
 )
 
 type ItemGroupService struct {
@@ -32,20 +33,9 @@ func (s *ItemGroupService) GetItemGroups(ctx context.Context, filters map[string
 	return itemGroups, total, nil
 }
 
-func (s *ItemGroupService) CreateItemGroup(ctx context.Context, itemGroup *models.MixValue) (*models.MixValue, error) {
-	// Transaction handling
-	tx := s.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return nil, err
-	}
-
-	// Create itemGroup
+func (s *ItemGroupService) CreateItemGroup(ctx context.Context, itemGroup *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
 	if err := s.repo.CreateItemGroup(tx, itemGroup); err != nil {
 		tx.Rollback()
-		return nil, err
-	}
-
-	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
@@ -60,60 +50,27 @@ func (s *ItemGroupService) GetItemGroupByID(ctx context.Context, params *dtos.Ge
 	return itemGroup, nil
 }
 
-func (s *ItemGroupService) UpdateItemGroup(ctx context.Context, itemGroup *models.MixValue) (*models.MixValue, error) {
-	// Transaction handling
-	tx := s.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return nil, err
-	}
-
-	// Update itemGroup
+func (s *ItemGroupService) UpdateItemGroup(ctx context.Context, itemGroup *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
 	if err := s.repo.UpdateItemGroup(tx, itemGroup); err != nil {
 		tx.Rollback()
-		return nil, err
-	}
-
-	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
 
 	return itemGroup, nil
 }
 
-func (s *ItemGroupService) DeleteItemGroup(ctx context.Context, params *dtos.GetItemGroupParams) error {
-	// Transaction handling
-	tx := s.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return err
-	}
-
-	// Delete itemGroup
+func (s *ItemGroupService) DeleteItemGroup(ctx context.Context, params *dtos.GetItemGroupParams, tx *gorm.DB) error {
 	if err := s.repo.DeleteItemGroup(tx, params); err != nil {
 		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Commit().Error; err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *ItemGroupService) RestoreItemGroup(ctx context.Context, params *dtos.GetItemGroupParams) error {
-	// Transaction handling
-	tx := s.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return err
-	}
-
-	// Restore itemGroup
+func (s *ItemGroupService) RestoreItemGroup(ctx context.Context, params *dtos.GetItemGroupParams, tx *gorm.DB) error {
 	if err := s.repo.RestoreItemGroup(tx, params); err != nil {
 		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Commit().Error; err != nil {
 		return err
 	}
 
@@ -179,11 +136,9 @@ func (s *ItemGroupService) CsvGetItemGroups(ctx context.Context, filters map[str
 	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
-		log.Println("Company profile not found, using default app name:", appName)
 		log.Println("CsvGetItemGroups error:", err)
 	} else {
 		appName = companyProfile.CompanyName
-		log.Println("companyProfile.CompanyName", companyProfile.CompanyName)
 	}
 
 	csv := fmt.Sprintf("%s\n", appName)

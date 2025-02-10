@@ -7,6 +7,8 @@ import (
 type CompanyProfile struct {
 	gorm.Model
 	ID                 uint   `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
+	ParentID           uint   `json:"parent_id" gorm:"column:parent_id"`
+	IsPrimary          int    `json:"is_primary" gorm:"column:is_primary"`
 	CompanyName        string `json:"company_name" gorm:"column:company_name"`
 	CompanyAddress     string `json:"company_address" gorm:"column:company_address"`
 	CompanyPhone       string `json:"company_phone" gorm:"column:company_phone"`

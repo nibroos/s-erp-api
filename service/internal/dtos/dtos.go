@@ -450,6 +450,7 @@ type GetItemSubGroupsResult struct {
 }
 
 type GetCompanyProfilesRequest struct {
+	ParentID       *int   `json:"parent_id"`
 	Global         string `json:"global"`
 	Name           string `json:"name"`
 	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
@@ -459,6 +460,8 @@ type GetCompanyProfilesRequest struct {
 }
 
 type CreateCompanyProfileRequest struct {
+	ParentID           *int   `json:"parent_id" db:"parent_id"`
+	IsPrimary          *int   `json:"is_primary" db:"is_primary"`
 	CompanyName        string `json:"company_name" db:"company_name"`
 	CompanyAddress     string `json:"company_address" db:"company_address"`
 	CompanyPhone       string `json:"company_phone" db:"company_phone"`
@@ -472,6 +475,8 @@ type CreateCompanyProfileRequest struct {
 
 type UpdateCompanyProfileRequest struct {
 	ID                 uint   `json:"id"`
+	ParentID           *int   `json:"parent_id" db:"parent_id"`
+	IsPrimary          *int   `json:"is_primary" db:"is_primary"`
 	CompanyName        string `json:"company_name" db:"company_name"`
 	CompanyAddress     string `json:"company_address" db:"company_address"`
 	CompanyPhone       string `json:"company_phone" db:"company_phone"`
@@ -506,6 +511,8 @@ type DeleteCompanyProfileRequest struct {
 
 type CompanyProfileListDTO struct {
 	ID                 int     `json:"id" db:"id"`
+	ParentID           *int    `json:"parent_id" db:"parent_id"`
+	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
 	CompanyName        string  `json:"company_name" db:"company_name"`
 	CompanyAddress     string  `json:"company_address" db:"company_address"`
 	CompanyPhone       string  `json:"company_phone" db:"company_phone"`
@@ -524,6 +531,8 @@ type CompanyProfileListDTO struct {
 
 type CompanyProfileDetailDTO struct {
 	ID                 uint    `json:"id" db:"id"`
+	ParentID           *int    `json:"parent_id" db:"parent_id"`
+	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
 	CompanyName        string  `json:"company_name" db:"company_name"`
 	CompanyAddress     string  `json:"company_address" db:"company_address"`
 	CompanyPhone       string  `json:"company_phone" db:"company_phone"`

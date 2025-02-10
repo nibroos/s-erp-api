@@ -7,18 +7,20 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/middleware"
 	"github.com/nibroos/s-erp-api/service/internal/models"
+	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/nibroos/s-erp-api/service/internal/validators/form_requests"
 )
 
 type ItemGroupController struct {
-	service     *service.ItemGroupService
-	utilService *service.UtilService
+	service *service.ItemGroupService
+	repo    *repository.ItemGroupRepository
 }
 
-func NewItemGroupController(service *service.ItemGroupService) *ItemGroupController {
-	return &ItemGroupController{service: service}
+// func NewItemGroupController(service *service.ItemGroupService) *ItemGroupController {
+func NewItemGroupController(service *service.ItemGroupService, repo *repository.ItemGroupRepository) *ItemGroupController {
+	return &ItemGroupController{service: service, repo: repo}
 }
 
 func (c *ItemGroupController) GetItemGroups(ctx *fiber.Ctx) error {
@@ -68,8 +70,18 @@ func (c *ItemGroupController) CreateItemGroup(ctx *fiber.Ctx) error {
 		OptionsJSON: "{}",
 	}
 
-	createdItemGroup, err := c.service.CreateItemGroup(ctx.Context(), &itemGroup)
+	tx := c.repo.BeginTransaction()
+	if err := tx.Error; err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Failed to create item group", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	createdItemGroup, err := c.service.CreateItemGroup(ctx.Context(), &itemGroup, tx)
+
 	if err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Failed to create item group", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	if err := tx.Commit().Error; err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create item group", http.StatusInternalServerError, err.Error(), nil)
 	}
 
@@ -147,11 +159,21 @@ func (c *ItemGroupController) UpdateItemGroup(ctx *fiber.Ctx) error {
 		OptionsJSON: "{}",
 	}
 
-	updatedItemGroup, err := c.service.UpdateItemGroup(ctx.Context(), &itemGroup)
+	tx := c.repo.BeginTransaction()
+	if err := tx.Error; err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Failed to create item group", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	updatedItemGroup, err := c.service.UpdateItemGroup(ctx.Context(), &itemGroup, tx)
+
 	if err != nil {
 		if err.Error() == "itemGroup name already exists" {
 			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Item group already exists", "status": http.StatusConflict})
 		}
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Item group", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	if err := tx.Commit().Error; err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update Item group", http.StatusInternalServerError, err.Error(), nil)
 	}
 
@@ -186,9 +208,20 @@ func (c *ItemGroupController) DeleteItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.DeleteItemGroup(ctx.Context(), params)
+	// Transaction handling
+	tx := c.repo.BeginTransaction()
+	if err := tx.Error; err != nil {
+		return err
+	}
+
+	err = c.service.DeleteItemGroup(ctx.Context(), params, tx)
+
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete Item group", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
 	}
 
 	return utils.GetResponse(ctx, nil, nil, "Item group deleted successfully", http.StatusOK, nil, nil)
@@ -206,6 +239,11 @@ func (c *ItemGroupController) RestoreItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
+	tx := c.repo.BeginTransaction()
+	if err := tx.Error; err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Failed to restore item group", http.StatusInternalServerError, err.Error(), nil)
+	}
+
 	isDeleted := 1
 	params := &dtos.GetItemGroupParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET itemGroup by ID
@@ -214,8 +252,12 @@ func (c *ItemGroupController) RestoreItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Item group not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreItemGroup(ctx.Context(), params)
+	err = c.service.RestoreItemGroup(ctx.Context(), params, tx)
 	if err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Failed to restore Item group", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	if err := tx.Commit().Error; err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore Item group", http.StatusInternalServerError, err.Error(), nil)
 	}
 

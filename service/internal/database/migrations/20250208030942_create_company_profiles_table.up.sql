@@ -2,6 +2,8 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS company_profiles (
   id SERIAL PRIMARY KEY,
+  parent_id INT,
+  is_primary INT,
   company_name VARCHAR(255) NOT NULL,
   company_address TEXT,
   company_phone TEXT,
