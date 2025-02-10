@@ -62,7 +62,10 @@ Change the 'version' column name on schema_migrations to latest succeed migratio
 `CREATE EXTENSION IF NOT EXISTS pgcrypto;`
 
 ### 📗 API Document
-All endpoints stored in  `-.json`
+All endpoints stored in `S-ERP-API.postman_collection.json`.
+Postman credentials:
+- Email: `yubi@email.com`
+- Password: `erppostman1!`
 
 ### 🖥️ Prometheus & Grafana
 - Grafana will fail at first run, because user credentials need to be created manually in the postgres database.
