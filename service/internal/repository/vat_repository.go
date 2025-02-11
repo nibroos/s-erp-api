@@ -3,53 +3,60 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
 type VatRepository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Tracer
 }
 
-func NewVatRepository(db *gorm.DB, sqlDB *sqlx.DB) *VatRepository {
+func NewVatRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *VatRepository {
 	return &VatRepository{
-		db:    db,
-		sqlDB: sqlDB,
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
 	}
 }
 
-func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string) ([]dtos.VatListDTO, int, error) {
+func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.VatListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("VatRepository-GetVats", opentracing.ChildOf(span.Context()))
+
 	vats := []dtos.VatListDTO{}
 	var total int
 
 	query := `SELECT *
     FROM ( 
-        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM mix_values m
-				LEFT JOIN groups g ON m.group_id = g.id
+                LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'vats'
+                WHERE g.name = 'vats'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
-        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM mix_values m
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'vats'
+                LEFT JOIN groups g ON m.group_id = g.id
+                WHERE g.name = 'vats'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -76,17 +83,22 @@ func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string) 
 
 	countArgs := append([]interface{}{}, args...)
 
-	// Channels for concurrent execution
-	countChan := make(chan error)
-	selectChan := make(chan error)
+	var wg sync.WaitGroup
+	var countErr, selectErr error
 
 	// Goroutine for count query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if filters["is_csv"] != "1" {
+			// Create a span for the count query
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-			countChan <- err
-		} else {
-			countChan <- nil
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+			}
+			countErr = err
 		}
 	}()
 
@@ -104,14 +116,21 @@ func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string) 
 	}
 
 	// Goroutine for select query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		// Create a span for the select query
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
 		err := r.sqlDB.SelectContext(ctx, &vats, query, args...)
-		selectChan <- err
+		if err != nil {
+			utils.LogErrors(selectSpan, err)
+		}
+		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
-	countErr := <-countChan
-	selectErr := <-selectChan
+	wg.Wait()
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -124,10 +143,11 @@ func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string) 
 	return vats, total, nil
 }
 
-func (r *VatRepository) GetVatByID(ctx context.Context, params *dtos.GetVatParams) (*dtos.VatDetailDTO, error) {
+func (r *VatRepository) GetVatByID(ctx context.Context, params *dtos.GetVatParams, span opentracing.Span) (*dtos.VatDetailDTO, error) {
+	childSpan := opentracing.StartSpan("VatRepository-GetVatByID", opentracing.ChildOf(span.Context()))
 	var vat dtos.VatDetailDTO
 
-	query := `SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
@@ -152,6 +172,7 @@ func (r *VatRepository) GetVatByID(ctx context.Context, params *dtos.GetVatParam
 	query += isDeletedQuery
 
 	if err := r.sqlDB.Get(&vat, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
@@ -163,16 +184,20 @@ func (r *VatRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *VatRepository) CreateVat(tx *gorm.DB, vat *models.MixValue) error {
+func (r *VatRepository) CreateVat(tx *gorm.DB, vat *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatRepository-CreateVat", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(vat).Error; err != nil {
+		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *VatRepository) UpdateVat(tx *gorm.DB, vat *models.MixValue) error {
+func (r *VatRepository) UpdateVat(tx *gorm.DB, vat *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatRepository-UpdateVat", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Updates(vat).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -180,19 +205,23 @@ func (r *VatRepository) UpdateVat(tx *gorm.DB, vat *models.MixValue) error {
 
 }
 
-func (r *VatRepository) DeleteVat(tx *gorm.DB, params *dtos.GetVatParams) error {
+func (r *VatRepository) DeleteVat(tx *gorm.DB, params *dtos.GetVatParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatRepository-DeleteVat", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *VatRepository) RestoreVat(tx *gorm.DB, params *dtos.GetVatParams) error {
+func (s *VatRepository) RestoreVat(tx *gorm.DB, params *dtos.GetVatParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatRepository-RestoreVat", opentracing.ChildOf(span.Context()))
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var vat models.MixValue
 		if err := tx.Unscoped().Model(&vat).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil

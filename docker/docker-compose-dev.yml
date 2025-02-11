@@ -30,6 +30,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB: ${REDIS_DB}
       SERVICE_TYPE: main
+    restart: on-failure
 
   service:
     build: 
@@ -50,6 +51,7 @@ services:
       - .env
     environment:
       SEEDER_DIR: /apps/internal/database/seeders
+    restart: on-failure
 
   postgres:
     image: postgres:13-alpine
@@ -63,6 +65,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-s-erp-api:/var/lib/postgresql/data
+    restart: on-failure
 
   # asynq-client:
   #   build:
@@ -159,6 +162,7 @@ services:
       - s-erp-api-network
     depends_on:
       - postgres
+    restart: on-failure
 
   prometheus:
     image: prom/prometheus:v3.1.0
@@ -170,7 +174,7 @@ services:
       - s-erp-api-network
     depends_on:
       - postgres-exporter
-      - service
+    restart: on-failure
 
   grafana:
     image: grafana/grafana:11.5.1
@@ -188,22 +192,78 @@ services:
       GF_DATABASE_NAME: grafana
       GF_DATABASE_USER: grafana
       GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: on-failure
 
-  # jaeger:
-  #   image: jaegertracing/all-in-one:1.56
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
+    networks:
+      - s-erp-api-network
+    environment:
+      - discovery.type=single-node  # Run in single-node mode
+      - ES_JAVA_OPTS=-Xms128m -Xmx256m  # Set min heap to 128MB and max heap to 256MB
+      - xpack.ml.enabled=false  # Disable machine learning
+      - xpack.security.enabled=false  # Disable security
+      - xpack.monitoring.enabled=false  # Disable monitoring
+      - xpack.watcher.enabled=false  # Disable watcher (alerting)
+      # - action.auto_create_index=false  # Disable auto-creation of indices
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.56
+    ports:
+      - 16686:16686  # Jaeger UI
+      - 14268:14268  # HTTP collector
+      - 4317:4317  # OTLP gRPC
+      - 4318:4318  # OTLP HTTP
+    networks:
+      - s-erp-api-network
+    environment:
+      - SPAN_STORAGE_TYPE=elasticsearch  # Use Elasticsearch as the storage backend
+      - ES_SERVER_URLS=http://elasticsearch:9200  # Elasticsearch server address
+      - ES_TTL=168h  # Set TTL to 7 days (optional)
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+  # otel-collector:
+  #   image: otel/opentelemetry-collector-contrib:0.77.0
+  #   container_name: otel-collector-s-erp-api
+  #   volumes:
+  #     - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+  #   command: [ --config=/etc/otel-collector-config.yml ]
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "0.50"
+  #         memory: 128M
+  #       reservations:
+  #         cpus: "0.20"
+  #         memory: 20M
   #   ports:
-  #     - "16686:16686"
-  #     - "14268:14268"
-  #     - "4317:4317"
-  #     - "4318:4318"
+  #     - 4317:4317  # OTLP gRPC
+  #     - 4318:4318  # OTLP HTTP
+  #     - 8889:8889 # Prometheus exporter metrics
   #   networks:
   #     - s-erp-api-network
-  #   environment:
-  #     - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+  #   depends_on:
+  #     - jaeger
 
 volumes:
   postgres-s-erp-api:
   grafana-storage:
+  # jaeger-logs:
+  elasticsearch-data:
 
 networks:
   s-erp-api-network:

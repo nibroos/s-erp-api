@@ -1,14 +1,15 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -16,25 +17,33 @@ import (
 type ItemGroupService struct {
 	repo     *repository.ItemGroupRepository
 	utilRepo *repository.UtilRepository
+	tracer   opentracing.Tracer
 }
 
-func NewItemGroupService(repo *repository.ItemGroupRepository, utilRepo *repository.UtilRepository) *ItemGroupService {
+func NewItemGroupService(repo *repository.ItemGroupRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *ItemGroupService {
 	return &ItemGroupService{
 		repo:     repo,
 		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (s *ItemGroupService) GetItemGroups(ctx context.Context, filters map[string]string) ([]dtos.ItemGroupListDTO, int, error) {
-	itemGroups, total, err := s.repo.GetItemGroups(ctx, filters)
+func (s *ItemGroupService) GetItemGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ItemGroupListDTO, int, error) {
+	childSpan := opentracing.StartSpan("ItemGroupService-GetItemGroups", opentracing.ChildOf(span.Context()))
+
+	itemGroups, total, err := s.repo.GetItemGroups(ctx.Context(), filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, 0, err
 	}
 	return itemGroups, total, nil
 }
 
-func (s *ItemGroupService) CreateItemGroup(ctx context.Context, itemGroup *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.CreateItemGroup(tx, itemGroup); err != nil {
+func (s *ItemGroupService) CreateItemGroup(ctx *fiber.Ctx, itemGroup *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("ItemGroupService-CreateItemGroup", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreateItemGroup(tx, itemGroup, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -42,16 +51,22 @@ func (s *ItemGroupService) CreateItemGroup(ctx context.Context, itemGroup *model
 	return itemGroup, nil
 }
 
-func (s *ItemGroupService) GetItemGroupByID(ctx context.Context, params *dtos.GetItemGroupParams) (*dtos.ItemGroupDetailDTO, error) {
-	itemGroup, err := s.repo.GetItemGroupByID(ctx, params)
+func (s *ItemGroupService) GetItemGroupByID(ctx *fiber.Ctx, params *dtos.GetItemGroupParams, span opentracing.Span) (*dtos.ItemGroupDetailDTO, error) {
+	childSpan := opentracing.StartSpan("ItemGroupService-GetItemGroupByID", opentracing.ChildOf(span.Context()))
+
+	itemGroup, err := s.repo.GetItemGroupByID(ctx.Context(), params, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 	return itemGroup, nil
 }
 
-func (s *ItemGroupService) UpdateItemGroup(ctx context.Context, itemGroup *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.UpdateItemGroup(tx, itemGroup); err != nil {
+func (s *ItemGroupService) UpdateItemGroup(ctx *fiber.Ctx, itemGroup *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("ItemGroupService-UpdateItemGroup", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.UpdateItemGroup(tx, itemGroup, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -59,8 +74,11 @@ func (s *ItemGroupService) UpdateItemGroup(ctx context.Context, itemGroup *model
 	return itemGroup, nil
 }
 
-func (s *ItemGroupService) DeleteItemGroup(ctx context.Context, params *dtos.GetItemGroupParams, tx *gorm.DB) error {
-	if err := s.repo.DeleteItemGroup(tx, params); err != nil {
+func (s *ItemGroupService) DeleteItemGroup(ctx *fiber.Ctx, params *dtos.GetItemGroupParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemGroupService-DeleteItemGroup", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.DeleteItemGroup(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -68,8 +86,11 @@ func (s *ItemGroupService) DeleteItemGroup(ctx context.Context, params *dtos.Get
 	return nil
 }
 
-func (s *ItemGroupService) RestoreItemGroup(ctx context.Context, params *dtos.GetItemGroupParams, tx *gorm.DB) error {
-	if err := s.repo.RestoreItemGroup(tx, params); err != nil {
+func (s *ItemGroupService) RestoreItemGroup(ctx *fiber.Ctx, params *dtos.GetItemGroupParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemGroupService-RestoreItemGroup", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.RestoreItemGroup(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -78,16 +99,19 @@ func (s *ItemGroupService) RestoreItemGroup(ctx context.Context, params *dtos.Ge
 }
 
 // github.com/xuri/excelize/v2
-func (s *ItemGroupService) ExcelGetItemGroups(ctx context.Context, filters map[string]string) ([]byte, error) {
-	itemGroups, _, err := s.GetItemGroups(ctx, filters)
+func (s *ItemGroupService) ExcelGetItemGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("ItemGroupService-ExcelGetItemGroups", opentracing.ChildOf(span.Context()))
+
+	itemGroups, _, err := s.GetItemGroups(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	file := excelize.NewFile()
 
 	// Create a new sheet
-	sheetName := "item-groups"
+	sheetName := "itemGroups"
 	index, err := file.NewSheet(sheetName)
 	if err != nil {
 		return nil, err
@@ -123,19 +147,23 @@ func (s *ItemGroupService) ExcelGetItemGroups(ctx context.Context, filters map[s
 }
 
 // github.com/xuri/excelize/v2
-func (s *ItemGroupService) CsvGetItemGroups(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *ItemGroupService) CsvGetItemGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("ItemGroupService-CsvGetItemGroups", opentracing.ChildOf(span.Context()))
+
 	// filters is_csv
 	filters["is_csv"] = "1"
-	itemGroups, _, err := s.GetItemGroups(ctx, filters)
+	itemGroups, _, err := s.GetItemGroups(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
 	appName := "App"
 	if err != nil {
+		defer childSpan.Finish()
 		log.Println("CsvGetItemGroups error:", err)
 	} else {
 		appName = companyProfile.CompanyName

@@ -6,15 +6,14 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
-func SetupCustomerTypeRoutes(customerTypes fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository) {
-	customerTypeRepo := repository.NewCustomerTypeRepository(gormDB, sqlDB)
-	customerTypeService := service.NewCustomerTypeService(customerTypeRepo, utilRepo)
-	customerTypeController := rest.NewCustomerTypeController(customerTypeService, customerTypeRepo)
-
-	// prefix /customerTypes
+func SetupCustomerTypeRoutes(customerTypes fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) {
+	customerTypeRepo := repository.NewCustomerTypeRepository(gormDB, sqlDB, tracer)
+	customerTypeService := service.NewCustomerTypeService(customerTypeRepo, utilRepo, tracer)
+	customerTypeController := rest.NewCustomerTypeController(customerTypeService, customerTypeRepo, tracer)
 
 	// customerTypes.Post("/index-customer-type", middleware.PermissionMiddleware("index-customer-type"), customerTypeController.GetCustomerTypes)
 	customerTypes.Post("/index-customer-type", customerTypeController.GetCustomerTypes)

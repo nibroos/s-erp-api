@@ -3,29 +3,43 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
 type CurrencyRepository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Tracer
 }
 
-func NewCurrencyRepository(db *gorm.DB, sqlDB *sqlx.DB) *CurrencyRepository {
+func NewCurrencyRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *CurrencyRepository {
 	return &CurrencyRepository{
-		db:    db,
-		sqlDB: sqlDB,
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
 	}
 }
 
-func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[string]string) ([]dtos.CurrencyListDTO, int, error) {
+func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CurrencyListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("CurrencyRepository-GetCurrencies", opentracing.ChildOf(span.Context()))
+
 	currencies := []dtos.CurrencyListDTO{}
 	var total int
+
+	// Simulate an error for testing Jaeger tracing
+	if filters["simulate_error"] == "true" {
+		utils.LogErrors(childSpan, fmt.Errorf("simulated error"))
+
+		return nil, 0, fmt.Errorf("simulated error")
+	}
 
 	query := `SELECT *
     FROM ( 
@@ -34,10 +48,10 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
         uu.name as updated_by_name
 
         FROM mix_values m
-				LEFT JOIN groups g ON m.group_id = g.id
+                LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'currencies'
+                WHERE g.name = 'currencies'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -48,8 +62,8 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
         FROM mix_values m
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'currencies'
+                LEFT JOIN groups g ON m.group_id = g.id
+                WHERE g.name = 'currencies'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -76,17 +90,22 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
 
 	countArgs := append([]interface{}{}, args...)
 
-	// Channels for concurrent execution
-	countChan := make(chan error)
-	selectChan := make(chan error)
+	var wg sync.WaitGroup
+	var countErr, selectErr error
 
 	// Goroutine for count query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if filters["is_csv"] != "1" {
+			// Create a span for the count query
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-			countChan <- err
-		} else {
-			countChan <- nil
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+			}
+			countErr = err
 		}
 	}()
 
@@ -104,14 +123,21 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
 	}
 
 	// Goroutine for select query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		// Create a span for the select query
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
 		err := r.sqlDB.SelectContext(ctx, &currencies, query, args...)
-		selectChan <- err
+		if err != nil {
+			utils.LogErrors(selectSpan, err)
+		}
+		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
-	countErr := <-countChan
-	selectErr := <-selectChan
+	wg.Wait()
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -124,7 +150,8 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
 	return currencies, total, nil
 }
 
-func (r *CurrencyRepository) GetCurrencyByID(ctx context.Context, params *dtos.GetCurrencyParams) (*dtos.CurrencyDetailDTO, error) {
+func (r *CurrencyRepository) GetCurrencyByID(ctx context.Context, params *dtos.GetCurrencyParams, span opentracing.Span) (*dtos.CurrencyDetailDTO, error) {
+	childSpan := opentracing.StartSpan("CurrencyRepository-GetCurrencyByID", opentracing.ChildOf(span.Context()))
 	var currency dtos.CurrencyDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
@@ -152,6 +179,7 @@ func (r *CurrencyRepository) GetCurrencyByID(ctx context.Context, params *dtos.G
 	query += isDeletedQuery
 
 	if err := r.sqlDB.Get(&currency, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
@@ -163,16 +191,20 @@ func (r *CurrencyRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *CurrencyRepository) CreateCurrency(tx *gorm.DB, currency *models.MixValue) error {
+func (r *CurrencyRepository) CreateCurrency(tx *gorm.DB, currency *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CurrencyRepository-CreateCurrency", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(currency).Error; err != nil {
+		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *CurrencyRepository) UpdateCurrency(tx *gorm.DB, currency *models.MixValue) error {
+func (r *CurrencyRepository) UpdateCurrency(tx *gorm.DB, currency *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CurrencyRepository-UpdateCurrency", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Updates(currency).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -180,19 +212,23 @@ func (r *CurrencyRepository) UpdateCurrency(tx *gorm.DB, currency *models.MixVal
 
 }
 
-func (r *CurrencyRepository) DeleteCurrency(tx *gorm.DB, params *dtos.GetCurrencyParams) error {
+func (r *CurrencyRepository) DeleteCurrency(tx *gorm.DB, params *dtos.GetCurrencyParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CurrencyRepository-DeleteCurrency", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *CurrencyRepository) RestoreCurrency(tx *gorm.DB, params *dtos.GetCurrencyParams) error {
+func (s *CurrencyRepository) RestoreCurrency(tx *gorm.DB, params *dtos.GetCurrencyParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CurrencyRepository-RestoreCurrency", opentracing.ChildOf(span.Context()))
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var currency models.MixValue
 		if err := tx.Unscoped().Model(&currency).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil

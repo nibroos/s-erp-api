@@ -13,6 +13,7 @@ type MixValue struct {
 	Description *string        `json:"description" gorm:"column:description"`
 	Remark      *string        `json:"remark" gorm:"column:remark"`
 	Num         float64        `json:"num" gorm:"column:num"`
+	OrderItem   *float64       `json:"order_item" gorm:"column:order_item"`
 	Status      int8           `json:"status" gorm:"column:status"`
 	OptionsJSON string         `json:"options_json" gorm:"column:options_json"`
 	CreatedByID *uint          `json:"created_by_id" gorm:"column:created_by_id"`

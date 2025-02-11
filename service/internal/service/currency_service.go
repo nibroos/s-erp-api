@@ -1,14 +1,15 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -16,25 +17,33 @@ import (
 type CurrencyService struct {
 	repo     *repository.CurrencyRepository
 	utilRepo *repository.UtilRepository
+	tracer   opentracing.Tracer
 }
 
-func NewCurrencyService(repo *repository.CurrencyRepository, utilRepo *repository.UtilRepository) *CurrencyService {
+func NewCurrencyService(repo *repository.CurrencyRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *CurrencyService {
 	return &CurrencyService{
 		repo:     repo,
 		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (s *CurrencyService) GetCurrencies(ctx context.Context, filters map[string]string) ([]dtos.CurrencyListDTO, int, error) {
-	currencies, total, err := s.repo.GetCurrencies(ctx, filters)
+func (s *CurrencyService) GetCurrencies(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CurrencyListDTO, int, error) {
+	childSpan := opentracing.StartSpan("CurrencyService-GetCurrencies", opentracing.ChildOf(span.Context()))
+
+	currencies, total, err := s.repo.GetCurrencies(ctx.Context(), filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, 0, err
 	}
 	return currencies, total, nil
 }
 
-func (s *CurrencyService) CreateCurrency(ctx context.Context, currency *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.CreateCurrency(tx, currency); err != nil {
+func (s *CurrencyService) CreateCurrency(ctx *fiber.Ctx, currency *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("CurrencyService-CreateCurrency", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreateCurrency(tx, currency, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -42,16 +51,22 @@ func (s *CurrencyService) CreateCurrency(ctx context.Context, currency *models.M
 	return currency, nil
 }
 
-func (s *CurrencyService) GetCurrencyByID(ctx context.Context, params *dtos.GetCurrencyParams) (*dtos.CurrencyDetailDTO, error) {
-	currency, err := s.repo.GetCurrencyByID(ctx, params)
+func (s *CurrencyService) GetCurrencyByID(ctx *fiber.Ctx, params *dtos.GetCurrencyParams, span opentracing.Span) (*dtos.CurrencyDetailDTO, error) {
+	childSpan := opentracing.StartSpan("CurrencyService-GetCurrencyByID", opentracing.ChildOf(span.Context()))
+
+	currency, err := s.repo.GetCurrencyByID(ctx.Context(), params, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 	return currency, nil
 }
 
-func (s *CurrencyService) UpdateCurrency(ctx context.Context, currency *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.UpdateCurrency(tx, currency); err != nil {
+func (s *CurrencyService) UpdateCurrency(ctx *fiber.Ctx, currency *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("CurrencyService-UpdateCurrency", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.UpdateCurrency(tx, currency, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -59,8 +74,11 @@ func (s *CurrencyService) UpdateCurrency(ctx context.Context, currency *models.M
 	return currency, nil
 }
 
-func (s *CurrencyService) DeleteCurrency(ctx context.Context, params *dtos.GetCurrencyParams, tx *gorm.DB) error {
-	if err := s.repo.DeleteCurrency(tx, params); err != nil {
+func (s *CurrencyService) DeleteCurrency(ctx *fiber.Ctx, params *dtos.GetCurrencyParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CurrencyService-DeleteCurrency", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.DeleteCurrency(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -68,8 +86,11 @@ func (s *CurrencyService) DeleteCurrency(ctx context.Context, params *dtos.GetCu
 	return nil
 }
 
-func (s *CurrencyService) RestoreCurrency(ctx context.Context, params *dtos.GetCurrencyParams, tx *gorm.DB) error {
-	if err := s.repo.RestoreCurrency(tx, params); err != nil {
+func (s *CurrencyService) RestoreCurrency(ctx *fiber.Ctx, params *dtos.GetCurrencyParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CurrencyService-RestoreCurrency", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.RestoreCurrency(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -78,9 +99,12 @@ func (s *CurrencyService) RestoreCurrency(ctx context.Context, params *dtos.GetC
 }
 
 // github.com/xuri/excelize/v2
-func (s *CurrencyService) ExcelGetCurrencies(ctx context.Context, filters map[string]string) ([]byte, error) {
-	currencies, _, err := s.GetCurrencies(ctx, filters)
+func (s *CurrencyService) ExcelGetCurrencies(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("CurrencyService-ExcelGetCurrencies", opentracing.ChildOf(span.Context()))
+
+	currencies, _, err := s.GetCurrencies(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
@@ -123,19 +147,23 @@ func (s *CurrencyService) ExcelGetCurrencies(ctx context.Context, filters map[st
 }
 
 // github.com/xuri/excelize/v2
-func (s *CurrencyService) CsvGetCurrencies(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *CurrencyService) CsvGetCurrencies(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("CurrencyService-CsvGetCurrencies", opentracing.ChildOf(span.Context()))
+
 	// filters is_csv
 	filters["is_csv"] = "1"
-	currencies, _, err := s.GetCurrencies(ctx, filters)
+	currencies, _, err := s.GetCurrencies(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
 	appName := "App"
 	if err != nil {
+		defer childSpan.Finish()
 		log.Println("CsvGetCurrencies error:", err)
 	} else {
 		appName = companyProfile.CompanyName
@@ -143,7 +171,7 @@ func (s *CurrencyService) CsvGetCurrencies(ctx context.Context, filters map[stri
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Item Groups\n"
+	csv += "Currencies\n"
 	csv += "\n"
 
 	csv += "ID,Name,Description,Remark,Created At,Updated At\n"

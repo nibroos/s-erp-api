@@ -1,14 +1,15 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -16,25 +17,33 @@ import (
 type Pph23Service struct {
 	repo     *repository.Pph23Repository
 	utilRepo *repository.UtilRepository
+	tracer   opentracing.Tracer
 }
 
-func NewPph23Service(repo *repository.Pph23Repository, utilRepo *repository.UtilRepository) *Pph23Service {
+func NewPph23Service(repo *repository.Pph23Repository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *Pph23Service {
 	return &Pph23Service{
 		repo:     repo,
 		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (s *Pph23Service) GetPph23s(ctx context.Context, filters map[string]string) ([]dtos.Pph23ListDTO, int, error) {
-	pph23s, total, err := s.repo.GetPph23s(ctx, filters)
+func (s *Pph23Service) GetPph23s(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.Pph23ListDTO, int, error) {
+	childSpan := opentracing.StartSpan("Pph23Service-GetPph23s", opentracing.ChildOf(span.Context()))
+
+	pph23s, total, err := s.repo.GetPph23s(ctx.Context(), filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, 0, err
 	}
 	return pph23s, total, nil
 }
 
-func (s *Pph23Service) CreatePph23(ctx context.Context, pph23 *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.CreatePph23(tx, pph23); err != nil {
+func (s *Pph23Service) CreatePph23(ctx *fiber.Ctx, pph23 *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("Pph23Service-CreatePph23", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreatePph23(tx, pph23, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -42,16 +51,22 @@ func (s *Pph23Service) CreatePph23(ctx context.Context, pph23 *models.MixValue, 
 	return pph23, nil
 }
 
-func (s *Pph23Service) GetPph23ByID(ctx context.Context, params *dtos.GetPph23Params) (*dtos.Pph23DetailDTO, error) {
-	pph23, err := s.repo.GetPph23ByID(ctx, params)
+func (s *Pph23Service) GetPph23ByID(ctx *fiber.Ctx, params *dtos.GetPph23Params, span opentracing.Span) (*dtos.Pph23DetailDTO, error) {
+	childSpan := opentracing.StartSpan("Pph23Service-GetPph23ByID", opentracing.ChildOf(span.Context()))
+
+	pph23, err := s.repo.GetPph23ByID(ctx.Context(), params, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 	return pph23, nil
 }
 
-func (s *Pph23Service) UpdatePph23(ctx context.Context, pph23 *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.UpdatePph23(tx, pph23); err != nil {
+func (s *Pph23Service) UpdatePph23(ctx *fiber.Ctx, pph23 *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("Pph23Service-UpdatePph23", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.UpdatePph23(tx, pph23, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -59,8 +74,11 @@ func (s *Pph23Service) UpdatePph23(ctx context.Context, pph23 *models.MixValue, 
 	return pph23, nil
 }
 
-func (s *Pph23Service) DeletePph23(ctx context.Context, params *dtos.GetPph23Params, tx *gorm.DB) error {
-	if err := s.repo.DeletePph23(tx, params); err != nil {
+func (s *Pph23Service) DeletePph23(ctx *fiber.Ctx, params *dtos.GetPph23Params, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("Pph23Service-DeletePph23", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.DeletePph23(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -68,8 +86,11 @@ func (s *Pph23Service) DeletePph23(ctx context.Context, params *dtos.GetPph23Par
 	return nil
 }
 
-func (s *Pph23Service) RestorePph23(ctx context.Context, params *dtos.GetPph23Params, tx *gorm.DB) error {
-	if err := s.repo.RestorePph23(tx, params); err != nil {
+func (s *Pph23Service) RestorePph23(ctx *fiber.Ctx, params *dtos.GetPph23Params, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("Pph23Service-RestorePph23", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.RestorePph23(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -78,9 +99,12 @@ func (s *Pph23Service) RestorePph23(ctx context.Context, params *dtos.GetPph23Pa
 }
 
 // github.com/xuri/excelize/v2
-func (s *Pph23Service) ExcelGetPph23s(ctx context.Context, filters map[string]string) ([]byte, error) {
-	pph23s, _, err := s.GetPph23s(ctx, filters)
+func (s *Pph23Service) ExcelGetPph23s(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("Pph23Service-ExcelGetPph23s", opentracing.ChildOf(span.Context()))
+
+	pph23s, _, err := s.GetPph23s(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
@@ -123,19 +147,23 @@ func (s *Pph23Service) ExcelGetPph23s(ctx context.Context, filters map[string]st
 }
 
 // github.com/xuri/excelize/v2
-func (s *Pph23Service) CsvGetPph23s(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *Pph23Service) CsvGetPph23s(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("Pph23Service-CsvGetPph23s", opentracing.ChildOf(span.Context()))
+
 	// filters is_csv
 	filters["is_csv"] = "1"
-	pph23s, _, err := s.GetPph23s(ctx, filters)
+	pph23s, _, err := s.GetPph23s(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
 	appName := "App"
 	if err != nil {
+		defer childSpan.Finish()
 		log.Println("CsvGetPph23s error:", err)
 	} else {
 		appName = companyProfile.CompanyName
@@ -143,16 +171,15 @@ func (s *Pph23Service) CsvGetPph23s(ctx context.Context, filters map[string]stri
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Item Groups\n"
+	csv += "Pph23s\n"
 	csv += "\n"
 
 	csv += "ID,Name,Description,Remark,Created At,Updated At\n"
 	// Build CSV rows
 	for _, pph23 := range pph23s {
-		csv += fmt.Sprintf("%d,%s,%f,%s,%s,%s,%s\n",
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s\n",
 			pph23.ID,
 			pph23.Name,
-			pph23.Num,
 			utils.GetPtrVal(pph23.Description),
 			utils.GetPtrVal(pph23.Remark),
 			utils.GetPtrVal(pph23.CreatedAt),

@@ -3,27 +3,34 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
 type UnitRepository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Tracer
 }
 
-func NewUnitRepository(db *gorm.DB, sqlDB *sqlx.DB) *UnitRepository {
+func NewUnitRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *UnitRepository {
 	return &UnitRepository{
-		db:    db,
-		sqlDB: sqlDB,
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
 	}
 }
 
-func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string) ([]dtos.UnitListDTO, int, error) {
+func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.UnitListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("UnitRepository-GetUnits", opentracing.ChildOf(span.Context()))
+
 	units := []dtos.UnitListDTO{}
 	var total int
 
@@ -34,10 +41,10 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
         uu.name as updated_by_name
 
         FROM mix_values m
-				LEFT JOIN groups g ON m.group_id = g.id
+                LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'units'
+                WHERE g.name = 'units'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -48,8 +55,8 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
         FROM mix_values m
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'units'
+                LEFT JOIN groups g ON m.group_id = g.id
+                WHERE g.name = 'units'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -76,17 +83,22 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 
 	countArgs := append([]interface{}{}, args...)
 
-	// Channels for concurrent execution
-	countChan := make(chan error)
-	selectChan := make(chan error)
+	var wg sync.WaitGroup
+	var countErr, selectErr error
 
 	// Goroutine for count query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if filters["is_csv"] != "1" {
+			// Create a span for the count query
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-			countChan <- err
-		} else {
-			countChan <- nil
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+			}
+			countErr = err
 		}
 	}()
 
@@ -104,14 +116,21 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 	}
 
 	// Goroutine for select query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		// Create a span for the select query
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
 		err := r.sqlDB.SelectContext(ctx, &units, query, args...)
-		selectChan <- err
+		if err != nil {
+			utils.LogErrors(selectSpan, err)
+		}
+		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
-	countErr := <-countChan
-	selectErr := <-selectChan
+	wg.Wait()
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -124,7 +143,8 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 	return units, total, nil
 }
 
-func (r *UnitRepository) GetUnitByID(ctx context.Context, params *dtos.GetUnitParams) (*dtos.UnitDetailDTO, error) {
+func (r *UnitRepository) GetUnitByID(ctx context.Context, params *dtos.GetUnitParams, span opentracing.Span) (*dtos.UnitDetailDTO, error) {
+	childSpan := opentracing.StartSpan("UnitRepository-GetUnitByID", opentracing.ChildOf(span.Context()))
 	var unit dtos.UnitDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
@@ -152,6 +172,7 @@ func (r *UnitRepository) GetUnitByID(ctx context.Context, params *dtos.GetUnitPa
 	query += isDeletedQuery
 
 	if err := r.sqlDB.Get(&unit, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
@@ -163,16 +184,20 @@ func (r *UnitRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *UnitRepository) CreateUnit(tx *gorm.DB, unit *models.MixValue) error {
+func (r *UnitRepository) CreateUnit(tx *gorm.DB, unit *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UnitRepository-CreateUnit", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(unit).Error; err != nil {
+		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *UnitRepository) UpdateUnit(tx *gorm.DB, unit *models.MixValue) error {
+func (r *UnitRepository) UpdateUnit(tx *gorm.DB, unit *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UnitRepository-UpdateUnit", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Updates(unit).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -180,19 +205,23 @@ func (r *UnitRepository) UpdateUnit(tx *gorm.DB, unit *models.MixValue) error {
 
 }
 
-func (r *UnitRepository) DeleteUnit(tx *gorm.DB, params *dtos.GetUnitParams) error {
+func (r *UnitRepository) DeleteUnit(tx *gorm.DB, params *dtos.GetUnitParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UnitRepository-DeleteUnit", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *UnitRepository) RestoreUnit(tx *gorm.DB, params *dtos.GetUnitParams) error {
+func (s *UnitRepository) RestoreUnit(tx *gorm.DB, params *dtos.GetUnitParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UnitRepository-RestoreUnit", opentracing.ChildOf(span.Context()))
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var unit models.MixValue
 		if err := tx.Unscoped().Model(&unit).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil

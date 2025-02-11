@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -18,13 +19,35 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/middleware"
 	"github.com/nibroos/s-erp-api/service/internal/routes"
 	"github.com/nibroos/s-erp-api/service/internal/validators"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/robfig/cron/v3"
+	"github.com/uber/jaeger-client-go"
+	jConfig "github.com/uber/jaeger-client-go/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+func initJaeger(serviceName string) (opentracing.Tracer, io.Closer, error) {
+	cfg := &jConfig.Configuration{
+		ServiceName: serviceName,
+		Sampler: &jConfig.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+		Reporter: &jConfig.ReporterConfig{
+			LogSpans:           true,
+			LocalAgentHostPort: "jaeger:6831",
+		},
+	}
+	tracer, closer, err := cfg.NewTracer(jConfig.Logger(jaeger.StdLogger))
+	if err != nil {
+		return nil, nil, err
+	}
+	return tracer, closer, nil
+}
 
 var (
 	httpRequestsTotal = promauto.NewCounterVec(
@@ -67,6 +90,10 @@ func main() {
 	// Create a Prometheus registry
 	registry := prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = registry
+
+	// Register the metrics with Prometheus
+	prometheus.MustRegister(httpRequestsTotal)
+	prometheus.MustRegister(httpRequestDuration)
 
 	// Expose Prometheus metrics endpoint
 	http.Handle("/metrics", promhttp.Handler())
@@ -125,6 +152,14 @@ func main() {
 	// Initialize the validator with the database connection
 	validators.InitValidator(sqlDB)
 
+	// Initialize Jaeger tracer
+	tracer, closer, err := initJaeger("s-erp-api")
+	if err != nil {
+		log.Fatalf("Could not initialize Jaeger tracer: %s", err.Error())
+	}
+	defer closer.Close()
+	opentracing.SetGlobalTracer(tracer)
+
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
 		ErrorHandler: middleware.ErrorHandler,
@@ -133,14 +168,12 @@ func main() {
 	app.Use(PromDurationMiddleware)
 
 	// Attach middleware
+	// app.Use(middleware.JaegerTracingMiddleware(tracer))
 	app.Use(middleware.ConvertEmptyStringsToNull())
 	app.Use(middleware.ConvertRequestToFilters())
 
 	// Setup REST routes
-	routes.SetupRoutes(app, gormDB, sqlDB)
-
-	// Protect routes with JWT middleware
-	// app.Use(middleware.JWTMiddleware())
+	routes.SetupRoutes(app, gormDB, sqlDB, tracer)
 
 	var wg sync.WaitGroup
 

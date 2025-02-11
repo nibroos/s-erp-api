@@ -3,27 +3,34 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
 type ItemGroupRepository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Tracer
 }
 
-func NewItemGroupRepository(db *gorm.DB, sqlDB *sqlx.DB) *ItemGroupRepository {
+func NewItemGroupRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *ItemGroupRepository {
 	return &ItemGroupRepository{
-		db:    db,
-		sqlDB: sqlDB,
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
 	}
 }
 
-func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[string]string) ([]dtos.ItemGroupListDTO, int, error) {
+func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.ItemGroupListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("ItemGroupRepository-GetItemGroups", opentracing.ChildOf(span.Context()))
+
 	itemGroups := []dtos.ItemGroupListDTO{}
 	var total int
 
@@ -34,10 +41,10 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
         uu.name as updated_by_name
 
         FROM mix_values m
-				LEFT JOIN groups g ON m.group_id = g.id
+                LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'item_groups'
+                WHERE g.name = 'item_groups'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -48,8 +55,8 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
         FROM mix_values m
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'item_groups'
+                LEFT JOIN groups g ON m.group_id = g.id
+                WHERE g.name = 'item_groups'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -76,17 +83,22 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 
 	countArgs := append([]interface{}{}, args...)
 
-	// Channels for concurrent execution
-	countChan := make(chan error)
-	selectChan := make(chan error)
+	var wg sync.WaitGroup
+	var countErr, selectErr error
 
 	// Goroutine for count query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if filters["is_csv"] != "1" {
+			// Create a span for the count query
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-			countChan <- err
-		} else {
-			countChan <- nil
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+			}
+			countErr = err
 		}
 	}()
 
@@ -104,14 +116,21 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 	}
 
 	// Goroutine for select query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		// Create a span for the select query
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
 		err := r.sqlDB.SelectContext(ctx, &itemGroups, query, args...)
-		selectChan <- err
+		if err != nil {
+			utils.LogErrors(selectSpan, err)
+		}
+		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
-	countErr := <-countChan
-	selectErr := <-selectChan
+	wg.Wait()
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -124,7 +143,8 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 	return itemGroups, total, nil
 }
 
-func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, params *dtos.GetItemGroupParams) (*dtos.ItemGroupDetailDTO, error) {
+func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, params *dtos.GetItemGroupParams, span opentracing.Span) (*dtos.ItemGroupDetailDTO, error) {
+	childSpan := opentracing.StartSpan("ItemGroupRepository-GetItemGroupByID", opentracing.ChildOf(span.Context()))
 	var itemGroup dtos.ItemGroupDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
@@ -152,6 +172,7 @@ func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, params *dtos
 	query += isDeletedQuery
 
 	if err := r.sqlDB.Get(&itemGroup, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
@@ -163,16 +184,20 @@ func (r *ItemGroupRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *ItemGroupRepository) CreateItemGroup(tx *gorm.DB, itemGroup *models.MixValue) error {
+func (r *ItemGroupRepository) CreateItemGroup(tx *gorm.DB, itemGroup *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemGroupRepository-CreateItemGroup", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(itemGroup).Error; err != nil {
+		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.MixValue) error {
+func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemGroupRepository-UpdateItemGroup", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Updates(itemGroup).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -180,19 +205,23 @@ func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.Mix
 
 }
 
-func (r *ItemGroupRepository) DeleteItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams) error {
+func (r *ItemGroupRepository) DeleteItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemGroupRepository-DeleteItemGroup", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *ItemGroupRepository) RestoreItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams) error {
+func (s *ItemGroupRepository) RestoreItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemGroupRepository-RestoreItemGroup", opentracing.ChildOf(span.Context()))
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var itemGroup models.MixValue
 		if err := tx.Unscoped().Model(&itemGroup).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil

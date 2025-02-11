@@ -1,14 +1,15 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -16,25 +17,33 @@ import (
 type CustomerTypeService struct {
 	repo     *repository.CustomerTypeRepository
 	utilRepo *repository.UtilRepository
+	tracer   opentracing.Tracer
 }
 
-func NewCustomerTypeService(repo *repository.CustomerTypeRepository, utilRepo *repository.UtilRepository) *CustomerTypeService {
+func NewCustomerTypeService(repo *repository.CustomerTypeRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *CustomerTypeService {
 	return &CustomerTypeService{
 		repo:     repo,
 		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (s *CustomerTypeService) GetCustomerTypes(ctx context.Context, filters map[string]string) ([]dtos.CustomerTypeListDTO, int, error) {
-	customerTypes, total, err := s.repo.GetCustomerTypes(ctx, filters)
+func (s *CustomerTypeService) GetCustomerTypes(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CustomerTypeListDTO, int, error) {
+	childSpan := opentracing.StartSpan("CustomerTypeService-GetCustomerTypes", opentracing.ChildOf(span.Context()))
+
+	customerTypes, total, err := s.repo.GetCustomerTypes(ctx.Context(), filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, 0, err
 	}
 	return customerTypes, total, nil
 }
 
-func (s *CustomerTypeService) CreateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.CreateCustomerType(tx, customerType); err != nil {
+func (s *CustomerTypeService) CreateCustomerType(ctx *fiber.Ctx, customerType *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("CustomerTypeService-CreateCustomerType", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreateCustomerType(tx, customerType, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -42,16 +51,22 @@ func (s *CustomerTypeService) CreateCustomerType(ctx context.Context, customerTy
 	return customerType, nil
 }
 
-func (s *CustomerTypeService) GetCustomerTypeByID(ctx context.Context, params *dtos.GetCustomerTypeParams) (*dtos.CustomerTypeDetailDTO, error) {
-	customerType, err := s.repo.GetCustomerTypeByID(ctx, params)
+func (s *CustomerTypeService) GetCustomerTypeByID(ctx *fiber.Ctx, params *dtos.GetCustomerTypeParams, span opentracing.Span) (*dtos.CustomerTypeDetailDTO, error) {
+	childSpan := opentracing.StartSpan("CustomerTypeService-GetCustomerTypeByID", opentracing.ChildOf(span.Context()))
+
+	customerType, err := s.repo.GetCustomerTypeByID(ctx.Context(), params, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 	return customerType, nil
 }
 
-func (s *CustomerTypeService) UpdateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.UpdateCustomerType(tx, customerType); err != nil {
+func (s *CustomerTypeService) UpdateCustomerType(ctx *fiber.Ctx, customerType *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("CustomerTypeService-UpdateCustomerType", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.UpdateCustomerType(tx, customerType, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -59,8 +74,11 @@ func (s *CustomerTypeService) UpdateCustomerType(ctx context.Context, customerTy
 	return customerType, nil
 }
 
-func (s *CustomerTypeService) DeleteCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB) error {
-	if err := s.repo.DeleteCustomerType(tx, params); err != nil {
+func (s *CustomerTypeService) DeleteCustomerType(ctx *fiber.Ctx, params *dtos.GetCustomerTypeParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CustomerTypeService-DeleteCustomerType", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.DeleteCustomerType(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -68,8 +86,11 @@ func (s *CustomerTypeService) DeleteCustomerType(ctx context.Context, params *dt
 	return nil
 }
 
-func (s *CustomerTypeService) RestoreCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB) error {
-	if err := s.repo.RestoreCustomerType(tx, params); err != nil {
+func (s *CustomerTypeService) RestoreCustomerType(ctx *fiber.Ctx, params *dtos.GetCustomerTypeParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CustomerTypeService-RestoreCustomerType", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.RestoreCustomerType(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -78,16 +99,19 @@ func (s *CustomerTypeService) RestoreCustomerType(ctx context.Context, params *d
 }
 
 // github.com/xuri/excelize/v2
-func (s *CustomerTypeService) ExcelGetCustomerTypes(ctx context.Context, filters map[string]string) ([]byte, error) {
-	customerTypes, _, err := s.GetCustomerTypes(ctx, filters)
+func (s *CustomerTypeService) ExcelGetCustomerTypes(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("CustomerTypeService-ExcelGetCustomerTypes", opentracing.ChildOf(span.Context()))
+
+	customerTypes, _, err := s.GetCustomerTypes(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	file := excelize.NewFile()
 
 	// Create a new sheet
-	sheetName := "customer-types"
+	sheetName := "customerTypes"
 	index, err := file.NewSheet(sheetName)
 	if err != nil {
 		return nil, err
@@ -123,19 +147,23 @@ func (s *CustomerTypeService) ExcelGetCustomerTypes(ctx context.Context, filters
 }
 
 // github.com/xuri/excelize/v2
-func (s *CustomerTypeService) CsvGetCustomerTypes(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *CustomerTypeService) CsvGetCustomerTypes(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("CustomerTypeService-CsvGetCustomerTypes", opentracing.ChildOf(span.Context()))
+
 	// filters is_csv
 	filters["is_csv"] = "1"
-	customerTypes, _, err := s.GetCustomerTypes(ctx, filters)
+	customerTypes, _, err := s.GetCustomerTypes(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
 	appName := "App"
 	if err != nil {
+		defer childSpan.Finish()
 		log.Println("CsvGetCustomerTypes error:", err)
 	} else {
 		appName = companyProfile.CompanyName
@@ -143,7 +171,7 @@ func (s *CustomerTypeService) CsvGetCustomerTypes(ctx context.Context, filters m
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Item Groups\n"
+	csv += "CustomerTypes\n"
 	csv += "\n"
 
 	csv += "ID,Name,Description,Remark,Created At,Updated At\n"

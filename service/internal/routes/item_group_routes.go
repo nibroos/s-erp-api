@@ -6,15 +6,14 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
-func SetupItemGroupRoutes(itemGroups fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository) {
-	itemGroupRepo := repository.NewItemGroupRepository(gormDB, sqlDB)
-	itemGroupService := service.NewItemGroupService(itemGroupRepo, utilRepo)
-	itemGroupController := rest.NewItemGroupController(itemGroupService, itemGroupRepo)
-
-	// prefix /itemGroups
+func SetupItemGroupRoutes(itemGroups fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) {
+	itemGroupRepo := repository.NewItemGroupRepository(gormDB, sqlDB, tracer)
+	itemGroupService := service.NewItemGroupService(itemGroupRepo, utilRepo, tracer)
+	itemGroupController := rest.NewItemGroupController(itemGroupService, itemGroupRepo, tracer)
 
 	// itemGroups.Post("/index-item-group", middleware.PermissionMiddleware("index-item-group"), itemGroupController.GetItemGroups)
 	itemGroups.Post("/index-item-group", itemGroupController.GetItemGroups)

@@ -1,14 +1,15 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -16,25 +17,33 @@ import (
 type UnitService struct {
 	repo     *repository.UnitRepository
 	utilRepo *repository.UtilRepository
+	tracer   opentracing.Tracer
 }
 
-func NewUnitService(repo *repository.UnitRepository, utilRepo *repository.UtilRepository) *UnitService {
+func NewUnitService(repo *repository.UnitRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *UnitService {
 	return &UnitService{
 		repo:     repo,
 		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (s *UnitService) GetUnits(ctx context.Context, filters map[string]string) ([]dtos.UnitListDTO, int, error) {
-	units, total, err := s.repo.GetUnits(ctx, filters)
+func (s *UnitService) GetUnits(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.UnitListDTO, int, error) {
+	childSpan := opentracing.StartSpan("UnitService-GetUnits", opentracing.ChildOf(span.Context()))
+
+	units, total, err := s.repo.GetUnits(ctx.Context(), filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, 0, err
 	}
 	return units, total, nil
 }
 
-func (s *UnitService) CreateUnit(ctx context.Context, unit *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.CreateUnit(tx, unit); err != nil {
+func (s *UnitService) CreateUnit(ctx *fiber.Ctx, unit *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("UnitService-CreateUnit", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreateUnit(tx, unit, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -42,16 +51,22 @@ func (s *UnitService) CreateUnit(ctx context.Context, unit *models.MixValue, tx 
 	return unit, nil
 }
 
-func (s *UnitService) GetUnitByID(ctx context.Context, params *dtos.GetUnitParams) (*dtos.UnitDetailDTO, error) {
-	unit, err := s.repo.GetUnitByID(ctx, params)
+func (s *UnitService) GetUnitByID(ctx *fiber.Ctx, params *dtos.GetUnitParams, span opentracing.Span) (*dtos.UnitDetailDTO, error) {
+	childSpan := opentracing.StartSpan("UnitService-GetUnitByID", opentracing.ChildOf(span.Context()))
+
+	unit, err := s.repo.GetUnitByID(ctx.Context(), params, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 	return unit, nil
 }
 
-func (s *UnitService) UpdateUnit(ctx context.Context, unit *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.UpdateUnit(tx, unit); err != nil {
+func (s *UnitService) UpdateUnit(ctx *fiber.Ctx, unit *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("UnitService-UpdateUnit", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.UpdateUnit(tx, unit, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -59,8 +74,11 @@ func (s *UnitService) UpdateUnit(ctx context.Context, unit *models.MixValue, tx 
 	return unit, nil
 }
 
-func (s *UnitService) DeleteUnit(ctx context.Context, params *dtos.GetUnitParams, tx *gorm.DB) error {
-	if err := s.repo.DeleteUnit(tx, params); err != nil {
+func (s *UnitService) DeleteUnit(ctx *fiber.Ctx, params *dtos.GetUnitParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UnitService-DeleteUnit", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.DeleteUnit(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -68,8 +86,11 @@ func (s *UnitService) DeleteUnit(ctx context.Context, params *dtos.GetUnitParams
 	return nil
 }
 
-func (s *UnitService) RestoreUnit(ctx context.Context, params *dtos.GetUnitParams, tx *gorm.DB) error {
-	if err := s.repo.RestoreUnit(tx, params); err != nil {
+func (s *UnitService) RestoreUnit(ctx *fiber.Ctx, params *dtos.GetUnitParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UnitService-RestoreUnit", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.RestoreUnit(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -78,9 +99,12 @@ func (s *UnitService) RestoreUnit(ctx context.Context, params *dtos.GetUnitParam
 }
 
 // github.com/xuri/excelize/v2
-func (s *UnitService) ExcelGetUnits(ctx context.Context, filters map[string]string) ([]byte, error) {
-	units, _, err := s.GetUnits(ctx, filters)
+func (s *UnitService) ExcelGetUnits(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("UnitService-ExcelGetUnits", opentracing.ChildOf(span.Context()))
+
+	units, _, err := s.GetUnits(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
@@ -123,19 +147,23 @@ func (s *UnitService) ExcelGetUnits(ctx context.Context, filters map[string]stri
 }
 
 // github.com/xuri/excelize/v2
-func (s *UnitService) CsvGetUnits(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *UnitService) CsvGetUnits(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("UnitService-CsvGetUnits", opentracing.ChildOf(span.Context()))
+
 	// filters is_csv
 	filters["is_csv"] = "1"
-	units, _, err := s.GetUnits(ctx, filters)
+	units, _, err := s.GetUnits(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
 	appName := "App"
 	if err != nil {
+		defer childSpan.Finish()
 		log.Println("CsvGetUnits error:", err)
 	} else {
 		appName = companyProfile.CompanyName
@@ -143,7 +171,7 @@ func (s *UnitService) CsvGetUnits(ctx context.Context, filters map[string]string
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Item Groups\n"
+	csv += "Units\n"
 	csv += "\n"
 
 	csv += "ID,Name,Description,Remark,Created At,Updated At\n"
