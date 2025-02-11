@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,30 +12,60 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/nibroos/s-erp-api/service/internal/validators/form_requests"
 	"github.com/opentracing/opentracing-go"
-
 	// "github.com/opentracing/opentracing-go/ext"
-	jLog "github.com/opentracing/opentracing-go/log"
 )
 
 type CustomerTypeController struct {
 	service *service.CustomerTypeService
 	repo    *repository.CustomerTypeRepository
-	tracer  opentracing.Tracer
+	tracer  opentracing.Span
 }
 
 // func NewCustomerTypeController(service *service.CustomerTypeService) *CustomerTypeController {
-func NewCustomerTypeController(service *service.CustomerTypeService, repo *repository.CustomerTypeRepository, tracer opentracing.Tracer) *CustomerTypeController {
+func NewCustomerTypeController(service *service.CustomerTypeService, repo *repository.CustomerTypeRepository, tracer opentracing.Span) *CustomerTypeController {
 	return &CustomerTypeController{service: service, repo: repo, tracer: tracer}
 }
 
 func (c *CustomerTypeController) GetCustomerTypes(ctx *fiber.Ctx) error {
 
-	parentSpan := opentracing.SpanFromContext(ctx.Context())
-	if parentSpan != nil {
-		// Create a child span for the controller
-		childSpan := opentracing.StartSpan("GetCustomerTypes", opentracing.ChildOf(parentSpan.Context()))
-		defer childSpan.Finish()
-	}
+	// // parentSpan := opentracing.SpanFromContext(ctx.Context())
+	// parentSpan := utils.StartSpanFromRequest(c.tracer, ctx.Path())
+
+	// // parentSpan, _ := opentracing.StartSpanFromContext(ctx.Context(), ctx.Path())
+	// // parentSpan := c.tracer.StartSpan(ctx.Path())
+
+	// // // Set standard HTTP tags
+	// // ext.HTTPMethod.Set(parentSpan, ctx.Method())
+	// // ext.HTTPUrl.Set(parentSpan, ctx.Path())
+
+	// if parentSpan != nil {
+	// 	log.Println("testabc")
+	// 	// Create a child span for the controller
+	// 	childSpan := opentracing.StartSpan("GetCustomerTypes", opentracing.ChildOf(parentSpan.Context()))
+	// 	defer childSpan.Finish()
+	// }
+
+	// Extract the parent span from the request context
+	// Convert fasthttp.RequestHeader to http.Header
+	// httpHeaders := make(http.Header)
+	// ctx.Request().Header.VisitAll(func(key, value []byte) {
+	// 	httpHeaders.Add(string(key), string(value))
+	// })
+	// parentSpanCtx, _ := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(httpHeaders))
+	// parentSpan := opentracing.StartSpan(ctx.Path(), opentracing.ChildOf(utils.JaegerMiddleware(ctx, c.tracer)))
+	// requestBody := ctx.Body()
+	// responseBody := ctx.Response().Body()
+	// parentSpan.LogKV("request_body", string(requestBody))
+	// parentSpan.LogKV("response_body", string(responseBody))
+	// defer parentSpan.Finish()
+
+	// // Set standard HTTP tags
+	// ext.HTTPMethod.Set(parentSpan, ctx.Method())
+	// ext.HTTPUrl.Set(parentSpan, ctx.Path())
+
+	// // Create a child span for the controller
+	// childSpan := opentracing.StartSpan("GetCustomerTypes", opentracing.ChildOf(parentSpan.Context()))
+	// defer childSpan.Finish()
 
 	// panic("implement me")
 	filters, ok := ctx.Locals("filters").(map[string]string)
@@ -45,70 +74,8 @@ func (c *CustomerTypeController) GetCustomerTypes(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	customerTypes, total, err := c.service.GetCustomerTypes(ctx.Context(), filters)
-	if err != nil || ctx.Response().StatusCode() >= 400 {
-		log.Println(err.Error())
-		// Log the error to the span
-		if parentSpan != nil {
-			parentSpan.LogFields(
-				jLog.String("event", "error"),
-				jLog.String("message", err.Error()),
-			)
-		}
-
-		log.Println("testabcd")
-
-		// if span := opentracing.SpanFromContext(ctx.Context()); span != nil {
-		// 	log.Println("testabc")
-		// 	span.LogFields(jLog.String("event", "filters not found"))
-		// 	ext.Error.Set(span, true)
-		// 	span.LogFields(
-		// 		jLog.String("event", "error"),
-		// 		jLog.String("message", err.Error()),
-		// 	)
-
-		// 	// Log the response body if available (e.g., error response)
-		// 	if ctx.Response().Body() != nil {
-		// 		responseBody := ctx.Response().Body()
-		// 		span.LogKV("response_body", string(responseBody))
-		// 	}
-		// }
-		// span.LogFields(
-		// 	jLog.String("event", "error"),
-		// 	jLog.String("message", err.Error()),
-		// )
-
-		// if ctx.Response().Body() != nil {
-		// 	// bodyBytes = ctx.Body()
-		// 	span := opentracing.SpanFromContext(ctx.Context())
-		// 	span.LogKV("custom_attribute", "example_value")
-		// 	span.LogFields(
-		// 		jLog.String("event", "error"),
-		// 		jLog.String("message", err.Error()),
-		// 	)
-		// 	// span.LogKV("request_body", string(bodyBytes)) // Log the request body
-		// }
-
-		// if span := opentracing.SpanFromContext(ctx.Context()); span != nil {
-		// 	span.LogKV("custom_attribute", "example_value")
-		// }
-
-		// if span := opentracing.SpanFromContext(ctx.Context()); span != nil {
-		// 	log.Println("testabc")
-		// 	span.LogFields(jLog.String("event", "filters not found"))
-		// 	ext.Error.Set(span, true)
-		// 	span.LogFields(
-		// 		jLog.String("event", "error"),
-		// 		jLog.String("message", err.Error()),
-		// 	)
-
-		// 	// Log the response body if available (e.g., error response)
-		// 	if ctx.Response().Body() != nil {
-		// 		responseBody := ctx.Response().Body()
-		// 		span.LogKV("response_body", string(responseBody))
-		// 	}
-		// }
-		// span := opentracing.SpanFromContext(ctx.Context())
+	customerTypes, total, err := c.service.GetCustomerTypes(ctx.Context(), filters, c.tracer)
+	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
@@ -353,7 +320,7 @@ func (c *CustomerTypeController) ExcelGetCustomerTypes(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	customerTypes, err := c.service.ExcelGetCustomerTypes(ctx.Context(), filters)
+	customerTypes, err := c.service.ExcelGetCustomerTypes(ctx.Context(), filters, c.tracer)
 	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -367,7 +334,7 @@ func (c *CustomerTypeController) CsvGetCustomerTypes(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	customerTypes, err := c.service.CsvGetCustomerTypes(ctx.Context(), filters)
+	customerTypes, err := c.service.CsvGetCustomerTypes(ctx.Context(), filters, c.tracer)
 	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}

@@ -8,27 +8,42 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	jLog "github.com/opentracing/opentracing-go/log"
 	"gorm.io/gorm"
 )
 
 type CustomerTypeRepository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Span
 }
 
-func NewCustomerTypeRepository(db *gorm.DB, sqlDB *sqlx.DB) *CustomerTypeRepository {
+func NewCustomerTypeRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Span) *CustomerTypeRepository {
 	return &CustomerTypeRepository{
-		db:    db,
-		sqlDB: sqlDB,
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
 	}
 }
 
-func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters map[string]string) ([]dtos.CustomerTypeListDTO, int, error) {
+func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CustomerTypeListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("CustomerTypeRepository-GetCustomerTypes", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
 	customerTypes := []dtos.CustomerTypeListDTO{}
 	var total int
 
 	// Simulate an error for testing Jaeger tracing
 	if filters["simulate_error"] == "true" {
+		childSpan.LogFields(
+			jLog.String("event", "error"),
+			jLog.String("message", "simulated error"),
+		)
+		ext.Error.Set(childSpan, true)
+
 		return nil, 0, fmt.Errorf("simulated error")
 	}
 

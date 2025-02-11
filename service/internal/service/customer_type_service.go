@@ -9,6 +9,7 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -16,17 +17,24 @@ import (
 type CustomerTypeService struct {
 	repo     *repository.CustomerTypeRepository
 	utilRepo *repository.UtilRepository
+	tracer   opentracing.Span
 }
 
-func NewCustomerTypeService(repo *repository.CustomerTypeRepository, utilRepo *repository.UtilRepository) *CustomerTypeService {
+func NewCustomerTypeService(repo *repository.CustomerTypeRepository, utilRepo *repository.UtilRepository, tracer opentracing.Span) *CustomerTypeService {
 	return &CustomerTypeService{
 		repo:     repo,
 		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (s *CustomerTypeService) GetCustomerTypes(ctx context.Context, filters map[string]string) ([]dtos.CustomerTypeListDTO, int, error) {
-	customerTypes, total, err := s.repo.GetCustomerTypes(ctx, filters)
+func (s *CustomerTypeService) GetCustomerTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CustomerTypeListDTO, int, error) {
+
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("CustomerTypeService-GetCustomerTypes", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	customerTypes, total, err := s.repo.GetCustomerTypes(ctx, filters, childSpan)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -78,8 +86,8 @@ func (s *CustomerTypeService) RestoreCustomerType(ctx context.Context, params *d
 }
 
 // github.com/xuri/excelize/v2
-func (s *CustomerTypeService) ExcelGetCustomerTypes(ctx context.Context, filters map[string]string) ([]byte, error) {
-	customerTypes, _, err := s.GetCustomerTypes(ctx, filters)
+func (s *CustomerTypeService) ExcelGetCustomerTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	customerTypes, _, err := s.GetCustomerTypes(ctx, filters, span)
 	if err != nil {
 		return nil, err
 	}
@@ -123,10 +131,10 @@ func (s *CustomerTypeService) ExcelGetCustomerTypes(ctx context.Context, filters
 }
 
 // github.com/xuri/excelize/v2
-func (s *CustomerTypeService) CsvGetCustomerTypes(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *CustomerTypeService) CsvGetCustomerTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]byte, error) {
 	// filters is_csv
 	filters["is_csv"] = "1"
-	customerTypes, _, err := s.GetCustomerTypes(ctx, filters)
+	customerTypes, _, err := s.GetCustomerTypes(ctx, filters, span)
 	if err != nil {
 		return nil, err
 	}

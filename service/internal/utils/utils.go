@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"reflect"
 	"runtime"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -473,4 +475,51 @@ func GetPtrVal(ptr *string) string {
 		return *ptr
 	}
 	return ""
+}
+
+func JaegerMiddleware(c *fiber.Ctx, tracer opentracing.Tracer) opentracing.SpanContext {
+	// return func(c *fiber.Ctx) error {
+	httpHeaders := make(http.Header)
+	c.Request().Header.VisitAll(func(key, value []byte) {
+		httpHeaders.Add(string(key), string(value))
+	})
+	parentSpanCtx, _ := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(httpHeaders))
+	// parentSpan := opentracing.StartSpan(c.Path(), opentracing.ChildOf(parentSpanCtx))
+	// defer parentSpan.Finish()
+
+	// // Set standard HTTP tags
+	// ext.HTTPMethod.Set(parentSpan, c.Method())
+	// ext.HTTPUrl.Set(parentSpan, c.Path())
+
+	// if c.Response().StatusCode() >= 400 {
+	// 	// Capture the request body
+	// 	var bodyBytes []byte
+	// 	if c.Body() != nil {
+	// 		bodyBytes = c.Body()
+	// 		parentSpan.LogKV("request_body", string(bodyBytes)) // Log the request body
+	// 	}
+
+	// 	// Pass the context with the span to the next handler
+	// 	ctx := opentracing.ContextWithSpan(c.Context(), parentSpan)
+	// 	c.SetUserContext(ctx)
+
+	// 	// Check for errors or 500 status code
+	// 	ext.Error.Set(parentSpan, true)
+
+	// 	// Log the error message
+	// 	if c.Response().StatusCode() >= 400 {
+	// 		// Set the HTTP status code
+	// 		ext.HTTPStatusCode.Set(parentSpan, uint16(c.Response().StatusCode()))
+	// 	}
+	// }
+
+	return parentSpanCtx
+	// }
+}
+
+func StartSpanFromRequest(tracer opentracing.Tracer, funcDesc string) opentracing.Span {
+	// spanCtx, _ := Extract(tracer, r)
+	parentSpan := opentracing.StartSpan(funcDesc)
+
+	return parentSpan
 }
