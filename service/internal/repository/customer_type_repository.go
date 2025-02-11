@@ -27,6 +27,11 @@ func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters m
 	customerTypes := []dtos.CustomerTypeListDTO{}
 	var total int
 
+	// Simulate an error for testing Jaeger tracing
+	if filters["simulate_error"] == "true" {
+		return nil, 0, fmt.Errorf("simulated error")
+	}
+
 	query := `SELECT *
     FROM ( 
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,

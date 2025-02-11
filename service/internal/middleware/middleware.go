@@ -12,6 +12,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	jLog "github.com/opentracing/opentracing-go/log"
 )
 
 // ErrorHandler middleware
@@ -21,7 +24,7 @@ func ErrorHandler(ctx *fiber.Ctx, err error) error {
 	message := "Internal server error"
 
 	if err == sql.ErrNoRows {
-		code = http.StatusNotFound
+		// code = http.StatusNotFound
 		message = "No result found"
 	} else if e, ok := err.(*fiber.Error); ok {
 		// Use Fiber's default error message
@@ -43,6 +46,7 @@ func ErrorHandler(ctx *fiber.Ctx, err error) error {
 		"errors":  err.Error(),
 		// "stack":   stackTrace, // Optionally include stack trace
 	})
+	// return fiber.NewError(code, message)
 }
 
 func ConvertRequestToFilters() fiber.Handler {
@@ -167,5 +171,55 @@ func ConvertToClientTimezone() fiber.Handler {
 		c.Request().SetBody(modifiedBody)
 
 		return c.Next()
+	}
+}
+
+func JaegerTracingMiddleware(tracer opentracing.Tracer) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Call the next handler
+		err := c.Next()
+
+		if err != nil || c.Response().StatusCode() >= 400 {
+			// Start a new span for the request
+			span := tracer.StartSpan(c.Path())
+			defer span.Finish()
+
+			// Set standard HTTP tags
+			ext.HTTPMethod.Set(span, c.Method())
+			ext.HTTPUrl.Set(span, c.Path())
+
+			// Capture the request body
+			var bodyBytes []byte
+			if c.Body() != nil {
+				bodyBytes = c.Body()
+				span.LogKV("request_body", string(bodyBytes)) // Log the request body
+			}
+
+			// Pass the context with the span to the next handler
+			ctx := opentracing.ContextWithSpan(c.Context(), span)
+			c.SetUserContext(ctx)
+
+			// Check for errors or 500 status code
+			ext.Error.Set(span, true)
+
+			// Log the error message
+			if err != nil {
+				span.LogFields(
+					jLog.String("event", "error"),
+					jLog.String("message", err.Error()),
+				)
+			}
+
+			// Log the response body if available (e.g., error response)
+			if c.Response().Body() != nil {
+				responseBody := c.Response().Body()
+				span.LogKV("response_body", string(responseBody))
+			}
+
+			// Set the HTTP status code
+			ext.HTTPStatusCode.Set(span, uint16(c.Response().StatusCode()))
+		}
+
+		return err
 	}
 }

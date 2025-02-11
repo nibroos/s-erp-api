@@ -562,6 +562,7 @@ type GetCompanyProfilesResult struct {
 type GetCustomerTypesRequest struct {
 	Global         string `json:"global"`
 	Name           string `json:"name"`
+	SimulateError  string `json:"simulate_error"`
 	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
 	Page           string `json:"page" default:"1"`              // Default page to 1
 	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"

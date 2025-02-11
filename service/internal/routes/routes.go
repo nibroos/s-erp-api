@@ -7,11 +7,12 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/middleware"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
 // SetupRoutes sets up the REST routes for the user service.
-func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB) {
+func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) {
 	// Public routes
 	app.Get("/api/v1/users/test", func(c *fiber.Ctx) error {
 		return c.SendString("REST Users Service!")
@@ -37,6 +38,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB) {
 	// Protected routes
 	app.Use(middleware.JWTMiddleware())
 	app.Use(middleware.ConvertToClientTimezone())
+	app.Use(middleware.JaegerTracingMiddleware(tracer))
 
 	// util service
 	utilRepo := repository.NewUtilRepository(gormDB, sqlDB)
@@ -64,7 +66,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB) {
 	SetupCompanyProfileRoutes(companyProfile, gormDB, sqlDB)
 
 	customerType := version.Group("/customer-types")
-	SetupCustomerTypeRoutes(customerType, gormDB, sqlDB, utilRepo)
+	SetupCustomerTypeRoutes(customerType, gormDB, sqlDB, utilRepo, tracer)
 
 	currency := version.Group("/currencies")
 	SetupCurrencyRoutes(currency, gormDB, sqlDB, utilRepo)

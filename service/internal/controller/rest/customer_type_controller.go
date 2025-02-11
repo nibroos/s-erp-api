@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,26 +12,103 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/service"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/nibroos/s-erp-api/service/internal/validators/form_requests"
+	"github.com/opentracing/opentracing-go"
+
+	// "github.com/opentracing/opentracing-go/ext"
+	jLog "github.com/opentracing/opentracing-go/log"
 )
 
 type CustomerTypeController struct {
 	service *service.CustomerTypeService
 	repo    *repository.CustomerTypeRepository
+	tracer  opentracing.Tracer
 }
 
 // func NewCustomerTypeController(service *service.CustomerTypeService) *CustomerTypeController {
-func NewCustomerTypeController(service *service.CustomerTypeService, repo *repository.CustomerTypeRepository) *CustomerTypeController {
-	return &CustomerTypeController{service: service, repo: repo}
+func NewCustomerTypeController(service *service.CustomerTypeService, repo *repository.CustomerTypeRepository, tracer opentracing.Tracer) *CustomerTypeController {
+	return &CustomerTypeController{service: service, repo: repo, tracer: tracer}
 }
 
 func (c *CustomerTypeController) GetCustomerTypes(ctx *fiber.Ctx) error {
+
+	parentSpan := opentracing.SpanFromContext(ctx.Context())
+	if parentSpan != nil {
+		// Create a child span for the controller
+		childSpan := opentracing.StartSpan("GetCustomerTypes", opentracing.ChildOf(parentSpan.Context()))
+		defer childSpan.Finish()
+	}
+
+	// panic("implement me")
 	filters, ok := ctx.Locals("filters").(map[string]string)
+
 	if !ok {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
 	customerTypes, total, err := c.service.GetCustomerTypes(ctx.Context(), filters)
-	if err != nil {
+	if err != nil || ctx.Response().StatusCode() >= 400 {
+		log.Println(err.Error())
+		// Log the error to the span
+		if parentSpan != nil {
+			parentSpan.LogFields(
+				jLog.String("event", "error"),
+				jLog.String("message", err.Error()),
+			)
+		}
+
+		log.Println("testabcd")
+
+		// if span := opentracing.SpanFromContext(ctx.Context()); span != nil {
+		// 	log.Println("testabc")
+		// 	span.LogFields(jLog.String("event", "filters not found"))
+		// 	ext.Error.Set(span, true)
+		// 	span.LogFields(
+		// 		jLog.String("event", "error"),
+		// 		jLog.String("message", err.Error()),
+		// 	)
+
+		// 	// Log the response body if available (e.g., error response)
+		// 	if ctx.Response().Body() != nil {
+		// 		responseBody := ctx.Response().Body()
+		// 		span.LogKV("response_body", string(responseBody))
+		// 	}
+		// }
+		// span.LogFields(
+		// 	jLog.String("event", "error"),
+		// 	jLog.String("message", err.Error()),
+		// )
+
+		// if ctx.Response().Body() != nil {
+		// 	// bodyBytes = ctx.Body()
+		// 	span := opentracing.SpanFromContext(ctx.Context())
+		// 	span.LogKV("custom_attribute", "example_value")
+		// 	span.LogFields(
+		// 		jLog.String("event", "error"),
+		// 		jLog.String("message", err.Error()),
+		// 	)
+		// 	// span.LogKV("request_body", string(bodyBytes)) // Log the request body
+		// }
+
+		// if span := opentracing.SpanFromContext(ctx.Context()); span != nil {
+		// 	span.LogKV("custom_attribute", "example_value")
+		// }
+
+		// if span := opentracing.SpanFromContext(ctx.Context()); span != nil {
+		// 	log.Println("testabc")
+		// 	span.LogFields(jLog.String("event", "filters not found"))
+		// 	ext.Error.Set(span, true)
+		// 	span.LogFields(
+		// 		jLog.String("event", "error"),
+		// 		jLog.String("message", err.Error()),
+		// 	)
+
+		// 	// Log the response body if available (e.g., error response)
+		// 	if ctx.Response().Body() != nil {
+		// 		responseBody := ctx.Response().Body()
+		// 		span.LogKV("response_body", string(responseBody))
+		// 	}
+		// }
+		// span := opentracing.SpanFromContext(ctx.Context())
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
