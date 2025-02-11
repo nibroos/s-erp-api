@@ -862,3 +862,161 @@ type GetUnitsResult struct {
 	Total int
 	Err   error
 }
+
+type GetVatsRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateVatRequest struct {
+	Name        string  `json:"name"`
+	Num         float64 `json:"num"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type UpdateVatRequest struct {
+	ID          uint    `json:"id"`
+	Num         float64 `json:"num"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type GetVatByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetVatParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetVatParams(id uint) *GetVatParams {
+	defaultIsDeleted := 0
+	return &GetVatParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteVatRequest struct {
+	ID uint `json:"id"`
+}
+
+type VatListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Num           float64 `json:"num" db:"num"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type VatDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   string  `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetVatsResult struct {
+	Vats  []VatListDTO
+	Total int
+	Err   error
+}
+
+type GetPph23sRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreatePph23Request struct {
+	Name        string  `json:"name"`
+	Num         float64 `json:"num"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type UpdatePph23Request struct {
+	ID          uint    `json:"id"`
+	Num         float64 `json:"num"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type GetPph23ByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetPph23Params struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetPph23Params(id uint) *GetPph23Params {
+	defaultIsDeleted := 0
+	return &GetPph23Params{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeletePph23Request struct {
+	ID uint `json:"id"`
+}
+
+type Pph23ListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Num           float64 `json:"num" db:"num"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type Pph23DetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   string  `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetPph23sResult struct {
+	Pph23s []Pph23ListDTO
+	Total  int
+	Err    error
+}

@@ -15,4 +15,6 @@ const (
 	ItemGroupID    = 9
 	UnitID         = 10
 	ItemSubGroupID = 11
+	VatID          = 12
+	Pph23ID        = 13
 )

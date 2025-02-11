@@ -155,6 +155,7 @@ func (c *CurrencyController) UpdateCurrency(ctx *fiber.Ctx) error {
 		Name:        req.Name,
 		Description: req.Description,
 		Remark:      req.Remark,
+		Status:      req.Status,
 		// CreatedByID: &existingCurrency.CreatedByID,
 		UpdatedByID: &userID,
 		OptionsJSON: "{}",

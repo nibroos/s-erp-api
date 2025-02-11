@@ -155,6 +155,7 @@ func (c *UnitController) UpdateUnit(ctx *fiber.Ctx) error {
 		Name:        req.Name,
 		Description: req.Description,
 		Remark:      req.Remark,
+		Status:      req.Status,
 		// CreatedByID: &existingUnit.CreatedByID,
 		UpdatedByID: &userID,
 		OptionsJSON: "{}",

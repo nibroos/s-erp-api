@@ -72,6 +72,12 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB) {
 	unit := version.Group("/units")
 	SetupUnitRoutes(unit, gormDB, sqlDB, utilRepo)
 
+	vat := version.Group("/vats")
+	SetupVatRoutes(vat, gormDB, sqlDB, utilRepo)
+
+	pph23 := version.Group("/pph23s")
+	SetupPph23Routes(pph23, gormDB, sqlDB, utilRepo)
+
 	// Scheduler route
 	// cron := cron.New()
 	// schedulerController := rest.NewSchedulerController(cron, gormDB, sqlDB)

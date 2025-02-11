@@ -155,6 +155,7 @@ func (c *CustomerTypeController) UpdateCustomerType(ctx *fiber.Ctx) error {
 		Name:        req.Name,
 		Description: req.Description,
 		Remark:      req.Remark,
+		Status:      req.Status,
 		// CreatedByID: &existingCustomerType.CreatedByID,
 		UpdatedByID: &userID,
 		OptionsJSON: "{}",
