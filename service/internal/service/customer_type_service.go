@@ -9,6 +9,7 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -16,25 +17,27 @@ import (
 type CustomerTypeService struct {
 	repo     *repository.CustomerTypeRepository
 	utilRepo *repository.UtilRepository
+	tracer   opentracing.Tracer
 }
 
-func NewCustomerTypeService(repo *repository.CustomerTypeRepository, utilRepo *repository.UtilRepository) *CustomerTypeService {
+func NewCustomerTypeService(repo *repository.CustomerTypeRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *CustomerTypeService {
 	return &CustomerTypeService{
 		repo:     repo,
 		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (s *CustomerTypeService) GetCustomerTypes(ctx context.Context, filters map[string]string) ([]dtos.CustomerTypeListDTO, int, error) {
-	customerTypes, total, err := s.repo.GetCustomerTypes(ctx, filters)
+func (s *CustomerTypeService) GetCustomerTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CustomerTypeListDTO, int, error) {
+	customerTypes, total, err := s.repo.GetCustomerTypes(ctx, filters, span)
 	if err != nil {
 		return nil, 0, err
 	}
 	return customerTypes, total, nil
 }
 
-func (s *CustomerTypeService) CreateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.CreateCustomerType(tx, customerType); err != nil {
+func (s *CustomerTypeService) CreateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	if err := s.repo.CreateCustomerType(tx, customerType, span); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
@@ -42,16 +45,16 @@ func (s *CustomerTypeService) CreateCustomerType(ctx context.Context, customerTy
 	return customerType, nil
 }
 
-func (s *CustomerTypeService) GetCustomerTypeByID(ctx context.Context, params *dtos.GetCustomerTypeParams) (*dtos.CustomerTypeDetailDTO, error) {
-	customerType, err := s.repo.GetCustomerTypeByID(ctx, params)
+func (s *CustomerTypeService) GetCustomerTypeByID(ctx context.Context, params *dtos.GetCustomerTypeParams, span opentracing.Span) (*dtos.CustomerTypeDetailDTO, error) {
+	customerType, err := s.repo.GetCustomerTypeByID(ctx, params, span)
 	if err != nil {
 		return nil, err
 	}
 	return customerType, nil
 }
 
-func (s *CustomerTypeService) UpdateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.UpdateCustomerType(tx, customerType); err != nil {
+func (s *CustomerTypeService) UpdateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	if err := s.repo.UpdateCustomerType(tx, customerType, span); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
@@ -59,8 +62,8 @@ func (s *CustomerTypeService) UpdateCustomerType(ctx context.Context, customerTy
 	return customerType, nil
 }
 
-func (s *CustomerTypeService) DeleteCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB) error {
-	if err := s.repo.DeleteCustomerType(tx, params); err != nil {
+func (s *CustomerTypeService) DeleteCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB, span opentracing.Span) error {
+	if err := s.repo.DeleteCustomerType(tx, params, span); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -68,8 +71,8 @@ func (s *CustomerTypeService) DeleteCustomerType(ctx context.Context, params *dt
 	return nil
 }
 
-func (s *CustomerTypeService) RestoreCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB) error {
-	if err := s.repo.RestoreCustomerType(tx, params); err != nil {
+func (s *CustomerTypeService) RestoreCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB, span opentracing.Span) error {
+	if err := s.repo.RestoreCustomerType(tx, params, span); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -78,8 +81,8 @@ func (s *CustomerTypeService) RestoreCustomerType(ctx context.Context, params *d
 }
 
 // github.com/xuri/excelize/v2
-func (s *CustomerTypeService) ExcelGetCustomerTypes(ctx context.Context, filters map[string]string) ([]byte, error) {
-	customerTypes, _, err := s.GetCustomerTypes(ctx, filters)
+func (s *CustomerTypeService) ExcelGetCustomerTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	customerTypes, _, err := s.GetCustomerTypes(ctx, filters, span)
 	if err != nil {
 		return nil, err
 	}
@@ -123,10 +126,10 @@ func (s *CustomerTypeService) ExcelGetCustomerTypes(ctx context.Context, filters
 }
 
 // github.com/xuri/excelize/v2
-func (s *CustomerTypeService) CsvGetCustomerTypes(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *CustomerTypeService) CsvGetCustomerTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]byte, error) {
 	// filters is_csv
 	filters["is_csv"] = "1"
-	customerTypes, _, err := s.GetCustomerTypes(ctx, filters)
+	customerTypes, _, err := s.GetCustomerTypes(ctx, filters, span)
 	if err != nil {
 		return nil, err
 	}

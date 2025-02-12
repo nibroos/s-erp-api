@@ -465,7 +465,7 @@ type GetCompanyProfilesRequest struct {
 }
 
 type CreateCompanyProfileRequest struct {
-	ParentID           *int   `json:"parent_id" db:"parent_id"`
+	ParentID           *uint  `json:"parent_id" db:"parent_id"`
 	IsPrimary          *int   `json:"is_primary" db:"is_primary"`
 	CompanyName        string `json:"company_name" db:"company_name"`
 	CompanyAddress     string `json:"company_address" db:"company_address"`
@@ -480,7 +480,7 @@ type CreateCompanyProfileRequest struct {
 
 type UpdateCompanyProfileRequest struct {
 	ID                 uint   `json:"id"`
-	ParentID           *int   `json:"parent_id" db:"parent_id"`
+	ParentID           *uint  `json:"parent_id" db:"parent_id"`
 	IsPrimary          *int   `json:"is_primary" db:"is_primary"`
 	CompanyName        string `json:"company_name" db:"company_name"`
 	CompanyAddress     string `json:"company_address" db:"company_address"`
@@ -516,7 +516,7 @@ type DeleteCompanyProfileRequest struct {
 
 type CompanyProfileListDTO struct {
 	ID                 int     `json:"id" db:"id"`
-	ParentID           *int    `json:"parent_id" db:"parent_id"`
+	ParentID           *uint   `json:"parent_id" db:"parent_id"`
 	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
 	CompanyName        string  `json:"company_name" db:"company_name"`
 	CompanyAddress     string  `json:"company_address" db:"company_address"`
@@ -536,7 +536,7 @@ type CompanyProfileListDTO struct {
 
 type CompanyProfileDetailDTO struct {
 	ID                 uint    `json:"id" db:"id"`
-	ParentID           *int    `json:"parent_id" db:"parent_id"`
+	ParentID           *uint   `json:"parent_id" db:"parent_id"`
 	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
 	CompanyName        string  `json:"company_name" db:"company_name"`
 	CompanyAddress     string  `json:"company_address" db:"company_address"`
@@ -562,6 +562,7 @@ type GetCompanyProfilesResult struct {
 type GetCustomerTypesRequest struct {
 	Global         string `json:"global"`
 	Name           string `json:"name"`
+	SimulateError  string `json:"simulate_error"`
 	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
 	Page           string `json:"page" default:"1"`              // Default page to 1
 	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"

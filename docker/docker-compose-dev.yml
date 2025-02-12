@@ -189,21 +189,24 @@ services:
       GF_DATABASE_USER: grafana
       GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
 
-  # jaeger:
-  #   image: jaegertracing/all-in-one:1.56
-  #   ports:
-  #     - "16686:16686"
-  #     - "14268:14268"
-  #     - "4317:4317"
-  #     - "4318:4318"
-  #   networks:
-  #     - s-erp-api-network
-  #   environment:
-  #     - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+  jaeger:
+    image: jaegertracing/all-in-one:1.56
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    networks:
+      - s-erp-api-network
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+    volumes:
+      - jaeger-logs:/var/log/jaeger  # Add this line to specify the volume
 
 volumes:
   postgres-s-erp-api:
   grafana-storage:
+  jaeger-logs:
 
 networks:
   s-erp-api-network:

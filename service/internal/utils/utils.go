@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"reflect"
 	"runtime"
@@ -14,6 +15,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	jLog "github.com/opentracing/opentracing-go/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -473,4 +477,40 @@ func GetPtrVal(ptr *string) string {
 		return *ptr
 	}
 	return ""
+}
+
+func JaegerMiddleware(c *fiber.Ctx, tracer opentracing.Tracer) opentracing.SpanContext {
+	httpHeaders := make(http.Header)
+	c.Request().Header.VisitAll(func(key, value []byte) {
+		httpHeaders.Add(string(key), string(value))
+	})
+	parentSpanCtx, _ := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(httpHeaders))
+	return parentSpanCtx
+}
+
+func StartSpanFromController(ctx *fiber.Ctx, tracer opentracing.Tracer, funcDesc string) opentracing.Span {
+	parentSpan := opentracing.StartSpan(funcDesc)
+
+	// Add custom tag to indicate per-service/per-layer tracing
+	parentSpan.SetTag("type", "service")
+
+	requestBody := ctx.Body()
+	parentSpan.LogKV("request_body", string(requestBody))
+	// headers
+	httpHeaders := make(http.Header)
+	ctx.Request().Header.VisitAll(func(key, value []byte) {
+		httpHeaders.Add(string(key), string(value))
+	})
+	parentSpan.LogKV("request_headers", httpHeaders)
+
+	return parentSpan
+}
+
+func LogErrors(span opentracing.Span, err error) {
+	defer span.Finish()
+	span.LogFields(
+		jLog.String("event", "error"),
+		jLog.String("message", err.Error()),
+	)
+	ext.Error.Set(span, true)
 }
