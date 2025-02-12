@@ -16,6 +16,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	jLog "github.com/opentracing/opentracing-go/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -478,48 +480,37 @@ func GetPtrVal(ptr *string) string {
 }
 
 func JaegerMiddleware(c *fiber.Ctx, tracer opentracing.Tracer) opentracing.SpanContext {
-	// return func(c *fiber.Ctx) error {
 	httpHeaders := make(http.Header)
 	c.Request().Header.VisitAll(func(key, value []byte) {
 		httpHeaders.Add(string(key), string(value))
 	})
 	parentSpanCtx, _ := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, opentracing.HTTPHeadersCarrier(httpHeaders))
-	// parentSpan := opentracing.StartSpan(c.Path(), opentracing.ChildOf(parentSpanCtx))
-	// defer parentSpan.Finish()
-
-	// // Set standard HTTP tags
-	// ext.HTTPMethod.Set(parentSpan, c.Method())
-	// ext.HTTPUrl.Set(parentSpan, c.Path())
-
-	// if c.Response().StatusCode() >= 400 {
-	// 	// Capture the request body
-	// 	var bodyBytes []byte
-	// 	if c.Body() != nil {
-	// 		bodyBytes = c.Body()
-	// 		parentSpan.LogKV("request_body", string(bodyBytes)) // Log the request body
-	// 	}
-
-	// 	// Pass the context with the span to the next handler
-	// 	ctx := opentracing.ContextWithSpan(c.Context(), parentSpan)
-	// 	c.SetUserContext(ctx)
-
-	// 	// Check for errors or 500 status code
-	// 	ext.Error.Set(parentSpan, true)
-
-	// 	// Log the error message
-	// 	if c.Response().StatusCode() >= 400 {
-	// 		// Set the HTTP status code
-	// 		ext.HTTPStatusCode.Set(parentSpan, uint16(c.Response().StatusCode()))
-	// 	}
-	// }
-
 	return parentSpanCtx
-	// }
 }
 
-func StartSpanFromRequest(tracer opentracing.Tracer, funcDesc string) opentracing.Span {
-	// spanCtx, _ := Extract(tracer, r)
+func StartSpanFromController(ctx *fiber.Ctx, tracer opentracing.Tracer, funcDesc string) opentracing.Span {
 	parentSpan := opentracing.StartSpan(funcDesc)
 
+	// Add custom tag to indicate per-service/per-layer tracing
+	parentSpan.SetTag("type", "service")
+
+	requestBody := ctx.Body()
+	parentSpan.LogKV("request_body", string(requestBody))
+	// headers
+	httpHeaders := make(http.Header)
+	ctx.Request().Header.VisitAll(func(key, value []byte) {
+		httpHeaders.Add(string(key), string(value))
+	})
+	parentSpan.LogKV("request_headers", httpHeaders)
+
 	return parentSpan
+}
+
+func LogErrors(span opentracing.Span, err error) {
+	defer span.Finish()
+	span.LogFields(
+		jLog.String("event", "error"),
+		jLog.String("message", err.Error()),
+	)
+	ext.Error.Set(span, true)
 }

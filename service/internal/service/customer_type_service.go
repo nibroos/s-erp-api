@@ -17,10 +17,10 @@ import (
 type CustomerTypeService struct {
 	repo     *repository.CustomerTypeRepository
 	utilRepo *repository.UtilRepository
-	tracer   opentracing.Span
+	tracer   opentracing.Tracer
 }
 
-func NewCustomerTypeService(repo *repository.CustomerTypeRepository, utilRepo *repository.UtilRepository, tracer opentracing.Span) *CustomerTypeService {
+func NewCustomerTypeService(repo *repository.CustomerTypeRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *CustomerTypeService {
 	return &CustomerTypeService{
 		repo:     repo,
 		utilRepo: utilRepo,
@@ -29,20 +29,15 @@ func NewCustomerTypeService(repo *repository.CustomerTypeRepository, utilRepo *r
 }
 
 func (s *CustomerTypeService) GetCustomerTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CustomerTypeListDTO, int, error) {
-
-	// Create a child span for the controller
-	childSpan := opentracing.StartSpan("CustomerTypeService-GetCustomerTypes", opentracing.ChildOf(span.Context()))
-	defer childSpan.Finish()
-
-	customerTypes, total, err := s.repo.GetCustomerTypes(ctx, filters, childSpan)
+	customerTypes, total, err := s.repo.GetCustomerTypes(ctx, filters, span)
 	if err != nil {
 		return nil, 0, err
 	}
 	return customerTypes, total, nil
 }
 
-func (s *CustomerTypeService) CreateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.CreateCustomerType(tx, customerType); err != nil {
+func (s *CustomerTypeService) CreateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	if err := s.repo.CreateCustomerType(tx, customerType, span); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
@@ -50,16 +45,16 @@ func (s *CustomerTypeService) CreateCustomerType(ctx context.Context, customerTy
 	return customerType, nil
 }
 
-func (s *CustomerTypeService) GetCustomerTypeByID(ctx context.Context, params *dtos.GetCustomerTypeParams) (*dtos.CustomerTypeDetailDTO, error) {
-	customerType, err := s.repo.GetCustomerTypeByID(ctx, params)
+func (s *CustomerTypeService) GetCustomerTypeByID(ctx context.Context, params *dtos.GetCustomerTypeParams, span opentracing.Span) (*dtos.CustomerTypeDetailDTO, error) {
+	customerType, err := s.repo.GetCustomerTypeByID(ctx, params, span)
 	if err != nil {
 		return nil, err
 	}
 	return customerType, nil
 }
 
-func (s *CustomerTypeService) UpdateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.UpdateCustomerType(tx, customerType); err != nil {
+func (s *CustomerTypeService) UpdateCustomerType(ctx context.Context, customerType *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	if err := s.repo.UpdateCustomerType(tx, customerType, span); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
@@ -67,8 +62,8 @@ func (s *CustomerTypeService) UpdateCustomerType(ctx context.Context, customerTy
 	return customerType, nil
 }
 
-func (s *CustomerTypeService) DeleteCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB) error {
-	if err := s.repo.DeleteCustomerType(tx, params); err != nil {
+func (s *CustomerTypeService) DeleteCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB, span opentracing.Span) error {
+	if err := s.repo.DeleteCustomerType(tx, params, span); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -76,8 +71,8 @@ func (s *CustomerTypeService) DeleteCustomerType(ctx context.Context, params *dt
 	return nil
 }
 
-func (s *CustomerTypeService) RestoreCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB) error {
-	if err := s.repo.RestoreCustomerType(tx, params); err != nil {
+func (s *CustomerTypeService) RestoreCustomerType(ctx context.Context, params *dtos.GetCustomerTypeParams, tx *gorm.DB, span opentracing.Span) error {
+	if err := s.repo.RestoreCustomerType(tx, params, span); err != nil {
 		tx.Rollback()
 		return err
 	}

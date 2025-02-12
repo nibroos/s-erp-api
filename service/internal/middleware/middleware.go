@@ -176,15 +176,15 @@ func ConvertToClientTimezone() fiber.Handler {
 
 func JaegerTracingMiddleware(tracer opentracing.Tracer) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Start a new span for the request
-		// span := tracer.StartSpan(c.Path())
-		span := tracer.StartSpan(c.Path())
-		defer span.Finish()
-
 		// Call the next handler
 		err := c.Next()
 
 		if err != nil || c.Response().StatusCode() >= 400 {
+			span := tracer.StartSpan(c.Path())
+			defer span.Finish()
+
+			// Add custom tag to indicate middleware-based tracing
+			span.SetTag("type", "middleware")
 
 			// Set standard HTTP tags
 			ext.HTTPMethod.Set(span, c.Method())

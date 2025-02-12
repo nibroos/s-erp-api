@@ -200,10 +200,13 @@ services:
       - s-erp-api-network
     environment:
       - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+    volumes:
+      - jaeger-logs:/var/log/jaeger  # Add this line to specify the volume
 
 volumes:
   postgres-s-erp-api:
   grafana-storage:
+  jaeger-logs:
 
 networks:
   s-erp-api-network:

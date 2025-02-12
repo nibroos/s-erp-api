@@ -3,24 +3,23 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
-	jLog "github.com/opentracing/opentracing-go/log"
 	"gorm.io/gorm"
 )
 
 type CustomerTypeRepository struct {
 	db     *gorm.DB
 	sqlDB  *sqlx.DB
-	tracer opentracing.Span
+	tracer opentracing.Tracer
 }
 
-func NewCustomerTypeRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Span) *CustomerTypeRepository {
+func NewCustomerTypeRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *CustomerTypeRepository {
 	return &CustomerTypeRepository{
 		db:     db,
 		sqlDB:  sqlDB,
@@ -31,18 +30,13 @@ func NewCustomerTypeRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.S
 func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CustomerTypeListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("CustomerTypeRepository-GetCustomerTypes", opentracing.ChildOf(span.Context()))
-	defer childSpan.Finish()
 
 	customerTypes := []dtos.CustomerTypeListDTO{}
 	var total int
 
 	// Simulate an error for testing Jaeger tracing
 	if filters["simulate_error"] == "true" {
-		childSpan.LogFields(
-			jLog.String("event", "error"),
-			jLog.String("message", "simulated error"),
-		)
-		ext.Error.Set(childSpan, true)
+		utils.LogErrors(childSpan, fmt.Errorf("simulated error"))
 
 		return nil, 0, fmt.Errorf("simulated error")
 	}
@@ -54,10 +48,10 @@ func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters m
         uu.name as updated_by_name
 
         FROM mix_values m
-				LEFT JOIN groups g ON m.group_id = g.id
+                LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'customer_types'
+                WHERE g.name = 'customer_types'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -68,8 +62,8 @@ func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters m
         FROM mix_values m
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'customer_types'
+                LEFT JOIN groups g ON m.group_id = g.id
+                WHERE g.name = 'customer_types'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -96,17 +90,22 @@ func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters m
 
 	countArgs := append([]interface{}{}, args...)
 
-	// Channels for concurrent execution
-	countChan := make(chan error)
-	selectChan := make(chan error)
+	var wg sync.WaitGroup
+	var countErr, selectErr error
 
 	// Goroutine for count query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if filters["is_csv"] != "1" {
+			// Create a span for the count query
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-			countChan <- err
-		} else {
-			countChan <- nil
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+			}
+			countErr = err
 		}
 	}()
 
@@ -124,14 +123,21 @@ func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters m
 	}
 
 	// Goroutine for select query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		// Create a span for the select query
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
 		err := r.sqlDB.SelectContext(ctx, &customerTypes, query, args...)
-		selectChan <- err
+		if err != nil {
+			utils.LogErrors(selectSpan, err)
+		}
+		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
-	countErr := <-countChan
-	selectErr := <-selectChan
+	wg.Wait()
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -144,7 +150,8 @@ func (r *CustomerTypeRepository) GetCustomerTypes(ctx context.Context, filters m
 	return customerTypes, total, nil
 }
 
-func (r *CustomerTypeRepository) GetCustomerTypeByID(ctx context.Context, params *dtos.GetCustomerTypeParams) (*dtos.CustomerTypeDetailDTO, error) {
+func (r *CustomerTypeRepository) GetCustomerTypeByID(ctx context.Context, params *dtos.GetCustomerTypeParams, span opentracing.Span) (*dtos.CustomerTypeDetailDTO, error) {
+	childSpan := opentracing.StartSpan("CustomerTypeRepository-GetCustomerTypeByID", opentracing.ChildOf(span.Context()))
 	var customerType dtos.CustomerTypeDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
@@ -172,6 +179,7 @@ func (r *CustomerTypeRepository) GetCustomerTypeByID(ctx context.Context, params
 	query += isDeletedQuery
 
 	if err := r.sqlDB.Get(&customerType, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
@@ -183,16 +191,20 @@ func (r *CustomerTypeRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *CustomerTypeRepository) CreateCustomerType(tx *gorm.DB, customerType *models.MixValue) error {
+func (r *CustomerTypeRepository) CreateCustomerType(tx *gorm.DB, customerType *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CustomerTypeRepository-CreateCustomerType", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(customerType).Error; err != nil {
+		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *CustomerTypeRepository) UpdateCustomerType(tx *gorm.DB, customerType *models.MixValue) error {
+func (r *CustomerTypeRepository) UpdateCustomerType(tx *gorm.DB, customerType *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CustomerTypeRepository-UpdateCustomerType", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Updates(customerType).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -200,19 +212,23 @@ func (r *CustomerTypeRepository) UpdateCustomerType(tx *gorm.DB, customerType *m
 
 }
 
-func (r *CustomerTypeRepository) DeleteCustomerType(tx *gorm.DB, params *dtos.GetCustomerTypeParams) error {
+func (r *CustomerTypeRepository) DeleteCustomerType(tx *gorm.DB, params *dtos.GetCustomerTypeParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CustomerTypeRepository-DeleteCustomerType", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *CustomerTypeRepository) RestoreCustomerType(tx *gorm.DB, params *dtos.GetCustomerTypeParams) error {
+func (s *CustomerTypeRepository) RestoreCustomerType(tx *gorm.DB, params *dtos.GetCustomerTypeParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CustomerTypeRepository-RestoreCustomerType", opentracing.ChildOf(span.Context()))
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var customerType models.MixValue
 		if err := tx.Unscoped().Model(&customerType).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
