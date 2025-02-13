@@ -506,6 +506,13 @@ func StartSpanFromController(ctx *fiber.Ctx, tracer opentracing.Tracer, funcDesc
 	return parentSpan
 }
 
+func FilterOtel(ctx *fiber.Ctx) bool {
+	// filter response status code >= 400
+	isError := ctx.Response().StatusCode() >= 400
+
+	return isError
+}
+
 func LogErrors(span opentracing.Span, err error) {
 	defer span.Finish()
 	span.LogFields(
@@ -513,4 +520,16 @@ func LogErrors(span opentracing.Span, err error) {
 		jLog.String("message", err.Error()),
 	)
 	ext.Error.Set(span, true)
+}
+
+func LogResponse(span opentracing.Span, responseBody interface{}) {
+	responseBodyJSON, _ := json.Marshal(responseBody)
+	span.LogKV("response_body", string(responseBodyJSON))
+}
+
+func GetBodyPayloadValue(ctx *fiber.Ctx, key string) string {
+	body := ctx.Body()
+	var payload map[string]interface{}
+	json.Unmarshal(body, &payload)
+	return payload[key].(string)
 }

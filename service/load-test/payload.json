@@ -3,5 +3,6 @@
 	"global": "",
 	"per_page": "50",
 	"order_column": "",
-	"order_direction": "desc"
+	"order_direction": "desc",
+	"simulate_error": "true"
 }

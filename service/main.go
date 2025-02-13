@@ -91,6 +91,10 @@ func main() {
 	registry := prometheus.NewRegistry()
 	prometheus.DefaultRegisterer = registry
 
+	// Register the metrics with Prometheus
+	prometheus.MustRegister(httpRequestsTotal)
+	prometheus.MustRegister(httpRequestDuration)
+
 	// Expose Prometheus metrics endpoint
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {

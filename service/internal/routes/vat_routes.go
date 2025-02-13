@@ -6,15 +6,14 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
-func SetupVatRoutes(vats fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository) {
-	vatRepo := repository.NewVatRepository(gormDB, sqlDB)
-	vatService := service.NewVatService(vatRepo, utilRepo)
-	vatController := rest.NewVatController(vatService, vatRepo)
-
-	// prefix /vats
+func SetupVatRoutes(vats fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) {
+	vatRepo := repository.NewVatRepository(gormDB, sqlDB, tracer)
+	vatService := service.NewVatService(vatRepo, utilRepo, tracer)
+	vatController := rest.NewVatController(vatService, vatRepo, tracer)
 
 	// vats.Post("/index-vat", middleware.PermissionMiddleware("index-vat"), vatController.GetVats)
 	vats.Post("/index-vat", vatController.GetVats)

@@ -6,15 +6,14 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
-func SetupUnitRoutes(units fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository) {
-	unitRepo := repository.NewUnitRepository(gormDB, sqlDB)
-	unitService := service.NewUnitService(unitRepo, utilRepo)
-	unitController := rest.NewUnitController(unitService, unitRepo)
-
-	// prefix /units
+func SetupUnitRoutes(units fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) {
+	unitRepo := repository.NewUnitRepository(gormDB, sqlDB, tracer)
+	unitService := service.NewUnitService(unitRepo, utilRepo, tracer)
+	unitController := rest.NewUnitController(unitService, unitRepo, tracer)
 
 	// units.Post("/index-unit", middleware.PermissionMiddleware("index-unit"), unitController.GetUnits)
 	units.Post("/index-unit", unitController.GetUnits)

@@ -58,7 +58,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	SetupAddressRoutes(addresses, gormDB, sqlDB)
 
 	itemGroup := version.Group("/item-groups")
-	SetupItemGroupRoutes(itemGroup, gormDB, sqlDB, utilRepo)
+	SetupItemGroupRoutes(itemGroup, gormDB, sqlDB, utilRepo, tracer)
 
 	itemSubGroup := version.Group("/item-sub-groups")
 	SetupItemSubGroupRoutes(itemSubGroup, gormDB, sqlDB, utilRepo)
@@ -70,16 +70,16 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	SetupCustomerTypeRoutes(customerType, gormDB, sqlDB, utilRepo, tracer)
 
 	currency := version.Group("/currencies")
-	SetupCurrencyRoutes(currency, gormDB, sqlDB, utilRepo)
+	SetupCurrencyRoutes(currency, gormDB, sqlDB, utilRepo, tracer)
 
 	unit := version.Group("/units")
-	SetupUnitRoutes(unit, gormDB, sqlDB, utilRepo)
+	SetupUnitRoutes(unit, gormDB, sqlDB, utilRepo, tracer)
 
 	vat := version.Group("/vats")
-	SetupVatRoutes(vat, gormDB, sqlDB, utilRepo)
+	SetupVatRoutes(vat, gormDB, sqlDB, utilRepo, tracer)
 
 	pph23 := version.Group("/pph23s")
-	SetupPph23Routes(pph23, gormDB, sqlDB, utilRepo)
+	SetupPph23Routes(pph23, gormDB, sqlDB, utilRepo, tracer)
 
 	// Scheduler route
 	// cron := cron.New()

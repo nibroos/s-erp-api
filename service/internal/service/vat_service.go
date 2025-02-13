@@ -1,14 +1,15 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -16,25 +17,33 @@ import (
 type VatService struct {
 	repo     *repository.VatRepository
 	utilRepo *repository.UtilRepository
+	tracer   opentracing.Tracer
 }
 
-func NewVatService(repo *repository.VatRepository, utilRepo *repository.UtilRepository) *VatService {
+func NewVatService(repo *repository.VatRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *VatService {
 	return &VatService{
 		repo:     repo,
 		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (s *VatService) GetVats(ctx context.Context, filters map[string]string) ([]dtos.VatListDTO, int, error) {
-	vats, total, err := s.repo.GetVats(ctx, filters)
+func (s *VatService) GetVats(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.VatListDTO, int, error) {
+	childSpan := opentracing.StartSpan("VatService-GetVats", opentracing.ChildOf(span.Context()))
+
+	vats, total, err := s.repo.GetVats(ctx.Context(), filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, 0, err
 	}
 	return vats, total, nil
 }
 
-func (s *VatService) CreateVat(ctx context.Context, vat *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.CreateVat(tx, vat); err != nil {
+func (s *VatService) CreateVat(ctx *fiber.Ctx, vat *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("VatService-CreateVat", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreateVat(tx, vat, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -42,16 +51,22 @@ func (s *VatService) CreateVat(ctx context.Context, vat *models.MixValue, tx *go
 	return vat, nil
 }
 
-func (s *VatService) GetVatByID(ctx context.Context, params *dtos.GetVatParams) (*dtos.VatDetailDTO, error) {
-	vat, err := s.repo.GetVatByID(ctx, params)
+func (s *VatService) GetVatByID(ctx *fiber.Ctx, params *dtos.GetVatParams, span opentracing.Span) (*dtos.VatDetailDTO, error) {
+	childSpan := opentracing.StartSpan("VatService-GetVatByID", opentracing.ChildOf(span.Context()))
+
+	vat, err := s.repo.GetVatByID(ctx.Context(), params, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 	return vat, nil
 }
 
-func (s *VatService) UpdateVat(ctx context.Context, vat *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.UpdateVat(tx, vat); err != nil {
+func (s *VatService) UpdateVat(ctx *fiber.Ctx, vat *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("VatService-UpdateVat", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.UpdateVat(tx, vat, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -59,8 +74,11 @@ func (s *VatService) UpdateVat(ctx context.Context, vat *models.MixValue, tx *go
 	return vat, nil
 }
 
-func (s *VatService) DeleteVat(ctx context.Context, params *dtos.GetVatParams, tx *gorm.DB) error {
-	if err := s.repo.DeleteVat(tx, params); err != nil {
+func (s *VatService) DeleteVat(ctx *fiber.Ctx, params *dtos.GetVatParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatService-DeleteVat", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.DeleteVat(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -68,8 +86,11 @@ func (s *VatService) DeleteVat(ctx context.Context, params *dtos.GetVatParams, t
 	return nil
 }
 
-func (s *VatService) RestoreVat(ctx context.Context, params *dtos.GetVatParams, tx *gorm.DB) error {
-	if err := s.repo.RestoreVat(tx, params); err != nil {
+func (s *VatService) RestoreVat(ctx *fiber.Ctx, params *dtos.GetVatParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatService-RestoreVat", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.RestoreVat(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -78,9 +99,12 @@ func (s *VatService) RestoreVat(ctx context.Context, params *dtos.GetVatParams, 
 }
 
 // github.com/xuri/excelize/v2
-func (s *VatService) ExcelGetVats(ctx context.Context, filters map[string]string) ([]byte, error) {
-	vats, _, err := s.GetVats(ctx, filters)
+func (s *VatService) ExcelGetVats(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("VatService-ExcelGetVats", opentracing.ChildOf(span.Context()))
+
+	vats, _, err := s.GetVats(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
@@ -123,19 +147,23 @@ func (s *VatService) ExcelGetVats(ctx context.Context, filters map[string]string
 }
 
 // github.com/xuri/excelize/v2
-func (s *VatService) CsvGetVats(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *VatService) CsvGetVats(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("VatService-CsvGetVats", opentracing.ChildOf(span.Context()))
+
 	// filters is_csv
 	filters["is_csv"] = "1"
-	vats, _, err := s.GetVats(ctx, filters)
+	vats, _, err := s.GetVats(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
 	appName := "App"
 	if err != nil {
+		defer childSpan.Finish()
 		log.Println("CsvGetVats error:", err)
 	} else {
 		appName = companyProfile.CompanyName
@@ -143,16 +171,15 @@ func (s *VatService) CsvGetVats(ctx context.Context, filters map[string]string) 
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Item Groups\n"
+	csv += "Vats\n"
 	csv += "\n"
 
 	csv += "ID,Name,Description,Remark,Created At,Updated At\n"
 	// Build CSV rows
 	for _, vat := range vats {
-		csv += fmt.Sprintf("%d,%s,%f,%s,%s,%s,%s\n",
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s\n",
 			vat.ID,
 			vat.Name,
-			vat.Num,
 			utils.GetPtrVal(vat.Description),
 			utils.GetPtrVal(vat.Remark),
 			utils.GetPtrVal(vat.CreatedAt),

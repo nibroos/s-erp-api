@@ -6,15 +6,14 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
-func SetupCurrencyRoutes(currencies fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository) {
-	currencyRepo := repository.NewCurrencyRepository(gormDB, sqlDB)
-	currencyService := service.NewCurrencyService(currencyRepo, utilRepo)
-	currencyController := rest.NewCurrencyController(currencyService, currencyRepo)
-
-	// prefix /currencies
+func SetupCurrencyRoutes(currencies fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) {
+	currencyRepo := repository.NewCurrencyRepository(gormDB, sqlDB, tracer)
+	currencyService := service.NewCurrencyService(currencyRepo, utilRepo, tracer)
+	currencyController := rest.NewCurrencyController(currencyService, currencyRepo, tracer)
 
 	// currencies.Post("/index-currency", middleware.PermissionMiddleware("index-currency"), currencyController.GetCurrencies)
 	currencies.Post("/index-currency", currencyController.GetCurrencies)

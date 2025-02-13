@@ -11,27 +11,43 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/service"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/nibroos/s-erp-api/service/internal/validators/form_requests"
+	"github.com/opentracing/opentracing-go"
+	// "github.com/opentracing/opentracing-go/ext"
 )
 
 type Pph23Controller struct {
 	service *service.Pph23Service
 	repo    *repository.Pph23Repository
+	tracer  opentracing.Tracer
 }
 
-// func NewPph23Controller(service *service.Pph23Service) *Pph23Controller {
-func NewPph23Controller(service *service.Pph23Service, repo *repository.Pph23Repository) *Pph23Controller {
-	return &Pph23Controller{service: service, repo: repo}
+func NewPph23Controller(service *service.Pph23Service, repo *repository.Pph23Repository, tracer opentracing.Tracer) *Pph23Controller {
+	return &Pph23Controller{service: service, repo: repo, tracer: tracer}
 }
 
 func (c *Pph23Controller) GetPph23s(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("Pph23Controller-GetPph23s", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	filters, ok := ctx.Locals("filters").(map[string]string)
+
 	if !ok {
+		apiSpan.LogKV("response_body", string("Pph23Controller-GetPph23s: Invalid filters"))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	pph23s, total, err := c.service.GetPph23s(ctx.Context(), filters)
+	pph23s, total, err := c.service.GetPph23s(ctx, filters, parentSpan)
 	if err != nil {
-		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.SendResponse(ctx, response, http.StatusInternalServerError)
 	}
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
@@ -40,6 +56,16 @@ func (c *Pph23Controller) GetPph23s(ctx *fiber.Ctx) error {
 }
 
 func (c *Pph23Controller) CreatePph23(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("Pph23Controller-CreatePph23", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.CreatePph23Request
 
 	// Use the utility function to parse the request body
@@ -50,12 +76,15 @@ func (c *Pph23Controller) CreatePph23(ctx *fiber.Ctx) error {
 	// Validate the request
 	reqValidator := form_requests.NewPph23StoreRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
+		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
 	// Extract user ID from JWT
 	claims, err := middleware.GetAuthUser(ctx)
 	if err != nil {
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusUnauthorized)
+		utils.LogResponse(apiSpan, response)
 		return utils.GetResponse(ctx, nil, nil, "Unauthorized", http.StatusUnauthorized, err.Error(), nil)
 	}
 	userID := uint(claims["user_id"].(float64))
@@ -65,31 +94,33 @@ func (c *Pph23Controller) CreatePph23(ctx *fiber.Ctx) error {
 		GroupID:     utils.Pph23ID,
 		Description: req.Description,
 		Remark:      req.Remark,
-		Num:         req.Num,
+		OrderItem:   nil,
 		Status:      req.Status,
 		CreatedByID: &userID,
 		OptionsJSON: "{}",
 	}
 
 	tx := c.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to create pph23", http.StatusInternalServerError, err.Error(), nil)
-	}
-
-	createdPph23, err := c.service.CreatePph23(ctx.Context(), &pph23, tx)
+	createdPph23, err := c.service.CreatePph23(ctx, &pph23, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
-		return utils.GetResponse(ctx, nil, nil, "Failed to create pph23", http.StatusInternalServerError, err.Error(), nil)
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create pph23s", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to create pph23", http.StatusInternalServerError, err.Error(), nil)
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create pph23s", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params := &dtos.GetPph23Params{ID: createdPph23.ID}
-	getPph23, err := c.service.GetPph23ByID(ctx.Context(), params)
+	getPph23, err := c.service.GetPph23ByID(ctx, params, parentSpan)
 	if err != nil {
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
 		return utils.GetResponse(ctx, nil, nil, "Pph23 not found", http.StatusNotFound, err.Error(), nil)
 	}
 
@@ -99,6 +130,16 @@ func (c *Pph23Controller) CreatePph23(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, []interface{}{getPph23}, paginationMeta, "Pph23 created successfully", http.StatusCreated, nil, nil)
 }
 func (c *Pph23Controller) GetPph23ByID(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("Pph23Controller-GetPph23ByID", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.GetPph23ByIDRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
@@ -110,8 +151,10 @@ func (c *Pph23Controller) GetPph23ByID(ctx *fiber.Ctx) error {
 	}
 
 	params := &dtos.GetPph23Params{ID: req.ID}
-	pph23, err := c.service.GetPph23ByID(ctx.Context(), params)
+	pph23, err := c.service.GetPph23ByID(ctx, params, parentSpan)
 	if err != nil {
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
 		return utils.GetResponse(ctx, nil, nil, "Pph23 not found", http.StatusNotFound, err.Error(), nil)
 	}
 
@@ -125,6 +168,16 @@ func (c *Pph23Controller) GetPph23ByID(ctx *fiber.Ctx) error {
 
 // update pph23
 func (c *Pph23Controller) UpdatePph23(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("Pph23Controller-UpdatePph23", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.UpdatePph23Request
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
@@ -134,14 +187,9 @@ func (c *Pph23Controller) UpdatePph23(ctx *fiber.Ctx) error {
 	// Validate the request
 	reqValidator := form_requests.NewPph23UpdateRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
+		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
-
-	// // Fetch the existing pph23 to get the current data
-	// existingPph23, err := c.service.GetPph23ByID(ctx.Context(), req.ID)
-	// if err != nil {
-	// 	return utils.GetResponse(ctx, nil, nil, "Pph23 not found", http.StatusNotFound, err.Error(), nil)
-	// }
 
 	// Extract user ID from JWT
 	claims, err := middleware.GetAuthUser(ctx)
@@ -156,35 +204,30 @@ func (c *Pph23Controller) UpdatePph23(ctx *fiber.Ctx) error {
 		Name:        req.Name,
 		Description: req.Description,
 		Remark:      req.Remark,
-		Num:         req.Num,
 		Status:      req.Status,
-		// CreatedByID: &existingPph23.CreatedByID,
 		UpdatedByID: &userID,
 		OptionsJSON: "{}",
 	}
 
 	tx := c.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to create pph23", http.StatusInternalServerError, err.Error(), nil)
-	}
 
-	updatedPph23, err := c.service.UpdatePph23(ctx.Context(), &pph23, tx)
+	updatedPph23, err := c.service.UpdatePph23(ctx, &pph23, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		if err.Error() == "pph23 name already exists" {
 			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Pph23 already exists", "status": http.StatusConflict})
 		}
 		return utils.GetResponse(ctx, nil, nil, "Failed to update Pph23", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to update Pph23", http.StatusInternalServerError, err.Error(), nil)
-	}
+	tx.Commit()
 
 	params := &dtos.GetPph23Params{ID: updatedPph23.ID}
-	getPph23, err := c.service.GetPph23ByID(ctx.Context(), params)
+	getPph23, err := c.service.GetPph23ByID(ctx, params, parentSpan)
 	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Pph23 not found", http.StatusNotFound, err.Error(), nil)
 	}
 
@@ -196,6 +239,16 @@ func (c *Pph23Controller) UpdatePph23(ctx *fiber.Ctx) error {
 
 // delete pph23
 func (c *Pph23Controller) DeletePph23(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("Pph23Controller-DeletePph23", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.DeletePph23Request
 
 	if err := ctx.BodyParser(&req); err != nil {
@@ -208,36 +261,42 @@ func (c *Pph23Controller) DeletePph23(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetPph23Params{ID: req.ID}
 	// GET pph23 by ID
-	_, err := c.service.GetPph23ByID(ctx.Context(), params)
+	_, err := c.service.GetPph23ByID(ctx, params, parentSpan)
 	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Pph23 not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	// Transaction handling
 	tx := c.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return err
-	}
-
-	err = c.service.DeletePph23(ctx.Context(), params, tx)
-
+	err = c.service.DeletePph23(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete Pph23", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		return err
-	}
+	tx.Commit()
 
 	return utils.GetResponse(ctx, nil, nil, "Pph23 deleted successfully", http.StatusOK, nil, nil)
 }
 
 // restore pph23
 func (c *Pph23Controller) RestorePph23(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("Pph23Controller-RestorePph23", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.DeletePph23Request
 
 	if err := ctx.BodyParser(&req); err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Pph23 not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
@@ -246,39 +305,47 @@ func (c *Pph23Controller) RestorePph23(ctx *fiber.Ctx) error {
 	}
 
 	tx := c.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to restore pph23", http.StatusInternalServerError, err.Error(), nil)
-	}
 
 	isDeleted := 1
 	params := &dtos.GetPph23Params{ID: req.ID, IsDeleted: &isDeleted}
 	// GET pph23 by ID
-	_, err := c.service.GetPph23ByID(ctx.Context(), params)
+	_, err := c.service.GetPph23ByID(ctx, params, parentSpan)
 	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Pph23 not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestorePph23(ctx.Context(), params, tx)
+	err = c.service.RestorePph23(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore Pph23", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to restore Pph23", http.StatusInternalServerError, err.Error(), nil)
-	}
+	tx.Commit()
 
 	return utils.GetResponse(ctx, nil, nil, "Pph23 restored successfully", http.StatusOK, nil, nil)
 }
 
 func (c *Pph23Controller) ExcelGetPph23s(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("Pph23Controller-ExcelGetPph23s", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	filters, ok := ctx.Locals("filters").(map[string]string)
 	if !ok {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	pph23s, err := c.service.ExcelGetPph23s(ctx.Context(), filters)
+	pph23s, err := c.service.ExcelGetPph23s(ctx, filters, parentSpan)
 	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
@@ -286,13 +353,24 @@ func (c *Pph23Controller) ExcelGetPph23s(ctx *fiber.Ctx) error {
 }
 
 func (c *Pph23Controller) CsvGetPph23s(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetPph23s", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	filters, ok := ctx.Locals("filters").(map[string]string)
 	if !ok {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	pph23s, err := c.service.CsvGetPph23s(ctx.Context(), filters)
+	pph23s, err := c.service.CsvGetPph23s(ctx, filters, parentSpan)
 	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 

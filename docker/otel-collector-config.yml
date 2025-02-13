@@ -1,0 +1,183 @@
+# receivers:
+#   otlp:
+#     protocols:
+#       grpc:
+#       http:
+
+# processors:
+#   batch:
+#   memory_limiter:
+#     check_interval: 1s
+#     limit_percentage: 50
+#     spike_limit_percentage: 30
+  
+#   tail_sampling:
+#     decision_wait: 5s
+#     num_traces: 100
+#     expected_new_traces_per_sec: 10
+#     policies:
+#       [
+#         {
+#           name: policy-error-only,
+#           type: status_code,
+#           status_code: {status_codes: [ERROR]}
+#         },
+#       ]
+
+# exporters:
+#   jaeger:
+#     endpoint: "http://jaeger:14268/api/traces"
+#     tls:
+#       insecure:  true
+  
+#   prometheus:
+#     endpoint: "0.0.0.0:8889"
+
+#   logging:
+#     loglevel: debug
+
+# service:
+#   pipelines:
+#     traces:
+#       receivers: [otlp]
+#       processors: [batch, memory_limiter, tail_sampling] # use this if want use tail_sampling
+#       exporters: [jaeger]
+#     metrics:
+#       receivers: [otlp]
+#       processors: [batch, memory_limiter]
+#       exporters: [prometheus]
+
+# receivers:
+#   otlp:
+#     protocols:
+#       grpc:
+#         endpoint: 0.0.0.0:4317
+#       http:
+#         endpoint: 0.0.0.0:4318
+
+# processors:
+#   # Filter traces to only include those with errors
+#   filter/errors:
+#     traces:
+#       span:
+#         - 'attributes["error"] == true'
+
+#   # Add a batch processor to group traces before exporting
+#   batch:
+#     timeout: 5s
+#     send_batch_size: 100
+
+# exporters:
+#   jaeger:
+#     endpoint: jaeger:14250  # Jaeger gRPC endpoint
+#     tls:
+#       insecure: true
+
+#   logging:
+#     loglevel: debug  # Log exported traces for debugging
+
+# service:
+#   pipelines:
+#     traces:
+#       receivers: [otlp]
+#       processors: [filter/errors, batch]
+#       exporters: [jaeger, logging]
+
+# receivers:
+#   otlp:
+#     protocols:
+#       grpc: # default portnya 4317
+#       # http: # default portnya 4318
+
+# processors:
+#   batch:
+
+#   memory_limiter:
+#     check_interval: 1s
+#     limit_percentage: 50
+#     spike_limit_percentage: 30
+
+#   # Detail dari tail sampling dapat cek disini
+#   # https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/tailsamplingprocessor/README.md
+#   tail_sampling:
+#     decision_wait: 5s
+#     num_traces: 100
+#     expected_new_traces_per_sec: 10
+#     policies:
+#       [
+#         {
+#           name: policy-error-only,
+#           type: status_code,
+#           status_code: {status_codes: [ERROR]}
+#         },
+#       ]
+
+
+
+# exporters:
+#   jaeger:
+#     endpoint: jaeger-aio:14250 #host jaeger via docker network
+#     tls:
+#       insecure:  true
+
+#   prometheus:
+#     endpoint: "0.0.0.0:8889"
+
+#   logging:
+#     loglevel: debug
+
+# # extensions:
+# #   health_check:
+# #   pprof:
+# #   zpages:
+
+# service:
+#   # extensions: [health_check, pprof, zpages]
+#   pipelines:
+#     traces:
+#       receivers: [otlp]
+#       # processors: [batch, memory_limiter]
+#       processors: [batch, memory_limiter, tail_sampling] # use this if want use tail_sampling
+#       exporters: [jaeger]
+#     metrics:
+#       receivers: [otlp]
+#       processors: [batch, memory_limiter]
+#       exporters: [prometheus]
+#     # logs:
+#     #   receivers: [otlp]
+#     #   processors: [batch, memory_limiter]
+#     #   exporters: [otlp]
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  filter:
+    traces:
+      span:
+        - 'attributes["error"] == true'
+
+  batch:
+    timeout: 5s
+    send_batch_size: 100
+
+exporters:
+  jaeger:
+    endpoint: jaeger:14250  # Jaeger gRPC endpoint
+    tls:
+      insecure: true
+
+  logging:
+    loglevel: debug  # Log exported traces for debugging
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [filter, batch]
+      exporters: [jaeger, logging]

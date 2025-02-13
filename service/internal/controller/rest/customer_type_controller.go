@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -27,10 +26,12 @@ func NewCustomerTypeController(service *service.CustomerTypeService, repo *repos
 }
 
 func (c *CustomerTypeController) GetCustomerTypes(ctx *fiber.Ctx) error {
-	parentSpan := utils.StartSpanFromController(ctx, c.tracer, "CustomerTypeController-GetCustomerTypes")
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-GetCustomerTypes", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
-		if ctx.Response().StatusCode() >= 400 {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
 			defer parentSpan.Finish()
 		}
 	}()
@@ -38,28 +39,29 @@ func (c *CustomerTypeController) GetCustomerTypes(ctx *fiber.Ctx) error {
 	filters, ok := ctx.Locals("filters").(map[string]string)
 
 	if !ok {
-		parentSpan.LogKV("response_body", string("CustomerTypeController-GetCustomerTypes: Invalid filters"))
+		apiSpan.LogKV("response_body", string("CustomerTypeController-GetCustomerTypes: Invalid filters"))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	customerTypes, total, err := c.service.GetCustomerTypes(ctx.Context(), filters, parentSpan)
+	customerTypes, total, err := c.service.GetCustomerTypes(ctx, filters, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		responseJSON, _ := json.Marshal(response)
-		parentSpan.LogKV("response_body", string(responseJSON))
+		utils.LogResponse(apiSpan, response)
 		return utils.SendResponse(ctx, response, http.StatusInternalServerError)
 	}
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
-	return utils.GetResponse(ctx, customerTypes, paginationMeta, "Customer type fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, customerTypes, paginationMeta, "CustomerType fetched successfully", http.StatusOK, nil, nil)
 }
 
 func (c *CustomerTypeController) CreateCustomerType(ctx *fiber.Ctx) error {
-	parentSpan := utils.StartSpanFromController(ctx, c.tracer, "CustomerTypeController-CreateCustomerType")
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-CreateCustomerType", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
-		if ctx.Response().StatusCode() >= 400 {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
 			defer parentSpan.Finish()
 		}
 	}()
@@ -74,8 +76,7 @@ func (c *CustomerTypeController) CreateCustomerType(ctx *fiber.Ctx) error {
 	// Validate the request
 	reqValidator := form_requests.NewCustomerTypeStoreRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
-		stringReqValidator, _ := json.Marshal(reqValidator)
-		parentSpan.LogKV("response_body", string(stringReqValidator))
+		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -83,8 +84,7 @@ func (c *CustomerTypeController) CreateCustomerType(ctx *fiber.Ctx) error {
 	claims, err := middleware.GetAuthUser(ctx)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusUnauthorized)
-		responseJSON, _ := json.Marshal(response)
-		parentSpan.LogKV("response_body", string(responseJSON))
+		utils.LogResponse(apiSpan, response)
 		return utils.GetResponse(ctx, nil, nil, "Unauthorized", http.StatusUnauthorized, err.Error(), nil)
 	}
 	userID := uint(claims["user_id"].(float64))
@@ -101,42 +101,41 @@ func (c *CustomerTypeController) CreateCustomerType(ctx *fiber.Ctx) error {
 	}
 
 	tx := c.repo.BeginTransaction()
-	createdCustomerType, err := c.service.CreateCustomerType(ctx.Context(), &customerType, tx, parentSpan)
+	createdCustomerType, err := c.service.CreateCustomerType(ctx, &customerType, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		responseJSON, _ := json.Marshal(response)
-		parentSpan.LogKV("response_body", string(responseJSON))
-		return utils.GetResponse(ctx, nil, nil, "Failed to create customer types", http.StatusInternalServerError, err.Error(), nil)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create customerTypes", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	if err := tx.Commit().Error; err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		responseJSON, _ := json.Marshal(response)
-		parentSpan.LogKV("response_body", string(responseJSON))
-		return utils.GetResponse(ctx, nil, nil, "Failed to create customer types", http.StatusInternalServerError, err.Error(), nil)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create customerTypes", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params := &dtos.GetCustomerTypeParams{ID: createdCustomerType.ID}
-	getCustomerType, err := c.service.GetCustomerTypeByID(ctx.Context(), params, parentSpan)
+	getCustomerType, err := c.service.GetCustomerTypeByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		responseJSON, _ := json.Marshal(response)
-		parentSpan.LogKV("response_body", string(responseJSON))
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusNotFound, err.Error(), nil)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getCustomerType}, paginationMeta, "Customer type created successfully", http.StatusCreated, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getCustomerType}, paginationMeta, "CustomerType created successfully", http.StatusCreated, nil, nil)
 }
 func (c *CustomerTypeController) GetCustomerTypeByID(ctx *fiber.Ctx) error {
-	parentSpan := utils.StartSpanFromController(ctx, c.tracer, "CustomerTypeController-GetCustomerTypeByID")
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-GetCustomerTypeByID", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
-		if ctx.Response().StatusCode() >= 400 {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
 			defer parentSpan.Finish()
 		}
 	}()
@@ -144,20 +143,19 @@ func (c *CustomerTypeController) GetCustomerTypeByID(ctx *fiber.Ctx) error {
 	var req dtos.GetCustomerTypeByIDRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	params := &dtos.GetCustomerTypeParams{ID: req.ID}
-	customerType, err := c.service.GetCustomerTypeByID(ctx.Context(), params, parentSpan)
+	customerType, err := c.service.GetCustomerTypeByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		responseJSON, _ := json.Marshal(response)
-		parentSpan.LogKV("response_body", string(responseJSON))
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusNotFound, err.Error(), nil)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	customerTypeArray := []interface{}{customerType}
@@ -165,15 +163,17 @@ func (c *CustomerTypeController) GetCustomerTypeByID(ctx *fiber.Ctx) error {
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, customerTypeArray, paginationMeta, "Customer type fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, customerTypeArray, paginationMeta, "CustomerType fetched successfully", http.StatusOK, nil, nil)
 }
 
 // update customerType
 func (c *CustomerTypeController) UpdateCustomerType(ctx *fiber.Ctx) error {
-	parentSpan := utils.StartSpanFromController(ctx, c.tracer, "CustomerTypeController-UpdateCustomerType")
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-UpdateCustomerType", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
-		if ctx.Response().StatusCode() >= 400 {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
 			defer parentSpan.Finish()
 		}
 	}()
@@ -187,8 +187,7 @@ func (c *CustomerTypeController) UpdateCustomerType(ctx *fiber.Ctx) error {
 	// Validate the request
 	reqValidator := form_requests.NewCustomerTypeUpdateRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
-		stringReqValidator, _ := json.Marshal(reqValidator)
-		parentSpan.LogKV("response_body", string(stringReqValidator))
+		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -212,74 +211,97 @@ func (c *CustomerTypeController) UpdateCustomerType(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	updatedCustomerType, err := c.service.UpdateCustomerType(ctx.Context(), &customerType, tx, parentSpan)
+	updatedCustomerType, err := c.service.UpdateCustomerType(ctx, &customerType, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		if err.Error() == "customerType name already exists" {
-			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Customer type already exists", "status": http.StatusConflict})
+			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "CustomerType already exists", "status": http.StatusConflict})
 		}
-		return utils.GetResponse(ctx, nil, nil, "Failed to update Customer type", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to update CustomerType", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
 	params := &dtos.GetCustomerTypeParams{ID: updatedCustomerType.ID}
-	getCustomerType, err := c.service.GetCustomerTypeByID(ctx.Context(), params, parentSpan)
+	getCustomerType, err := c.service.GetCustomerTypeByID(ctx, params, parentSpan)
 	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusNotFound, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getCustomerType}, paginationMeta, "Customer type updated successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getCustomerType}, paginationMeta, "CustomerType updated successfully", http.StatusOK, nil, nil)
 }
 
 // delete customerType
 func (c *CustomerTypeController) DeleteCustomerType(ctx *fiber.Ctx) error {
-	parentSpan := utils.StartSpanFromController(ctx, c.tracer, "CustomerTypeController-DeleteCustomerType")
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-DeleteCustomerType", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.DeleteCustomerTypeRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	params := &dtos.GetCustomerTypeParams{ID: req.ID}
 	// GET customerType by ID
-	_, err := c.service.GetCustomerTypeByID(ctx.Context(), params, parentSpan)
+	_, err := c.service.GetCustomerTypeByID(ctx, params, parentSpan)
 	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusNotFound, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	// Transaction handling
 	tx := c.repo.BeginTransaction()
-	err = c.service.DeleteCustomerType(ctx.Context(), params, tx, parentSpan)
+	err = c.service.DeleteCustomerType(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete Customer type", http.StatusInternalServerError, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete CustomerType", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Customer type deleted successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "CustomerType deleted successfully", http.StatusOK, nil, nil)
 }
 
 // restore customerType
 func (c *CustomerTypeController) RestoreCustomerType(ctx *fiber.Ctx) error {
-	parentSpan := utils.StartSpanFromController(ctx, c.tracer, "CustomerTypeController-RestoreCustomerType")
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-RestoreCustomerType", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.DeleteCustomerTypeRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusBadRequest, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
@@ -287,32 +309,43 @@ func (c *CustomerTypeController) RestoreCustomerType(ctx *fiber.Ctx) error {
 	isDeleted := 1
 	params := &dtos.GetCustomerTypeParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET customerType by ID
-	_, err := c.service.GetCustomerTypeByID(ctx.Context(), params, parentSpan)
+	_, err := c.service.GetCustomerTypeByID(ctx, params, parentSpan)
 	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Customer type not found", http.StatusNotFound, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "CustomerType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreCustomerType(ctx.Context(), params, tx, parentSpan)
+	err = c.service.RestoreCustomerType(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
-		return utils.GetResponse(ctx, nil, nil, "Failed to restore Customer type", http.StatusInternalServerError, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to restore CustomerType", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Customer type restored successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "CustomerType restored successfully", http.StatusOK, nil, nil)
 }
 
 func (c *CustomerTypeController) ExcelGetCustomerTypes(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-ExcelGetCustomerTypes", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	filters, ok := ctx.Locals("filters").(map[string]string)
 	if !ok {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	parentSpan := utils.StartSpanFromController(ctx, c.tracer, "CustomerTypeController-ExcelGetCustomerTypes")
-	defer parentSpan.Finish()
-	customerTypes, err := c.service.ExcelGetCustomerTypes(ctx.Context(), filters, parentSpan)
+	customerTypes, err := c.service.ExcelGetCustomerTypes(ctx, filters, parentSpan)
 	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
@@ -320,15 +353,24 @@ func (c *CustomerTypeController) ExcelGetCustomerTypes(ctx *fiber.Ctx) error {
 }
 
 func (c *CustomerTypeController) CsvGetCustomerTypes(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetCustomerTypes", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	filters, ok := ctx.Locals("filters").(map[string]string)
 	if !ok {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	parentSpan := utils.StartSpanFromController(ctx, c.tracer, "CustomerTypeController-CsvGetCustomerTypes")
-	defer parentSpan.Finish()
-	customerTypes, err := c.service.CsvGetCustomerTypes(ctx.Context(), filters, parentSpan)
+	customerTypes, err := c.service.CsvGetCustomerTypes(ctx, filters, parentSpan)
 	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 

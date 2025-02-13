@@ -29,14 +29,15 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 
 	query := `SELECT *
     FROM ( 
-        SELECT cp.id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
+        SELECT cp.id, cp.is_primary, cp.parent_id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM company_profiles cp
         LEFT JOIN users cu ON cp.created_by_id = cu.id
         LEFT JOIN users uu ON cp.updated_by_id = uu.id
-    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+				WHERE cp.deleted_at IS NULL
+    ) AS alias WHERE 1=1`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT 
@@ -46,7 +47,8 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
         FROM company_profiles cp
         LEFT JOIN users cu ON cp.created_by_id = cu.id
         LEFT JOIN users uu ON cp.updated_by_id = uu.id
-    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+				WHERE cp.deleted_at IS NULL
+    ) AS alias WHERE 1=1`
 
 	var args []interface{}
 
@@ -86,7 +88,7 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 		}
 	}()
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "company_name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
@@ -123,7 +125,7 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx context.Context, params *dtos.GetCompanyProfileParams) (*dtos.CompanyProfileDetailDTO, error) {
 	var CompanyProfile dtos.CompanyProfileDetailDTO
 
-	query := `SELECT cp.id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
+	query := `SELECT cp.id, cp.is_primary, cp.parent_id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
@@ -188,9 +190,9 @@ func (r *CompanyProfileRepository) DeleteCompanyProfile(tx *gorm.DB, params *dto
 func (s *CompanyProfileRepository) RestoreCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var CompanyProfile models.CompanyProfile
-		if err := tx.Unscoped().First(&CompanyProfile, params.ID).Error; err != nil {
+		if err := tx.Unscoped().Model(&CompanyProfile).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
 			return err
 		}
-		return tx.Model(&CompanyProfile).Update("deleted_at", nil).Error
+		return nil
 	})
 }

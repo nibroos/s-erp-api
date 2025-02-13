@@ -3,53 +3,60 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
 type Pph23Repository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Tracer
 }
 
-func NewPph23Repository(db *gorm.DB, sqlDB *sqlx.DB) *Pph23Repository {
+func NewPph23Repository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *Pph23Repository {
 	return &Pph23Repository{
-		db:    db,
-		sqlDB: sqlDB,
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
 	}
 }
 
-func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]string) ([]dtos.Pph23ListDTO, int, error) {
+func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.Pph23ListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("Pph23Repository-GetPph23s", opentracing.ChildOf(span.Context()))
+
 	pph23s := []dtos.Pph23ListDTO{}
 	var total int
 
 	query := `SELECT *
     FROM ( 
-        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM mix_values m
-				LEFT JOIN groups g ON m.group_id = g.id
+                LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'pph23s'
+                WHERE g.name = 'pph23s'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
-        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM mix_values m
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'pph23s'
+                LEFT JOIN groups g ON m.group_id = g.id
+                WHERE g.name = 'pph23s'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -76,17 +83,22 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 
 	countArgs := append([]interface{}{}, args...)
 
-	// Channels for concurrent execution
-	countChan := make(chan error)
-	selectChan := make(chan error)
+	var wg sync.WaitGroup
+	var countErr, selectErr error
 
 	// Goroutine for count query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if filters["is_csv"] != "1" {
+			// Create a span for the count query
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-			countChan <- err
-		} else {
-			countChan <- nil
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+			}
+			countErr = err
 		}
 	}()
 
@@ -104,14 +116,21 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 	}
 
 	// Goroutine for select query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		// Create a span for the select query
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
 		err := r.sqlDB.SelectContext(ctx, &pph23s, query, args...)
-		selectChan <- err
+		if err != nil {
+			utils.LogErrors(selectSpan, err)
+		}
+		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
-	countErr := <-countChan
-	selectErr := <-selectChan
+	wg.Wait()
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -124,10 +143,11 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 	return pph23s, total, nil
 }
 
-func (r *Pph23Repository) GetPph23ByID(ctx context.Context, params *dtos.GetPph23Params) (*dtos.Pph23DetailDTO, error) {
+func (r *Pph23Repository) GetPph23ByID(ctx context.Context, params *dtos.GetPph23Params, span opentracing.Span) (*dtos.Pph23DetailDTO, error) {
+	childSpan := opentracing.StartSpan("Pph23Repository-GetPph23ByID", opentracing.ChildOf(span.Context()))
 	var pph23 dtos.Pph23DetailDTO
 
-	query := `SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
@@ -152,6 +172,7 @@ func (r *Pph23Repository) GetPph23ByID(ctx context.Context, params *dtos.GetPph2
 	query += isDeletedQuery
 
 	if err := r.sqlDB.Get(&pph23, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
@@ -163,16 +184,20 @@ func (r *Pph23Repository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *Pph23Repository) CreatePph23(tx *gorm.DB, pph23 *models.MixValue) error {
+func (r *Pph23Repository) CreatePph23(tx *gorm.DB, pph23 *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("Pph23Repository-CreatePph23", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(pph23).Error; err != nil {
+		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *Pph23Repository) UpdatePph23(tx *gorm.DB, pph23 *models.MixValue) error {
+func (r *Pph23Repository) UpdatePph23(tx *gorm.DB, pph23 *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("Pph23Repository-UpdatePph23", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Updates(pph23).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -180,19 +205,23 @@ func (r *Pph23Repository) UpdatePph23(tx *gorm.DB, pph23 *models.MixValue) error
 
 }
 
-func (r *Pph23Repository) DeletePph23(tx *gorm.DB, params *dtos.GetPph23Params) error {
+func (r *Pph23Repository) DeletePph23(tx *gorm.DB, params *dtos.GetPph23Params, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("Pph23Repository-DeletePph23", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *Pph23Repository) RestorePph23(tx *gorm.DB, params *dtos.GetPph23Params) error {
+func (s *Pph23Repository) RestorePph23(tx *gorm.DB, params *dtos.GetPph23Params, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("Pph23Repository-RestorePph23", opentracing.ChildOf(span.Context()))
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var pph23 models.MixValue
 		if err := tx.Unscoped().Model(&pph23).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
