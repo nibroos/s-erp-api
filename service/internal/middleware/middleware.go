@@ -48,7 +48,6 @@ func ErrorHandler(ctx *fiber.Ctx, err error) error {
 	})
 	// return fiber.NewError(code, message)
 }
-
 func ConvertRequestToFilters() fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		// Check if the content type is JSON
@@ -75,11 +74,46 @@ func ConvertRequestToFilters() fiber.Handler {
 					filters[key] = strconv.Itoa(v)
 				case float64:
 					filters[key] = strconv.FormatFloat(v, 'f', -1, 64)
-				// case if nil
-				// case nil:
-				// 	filters[key] = ""
 				default:
 					log.Printf("Unsupported type for key %s: %T", key, v)
+				}
+			}
+
+			// Marshal the modified body back to JSON
+			modifiedBody, err := json.Marshal(requestBody)
+			if err != nil {
+				return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process request body"})
+			}
+
+			// Replace the request body with the modified body
+			ctx.Request().SetBody(modifiedBody)
+
+			ctx.Locals("filters", filters)
+		}
+
+		// Check if the content type is multipart/form-data
+		if ctx.Get("Content-Type") == "multipart/form-data" {
+			form, err := ctx.MultipartForm()
+			if err != nil {
+				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"message": "Failed to parse multipart form",
+					"status":  "error",
+					"err":     err.Error(),
+				})
+			}
+
+			filters := make(map[string]string)
+			for key, values := range form.Value {
+				if len(values) > 0 {
+					filters[key] = values[0]
+				}
+			}
+
+			// Convert form values to JSON
+			requestBody := make(map[string]interface{})
+			for key, values := range form.Value {
+				if len(values) > 0 {
+					requestBody[key] = values[0]
 				}
 			}
 
@@ -103,25 +137,54 @@ func ConvertEmptyStringsToNull() fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		// Parse the request body into a map
 		var body map[string]interface{}
-		if err := json.Unmarshal(ctx.Body(), &body); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
-		}
 
-		// Convert empty strings to null
-		for key, value := range body {
-			if str, ok := value.(string); ok && str == "" {
-				body[key] = nil
+		if ctx.Get("Content-Type") == "application/json" {
+			if err := json.Unmarshal(ctx.Body(), &body); err != nil {
+				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 			}
-		}
 
-		// Marshal the modified body back to JSON
-		modifiedBody, err := json.Marshal(body)
-		if err != nil {
-			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process request body"})
-		}
+			// Convert empty strings to null
+			for key, value := range body {
+				if str, ok := value.(string); ok && str == "" {
+					body[key] = nil
+				}
+			}
 
-		// Replace the request body with the modified body
-		ctx.Request().SetBody(modifiedBody)
+			// Marshal the modified body back to JSON
+			modifiedBody, err := json.Marshal(body)
+			if err != nil {
+				return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process request body"})
+			}
+
+			// Replace the request body with the modified body
+			ctx.Request().SetBody(modifiedBody)
+		} else if ctx.Get("Content-Type") == "multipart/form-data" {
+			form, err := ctx.MultipartForm()
+			if err != nil {
+				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to parse multipart form"})
+			}
+
+			// Convert form values to JSON
+			body = make(map[string]interface{})
+			for key, values := range form.Value {
+				if len(values) > 0 {
+					if values[0] == "" {
+						body[key] = nil
+					} else {
+						body[key] = values[0]
+					}
+				}
+			}
+
+			// Marshal the modified body back to JSON
+			modifiedBody, err := json.Marshal(body)
+			if err != nil {
+				return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process request body"})
+			}
+
+			// Replace the request body with the modified body
+			ctx.Request().SetBody(modifiedBody)
+		}
 
 		return ctx.Next()
 	}

@@ -465,32 +465,38 @@ type GetCompanyProfilesRequest struct {
 }
 
 type CreateCompanyProfileRequest struct {
-	ParentID           *uint  `json:"parent_id" db:"parent_id"`
-	IsPrimary          *int   `json:"is_primary" db:"is_primary"`
-	CompanyName        string `json:"company_name" db:"company_name"`
-	CompanyAddress     string `json:"company_address" db:"company_address"`
-	CompanyPhone       string `json:"company_phone" db:"company_phone"`
-	CompanyEmail       string `json:"company_email" db:"company_email"`
-	CompanyWebsite     string `json:"company_website" db:"company_website"`
-	CompanyLogo        string `json:"company_logo" db:"company_logo"`
-	CompanyDescription string `json:"company_description" db:"company_description"`
-	CompanyRemark      string `json:"company_remark" db:"company_remark"`
-	CompanyStatus      int    `json:"company_status" db:"company_status"`
+	ParentID           *uint   `json:"parent_id" db:"parent_id"`
+	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
+	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
+	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
+	CompanyName        string  `json:"company_name" db:"company_name"`
+	CompanyAddress     *string `json:"company_address" db:"company_address"`
+	CompanyPhone       *string `json:"company_phone" db:"company_phone"`
+	CompanyEmail       *string `json:"company_email" db:"company_email"`
+	CompanyWebsite     *string `json:"company_website" db:"company_website"`
+	CompanyLogo        *string `json:"company_logo" db:"company_logo"`
+	CompanySign        *string `json:"company_sign" db:"company_sign"`
+	CompanyDescription *string `json:"company_description" db:"company_description"`
+	CompanyRemark      *string `json:"company_remark" db:"company_remark"`
+	CompanyStatus      int     `json:"company_status" db:"company_status"`
 }
 
 type UpdateCompanyProfileRequest struct {
-	ID                 uint   `json:"id"`
-	ParentID           *uint  `json:"parent_id" db:"parent_id"`
-	IsPrimary          *int   `json:"is_primary" db:"is_primary"`
-	CompanyName        string `json:"company_name" db:"company_name"`
-	CompanyAddress     string `json:"company_address" db:"company_address"`
-	CompanyPhone       string `json:"company_phone" db:"company_phone"`
-	CompanyEmail       string `json:"company_email" db:"company_email"`
-	CompanyWebsite     string `json:"company_website" db:"company_website"`
-	CompanyLogo        string `json:"company_logo" db:"company_logo"`
-	CompanyDescription string `json:"company_description" db:"company_description"`
-	CompanyRemark      string `json:"company_remark" db:"company_remark"`
-	CompanyStatus      int    `json:"company_status" db:"company_status"`
+	ID                 uint    `json:"id"`
+	ParentID           *uint   `json:"parent_id" db:"parent_id"`
+	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
+	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
+	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
+	CompanyName        string  `json:"company_name" db:"company_name"`
+	CompanyAddress     *string `json:"company_address" db:"company_address"`
+	CompanyPhone       *string `json:"company_phone" db:"company_phone"`
+	CompanyEmail       *string `json:"company_email" db:"company_email"`
+	CompanyWebsite     *string `json:"company_website" db:"company_website"`
+	CompanyLogo        *string `json:"company_logo" db:"company_logo"`
+	CompanySign        *string `json:"company_sign" db:"company_sign"`
+	CompanyDescription *string `json:"company_description" db:"company_description"`
+	CompanyRemark      *string `json:"company_remark" db:"company_remark"`
+	CompanyStatus      int     `json:"company_status" db:"company_status"`
 }
 
 type GetCompanyProfileByIDRequest struct {
@@ -518,14 +524,17 @@ type CompanyProfileListDTO struct {
 	ID                 int     `json:"id" db:"id"`
 	ParentID           *uint   `json:"parent_id" db:"parent_id"`
 	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
+	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
+	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
 	CompanyName        string  `json:"company_name" db:"company_name"`
-	CompanyAddress     string  `json:"company_address" db:"company_address"`
-	CompanyPhone       string  `json:"company_phone" db:"company_phone"`
-	CompanyEmail       string  `json:"company_email" db:"company_email"`
-	CompanyWebsite     string  `json:"company_website" db:"company_website"`
-	CompanyLogo        string  `json:"company_logo" db:"company_logo"`
-	CompanyDescription string  `json:"company_description" db:"company_description"`
-	CompanyRemark      string  `json:"company_remark" db:"company_remark"`
+	CompanyAddress     *string `json:"company_address" db:"company_address"`
+	CompanyPhone       *string `json:"company_phone" db:"company_phone"`
+	CompanyEmail       *string `json:"company_email" db:"company_email"`
+	CompanyWebsite     *string `json:"company_website" db:"company_website"`
+	CompanyLogo        *string `json:"company_logo" db:"company_logo"`
+	CompanySign        *string `json:"company_sign" db:"company_sign"`
+	CompanyDescription *string `json:"company_description" db:"company_description"`
+	CompanyRemark      *string `json:"company_remark" db:"company_remark"`
 	CompanyStatus      int     `json:"company_status" db:"company_status"`
 	CreatedByName      *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName      *string `json:"updated_by_name" db:"updated_by_name"`
@@ -538,14 +547,17 @@ type CompanyProfileDetailDTO struct {
 	ID                 uint    `json:"id" db:"id"`
 	ParentID           *uint   `json:"parent_id" db:"parent_id"`
 	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
-	CompanyName        string  `json:"company_name" db:"company_name"`
-	CompanyAddress     string  `json:"company_address" db:"company_address"`
-	CompanyPhone       string  `json:"company_phone" db:"company_phone"`
-	CompanyEmail       string  `json:"company_email" db:"company_email"`
-	CompanyWebsite     string  `json:"company_website" db:"company_website"`
-	CompanyLogo        string  `json:"company_logo" db:"company_logo"`
-	CompanyDescription string  `json:"company_description" db:"company_description"`
-	CompanyRemark      string  `json:"company_remark" db:"company_remark"`
+	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
+	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
+	CompanyName        *string `json:"company_name" db:"company_name"`
+	CompanyAddress     *string `json:"company_address" db:"company_address"`
+	CompanyPhone       *string `json:"company_phone" db:"company_phone"`
+	CompanyEmail       *string `json:"company_email" db:"company_email"`
+	CompanyWebsite     *string `json:"company_website" db:"company_website"`
+	CompanyLogo        *string `json:"company_logo" db:"company_logo"`
+	CompanySign        *string `json:"company_sign" db:"company_sign"`
+	CompanyDescription *string `json:"company_description" db:"company_description"`
+	CompanyRemark      *string `json:"company_remark" db:"company_remark"`
 	CompanyStatus      int     `json:"company_status" db:"company_status"`
 	CreatedByName      *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName      *string `json:"updated_by_name" db:"updated_by_name"`

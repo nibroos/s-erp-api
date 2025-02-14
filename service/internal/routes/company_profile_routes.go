@@ -6,13 +6,14 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
-func SetupCompanyProfileRoutes(companyProfile fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB) {
-	companyProfileRepo := repository.NewCompanyProfileRepository(gormDB, sqlDB)
-	companyProfileService := service.NewCompanyProfileService(companyProfileRepo)
-	companyProfileController := rest.NewCompanyProfileController(companyProfileService)
+func SetupCompanyProfileRoutes(companyProfile fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) {
+	companyProfileRepo := repository.NewCompanyProfileRepository(gormDB, sqlDB, tracer)
+	companyProfileService := service.NewCompanyProfileService(companyProfileRepo, tracer)
+	companyProfileController := rest.NewCompanyProfileController(companyProfileService, tracer)
 
 	// prefix /companyProfile
 

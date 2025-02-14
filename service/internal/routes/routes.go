@@ -37,7 +37,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 
 	// Protected routes
 	app.Use(middleware.JWTMiddleware())
-	app.Use(middleware.ConvertToClientTimezone())
+	// app.Use(middleware.ConvertToClientTimezone())
 	app.Use(middleware.JaegerTracingMiddleware(tracer))
 	// app.Use(middleware.JaegerMiddleware(tracer))
 
@@ -64,7 +64,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	SetupItemSubGroupRoutes(itemSubGroup, gormDB, sqlDB, utilRepo)
 
 	companyProfile := version.Group("/company-profiles")
-	SetupCompanyProfileRoutes(companyProfile, gormDB, sqlDB)
+	SetupCompanyProfileRoutes(companyProfile, gormDB, sqlDB, tracer)
 
 	customerType := version.Group("/customer-types")
 	SetupCustomerTypeRoutes(customerType, gormDB, sqlDB, utilRepo, tracer)

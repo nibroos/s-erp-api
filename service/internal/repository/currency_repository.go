@@ -203,7 +203,7 @@ func (r *CurrencyRepository) CreateCurrency(tx *gorm.DB, currency *models.MixVal
 func (r *CurrencyRepository) UpdateCurrency(tx *gorm.DB, currency *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CurrencyRepository-UpdateCurrency", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(currency).Error; err != nil {
+		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(currency).Error; err != nil {
 			utils.LogErrors(childSpan, err)
 			return err
 		}

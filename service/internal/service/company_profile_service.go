@@ -6,14 +6,16 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
+	"github.com/opentracing/opentracing-go"
 )
 
 type CompanyProfileService struct {
-	repo *repository.CompanyProfileRepository
+	repo   *repository.CompanyProfileRepository
+	tracer opentracing.Tracer
 }
 
-func NewCompanyProfileService(repo *repository.CompanyProfileRepository) *CompanyProfileService {
-	return &CompanyProfileService{repo: repo}
+func NewCompanyProfileService(repo *repository.CompanyProfileRepository, tracer opentracing.Tracer) *CompanyProfileService {
+	return &CompanyProfileService{repo: repo, tracer: tracer}
 }
 
 func (s *CompanyProfileService) GetCompanyProfiles(ctx context.Context, filters map[string]string) ([]dtos.CompanyProfileListDTO, int, error) {

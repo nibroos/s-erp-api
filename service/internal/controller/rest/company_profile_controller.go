@@ -10,14 +10,16 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/service"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/nibroos/s-erp-api/service/internal/validators/form_requests"
+	"github.com/opentracing/opentracing-go"
 )
 
 type CompanyProfileController struct {
 	service *service.CompanyProfileService
+	tracer  opentracing.Tracer
 }
 
-func NewCompanyProfileController(service *service.CompanyProfileService) *CompanyProfileController {
-	return &CompanyProfileController{service: service}
+func NewCompanyProfileController(service *service.CompanyProfileService, tracer opentracing.Tracer) *CompanyProfileController {
+	return &CompanyProfileController{service: service, tracer: tracer}
 }
 
 func (c *CompanyProfileController) GetCompanyProfiles(ctx *fiber.Ctx) error {
@@ -60,6 +62,8 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	companyProfile := models.CompanyProfile{
 		ParentID:           req.ParentID,
 		IsPrimary:          *req.IsPrimary,
+		CompanyOwnerName:   req.CompanyOwnerName,
+		CompanySignName:    req.CompanySignName,
 		CompanyName:        req.CompanyName,
 		CompanyAddress:     req.CompanyAddress,
 		CompanyPhone:       req.CompanyPhone,
@@ -116,10 +120,53 @@ func (c *CompanyProfileController) GetCompanyProfileByID(ctx *fiber.Ctx) error {
 
 // update companyProfile
 func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CompanyProfileController-GetCompanyProfiles", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.UpdateCompanyProfileRequest
 
-	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
-		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
+	// Parse form values and assign them to the struct fields
+	req.ID = *utils.ParseUintPointer(ctx.FormValue("id"))
+	req.ParentID = utils.ParseUintPointer(ctx.FormValue("parent_id"))
+	req.IsPrimary = utils.ParseIntPointer(ctx.FormValue("is_primary"))
+	req.CompanyOwnerName = utils.ParseStringPointer(ctx.FormValue("company_owner_name"))
+	req.CompanySignName = utils.ParseStringPointer(ctx.FormValue("company_sign_name"))
+	req.CompanyName = ctx.FormValue("company_name")
+	req.CompanyAddress = utils.ParseStringPointer(ctx.FormValue("company_address"))
+	req.CompanyPhone = utils.ParseStringPointer(ctx.FormValue("company_phone"))
+	req.CompanyEmail = utils.ParseStringPointer(ctx.FormValue("company_email"))
+	req.CompanyWebsite = utils.ParseStringPointer(ctx.FormValue("company_website"))
+	req.CompanyDescription = utils.ParseStringPointer(ctx.FormValue("company_description"))
+	req.CompanyRemark = utils.ParseStringPointer(ctx.FormValue("company_remark"))
+	req.CompanyStatus = *utils.ParseIntPointer(ctx.FormValue("company_status"))
+
+	// log.Println("UpdateCompanyProfileRequest2", req.ID, *req.CompanyRemark, *req.CompanyAddress)
+	// log.Println(ctx.FormFile("company_name"))
+
+	// Extract user ID from JWT
+	claims, err := middleware.GetAuthUser(ctx)
+	if err != nil {
+		utils.LogErrors(parentSpan, err)
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"errors": err.Error(), "message": "Unauthorized", "status": fiber.StatusUnauthorized})
+	}
+	userID := uint(claims["user_id"].(float64))
+
+	// Handle file upload
+	file, err := ctx.FormFile("company_logo")
+	if err == nil {
+		filePath, err := utils.HandleFileUpload(ctx, file, userID, parentSpan)
+		if err != nil {
+			utils.LogErrors(parentSpan, err)
+			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"errors": err.Error(), "message": "Failed to upload file", "status": http.StatusInternalServerError})
+		}
+		req.CompanyLogo = &filePath
 	}
 
 	// Validate the request
@@ -128,23 +175,12 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
-	// // Fetch the existing companyProfile to get the current data
-	// existingCompanyProfile, err := c.service.GetCompanyProfileByID(ctx.Context(), req.ID)
-	// if err != nil {
-	// 	return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
-	// }
-
-	// Extract user ID from JWT
-	claims, err := middleware.GetAuthUser(ctx)
-	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"errors": err.Error(), "message": "Unauthorized", "status": fiber.StatusUnauthorized})
-	}
-	userID := uint(claims["user_id"].(float64))
-
 	companyProfile := models.CompanyProfile{
 		ID:                 req.ID,
 		ParentID:           req.ParentID,
 		IsPrimary:          *req.IsPrimary,
+		CompanyOwnerName:   req.CompanyOwnerName,
+		CompanySignName:    req.CompanySignName,
 		CompanyName:        req.CompanyName,
 		CompanyAddress:     req.CompanyAddress,
 		CompanyPhone:       req.CompanyPhone,
@@ -172,7 +208,7 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	filters := ctx.Locals("filters").(map[string]string)
+	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
 	return utils.GetResponse(ctx, []interface{}{getCompanyProfile}, paginationMeta, "Company profile updated successfully", http.StatusOK, nil, nil)

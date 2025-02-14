@@ -196,7 +196,7 @@ func (r *UnitRepository) CreateUnit(tx *gorm.DB, unit *models.MixValue, span ope
 func (r *UnitRepository) UpdateUnit(tx *gorm.DB, unit *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UnitRepository-UpdateUnit", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(unit).Error; err != nil {
+		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(unit).Error; err != nil {
 			utils.LogErrors(childSpan, err)
 			return err
 		}

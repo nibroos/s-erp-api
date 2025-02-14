@@ -196,7 +196,7 @@ func (r *ItemGroupRepository) CreateItemGroup(tx *gorm.DB, itemGroup *models.Mix
 func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemGroupRepository-UpdateItemGroup", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(itemGroup).Error; err != nil {
+		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemGroup).Error; err != nil {
 			utils.LogErrors(childSpan, err)
 			return err
 		}

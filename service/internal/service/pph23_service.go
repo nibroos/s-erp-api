@@ -166,7 +166,7 @@ func (s *Pph23Service) CsvGetPph23s(ctx *fiber.Ctx, filters map[string]string, s
 		defer childSpan.Finish()
 		log.Println("CsvGetPph23s error:", err)
 	} else {
-		appName = companyProfile.CompanyName
+		appName = *companyProfile.CompanyName
 	}
 
 	csv := fmt.Sprintf("%s\n", appName)

@@ -166,7 +166,7 @@ func (s *CustomerTypeService) CsvGetCustomerTypes(ctx *fiber.Ctx, filters map[st
 		defer childSpan.Finish()
 		log.Println("CsvGetCustomerTypes error:", err)
 	} else {
-		appName = companyProfile.CompanyName
+		appName = *companyProfile.CompanyName
 	}
 
 	csv := fmt.Sprintf("%s\n", appName)

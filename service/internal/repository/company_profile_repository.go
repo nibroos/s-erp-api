@@ -8,18 +8,21 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
 type CompanyProfileRepository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Tracer
 }
 
-func NewCompanyProfileRepository(db *gorm.DB, sqlDB *sqlx.DB) *CompanyProfileRepository {
+func NewCompanyProfileRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *CompanyProfileRepository {
 	return &CompanyProfileRepository{
-		db:    db,
-		sqlDB: sqlDB,
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
 	}
 }
 
@@ -29,9 +32,27 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 
 	query := `SELECT *
     FROM ( 
-        SELECT cp.id, cp.is_primary, cp.parent_id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
-        cu.name as created_by_name,
-        uu.name as updated_by_name
+        SELECT 
+					cp.id, 
+					cp.is_primary,
+					cp.parent_id,
+					cp.company_owner_name,
+					cp.company_sign_name,
+					cp.company_name,
+					cp.company_address,
+					cp.company_phone,
+					cp.company_email,
+					cp.company_website,
+					cp.company_logo,
+					cp.company_sign,
+					cp.company_description,
+					cp.company_remark,
+					cp.company_status,
+					cp.created_at,
+					cp.updated_at,
+					cp.deleted_at,
+					cu.name as created_by_name,
+					uu.name as updated_by_name
 
         FROM company_profiles cp
         LEFT JOIN users cu ON cp.created_by_id = cu.id
@@ -125,7 +146,25 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx context.Context, params *dtos.GetCompanyProfileParams) (*dtos.CompanyProfileDetailDTO, error) {
 	var CompanyProfile dtos.CompanyProfileDetailDTO
 
-	query := `SELECT cp.id, cp.is_primary, cp.parent_id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
+	query := `SELECT 
+					cp.id, 
+					cp.is_primary,
+					cp.parent_id,
+					cp.company_owner_name,
+					cp.company_sign_name,
+					cp.company_name,
+					cp.company_address,
+					cp.company_phone,
+					cp.company_email,
+					cp.company_website,
+					cp.company_logo,
+					cp.company_sign,
+					cp.company_description,
+					cp.company_remark,
+					cp.company_status,
+					cp.created_at,
+					cp.updated_at,
+					cp.deleted_at,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
@@ -169,12 +208,11 @@ func (r *CompanyProfileRepository) CreateCompanyProfile(tx *gorm.DB, CompanyProf
 
 func (r *CompanyProfileRepository) UpdateCompanyProfile(tx *gorm.DB, CompanyProfile *models.CompanyProfile) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(CompanyProfile).Error; err != nil {
+		if err := tx.Model(&models.CompanyProfile{}).Where("id = ?", CompanyProfile.ID).Select("*").Omit("created_at", "created_by_id").Updates(CompanyProfile).Error; err != nil {
 			return err
 		}
 		return nil
 	})
-
 }
 
 func (r *CompanyProfileRepository) DeleteCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams) error {

@@ -165,7 +165,7 @@ func (r *ItemSubGroupRepository) CreateItemSubGroup(tx *gorm.DB, itemSubGroup *m
 
 func (r *ItemSubGroupRepository) UpdateItemSubGroup(tx *gorm.DB, itemSubGroup *models.MixValue) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(itemSubGroup).Error; err != nil {
+		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemSubGroup).Error; err != nil {
 			return err
 		}
 		return nil

@@ -166,7 +166,7 @@ func (s *VatService) CsvGetVats(ctx *fiber.Ctx, filters map[string]string, span 
 		defer childSpan.Finish()
 		log.Println("CsvGetVats error:", err)
 	} else {
-		appName = companyProfile.CompanyName
+		appName = *companyProfile.CompanyName
 	}
 
 	csv := fmt.Sprintf("%s\n", appName)

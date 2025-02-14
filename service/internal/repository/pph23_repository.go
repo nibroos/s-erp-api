@@ -196,7 +196,7 @@ func (r *Pph23Repository) CreatePph23(tx *gorm.DB, pph23 *models.MixValue, span 
 func (r *Pph23Repository) UpdatePph23(tx *gorm.DB, pph23 *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("Pph23Repository-UpdatePph23", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(pph23).Error; err != nil {
+		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(pph23).Error; err != nil {
 			utils.LogErrors(childSpan, err)
 			return err
 		}

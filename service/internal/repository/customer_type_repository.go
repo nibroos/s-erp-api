@@ -203,7 +203,7 @@ func (r *CustomerTypeRepository) CreateCustomerType(tx *gorm.DB, customerType *m
 func (r *CustomerTypeRepository) UpdateCustomerType(tx *gorm.DB, customerType *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CustomerTypeRepository-UpdateCustomerType", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(customerType).Error; err != nil {
+		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(customerType).Error; err != nil {
 			utils.LogErrors(childSpan, err)
 			return err
 		}

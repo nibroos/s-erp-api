@@ -196,7 +196,7 @@ func (r *VatRepository) CreateVat(tx *gorm.DB, vat *models.MixValue, span opentr
 func (r *VatRepository) UpdateVat(tx *gorm.DB, vat *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("VatRepository-UpdateVat", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(vat).Error; err != nil {
+		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(vat).Error; err != nil {
 			utils.LogErrors(childSpan, err)
 			return err
 		}
