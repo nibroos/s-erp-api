@@ -13,7 +13,7 @@ import (
 func SetupCompanyProfileRoutes(companyProfile fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) {
 	companyProfileRepo := repository.NewCompanyProfileRepository(gormDB, sqlDB, tracer)
 	companyProfileService := service.NewCompanyProfileService(companyProfileRepo, tracer)
-	companyProfileController := rest.NewCompanyProfileController(companyProfileService, tracer)
+	companyProfileController := rest.NewCompanyProfileController(companyProfileService, companyProfileRepo, tracer)
 
 	// prefix /companyProfile
 

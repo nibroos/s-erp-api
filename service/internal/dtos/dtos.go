@@ -478,7 +478,7 @@ type CreateCompanyProfileRequest struct {
 	CompanySign        *string `json:"company_sign" db:"company_sign"`
 	CompanyDescription *string `json:"company_description" db:"company_description"`
 	CompanyRemark      *string `json:"company_remark" db:"company_remark"`
-	CompanyStatus      int     `json:"company_status" db:"company_status"`
+	CompanyStatus      *int    `json:"company_status" db:"company_status"`
 }
 
 type UpdateCompanyProfileRequest struct {
@@ -496,7 +496,7 @@ type UpdateCompanyProfileRequest struct {
 	CompanySign        *string `json:"company_sign" db:"company_sign"`
 	CompanyDescription *string `json:"company_description" db:"company_description"`
 	CompanyRemark      *string `json:"company_remark" db:"company_remark"`
-	CompanyStatus      int     `json:"company_status" db:"company_status"`
+	CompanyStatus      *int    `json:"company_status" db:"company_status"`
 }
 
 type GetCompanyProfileByIDRequest struct {
@@ -535,7 +535,7 @@ type CompanyProfileListDTO struct {
 	CompanySign        *string `json:"company_sign" db:"company_sign"`
 	CompanyDescription *string `json:"company_description" db:"company_description"`
 	CompanyRemark      *string `json:"company_remark" db:"company_remark"`
-	CompanyStatus      int     `json:"company_status" db:"company_status"`
+	CompanyStatus      *int    `json:"company_status" db:"company_status"`
 	CreatedByName      *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName      *string `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt          *string `json:"created_at" db:"created_at"`
@@ -558,7 +558,7 @@ type CompanyProfileDetailDTO struct {
 	CompanySign        *string `json:"company_sign" db:"company_sign"`
 	CompanyDescription *string `json:"company_description" db:"company_description"`
 	CompanyRemark      *string `json:"company_remark" db:"company_remark"`
-	CompanyStatus      int     `json:"company_status" db:"company_status"`
+	CompanyStatus      *int    `json:"company_status" db:"company_status"`
 	CreatedByName      *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName      *string `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt          *string `json:"created_at" db:"created_at"`

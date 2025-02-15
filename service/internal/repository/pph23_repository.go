@@ -97,10 +97,14 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
+				countErr = err
 			}
-			countErr = err
 		}
 	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
@@ -125,8 +129,8 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 		err := r.sqlDB.SelectContext(ctx, &pph23s, query, args...)
 		if err != nil {
 			utils.LogErrors(selectSpan, err)
+			selectErr = err
 		}
-		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
@@ -187,6 +191,7 @@ func (r *Pph23Repository) BeginTransaction() *gorm.DB {
 func (r *Pph23Repository) CreatePph23(tx *gorm.DB, pph23 *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("Pph23Repository-CreatePph23", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(pph23).Error; err != nil {
+		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -197,6 +202,7 @@ func (r *Pph23Repository) UpdatePph23(tx *gorm.DB, pph23 *models.MixValue, span 
 	childSpan := opentracing.StartSpan("Pph23Repository-UpdatePph23", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(pph23).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -209,6 +215,7 @@ func (r *Pph23Repository) DeletePph23(tx *gorm.DB, params *dtos.GetPph23Params, 
 	childSpan := opentracing.StartSpan("Pph23Repository-DeletePph23", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -221,6 +228,7 @@ func (s *Pph23Repository) RestorePph23(tx *gorm.DB, params *dtos.GetPph23Params,
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var pph23 models.MixValue
 		if err := tx.Unscoped().Model(&pph23).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}

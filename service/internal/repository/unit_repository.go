@@ -97,10 +97,14 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
+				countErr = err
 			}
-			countErr = err
 		}
 	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
@@ -125,8 +129,8 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 		err := r.sqlDB.SelectContext(ctx, &units, query, args...)
 		if err != nil {
 			utils.LogErrors(selectSpan, err)
+			selectErr = err
 		}
-		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
@@ -187,6 +191,7 @@ func (r *UnitRepository) BeginTransaction() *gorm.DB {
 func (r *UnitRepository) CreateUnit(tx *gorm.DB, unit *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UnitRepository-CreateUnit", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(unit).Error; err != nil {
+		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -197,6 +202,7 @@ func (r *UnitRepository) UpdateUnit(tx *gorm.DB, unit *models.MixValue, span ope
 	childSpan := opentracing.StartSpan("UnitRepository-UpdateUnit", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(unit).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -209,6 +215,7 @@ func (r *UnitRepository) DeleteUnit(tx *gorm.DB, params *dtos.GetUnitParams, spa
 	childSpan := opentracing.StartSpan("UnitRepository-DeleteUnit", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -221,6 +228,7 @@ func (s *UnitRepository) RestoreUnit(tx *gorm.DB, params *dtos.GetUnitParams, sp
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var unit models.MixValue
 		if err := tx.Unscoped().Model(&unit).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}

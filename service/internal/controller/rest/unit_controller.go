@@ -83,8 +83,7 @@ func (c *UnitController) CreateUnit(ctx *fiber.Ctx) error {
 	// Extract user ID from JWT
 	claims, err := middleware.GetAuthUser(ctx)
 	if err != nil {
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusUnauthorized)
-		utils.LogResponse(apiSpan, response)
+		utils.LogErrors(parentSpan, err)
 		return utils.GetResponse(ctx, nil, nil, "Unauthorized", http.StatusUnauthorized, err.Error(), nil)
 	}
 	userID := uint(claims["user_id"].(float64))
@@ -124,7 +123,7 @@ func (c *UnitController) CreateUnit(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Unit not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	filters := ctx.Locals("filters").(map[string]string)
+	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
 	return utils.GetResponse(ctx, []interface{}{getUnit}, paginationMeta, "Unit created successfully", http.StatusCreated, nil, nil)
@@ -231,7 +230,7 @@ func (c *UnitController) UpdateUnit(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Unit not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	filters := ctx.Locals("filters").(map[string]string)
+	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
 	return utils.GetResponse(ctx, []interface{}{getUnit}, paginationMeta, "Unit updated successfully", http.StatusOK, nil, nil)

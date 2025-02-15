@@ -623,3 +623,26 @@ func ParseInt(value string) int {
 	}
 	return parsedValue
 }
+
+// ParseStringPointer parses a string to a string pointer
+func ParseIntNullPointer(value interface{}) *int {
+	if value == nil {
+		return nil
+	}
+
+	// if value string
+	if str, ok := value.(string); ok {
+		parsedValue, err := strconv.Atoi(str)
+		if err != nil {
+			return nil
+		}
+		return &parsedValue
+	}
+
+	// if value int
+	if intValue, ok := value.(int); ok {
+		return &intValue
+	}
+
+	return nil
+}

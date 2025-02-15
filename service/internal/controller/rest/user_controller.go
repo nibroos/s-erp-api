@@ -73,7 +73,7 @@ func (c *UserController) CreateUser(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "User not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	filters := ctx.Locals("filters").(map[string]string)
+	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
 	return utils.GetResponse(ctx, []interface{}{getUser}, paginationMeta, "User created successfully", http.StatusCreated, nil, nil)
@@ -155,7 +155,7 @@ func (c *UserController) UpdateUser(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "User not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	filters := ctx.Locals("filters").(map[string]string)
+	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
 	return utils.GetResponse(ctx, getUser, paginationMeta, "User updated successfully", http.StatusOK, nil, nil)
@@ -224,7 +224,7 @@ func (c *UserController) Register(ctx *fiber.Ctx) error {
 
 	data := []interface{}{getUser}
 
-	filters := ctx.Locals("filters").(map[string]string)
+	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
 	return utils.GetResponse(ctx, data, paginationMeta, "User registered successfully", http.StatusCreated, nil, map[string]string{"token": token})
