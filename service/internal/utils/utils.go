@@ -558,7 +558,7 @@ func GetBodyPayloadValue(ctx *fiber.Ctx, key string) string {
 func HandleFileUpload(ctx *fiber.Ctx, file *multipart.FileHeader, userID uint, span opentracing.Span) (string, error) {
 	childSpan := opentracing.StartSpan("HandleFileUpload", opentracing.ChildOf(span.Context()))
 	// Define the directory to save the uploaded files
-	uploadDir := "/public/uploads"
+	uploadDir := "./public/uploads"
 
 	// Ensure the directory exists
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
@@ -645,4 +645,18 @@ func ParseIntNullPointer(value interface{}) *int {
 	}
 
 	return nil
+}
+
+func RemoveDotAtStart(s string) string {
+	if strings.HasPrefix(s, ".") {
+		return s[1:]
+	}
+	return s
+}
+
+func AddHostURLToImageURL(imageURL string) string {
+	if imageURL == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), RemoveDotAtStart(imageURL))
 }

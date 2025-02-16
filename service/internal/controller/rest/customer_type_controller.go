@@ -29,7 +29,7 @@ func (c *CustomerTypeController) GetCustomerTypes(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("CustomerTypeController-GetCustomerTypes", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
-		// If no error, delete span
+		// If no error, not collecting span
 		if utils.FilterOtel(ctx) {
 			defer apiSpan.Finish()
 			defer parentSpan.Finish()

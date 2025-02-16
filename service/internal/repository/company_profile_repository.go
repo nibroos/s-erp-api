@@ -130,6 +130,8 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
+				defer childSpan.Finish()
+				countSpan.LogKV("query", countQuery)
 				countErr = err
 			}
 		}
@@ -160,6 +162,8 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 
 		err := r.sqlDB.SelectContext(ctx, &companyProfiles, query, args...)
 		if err != nil {
+			defer childSpan.Finish()
+			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
 			selectErr = err
 		}
@@ -174,6 +178,19 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 
 	if selectErr != nil {
 		return nil, 0, selectErr
+	}
+
+	if len(companyProfiles) > 0 {
+		for i := range companyProfiles {
+			if companyProfiles[i].CompanyLogo != nil {
+				logo := utils.AddHostURLToImageURL(*companyProfiles[i].CompanyLogo)
+				companyProfiles[i].CompanyLogo = &logo
+			}
+			if companyProfiles[i].CompanySign != nil {
+				sign := utils.AddHostURLToImageURL(*companyProfiles[i].CompanySign)
+				companyProfiles[i].CompanySign = &sign
+			}
+		}
 	}
 
 	return companyProfiles, total, nil
@@ -228,6 +245,15 @@ func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx context.Context, pa
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return nil, err
+	}
+
+	if CompanyProfile.CompanyLogo != nil {
+		logo := utils.AddHostURLToImageURL(*CompanyProfile.CompanyLogo)
+		CompanyProfile.CompanyLogo = &logo
+	}
+	if CompanyProfile.CompanySign != nil {
+		sign := utils.AddHostURLToImageURL(*CompanyProfile.CompanySign)
+		CompanyProfile.CompanySign = &sign
 	}
 
 	return &CompanyProfile, nil

@@ -97,6 +97,8 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
+				defer childSpan.Finish()
+				countSpan.LogKV("query", countQuery)
 				countErr = err
 			}
 		}
@@ -128,6 +130,8 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 
 		err := r.sqlDB.SelectContext(ctx, &units, query, args...)
 		if err != nil {
+			defer childSpan.Finish()
+			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
 			selectErr = err
 		}

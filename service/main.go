@@ -172,6 +172,9 @@ func main() {
 	app.Use(middleware.ConvertEmptyStringsToNull())
 	app.Use(middleware.ConvertRequestToFilters())
 
+	// static folder on /public/uploads
+	app.Static("/public", "./public")
+
 	// Setup REST routes
 	routes.SetupRoutes(app, gormDB, sqlDB, tracer)
 

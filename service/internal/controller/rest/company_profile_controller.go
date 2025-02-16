@@ -96,9 +96,21 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	userID := uint(claims["user_id"].(float64))
 
 	// Handle file upload
+	logoSpan := opentracing.StartSpan("CompanyProfileController-CreateCompanyProfile-logoSpan", opentracing.ChildOf(parentSpan.Context()))
 	file, err := ctx.FormFile("company_logo")
 	if err == nil {
-		filePath, err := utils.HandleFileUpload(ctx, file, userID, parentSpan)
+		filePath, err := utils.HandleFileUpload(ctx, file, userID, logoSpan)
+		if err != nil {
+			utils.LogErrors(parentSpan, err)
+			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"errors": err.Error(), "message": "Failed to upload file", "status": http.StatusInternalServerError})
+		}
+		req.CompanyLogo = &filePath
+	}
+
+	signSpan := opentracing.StartSpan("CompanyProfileController-CreateCompanyProfile-signSpan", opentracing.ChildOf(parentSpan.Context()))
+	fileSign, err := ctx.FormFile("company_sign")
+	if err == nil {
+		filePath, err := utils.HandleFileUpload(ctx, fileSign, userID, signSpan)
 		if err != nil {
 			utils.LogErrors(parentSpan, err)
 			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"errors": err.Error(), "message": "Failed to upload file", "status": http.StatusInternalServerError})
@@ -117,6 +129,7 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 		CompanyEmail:       req.CompanyEmail,
 		CompanyWebsite:     req.CompanyWebsite,
 		CompanyLogo:        req.CompanyLogo,
+		CompanySign:        req.CompanySign,
 		CompanyDescription: req.CompanyDescription,
 		CompanyRemark:      req.CompanyRemark,
 		CompanyStatus:      req.CompanyStatus,
@@ -220,9 +233,21 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	userID := uint(claims["user_id"].(float64))
 
 	// Handle file upload
+	logoSpan := opentracing.StartSpan("CompanyProfileController-CreateCompanyProfile-logoSpan", opentracing.ChildOf(parentSpan.Context()))
 	file, err := ctx.FormFile("company_logo")
 	if err == nil {
-		filePath, err := utils.HandleFileUpload(ctx, file, userID, parentSpan)
+		filePath, err := utils.HandleFileUpload(ctx, file, userID, logoSpan)
+		if err != nil {
+			utils.LogErrors(parentSpan, err)
+			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"errors": err.Error(), "message": "Failed to upload file", "status": http.StatusInternalServerError})
+		}
+		req.CompanyLogo = &filePath
+	}
+
+	signSpan := opentracing.StartSpan("CompanyProfileController-CreateCompanyProfile-signSpan", opentracing.ChildOf(parentSpan.Context()))
+	fileSign, err := ctx.FormFile("company_sign")
+	if err == nil {
+		filePath, err := utils.HandleFileUpload(ctx, fileSign, userID, signSpan)
 		if err != nil {
 			utils.LogErrors(parentSpan, err)
 			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"errors": err.Error(), "message": "Failed to upload file", "status": http.StatusInternalServerError})
@@ -249,6 +274,7 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 		CompanyEmail:       req.CompanyEmail,
 		CompanyWebsite:     req.CompanyWebsite,
 		CompanyLogo:        req.CompanyLogo,
+		CompanySign:        req.CompanySign,
 		CompanyDescription: req.CompanyDescription,
 		CompanyRemark:      req.CompanyRemark,
 		CompanyStatus:      req.CompanyStatus,

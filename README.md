@@ -70,7 +70,12 @@ Postman credentials:
 ### 🖥️ Prometheus & Grafana
 - Grafana will fail at first run, because user credentials need to be created manually in the postgres database.
 - Login with the user and password. The default user and password is `admin` and `admin`.
+- Dashboard ID
+  - PostgreSQL: `9628`
+  - Node Exporter: `1860`
+  - HTTP Request: `S-ERP-API.postman_collection.json`
 - Use `vegeta` to generate the load test. look up `target.txt` for the target URL, then run `vegeta attack -targets=target.txt -rate=1000 -duration=30s -output /dev/null`, change the rate and duration as you need.
+- Use `k6` to execute the test. look up `load-test` folder for the script, then run `k6 run script.js`, change the script as you need.
 
 
 <h1 align="center">

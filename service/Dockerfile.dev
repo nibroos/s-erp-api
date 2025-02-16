@@ -1,6 +1,7 @@
 # Development Dockerfile
+FROM golang:1.24-alpine AS base
 
-FROM golang:1.23-alpine AS base
+ENV GOLANG_VERSION=1.24.0
 
 # Install necessary packages including Make
 RUN apk add --no-cache make curl postgresql-client tzdata
