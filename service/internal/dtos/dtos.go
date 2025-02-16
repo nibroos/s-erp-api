@@ -423,7 +423,9 @@ type GetItemSubGroupParams struct {
 
 type ItemSubGroupListDTO struct {
 	ID            int     `json:"id" db:"id"`
+	ParentID      *uint   `json:"parent_id" db:"parent_id"`
 	Name          string  `json:"name" db:"name"`
+	SubGroupName  string  `json:"sub_group_name" db:"sub_group_name"`
 	Description   string  `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
@@ -436,7 +438,9 @@ type ItemSubGroupListDTO struct {
 
 type ItemSubGroupDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
+	ParentID      *uint   `json:"parent_id" db:"parent_id"`
 	Name          string  `json:"name" db:"name"`
+	SubGroupName  string  `json:"sub_group_name" db:"sub_group_name"`
 	Description   string  `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
@@ -505,6 +509,7 @@ type GetCompanyProfileByIDRequest struct {
 
 type GetCompanyProfileParams struct {
 	ID        uint
+	IsPrimary *int
 	IsDeleted *int
 }
 
@@ -884,22 +889,27 @@ type GetVatsRequest struct {
 	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
 	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
 }
-
 type CreateVatRequest struct {
-	Name        string  `json:"name"`
-	Num         float64 `json:"num"`
-	Description *string `json:"description"`
-	Remark      *string `json:"remark"`
-	Status      int8    `json:"status"`
+	Name        string   `json:"name"`
+	Num         float64  `json:"num"`
+	Description *string  `json:"description"`
+	Remark      *string  `json:"remark"`
+	Status      int8     `json:"status"`
+	Divider     *float64 `json:"divider"`
+	ChangedAt   *string  `json:"changed_at"`
+	Multiplier  *float64 `json:"multiplier"`
 }
 
 type UpdateVatRequest struct {
-	ID          uint    `json:"id"`
-	Num         float64 `json:"num"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-	Remark      *string `json:"remark"`
-	Status      int8    `json:"status"`
+	ID          uint     `json:"id"`
+	Num         float64  `json:"num"`
+	Name        string   `json:"name"`
+	Description *string  `json:"description"`
+	Remark      *string  `json:"remark"`
+	Status      int8     `json:"status"`
+	Divider     *float64 `json:"divider"`
+	ChangedAt   *string  `json:"changed_at"`
+	Multiplier  *float64 `json:"multiplier"`
 }
 
 type GetVatByIDRequest struct {
@@ -908,6 +918,12 @@ type GetVatByIDRequest struct {
 
 type GetVatParams struct {
 	ID        uint
+	IsDeleted *int
+}
+
+type GetVatHistoryParams struct {
+	ID        *uint
+	VatID     *uint
 	IsDeleted *int
 }
 
@@ -949,10 +965,51 @@ type VatDetailDTO struct {
 	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
 	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
 }
+
 type GetVatsResult struct {
 	Vats  []VatListDTO
 	Total int
 	Err   error
+}
+
+type VatHistoryListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	VatID         int     `json:"vat_id" db:"vat_id"`
+	Num           float64 `json:"num" db:"num"`
+	Divider       float64 `json:"divider" db:"divider"`
+	Multiplier    float64 `json:"multiplier" db:"multiplier"`
+	ChangedAt     *string `json:"changed_at" db:"changed_at"`
+	Status        int8    `json:"status" db:"status"`
+	Remark        *string `json:"remark" db:"remark"`
+	Name          string  `json:"name" db:"name"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type VatHistoryDetailDTO struct {
+	ID            int     `json:"id" db:"id"`
+	VatID         int     `json:"vat_id" db:"vat_id"`
+	Num           float64 `json:"num" db:"num"`
+	Divider       float64 `json:"divider" db:"divider"`
+	Multiplier    float64 `json:"multiplier" db:"multiplier"`
+	ChangedAt     *string `json:"changed_at" db:"changed_at"`
+	Status        int8    `json:"status" db:"status"`
+	Remark        *string `json:"remark" db:"remark"`
+	Name          string  `json:"name" db:"name"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type GetVatHistoriesResult struct {
+	VatHistories []VatHistoryListDTO
+	Total        int
+	Err          error
 }
 
 type GetPph23sRequest struct {

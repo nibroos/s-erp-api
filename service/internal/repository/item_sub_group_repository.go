@@ -3,37 +3,47 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
 type ItemSubGroupRepository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Tracer
 }
 
-func NewItemSubGroupRepository(db *gorm.DB, sqlDB *sqlx.DB) *ItemSubGroupRepository {
+func NewItemSubGroupRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *ItemSubGroupRepository {
 	return &ItemSubGroupRepository{
-		db:    db,
-		sqlDB: sqlDB,
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
 	}
 }
 
-func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters map[string]string) ([]dtos.ItemSubGroupListDTO, int, error) {
+func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.ItemSubGroupListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("ItemSubGroupRepository-GetItemSubGroups", opentracing.ChildOf(span.Context()))
+
 	itemSubGroups := []dtos.ItemSubGroupListDTO{}
 	var total int
 
 	query := `SELECT *
     FROM ( 
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				m.parent_id,
+				p.name as sub_group_name,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM mix_values m
+				LEFT JOIN mix_values p ON m.parent_id = p.id
 				LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
@@ -42,10 +52,13 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				m.parent_id,
+				p.name as sub_group_name,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM mix_values m
+				LEFT JOIN mix_values p ON m.parent_id = p.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
 				LEFT JOIN groups g ON m.group_id = g.id
@@ -57,7 +70,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 	i := 1
 	for key, value := range filters {
 		switch key {
-		case "name", "description", "remark":
+		case "name", "description", "remark", "parent_id":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -76,15 +89,30 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 
 	countArgs := append([]interface{}{}, args...)
 
-	// Channels for concurrent execution
-	countChan := make(chan error)
-	selectChan := make(chan error)
+	var wg sync.WaitGroup
+	var countErr, selectErr error
 
 	// Goroutine for count query
+	wg.Add(1)
 	go func() {
-		err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-		countChan <- err
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			// Create a span for the count query
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				defer childSpan.Finish()
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
 	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
@@ -93,18 +121,30 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
 	currentPage := utils.GetIntOrDefault(filters["page"], 1)
 
-	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
-	args = append(args, perPage, (currentPage-1)*perPage)
+	// if is_csv
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
 
 	// Goroutine for select query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		// Create a span for the select query
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
 		err := r.sqlDB.SelectContext(ctx, &itemSubGroups, query, args...)
-		selectChan <- err
+		if err != nil {
+			defer childSpan.Finish()
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
 	}()
 
 	// Wait for both goroutines to finish
-	countErr := <-countChan
-	selectErr := <-selectChan
+	wg.Wait()
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -117,14 +157,18 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 	return itemSubGroups, total, nil
 }
 
-func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx context.Context, params *dtos.GetItemSubGroupParams) (*dtos.ItemSubGroupDetailDTO, error) {
+func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx context.Context, params *dtos.GetItemSubGroupParams, span opentracing.Span) (*dtos.ItemSubGroupDetailDTO, error) {
+	childSpan := opentracing.StartSpan("ItemSubGroupRepository-GetItemSubGroupByID", opentracing.ChildOf(span.Context()))
 	var itemSubGroup dtos.ItemSubGroupDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	m.parent_id,
+	p.name as sub_group_name,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
 	FROM mix_values m
+	LEFT JOIN mix_values p ON m.parent_id = p.id
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	LEFT JOIN groups g ON m.group_id = g.id
@@ -145,6 +189,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx context.Context, params
 	query += isDeletedQuery
 
 	if err := r.sqlDB.Get(&itemSubGroup, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
@@ -156,16 +201,22 @@ func (r *ItemSubGroupRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *ItemSubGroupRepository) CreateItemSubGroup(tx *gorm.DB, itemSubGroup *models.MixValue) error {
+func (r *ItemSubGroupRepository) CreateItemSubGroup(tx *gorm.DB, itemSubGroup *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemSubGroupRepository-CreateItemSubGroup", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(itemSubGroup).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *ItemSubGroupRepository) UpdateItemSubGroup(tx *gorm.DB, itemSubGroup *models.MixValue) error {
+func (r *ItemSubGroupRepository) UpdateItemSubGroup(tx *gorm.DB, itemSubGroup *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemSubGroupRepository-UpdateItemSubGroup", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemSubGroup).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -173,19 +224,25 @@ func (r *ItemSubGroupRepository) UpdateItemSubGroup(tx *gorm.DB, itemSubGroup *m
 
 }
 
-func (r *ItemSubGroupRepository) DeleteItemSubGroup(tx *gorm.DB, id uint) error {
+func (r *ItemSubGroupRepository) DeleteItemSubGroup(tx *gorm.DB, params *dtos.GetItemSubGroupParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemSubGroupRepository-DeleteItemSubGroup", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, id).Error; err != nil {
+		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *ItemSubGroupRepository) RestoreItemSubGroup(tx *gorm.DB, id uint) error {
+func (s *ItemSubGroupRepository) RestoreItemSubGroup(tx *gorm.DB, params *dtos.GetItemSubGroupParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemSubGroupRepository-RestoreItemSubGroup", opentracing.ChildOf(span.Context()))
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var itemSubGroup models.MixValue
-		if err := tx.Unscoped().Model(&itemSubGroup).Where("id = ?", id).Update("deleted_at", nil).Error; err != nil {
+		if err := tx.Unscoped().Model(&itemSubGroup).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil

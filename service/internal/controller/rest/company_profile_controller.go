@@ -398,3 +398,39 @@ func (c *CompanyProfileController) RestoreCompanyProfile(ctx *fiber.Ctx) error {
 
 	return utils.GetResponse(ctx, nil, nil, "Company profile restored successfully", http.StatusOK, nil, nil)
 }
+
+func (c *CompanyProfileController) GetPrimaryCompanyProfileByID(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CompanyProfileController-GetPrimaryCompanyProfileByID", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+	var req dtos.GetCompanyProfileByIDRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusBadRequest))
+		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusBadRequest, err.Error(), nil)
+	}
+
+	if req.ID == 0 {
+		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusBadRequest, "ID is required", nil)
+	}
+
+	params := &dtos.GetCompanyProfileParams{ID: req.ID}
+	params.IsPrimary = utils.ParseIntPointer("1")
+	companyProfile, err := c.service.GetCompanyProfileByID(ctx.Context(), params, parentSpan)
+	if err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
+	}
+
+	companyProfileArray := []interface{}{companyProfile}
+
+	filters := ctx.Locals("filters").(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+
+	return utils.GetResponse(ctx, companyProfileArray, paginationMeta, "Company profile fetched successfully", http.StatusOK, nil, nil)
+}

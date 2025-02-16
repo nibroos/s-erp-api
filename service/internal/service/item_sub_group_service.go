@@ -1,14 +1,15 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"log"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -16,48 +17,33 @@ import (
 type ItemSubGroupService struct {
 	repo     *repository.ItemSubGroupRepository
 	utilRepo *repository.UtilRepository
+	tracer   opentracing.Tracer
 }
 
-func NewItemSubGroupService(repo *repository.ItemSubGroupRepository, utilRepo *repository.UtilRepository) *ItemSubGroupService {
-	return &ItemSubGroupService{repo: repo, utilRepo: utilRepo}
-}
-
-func (s *ItemSubGroupService) GetItemSubGroups(ctx context.Context, filters map[string]string) ([]dtos.ItemSubGroupListDTO, int, error) {
-
-	resultChan := make(chan dtos.GetItemSubGroupsResult, 1)
-
-	go func() {
-		itemSubGroups, total, err := s.repo.GetItemSubGroups(ctx, filters)
-		resultChan <- dtos.GetItemSubGroupsResult{ItemSubGroups: itemSubGroups, Total: total, Err: err}
-	}()
-
-	select {
-	case res := <-resultChan:
-		return res.ItemSubGroups, res.Total, res.Err
-	case <-ctx.Done():
-		return nil, 0, ctx.Err()
+func NewItemSubGroupService(repo *repository.ItemSubGroupRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *ItemSubGroupService {
+	return &ItemSubGroupService{
+		repo:     repo,
+		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (s *ItemSubGroupService) CreateItemSubGroup(ctx context.Context, itemSubGroup *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.CreateItemSubGroup(tx, itemSubGroup); err != nil {
-		tx.Rollback()
-		return nil, err
-	}
+func (s *ItemSubGroupService) GetItemSubGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ItemSubGroupListDTO, int, error) {
+	childSpan := opentracing.StartSpan("ItemSubGroupService-GetItemSubGroups", opentracing.ChildOf(span.Context()))
 
-	return itemSubGroup, nil
-}
-
-func (s *ItemSubGroupService) GetItemSubGroupByID(ctx context.Context, params *dtos.GetItemSubGroupParams) (*dtos.ItemSubGroupDetailDTO, error) {
-	itemSubGroup, err := s.repo.GetItemSubGroupByID(ctx, params)
+	itemSubGroups, total, err := s.repo.GetItemSubGroups(ctx.Context(), filters, childSpan)
 	if err != nil {
-		return nil, err
+		defer childSpan.Finish()
+		return nil, 0, err
 	}
-	return itemSubGroup, nil
+	return itemSubGroups, total, nil
 }
 
-func (s *ItemSubGroupService) UpdateItemSubGroup(ctx context.Context, itemSubGroup *models.MixValue, tx *gorm.DB) (*models.MixValue, error) {
-	if err := s.repo.UpdateItemSubGroup(tx, itemSubGroup); err != nil {
+func (s *ItemSubGroupService) CreateItemSubGroup(ctx *fiber.Ctx, itemSubGroup *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("ItemSubGroupService-CreateItemSubGroup", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreateItemSubGroup(tx, itemSubGroup, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
@@ -65,8 +51,34 @@ func (s *ItemSubGroupService) UpdateItemSubGroup(ctx context.Context, itemSubGro
 	return itemSubGroup, nil
 }
 
-func (s *ItemSubGroupService) DeleteItemSubGroup(ctx context.Context, id uint, tx *gorm.DB) error {
-	if err := s.repo.DeleteItemSubGroup(tx, id); err != nil {
+func (s *ItemSubGroupService) GetItemSubGroupByID(ctx *fiber.Ctx, params *dtos.GetItemSubGroupParams, span opentracing.Span) (*dtos.ItemSubGroupDetailDTO, error) {
+	childSpan := opentracing.StartSpan("ItemSubGroupService-GetItemSubGroupByID", opentracing.ChildOf(span.Context()))
+
+	itemSubGroup, err := s.repo.GetItemSubGroupByID(ctx.Context(), params, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return itemSubGroup, nil
+}
+
+func (s *ItemSubGroupService) UpdateItemSubGroup(ctx *fiber.Ctx, itemSubGroup *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
+	childSpan := opentracing.StartSpan("ItemSubGroupService-UpdateItemSubGroup", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.UpdateItemSubGroup(tx, itemSubGroup, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	return itemSubGroup, nil
+}
+
+func (s *ItemSubGroupService) DeleteItemSubGroup(ctx *fiber.Ctx, params *dtos.GetItemSubGroupParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemSubGroupService-DeleteItemSubGroup", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.DeleteItemSubGroup(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -74,8 +86,11 @@ func (s *ItemSubGroupService) DeleteItemSubGroup(ctx context.Context, id uint, t
 	return nil
 }
 
-func (s *ItemSubGroupService) RestoreItemSubGroup(ctx context.Context, id uint, tx *gorm.DB) error {
-	if err := s.repo.RestoreItemSubGroup(tx, id); err != nil {
+func (s *ItemSubGroupService) RestoreItemSubGroup(ctx *fiber.Ctx, params *dtos.GetItemSubGroupParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ItemSubGroupService-RestoreItemSubGroup", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.RestoreItemSubGroup(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return err
 	}
@@ -84,16 +99,19 @@ func (s *ItemSubGroupService) RestoreItemSubGroup(ctx context.Context, id uint, 
 }
 
 // github.com/xuri/excelize/v2
-func (s *ItemSubGroupService) ExcelGetItemSubGroups(ctx context.Context, filters map[string]string) ([]byte, error) {
-	itemSubGroups, _, err := s.GetItemSubGroups(ctx, filters)
+func (s *ItemSubGroupService) ExcelGetItemSubGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("ItemSubGroupService-ExcelGetItemSubGroups", opentracing.ChildOf(span.Context()))
+
+	itemSubGroups, _, err := s.GetItemSubGroups(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	file := excelize.NewFile()
 
 	// Create a new sheet
-	sheetName := "item-groups"
+	sheetName := "itemSubGroups"
 	index, err := file.NewSheet(sheetName)
 	if err != nil {
 		return nil, err
@@ -129,19 +147,23 @@ func (s *ItemSubGroupService) ExcelGetItemSubGroups(ctx context.Context, filters
 }
 
 // github.com/xuri/excelize/v2
-func (s *ItemSubGroupService) CsvGetItemSubGroups(ctx context.Context, filters map[string]string) ([]byte, error) {
+func (s *ItemSubGroupService) CsvGetItemSubGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("ItemSubGroupService-CsvGetItemSubGroups", opentracing.ChildOf(span.Context()))
+
 	// filters is_csv
 	filters["is_csv"] = "1"
-	itemSubGroups, _, err := s.GetItemSubGroups(ctx, filters)
+	itemSubGroups, _, err := s.GetItemSubGroups(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, err
 	}
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
 	appName := "App"
 	if err != nil {
+		defer childSpan.Finish()
 		log.Println("CsvGetItemSubGroups error:", err)
 	} else {
 		appName = *companyProfile.CompanyName
@@ -149,15 +171,16 @@ func (s *ItemSubGroupService) CsvGetItemSubGroups(ctx context.Context, filters m
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Item Sub Groups\n"
+	csv += "Item Subgroups\n"
 	csv += "\n"
 
-	csv += "ID,Name,Description,Remark,Created At,Updated At\n"
+	csv += "ID,Name,Sub Group,Description,Remark,Created At,Updated At\n"
 	// Build CSV rows
 	for _, itemSubGroup := range itemSubGroups {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s\n",
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s\n",
 			itemSubGroup.ID,
 			itemSubGroup.Name,
+			itemSubGroup.SubGroupName,
 			utils.GetPtrVal(&itemSubGroup.Description),
 			utils.GetPtrVal(itemSubGroup.Remark),
 			utils.GetPtrVal(itemSubGroup.CreatedAt),

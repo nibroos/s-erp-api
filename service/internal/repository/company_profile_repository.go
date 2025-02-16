@@ -229,14 +229,20 @@ func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx context.Context, pa
 
 	var args []interface{}
 
-	i := 1
-	query += " AND cp.id = $1"
-	args = append(args, params.ID)
-	i++
+	if params.IsPrimary == nil {
+		i := 1
+		query += " AND cp.id = $1"
+		args = append(args, params.ID)
+		i++
+	}
 
 	isDeletedQuery := ` AND cp.deleted_at IS NULL`
 	if params.IsDeleted != nil && *params.IsDeleted == 1 {
 		isDeletedQuery = " AND cp.deleted_at IS NOT NULL"
+	}
+
+	if params.IsPrimary != nil && *params.IsPrimary == 1 {
+		query += " AND cp.is_primary = 1"
 	}
 
 	query += isDeletedQuery

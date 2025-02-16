@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS vat_histories (
   multiplier INT,
   changed_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
   status INT,
+  remark TEXT,
   created_by_id INT,
   updated_by_id INT,
   deleted_by_id INT,

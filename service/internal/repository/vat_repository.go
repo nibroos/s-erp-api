@@ -239,3 +239,200 @@ func (s *VatRepository) RestoreVat(tx *gorm.DB, params *dtos.GetVatParams, span 
 		return nil
 	})
 }
+
+func (r *VatRepository) GetVatHistories(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.VatHistoryListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("VatRepository-GetVatHistories", opentracing.ChildOf(span.Context()))
+
+	vatHistories := []dtos.VatHistoryListDTO{}
+	var total int
+
+	query := `SELECT *
+    FROM ( 
+        SELECT 
+					vh.id, vh.vat_id, vh.num, vh.divider, vh.multiplier, vh.changed_at, vh.status, vh.remark, vh.created_at, vh.updated_at, vh.deleted_at,
+					m.name,
+					cu.name as created_by_name,
+					uu.name as updated_by_name
+
+        FROM vat_histories vh
+				LEFT JOIN mix_values m ON vh.vat_id = m.id
+				LEFT JOIN groups g ON m.group_id = g.id
+        LEFT JOIN users cu ON vh.created_by_id = cu.id
+        LEFT JOIN users uu ON vh.updated_by_id = uu.id
+				WHERE g.name = 'vats'
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	countQuery := `SELECT COUNT(*) FROM (
+				SELECT
+					vh.id, vh.vat_id, vh.num, vh.divider, vh.multiplier, vh.changed_at, vh.status, vh.remark, vh.created_at, vh.updated_at, vh.deleted_at,
+					m.name,
+					cu.name as created_by_name,
+					uu.name as updated_by_name
+
+				FROM vat_histories vh
+				LEFT JOIN mix_values m ON vh.vat_id = m.id
+				LEFT JOIN users cu ON vh.created_by_id = cu.id
+				LEFT JOIN users uu ON vh.updated_by_id = uu.id
+				LEFT JOIN groups g ON m.group_id = g.id
+				WHERE g.name = 'vats'
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	var args []interface{}
+
+	i := 1
+	for key, value := range filters {
+		switch key {
+		case "name", "remark":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if value, ok := filters["vat_id"]; ok && value != "" {
+		query += fmt.Sprintf(" AND vh.vat_id = $%d", i)
+		countQuery += fmt.Sprintf(" AND vh.vat_id = $%d", i)
+		args = append(args, value)
+		i++
+	}
+
+	if value, ok := filters["global"]; ok && value != "" {
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
+		i += 3
+	}
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	// Goroutine for count query
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			// Create a span for the count query
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				defer childSpan.Finish()
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "changed_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	// if is_csv
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	// Goroutine for select query
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Create a span for the select query
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx, &vatHistories, query, args...)
+		if err != nil {
+			defer childSpan.Finish()
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	// Wait for both goroutines to finish
+	wg.Wait()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return vatHistories, total, nil
+}
+
+func (r *VatRepository) CreateVatHistory(tx *gorm.DB, vatHistory *models.VatHistory, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatRepository-CreateVatHistory", opentracing.ChildOf(span.Context()))
+	if err := tx.Create(vatHistory).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+}
+
+// GetLatestVatHistoryByVatID
+
+func (r *VatRepository) GetLatestVatHistoryByVatID(ctx context.Context, params *dtos.GetVatHistoryParams, span opentracing.Span) (*dtos.VatHistoryDetailDTO, error) {
+	childSpan := opentracing.StartSpan("VatRepository-GetLatestVatHistoryByVatID", opentracing.ChildOf(span.Context()))
+	var vatHistory dtos.VatHistoryDetailDTO
+
+	query := `SELECT 
+	vh.id, vh.vat_id, vh.num, vh.divider, vh.multiplier, vh.changed_at, vh.status, vh.remark, vh.created_at, vh.updated_at, vh.deleted_at,
+	m.name,
+	cu.name as created_by_name,
+	uu.name as updated_by_name
+
+	FROM vat_histories vh
+	LEFT JOIN mix_values m ON vh.vat_id = m.id
+	LEFT JOIN users cu ON vh.created_by_id = cu.id
+	LEFT JOIN users uu ON vh.updated_by_id = uu.id
+	LEFT JOIN groups g ON m.group_id = g.id
+	WHERE g.name = 'vats'`
+
+	var args []interface{}
+
+	i := 1
+	if params.ID != nil {
+		query += " AND m.id = $1"
+		args = append(args, params.ID)
+		i++
+	}
+
+	if params.VatID != nil {
+		query += " AND vh.vat_id = $2"
+		args = append(args, params.VatID)
+		i++
+	}
+
+	isDeletedQuery := ` AND m.deleted_at IS NULL`
+
+	query += isDeletedQuery
+
+	// order by changed_at desc
+	query += " ORDER BY vh.changed_at DESC"
+
+	if err := r.sqlDB.Get(&vatHistory, query, args...); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return &vatHistory, nil
+}

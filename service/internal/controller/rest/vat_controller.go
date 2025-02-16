@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -93,6 +94,7 @@ func (c *VatController) CreateVat(ctx *fiber.Ctx) error {
 		GroupID:     utils.VatID,
 		Description: req.Description,
 		Remark:      req.Remark,
+		Num:         req.Num,
 		OrderItem:   nil,
 		Status:      req.Status,
 		CreatedByID: &userID,
@@ -103,17 +105,32 @@ func (c *VatController) CreateVat(ctx *fiber.Ctx) error {
 	createdVat, err := c.service.CreateVat(ctx, &vat, tx, parentSpan)
 
 	if err != nil {
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create vats", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	createdHistory := models.VatHistory{
+		VatID:       &createdVat.ID,
+		Num:         &req.Num,
+		Divider:     req.Divider,
+		Multiplier:  req.Multiplier,
+		ChangedAt:   *req.ChangedAt,
+		Status:      &req.Status,
+		Remark:      req.Remark,
+		CreatedByID: &userID,
+	}
+
+	_, err = c.service.CreateVatHistory(ctx, &createdHistory, tx, parentSpan)
+
+	if err != nil {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
 		return utils.GetResponse(ctx, nil, nil, "Failed to create vats", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create vats", http.StatusInternalServerError, err.Error(), nil)
-	}
+	tx.Commit()
 
 	params := &dtos.GetVatParams{ID: createdVat.ID}
 	getVat, err := c.service.GetVatByID(ctx, params, parentSpan)
@@ -210,20 +227,55 @@ func (c *VatController) UpdateVat(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	updatedVat, err := c.service.UpdateVat(ctx, &vat, tx, parentSpan)
+	vatHistoryParams := &dtos.GetVatHistoryParams{VatID: &req.ID}
+	vatLatestHistory, err := c.service.GetLatestVatHistoryByVatID(ctx, vatHistoryParams, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Vat not found", http.StatusNotFound, err.Error(), nil)
+	}
 
+	if req.ChangedAt == nil {
+		// current date
+		changedAt := time.Now().Format("2006-01-02 15:04:05")
+		req.ChangedAt = &changedAt
+	}
+
+	// if changed at < latest changed at, not update, create new history
+	if *req.ChangedAt >= *vatLatestHistory.ChangedAt {
+		_, err := c.service.UpdateVat(ctx, &vat, tx, parentSpan)
+
+		if err != nil {
+			utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+			if err.Error() == "vat name already exists" {
+				return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Vat already exists", "status": http.StatusConflict})
+			}
+			return utils.GetResponse(ctx, nil, nil, "Failed to update Vat", http.StatusInternalServerError, err.Error(), nil)
+		}
+	}
+
+	createdHistory := models.VatHistory{
+		VatID:       &req.ID,
+		Num:         &req.Num,
+		Divider:     req.Divider,
+		Multiplier:  req.Multiplier,
+		ChangedAt:   *req.ChangedAt,
+		Status:      &req.Status,
+		Remark:      req.Remark,
+		CreatedByID: &userID,
+	}
+
+	_, err = c.service.CreateVatHistory(ctx, &createdHistory, tx, parentSpan)
+
+	// create history
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		if err.Error() == "vat name already exists" {
-			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Vat already exists", "status": http.StatusConflict})
-		}
 		return utils.GetResponse(ctx, nil, nil, "Failed to update Vat", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	params := &dtos.GetVatParams{ID: updatedVat.ID}
+	params := &dtos.GetVatParams{ID: req.ID}
 	getVat, err := c.service.GetVatByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))

@@ -189,3 +189,28 @@ func (s *VatService) CsvGetVats(ctx *fiber.Ctx, filters map[string]string, span 
 
 	return []byte(csv), nil
 }
+
+// create a new vat history
+func (s *VatService) CreateVatHistory(ctx *fiber.Ctx, vatHistory *models.VatHistory, tx *gorm.DB, span opentracing.Span) (*models.VatHistory, error) {
+	childSpan := opentracing.StartSpan("VatService-CreateVatHistory", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreateVatHistory(tx, vatHistory, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	return vatHistory, nil
+}
+
+// Get latest vat history by vat id
+func (s *VatService) GetLatestVatHistoryByVatID(ctx *fiber.Ctx, params *dtos.GetVatHistoryParams, span opentracing.Span) (*dtos.VatHistoryDetailDTO, error) {
+	childSpan := opentracing.StartSpan("VatService-GetLatestVatHistoryByVatID", opentracing.ChildOf(span.Context()))
+
+	vatHistory, err := s.repo.GetLatestVatHistoryByVatID(ctx.Context(), params, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return vatHistory, nil
+}
