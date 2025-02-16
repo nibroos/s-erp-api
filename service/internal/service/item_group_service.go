@@ -166,7 +166,7 @@ func (s *ItemGroupService) CsvGetItemGroups(ctx *fiber.Ctx, filters map[string]s
 		defer childSpan.Finish()
 		log.Println("CsvGetItemGroups error:", err)
 	} else {
-		appName = companyProfile.CompanyName
+		appName = *companyProfile.CompanyName
 	}
 
 	csv := fmt.Sprintf("%s\n", appName)

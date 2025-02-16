@@ -4,6 +4,8 @@ INSERT INTO
   company_profiles (
     parent_id,
     is_primary,
+    company_owner_name,
+    company_sign_name,
     company_name,
     company_address,
     company_phone,
@@ -24,6 +26,8 @@ VALUES
   (
     NULL,
     1,
+    'Primary Company Owner',
+    'Primary Company Owner Sign',
     'Primary Company',
     'Primary Company Address',
     'Primary Company Phone',
@@ -43,6 +47,8 @@ VALUES
   (
     1,
     0,
+    'Branch A Company Owner',
+    'Branch A Company Owner Sign',
     'Branch A Company',
     'Branch A Company Address',
     'Branch A Company Phone',
@@ -62,6 +68,8 @@ VALUES
   (
     1,
     0,
+    'Branch B Company Owner',
+    'Branch B Company Owner Sign',
     'Branch B Company',
     'Branch B Company Address',
     'Branch B Company Phone',

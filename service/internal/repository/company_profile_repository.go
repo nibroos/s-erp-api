@@ -3,46 +3,89 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
 type CompanyProfileRepository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Tracer
 }
 
-func NewCompanyProfileRepository(db *gorm.DB, sqlDB *sqlx.DB) *CompanyProfileRepository {
+func NewCompanyProfileRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *CompanyProfileRepository {
 	return &CompanyProfileRepository{
-		db:    db,
-		sqlDB: sqlDB,
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
 	}
 }
 
-func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filters map[string]string) ([]dtos.CompanyProfileListDTO, int, error) {
+func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CompanyProfileListDTO, int, error) {
+	childSpan := opentracing.StartSpan("CompanyProfileRepository-GetCompanyProfiles")
+
 	companyProfiles := []dtos.CompanyProfileListDTO{}
 	var total int
 
 	query := `SELECT *
     FROM ( 
-        SELECT cp.id, cp.is_primary, cp.parent_id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
-        cu.name as created_by_name,
-        uu.name as updated_by_name
+        SELECT 
+					cp.id, 
+					cp.is_primary,
+					cp.parent_id,
+					cp.company_owner_name,
+					cp.company_sign_name,
+					cp.company_name,
+					cp.company_address,
+					cp.company_phone,
+					cp.company_email,
+					cp.company_website,
+					cp.company_logo,
+					cp.company_sign,
+					cp.company_description,
+					cp.company_remark,
+					cp.company_status,
+					cp.created_at,
+					cp.updated_at,
+					cp.deleted_at,
+					cu.name as created_by_name,
+					uu.name as updated_by_name
 
         FROM company_profiles cp
         LEFT JOIN users cu ON cp.created_by_id = cu.id
         LEFT JOIN users uu ON cp.updated_by_id = uu.id
 				WHERE cp.deleted_at IS NULL
+				ORDER BY cp.is_primary DESC
     ) AS alias WHERE 1=1`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT 
-        cu.name as created_by_name,
-        uu.name as updated_by_name
+					cp.id, 
+					cp.is_primary,
+					cp.parent_id,
+					cp.company_owner_name,
+					cp.company_sign_name,
+					cp.company_name,
+					cp.company_address,
+					cp.company_phone,
+					cp.company_email,
+					cp.company_website,
+					cp.company_logo,
+					cp.company_sign,
+					cp.company_description,
+					cp.company_remark,
+					cp.company_status,
+					cp.created_at,
+					cp.updated_at,
+					cp.deleted_at,
+					cu.name as created_by_name,
+					uu.name as updated_by_name
 
         FROM company_profiles cp
         LEFT JOIN users cu ON cp.created_by_id = cu.id
@@ -74,19 +117,29 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 
 	countArgs := append([]interface{}{}, args...)
 
-	// Channels for concurrent execution
-	countChan := make(chan error)
-	selectChan := make(chan error)
+	var wg sync.WaitGroup
+	var countErr, selectErr error
 
 	// Goroutine for count query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-			countChan <- err
-		} else {
-			countChan <- nil
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				defer childSpan.Finish()
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
 		}
 	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "company_name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
@@ -102,14 +155,22 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 	}
 
 	// Goroutine for select query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
 		err := r.sqlDB.SelectContext(ctx, &companyProfiles, query, args...)
-		selectChan <- err
+		if err != nil {
+			defer childSpan.Finish()
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
 	}()
 
 	// Wait for both goroutines to finish
-	countErr := <-countChan
-	selectErr := <-selectChan
+	wg.Wait()
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -119,13 +180,45 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 		return nil, 0, selectErr
 	}
 
+	if len(companyProfiles) > 0 {
+		for i := range companyProfiles {
+			if companyProfiles[i].CompanyLogo != nil {
+				logo := utils.AddHostURLToImageURL(*companyProfiles[i].CompanyLogo)
+				companyProfiles[i].CompanyLogo = &logo
+			}
+			if companyProfiles[i].CompanySign != nil {
+				sign := utils.AddHostURLToImageURL(*companyProfiles[i].CompanySign)
+				companyProfiles[i].CompanySign = &sign
+			}
+		}
+	}
+
 	return companyProfiles, total, nil
 }
 
-func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx context.Context, params *dtos.GetCompanyProfileParams) (*dtos.CompanyProfileDetailDTO, error) {
+func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx context.Context, params *dtos.GetCompanyProfileParams, span opentracing.Span) (*dtos.CompanyProfileDetailDTO, error) {
+	childSpan := r.tracer.StartSpan("CompanyProfileRepository-GetCompanyProfileByID", opentracing.ChildOf(span.Context()))
 	var CompanyProfile dtos.CompanyProfileDetailDTO
 
-	query := `SELECT cp.id, cp.is_primary, cp.parent_id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
+	query := `SELECT 
+					cp.id, 
+					cp.is_primary,
+					cp.parent_id,
+					cp.company_owner_name,
+					cp.company_sign_name,
+					cp.company_name,
+					cp.company_address,
+					cp.company_phone,
+					cp.company_email,
+					cp.company_website,
+					cp.company_logo,
+					cp.company_sign,
+					cp.company_description,
+					cp.company_remark,
+					cp.company_status,
+					cp.created_at,
+					cp.updated_at,
+					cp.deleted_at,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
@@ -149,7 +242,18 @@ func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx context.Context, pa
 	query += isDeletedQuery
 
 	if err := r.sqlDB.Get(&CompanyProfile, query, args...); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
 		return nil, err
+	}
+
+	if CompanyProfile.CompanyLogo != nil {
+		logo := utils.AddHostURLToImageURL(*CompanyProfile.CompanyLogo)
+		CompanyProfile.CompanyLogo = &logo
+	}
+	if CompanyProfile.CompanySign != nil {
+		sign := utils.AddHostURLToImageURL(*CompanyProfile.CompanySign)
+		CompanyProfile.CompanySign = &sign
 	}
 
 	return &CompanyProfile, nil
@@ -160,37 +264,48 @@ func (r *CompanyProfileRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *CompanyProfileRepository) CreateCompanyProfile(tx *gorm.DB, CompanyProfile *models.CompanyProfile) error {
+func (r *CompanyProfileRepository) CreateCompanyProfile(tx *gorm.DB, CompanyProfile *models.CompanyProfile, span opentracing.Span) error {
+	childSpan := r.tracer.StartSpan("CompanyProfileRepository-CreateCompanyProfile", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(CompanyProfile).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *CompanyProfileRepository) UpdateCompanyProfile(tx *gorm.DB, CompanyProfile *models.CompanyProfile) error {
+func (r *CompanyProfileRepository) UpdateCompanyProfile(tx *gorm.DB, CompanyProfile *models.CompanyProfile, span opentracing.Span) error {
+	childSpan := r.tracer.StartSpan("CompanyProfileRepository-UpdateCompanyProfile", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(CompanyProfile).Error; err != nil {
+		if err := tx.Model(&models.CompanyProfile{}).Where("id = ?", CompanyProfile.ID).Select("*").Omit("created_at", "created_by_id").Updates(CompanyProfile).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
-
 }
 
-func (r *CompanyProfileRepository) DeleteCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams) error {
+func (r *CompanyProfileRepository) DeleteCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams, span opentracing.Span) error {
+	childSpan := r.tracer.StartSpan("CompanyProfileRepository-DeleteCompanyProfile", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// if err := tx.Unscoped().Delete(&models.CompanyProfile{}, id).Error; err != nil {
 		if err := tx.Delete(&models.CompanyProfile{}, params.ID).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *CompanyProfileRepository) RestoreCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams) error {
+func (s *CompanyProfileRepository) RestoreCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams, span opentracing.Span) error {
+	childSpan := s.tracer.StartSpan("CompanyProfileRepository-RestoreCompanyProfile", opentracing.ChildOf(span.Context()))
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var CompanyProfile models.CompanyProfile
 		if err := tx.Unscoped().Model(&CompanyProfile).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil

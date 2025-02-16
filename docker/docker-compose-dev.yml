@@ -30,14 +30,14 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB: ${REDIS_DB}
       SERVICE_TYPE: main
-    restart: on-failure
+    # restart: on-failure
 
   service:
     build: 
       context: ../service
       dockerfile: Dockerfile.dev
       network: host
-    image: nibroos/s-erp-service-dev:1.0.250204
+    image: nibroos/s-erp-service-dev:1.0.250216
     networks:
       - s-erp-api-network
     ports:
@@ -51,7 +51,7 @@ services:
       - .env
     environment:
       SEEDER_DIR: /apps/internal/database/seeders
-    restart: on-failure
+    # restart: on-failure
 
   postgres:
     image: postgres:13-alpine
@@ -65,7 +65,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-s-erp-api:/var/lib/postgresql/data
-    restart: on-failure
+    # restart: on-failure
 
   # asynq-client:
   #   build:
@@ -162,7 +162,24 @@ services:
       - s-erp-api-network
     depends_on:
       - postgres
-    restart: on-failure
+    # restart: on-failure
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    expose:
+      - 9100
+    networks:
+      - s-erp-api-network
 
   prometheus:
     image: prom/prometheus:v3.1.0
@@ -192,7 +209,7 @@ services:
       GF_DATABASE_NAME: grafana
       GF_DATABASE_USER: grafana
       GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-    restart: on-failure
+    # restart: on-failure
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
@@ -205,7 +222,6 @@ services:
       - xpack.security.enabled=false  # Disable security
       - xpack.monitoring.enabled=false  # Disable monitoring
       - xpack.watcher.enabled=false  # Disable watcher (alerting)
-      # - action.auto_create_index=false  # Disable auto-creation of indices
     ports:
       - "9200:9200"
     volumes:
@@ -236,6 +252,7 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
+
   # otel-collector:
   #   image: otel/opentelemetry-collector-contrib:0.77.0
   #   container_name: otel-collector-s-erp-api

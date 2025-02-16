@@ -97,10 +97,16 @@ func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string, 
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
+				defer childSpan.Finish()
+				countSpan.LogKV("query", countQuery)
+				countErr = err
 			}
-			countErr = err
 		}
 	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
@@ -124,9 +130,11 @@ func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string, 
 
 		err := r.sqlDB.SelectContext(ctx, &vats, query, args...)
 		if err != nil {
+			defer childSpan.Finish()
+			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
+			selectErr = err
 		}
-		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
@@ -187,6 +195,7 @@ func (r *VatRepository) BeginTransaction() *gorm.DB {
 func (r *VatRepository) CreateVat(tx *gorm.DB, vat *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("VatRepository-CreateVat", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(vat).Error; err != nil {
+		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -196,7 +205,8 @@ func (r *VatRepository) CreateVat(tx *gorm.DB, vat *models.MixValue, span opentr
 func (r *VatRepository) UpdateVat(tx *gorm.DB, vat *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("VatRepository-UpdateVat", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(vat).Error; err != nil {
+		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(vat).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -209,6 +219,7 @@ func (r *VatRepository) DeleteVat(tx *gorm.DB, params *dtos.GetVatParams, span o
 	childSpan := opentracing.StartSpan("VatRepository-DeleteVat", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -221,6 +232,7 @@ func (s *VatRepository) RestoreVat(tx *gorm.DB, params *dtos.GetVatParams, span 
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var vat models.MixValue
 		if err := tx.Unscoped().Model(&vat).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}

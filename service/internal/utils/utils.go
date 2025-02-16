@@ -6,15 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	jLog "github.com/opentracing/opentracing-go/log"
@@ -312,18 +315,36 @@ func executeSQLFile(db *sql.DB, filePath string) error {
 	return nil
 }
 
-// BodyParserWithNull converts empty strings to null and parses the request body into the provided struct.
 func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 	// Parse the request body into a map
 	var body map[string]interface{}
-	if err := json.Unmarshal(ctx.Body(), &body); err != nil {
-		return err
-	}
+	if ctx.Get("Content-Type") == "application/json" {
+		if err := json.Unmarshal(ctx.Body(), &body); err != nil {
+			return err
+		}
 
-	// Convert empty strings to null in the map
-	for key, value := range body {
-		if str, ok := value.(string); ok && str == "" {
-			body[key] = nil
+		// Convert empty strings to null in the map
+		for key, value := range body {
+			if str, ok := value.(string); ok && str == "" {
+				body[key] = nil
+			}
+		}
+	} else if ctx.Get("Content-Type") == "multipart/form-data" {
+		form, err := ctx.MultipartForm()
+		if err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to parse multipart form"})
+		}
+
+		// Convert form values to JSON
+		body = make(map[string]interface{})
+		for key, values := range form.Value {
+			if len(values) > 0 {
+				if values[0] == "" {
+					body[key] = nil
+				} else {
+					body[key] = values[0]
+				}
+			}
 		}
 	}
 
@@ -532,4 +553,110 @@ func GetBodyPayloadValue(ctx *fiber.Ctx, key string) string {
 	var payload map[string]interface{}
 	json.Unmarshal(body, &payload)
 	return payload[key].(string)
+}
+
+func HandleFileUpload(ctx *fiber.Ctx, file *multipart.FileHeader, userID uint, span opentracing.Span) (string, error) {
+	childSpan := opentracing.StartSpan("HandleFileUpload", opentracing.ChildOf(span.Context()))
+	// Define the directory to save the uploaded files
+	uploadDir := "./public/uploads"
+
+	// Ensure the directory exists
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		LogErrors(childSpan, err)
+		return "", err
+	}
+
+	// timestamp yyyyMMdd_HHmm
+	timestamp := time.Now().Format("20060102_1504")
+	uuid := uuid.New().String()[:5]
+	fileName := fmt.Sprintf("%s-%s-%s-%s", timestamp, strconv.FormatUint(uint64(userID), 10), uuid, file.Filename)
+
+	// Save the file with a unique name
+	filePath := fmt.Sprintf("%s/%s", uploadDir, fileName)
+	if err := ctx.SaveFile(file, filePath); err != nil {
+		LogErrors(childSpan, err)
+		return "", err
+	}
+
+	// Return the file path
+	return filePath, nil
+}
+
+// ParseUintPointer parses a string to a uint pointer
+func ParseUintPointer(value string) *uint {
+	if value == "" {
+		return nil
+	}
+	parsedValue, err := strconv.ParseUint(value, 10, 32)
+	if err != nil {
+		return nil
+	}
+	uintValue := uint(parsedValue)
+	return &uintValue
+}
+
+// ParseIntPointer parses a string to an int pointer
+func ParseIntPointer(value string) *int {
+	if value == "" {
+		return nil
+	}
+	parsedValue, err := strconv.Atoi(value)
+	if err != nil {
+		return nil
+	}
+	return &parsedValue
+}
+
+// ParseStringPointer parses a string to a string pointer
+func ParseStringPointer(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+// ParseInt parses a string to an int
+func ParseInt(value string) int {
+	parsedValue, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return parsedValue
+}
+
+// ParseStringPointer parses a string to a string pointer
+func ParseIntNullPointer(value interface{}) *int {
+	if value == nil {
+		return nil
+	}
+
+	// if value string
+	if str, ok := value.(string); ok {
+		parsedValue, err := strconv.Atoi(str)
+		if err != nil {
+			return nil
+		}
+		return &parsedValue
+	}
+
+	// if value int
+	if intValue, ok := value.(int); ok {
+		return &intValue
+	}
+
+	return nil
+}
+
+func RemoveDotAtStart(s string) string {
+	if strings.HasPrefix(s, ".") {
+		return s[1:]
+	}
+	return s
+}
+
+func AddHostURLToImageURL(imageURL string) string {
+	if imageURL == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), RemoveDotAtStart(imageURL))
 }

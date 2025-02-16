@@ -144,7 +144,7 @@ func (s *ItemSubGroupService) CsvGetItemSubGroups(ctx context.Context, filters m
 	if err != nil {
 		log.Println("CsvGetItemSubGroups error:", err)
 	} else {
-		appName = companyProfile.CompanyName
+		appName = *companyProfile.CompanyName
 	}
 
 	csv := fmt.Sprintf("%s\n", appName)

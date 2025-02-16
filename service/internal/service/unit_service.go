@@ -166,7 +166,7 @@ func (s *UnitService) CsvGetUnits(ctx *fiber.Ctx, filters map[string]string, spa
 		defer childSpan.Finish()
 		log.Println("CsvGetUnits error:", err)
 	} else {
-		appName = companyProfile.CompanyName
+		appName = *companyProfile.CompanyName
 	}
 
 	csv := fmt.Sprintf("%s\n", appName)

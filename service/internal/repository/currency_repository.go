@@ -104,10 +104,16 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
+				defer childSpan.Finish()
+				countSpan.LogKV("query", countQuery)
+				countErr = err
 			}
-			countErr = err
 		}
 	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
@@ -131,9 +137,11 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
 
 		err := r.sqlDB.SelectContext(ctx, &currencies, query, args...)
 		if err != nil {
+			defer childSpan.Finish()
+			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
+			selectErr = err
 		}
-		selectErr = err
 	}()
 
 	// Wait for both goroutines to finish
@@ -194,6 +202,7 @@ func (r *CurrencyRepository) BeginTransaction() *gorm.DB {
 func (r *CurrencyRepository) CreateCurrency(tx *gorm.DB, currency *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CurrencyRepository-CreateCurrency", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(currency).Error; err != nil {
+		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -203,7 +212,8 @@ func (r *CurrencyRepository) CreateCurrency(tx *gorm.DB, currency *models.MixVal
 func (r *CurrencyRepository) UpdateCurrency(tx *gorm.DB, currency *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CurrencyRepository-UpdateCurrency", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Updates(currency).Error; err != nil {
+		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(currency).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -216,6 +226,7 @@ func (r *CurrencyRepository) DeleteCurrency(tx *gorm.DB, params *dtos.GetCurrenc
 	childSpan := opentracing.StartSpan("CurrencyRepository-DeleteCurrency", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -228,6 +239,7 @@ func (s *CurrencyRepository) RestoreCurrency(tx *gorm.DB, params *dtos.GetCurren
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var currency models.MixValue
 		if err := tx.Unscoped().Model(&currency).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
