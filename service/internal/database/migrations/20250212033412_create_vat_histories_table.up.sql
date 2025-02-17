@@ -3,9 +3,10 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS vat_histories (
   id SERIAL PRIMARY KEY,
   vat_id INT NOT NULL,
-  num INT,
-  divider INT,
-  multiplier INT,
+  -- num decimal
+  num DECIMAL(18, 5),
+  divider DECIMAL(18, 5),
+  multiplier DECIMAL(18, 5),
   changed_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
   status INT,
   remark TEXT,

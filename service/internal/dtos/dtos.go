@@ -908,8 +908,18 @@ type UpdateVatRequest struct {
 	Remark      *string  `json:"remark"`
 	Status      int8     `json:"status"`
 	Divider     *float64 `json:"divider"`
-	ChangedAt   *string  `json:"changed_at"`
 	Multiplier  *float64 `json:"multiplier"`
+	ChangedAt   *string  `json:"changed_at"`
+}
+type UpdateVatHistoryRequest struct {
+	ID         uint     `json:"id"`
+	VatID      uint     `json:"vat_id"`
+	Num        float64  `json:"num"`
+	Remark     *string  `json:"remark"`
+	Status     int8     `json:"status"`
+	Divider    *float64 `json:"divider"`
+	Multiplier *float64 `json:"multiplier"`
+	ChangedAt  *string  `json:"changed_at"`
 }
 
 type GetVatByIDRequest struct {
@@ -924,6 +934,7 @@ type GetVatParams struct {
 type GetVatHistoryParams struct {
 	ID        *uint
 	VatID     *uint
+	IsLatest  *int
 	IsDeleted *int
 }
 
@@ -946,6 +957,8 @@ type VatListDTO struct {
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
+	Multiplier    *string `json:"multiplier" db:"multiplier"`
+	Divider       *string `json:"divider" db:"divider"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt     *string `json:"created_at" db:"created_at"`
@@ -956,9 +969,12 @@ type VatListDTO struct {
 type VatDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
+	Num           string  `json:"num" db:"num"`
 	Description   string  `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
+	Multiplier    *string `json:"multiplier" db:"multiplier"`
+	Divider       *string `json:"divider" db:"divider"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt     *string `json:"created_at" db:"created_at"`

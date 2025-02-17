@@ -500,6 +500,14 @@ func GetPtrVal(ptr *string) string {
 	return ""
 }
 
+// GetFloatPtrVal safely dereferences a float pointer
+func GetFloatPtrVal(ptr *float64) float64 {
+	if ptr != nil {
+		return *ptr
+	}
+	return 0
+}
+
 func JaegerMiddleware(c *fiber.Ctx, tracer opentracing.Tracer) opentracing.SpanContext {
 	httpHeaders := make(http.Header)
 	c.Request().Header.VisitAll(func(key, value []byte) {

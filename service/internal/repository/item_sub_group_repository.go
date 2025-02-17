@@ -103,7 +103,6 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
-				defer childSpan.Finish()
 				countSpan.LogKV("query", countQuery)
 				countErr = err
 			}
@@ -136,7 +135,6 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 
 		err := r.sqlDB.SelectContext(ctx, &itemSubGroups, query, args...)
 		if err != nil {
-			defer childSpan.Finish()
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
 			selectErr = err
@@ -145,6 +143,10 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx context.Context, filters m
 
 	// Wait for both goroutines to finish
 	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
 
 	if countErr != nil {
 		return nil, 0, countErr

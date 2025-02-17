@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -36,27 +37,39 @@ func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string, 
 
 	query := `SELECT *
     FROM ( 
-        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT DISTINCT ON (m.id)
+				m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				vh.multiplier, vh.divider,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM mix_values m
-                LEFT JOIN groups g ON m.group_id = g.id
+				LEFT JOIN (
+						SELECT * FROM vat_histories vh
+						ORDER BY vh.changed_at DESC
+				) vh ON m.id = vh.vat_id
+				LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-                WHERE g.name = 'vats'
+				WHERE g.name = 'vats'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
-        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT DISTINCT ON (m.id)
+				m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				vh.multiplier, vh.divider,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM mix_values m
+				LEFT JOIN (
+						SELECT * FROM vat_histories vh
+						ORDER BY vh.changed_at DESC
+				) vh ON m.id = vh.vat_id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-                LEFT JOIN groups g ON m.group_id = g.id
-                WHERE g.name = 'vats'
+				LEFT JOIN groups g ON m.group_id = g.id
+				WHERE g.name = 'vats'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -97,7 +110,6 @@ func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string, 
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
-				defer childSpan.Finish()
 				countSpan.LogKV("query", countQuery)
 				countErr = err
 			}
@@ -130,7 +142,6 @@ func (r *VatRepository) GetVats(ctx context.Context, filters map[string]string, 
 
 		err := r.sqlDB.SelectContext(ctx, &vats, query, args...)
 		if err != nil {
-			defer childSpan.Finish()
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
 			selectErr = err
@@ -155,11 +166,13 @@ func (r *VatRepository) GetVatByID(ctx context.Context, params *dtos.GetVatParam
 	childSpan := opentracing.StartSpan("VatRepository-GetVatByID", opentracing.ChildOf(span.Context()))
 	var vat dtos.VatDetailDTO
 
-	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	query := `SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	vh.multiplier, vh.divider,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
 	FROM mix_values m
+	LEFT JOIN vat_histories vh ON m.id = vh.vat_id
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	LEFT JOIN groups g ON m.group_id = g.id
@@ -178,6 +191,9 @@ func (r *VatRepository) GetVatByID(ctx context.Context, params *dtos.GetVatParam
 	}
 
 	query += isDeletedQuery
+
+	// ORDER BY
+	query += " ORDER BY vh.changed_at DESC"
 
 	if err := r.sqlDB.Get(&vat, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
@@ -294,15 +310,16 @@ func (r *VatRepository) GetVatHistories(ctx context.Context, filters map[string]
 	}
 
 	if value, ok := filters["vat_id"]; ok && value != "" {
-		query += fmt.Sprintf(" AND vh.vat_id = $%d", i)
-		countQuery += fmt.Sprintf(" AND vh.vat_id = $%d", i)
+		query += fmt.Sprintf(" AND vat_id = $%d", i)
+		countQuery += fmt.Sprintf(" AND vat_id = $%d", i)
+		log.Println("VAT ID", value)
 		args = append(args, value)
 		i++
 	}
 
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
 		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
 		i += 3
 	}
@@ -323,7 +340,6 @@ func (r *VatRepository) GetVatHistories(ctx context.Context, filters map[string]
 			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
-				defer childSpan.Finish()
 				countSpan.LogKV("query", countQuery)
 				countErr = err
 			}
@@ -356,7 +372,6 @@ func (r *VatRepository) GetVatHistories(ctx context.Context, filters map[string]
 
 		err := r.sqlDB.SelectContext(ctx, &vatHistories, query, args...)
 		if err != nil {
-			defer childSpan.Finish()
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
 			selectErr = err
@@ -365,6 +380,10 @@ func (r *VatRepository) GetVatHistories(ctx context.Context, filters map[string]
 
 	// Wait for both goroutines to finish
 	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -387,10 +406,8 @@ func (r *VatRepository) CreateVatHistory(tx *gorm.DB, vatHistory *models.VatHist
 	return nil
 }
 
-// GetLatestVatHistoryByVatID
-
-func (r *VatRepository) GetLatestVatHistoryByVatID(ctx context.Context, params *dtos.GetVatHistoryParams, span opentracing.Span) (*dtos.VatHistoryDetailDTO, error) {
-	childSpan := opentracing.StartSpan("VatRepository-GetLatestVatHistoryByVatID", opentracing.ChildOf(span.Context()))
+func (r *VatRepository) GetVatHistoryByID(ctx context.Context, params *dtos.GetVatHistoryParams, span opentracing.Span) (*dtos.VatHistoryDetailDTO, error) {
+	childSpan := opentracing.StartSpan("VatRepository-GetVatHistoryByVatID", opentracing.ChildOf(span.Context()))
 	var vatHistory dtos.VatHistoryDetailDTO
 
 	query := `SELECT 
@@ -410,29 +427,68 @@ func (r *VatRepository) GetLatestVatHistoryByVatID(ctx context.Context, params *
 
 	i := 1
 	if params.ID != nil {
-		query += " AND m.id = $1"
+		query += " AND vh.id = $1"
 		args = append(args, params.ID)
 		i++
+		log.Println("ID", params.ID)
 	}
 
-	if params.VatID != nil {
-		query += " AND vh.vat_id = $2"
-		args = append(args, params.VatID)
-		i++
-	}
+	// if params.VatID != nil {
+	// 	query += " AND vh.vat_id = $2"
+	// 	args = append(args, params.VatID)
+	// 	i++
+	// }
 
 	isDeletedQuery := ` AND m.deleted_at IS NULL`
-
 	query += isDeletedQuery
 
 	// order by changed_at desc
-	query += " ORDER BY vh.changed_at DESC"
+	if params.IsLatest != nil && *params.IsLatest == 1 {
+		query += " ORDER BY vh.changed_at DESC, vh.updated_at DESC, vh.created_at DESC"
+	}
 
 	if err := r.sqlDB.Get(&vatHistory, query, args...); err != nil {
-		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
 	return &vatHistory, nil
+}
+
+func (r *VatRepository) UpdateVatHistory(tx *gorm.DB, vat *models.VatHistory, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatRepository-UpdateVatHistory", opentracing.ChildOf(span.Context()))
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Select("*").Omit("vat_id", "created_at", "created_by_id").Updates(vat).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			return err
+		}
+		return nil
+	})
+
+}
+
+func (r *VatRepository) DeleteVatHistory(tx *gorm.DB, params *dtos.GetVatHistoryParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatRepository-DeleteVatHistory", opentracing.ChildOf(span.Context()))
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&models.VatHistory{}, params.ID).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			return err
+		}
+		return nil
+	})
+}
+
+func (s *VatRepository) RestoreVatHistory(tx *gorm.DB, params *dtos.GetVatHistoryParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("VatRepository-RestoreVatHistory", opentracing.ChildOf(span.Context()))
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var vat models.VatHistory
+		if err := tx.Unscoped().Model(&vat).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			return err
+		}
+		return nil
+	})
 }
