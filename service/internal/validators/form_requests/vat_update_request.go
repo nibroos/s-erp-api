@@ -22,11 +22,14 @@ func NewVatUpdateRequest() *VatUpdateRequest {
 func (r *VatUpdateRequest) Validate(req *dtos.UpdateVatRequest, ctx context.Context) map[string]string {
 	rules := govalidator.MapData{
 		// "name":        []string{"required", fmt.Sprintf("unique_ig:mix_values,name,%d", req.ID)},
+		"num":         []string{"float"},
 		"name":        []string{"required"},
-		"num":         []string{"numeric"},
 		"description": []string{},
 		"remarks":     []string{},
 		"status":      []string{},
+		"divider":     []string{"float"},
+		"multiplier":  []string{"float"},
+		"changed_at":  []string{},
 	}
 
 	opts := govalidator.Options{

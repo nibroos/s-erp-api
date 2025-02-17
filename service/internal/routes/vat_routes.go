@@ -24,4 +24,12 @@ func SetupVatRoutes(vats fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo
 	vats.Post("/restore-vat", vatController.RestoreVat)
 	vats.Post("/excel-vat", vatController.ExcelGetVats)
 	vats.Post("/csv-vat", vatController.CsvGetVats)
+
+	vats.Post("/index-vat-history", vatController.GetVatHistories)
+	vats.Post("/show-vat-history", vatController.GetVatHistoryByID)
+	vats.Post("/update-vat-history", vatController.UpdateVatHistory)
+	vats.Post("/delete-vat-history", vatController.DeleteVatHistory)
+	vats.Post("/restore-vat-history", vatController.RestoreVatHistory)
+	vats.Post("/excel-vat-history", vatController.ExcelGetVatsHistory)
+	vats.Post("/csv-vat-history", vatController.CsvGetVatsHistory)
 }

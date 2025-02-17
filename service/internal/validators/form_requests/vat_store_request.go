@@ -24,11 +24,14 @@ func (r *VatStoreRequest) Validate(req *dtos.CreateVatRequest, ctx context.Conte
 	rules := govalidator.MapData{
 		// "name":        []string{"required", "unique:mix_values,name"},
 		// "parent_id":   []string{"required"},
+		"num":         []string{"float"},
 		"name":        []string{"required"},
-		"num":         []string{"numeric"},
 		"description": []string{},
 		"remarks":     []string{},
 		"status":      []string{},
+		"divider":     []string{"float"},
+		"multiplier":  []string{"float"},
+		"changed_at":  []string{},
 	}
 
 	opts := govalidator.Options{

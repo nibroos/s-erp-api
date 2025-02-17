@@ -11,34 +11,61 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/service"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/nibroos/s-erp-api/service/internal/validators/form_requests"
+	"github.com/opentracing/opentracing-go"
+	// "github.com/opentracing/opentracing-go/ext"
 )
 
 type ItemSubGroupController struct {
 	service *service.ItemSubGroupService
 	repo    *repository.ItemSubGroupRepository
+	tracer  opentracing.Tracer
 }
 
-// func NewItemSubGroupController(service *service.ItemSubGroupService) *ItemSubGroupController {
-func NewItemSubGroupController(service *service.ItemSubGroupService, repo *repository.ItemSubGroupRepository) *ItemSubGroupController {
-	return &ItemSubGroupController{service: service, repo: repo}
+func NewItemSubGroupController(service *service.ItemSubGroupService, repo *repository.ItemSubGroupRepository, tracer opentracing.Tracer) *ItemSubGroupController {
+	return &ItemSubGroupController{service: service, repo: repo, tracer: tracer}
 }
 
 func (c *ItemSubGroupController) GetItemSubGroups(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("ItemSubGroupController-GetItemSubGroups", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	filters, ok := ctx.Locals("filters").(map[string]string)
+
 	if !ok {
+		apiSpan.LogKV("response_body", string("ItemSubGroupController-GetItemSubGroups: Invalid filters"))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	itemSubGroups, total, err := c.service.GetItemSubGroups(ctx.Context(), filters)
+	itemSubGroups, total, err := c.service.GetItemSubGroups(ctx, filters, parentSpan)
 	if err != nil {
-		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.SendResponse(ctx, response, http.StatusInternalServerError)
 	}
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
-	return utils.GetResponse(ctx, itemSubGroups, paginationMeta, "Item sub groups fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, itemSubGroups, paginationMeta, "Item subgroup fetched successfully", http.StatusOK, nil, nil)
 }
+
 func (c *ItemSubGroupController) CreateItemSubGroup(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("ItemSubGroupController-CreateItemSubGroup", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.CreateItemSubGroupRequest
 
 	// Use the utility function to parse the request body
@@ -49,64 +76,86 @@ func (c *ItemSubGroupController) CreateItemSubGroup(ctx *fiber.Ctx) error {
 	// Validate the request
 	reqValidator := form_requests.NewItemSubGroupStoreRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
+		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
 	// Extract user ID from JWT
 	claims, err := middleware.GetAuthUser(ctx)
 	if err != nil {
+		utils.LogErrors(parentSpan, err)
 		return utils.GetResponse(ctx, nil, nil, "Unauthorized", http.StatusUnauthorized, err.Error(), nil)
 	}
 	userID := uint(claims["user_id"].(float64))
 
 	itemSubGroup := models.MixValue{
+		Name:        req.Name,
 		GroupID:     utils.ItemSubGroupID,
 		ParentID:    &req.ItemGroupID,
-		Name:        req.Name,
 		Description: req.Description,
 		Remark:      req.Remark,
+		OrderItem:   nil,
 		Status:      req.Status,
-		OptionsJSON: "{}",
 		CreatedByID: &userID,
+		OptionsJSON: "{}",
 	}
 
 	tx := c.repo.BeginTransaction()
-	createdItemSubGroup, err := c.service.CreateItemSubGroup(ctx.Context(), &itemSubGroup, tx)
+	createdItemSubGroup, err := c.service.CreateItemSubGroup(ctx, &itemSubGroup, tx, parentSpan)
+
 	if err != nil {
 		tx.Rollback()
-		return utils.GetResponse(ctx, nil, nil, "Failed to create item sub group", http.StatusInternalServerError, err.Error(), nil)
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create item subgroups", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to create item sub group", http.StatusInternalServerError, err.Error(), nil)
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create item subgroups", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params := &dtos.GetItemSubGroupParams{ID: createdItemSubGroup.ID}
-	getItemSubGroup, err := c.service.GetItemSubGroupByID(ctx.Context(), params)
+	getItemSubGroup, err := c.service.GetItemSubGroupByID(ctx, params, parentSpan)
 	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusNotFound, err.Error(), nil)
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	filters := ctx.Locals("filters").(map[string]string)
+	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getItemSubGroup}, paginationMeta, "Item sub group created successfully", http.StatusCreated, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getItemSubGroup}, paginationMeta, "Item subgroup created successfully", http.StatusCreated, nil, nil)
 }
 func (c *ItemSubGroupController) GetItemSubGroupByID(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("ItemSubGroupController-GetItemSubGroupByID", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.GetItemSubGroupByIDRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	params := &dtos.GetItemSubGroupParams{ID: req.ID}
-	itemSubGroup, err := c.service.GetItemSubGroupByID(ctx.Context(), params)
+	itemSubGroup, err := c.service.GetItemSubGroupByID(ctx, params, parentSpan)
 	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusNotFound, err.Error(), nil)
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	itemSubGroupArray := []interface{}{itemSubGroup}
@@ -114,11 +163,21 @@ func (c *ItemSubGroupController) GetItemSubGroupByID(ctx *fiber.Ctx) error {
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, itemSubGroupArray, paginationMeta, "Item sub group fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, itemSubGroupArray, paginationMeta, "Item subgroup fetched successfully", http.StatusOK, nil, nil)
 }
 
 // update itemSubGroup
 func (c *ItemSubGroupController) UpdateItemSubGroup(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("ItemSubGroupController-UpdateItemSubGroup", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.UpdateItemSubGroupRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
@@ -128,14 +187,8 @@ func (c *ItemSubGroupController) UpdateItemSubGroup(ctx *fiber.Ctx) error {
 	// Validate the request
 	reqValidator := form_requests.NewItemSubGroupUpdateRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
+		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
-	}
-
-	params := &dtos.GetItemSubGroupParams{ID: req.ID}
-	// Fetch the existing itemSubGroup to get the current data
-	existingItemSubGroup, err := c.service.GetItemSubGroupByID(ctx.Context(), params)
-	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	// Extract user ID from JWT
@@ -153,115 +206,147 @@ func (c *ItemSubGroupController) UpdateItemSubGroup(ctx *fiber.Ctx) error {
 		Description: req.Description,
 		Remark:      req.Remark,
 		Status:      req.Status,
-		OptionsJSON: "{}",
-		CreatedByID: &existingItemSubGroup.CreatedByID,
 		UpdatedByID: &userID,
+		OptionsJSON: "{}",
 	}
 
 	tx := c.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to update item sub group", http.StatusInternalServerError, err.Error(), nil)
-	}
 
-	updatedItemSubGroup, err := c.service.UpdateItemSubGroup(ctx.Context(), &itemSubGroup, tx)
+	updatedItemSubGroup, err := c.service.UpdateItemSubGroup(ctx, &itemSubGroup, tx, parentSpan)
+
 	if err != nil {
 		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		if err.Error() == "itemSubGroup name already exists" {
-			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Item sub group already exists", "status": http.StatusConflict})
+			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Item subgroup already exists", "status": http.StatusConflict})
 		}
-		return utils.GetResponse(ctx, nil, nil, "Failed to update item sub group", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Item subgroup", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to update item sub group", http.StatusInternalServerError, err.Error(), nil)
-	}
+	tx.Commit()
 
-	params = &dtos.GetItemSubGroupParams{ID: updatedItemSubGroup.ID}
-	getItemSubGroup, err := c.service.GetItemSubGroupByID(ctx.Context(), params)
+	params := &dtos.GetItemSubGroupParams{ID: updatedItemSubGroup.ID}
+	getItemSubGroup, err := c.service.GetItemSubGroupByID(ctx, params, parentSpan)
 	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusNotFound, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	filters := ctx.Locals("filters").(map[string]string)
+	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getItemSubGroup}, paginationMeta, "Item sub group updated successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getItemSubGroup}, paginationMeta, "Item subgroup updated successfully", http.StatusOK, nil, nil)
 }
 
 // delete itemSubGroup
 func (c *ItemSubGroupController) DeleteItemSubGroup(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("ItemSubGroupController-DeleteItemSubGroup", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.DeleteItemSubGroupRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	params := &dtos.GetItemSubGroupParams{ID: req.ID}
 	// GET itemSubGroup by ID
-	_, err := c.service.GetItemSubGroupByID(ctx.Context(), params)
+	_, err := c.service.GetItemSubGroupByID(ctx, params, parentSpan)
 	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusNotFound, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusNotFound, err.Error(), nil)
 	}
 
+	// Transaction handling
 	tx := c.repo.BeginTransaction()
-	if err := tx.Error; err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete item sub group", http.StatusInternalServerError, err.Error(), nil)
-	}
-
-	err = c.service.DeleteItemSubGroup(ctx.Context(), req.ID, tx)
+	err = c.service.DeleteItemSubGroup(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete item sub group", http.StatusInternalServerError, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Item subgroup", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Item sub group deleted successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Item subgroup deleted successfully", http.StatusOK, nil, nil)
 }
 
 // restore itemSubGroup
 func (c *ItemSubGroupController) RestoreItemSubGroup(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("ItemSubGroupController-RestoreItemSubGroup", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	var req dtos.DeleteItemSubGroupRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusBadRequest, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusBadRequest, "ID is required", nil)
-	}
-
-	isDeleted := 1
-	params := &dtos.GetItemSubGroupParams{ID: req.ID, IsDeleted: &isDeleted}
-	_, err := c.service.GetItemSubGroupByID(ctx.Context(), params)
-	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Item sub group not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
-	err = c.service.RestoreItemSubGroup(ctx.Context(), params.ID, tx)
+
+	isDeleted := 1
+	params := &dtos.GetItemSubGroupParams{ID: req.ID, IsDeleted: &isDeleted}
+	// GET itemSubGroup by ID
+	_, err := c.service.GetItemSubGroupByID(ctx, params, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusNotFound, err.Error(), nil)
+	}
+
+	err = c.service.RestoreItemSubGroup(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
-		return utils.GetResponse(ctx, nil, nil, "Failed to restore sub group", http.StatusInternalServerError, err.Error(), nil)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to restore Item subgroup", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Item sub group restored successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Item subgroup restored successfully", http.StatusOK, nil, nil)
 }
 
 func (c *ItemSubGroupController) ExcelGetItemSubGroups(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("ItemSubGroupController-ExcelGetItemSubGroups", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	filters, ok := ctx.Locals("filters").(map[string]string)
 	if !ok {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	itemSubGroups, err := c.service.ExcelGetItemSubGroups(ctx.Context(), filters)
+	itemSubGroups, err := c.service.ExcelGetItemSubGroups(ctx, filters, parentSpan)
 	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
@@ -269,13 +354,24 @@ func (c *ItemSubGroupController) ExcelGetItemSubGroups(ctx *fiber.Ctx) error {
 }
 
 func (c *ItemSubGroupController) CsvGetItemSubGroups(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetItemSubGroups", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
 	filters, ok := ctx.Locals("filters").(map[string]string)
 	if !ok {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	itemSubGroups, err := c.service.CsvGetItemSubGroups(ctx.Context(), filters)
+	itemSubGroups, err := c.service.CsvGetItemSubGroups(ctx, filters, parentSpan)
 	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
