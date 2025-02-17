@@ -31,9 +31,13 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 		})
 	})
 
+	// util service
+	utilRepo := repository.NewUtilRepository(gormDB, sqlDB)
+	userRepo := repository.NewUserRepository(gormDB, sqlDB, utilRepo, tracer)
+
 	// Setup auth routes
-	auth.Post("/login", rest.NewUserController(service.NewUserService(repository.NewUserRepository(gormDB, sqlDB))).Login)
-	auth.Post("/register", rest.NewUserController(service.NewUserService(repository.NewUserRepository(gormDB, sqlDB))).Register)
+	auth.Post("/login", rest.NewUserController(service.NewUserService(repository.NewUserRepository(gormDB, sqlDB, utilRepo, tracer), utilRepo, tracer), userRepo, tracer).Login)
+	auth.Post("/register", rest.NewUserController(service.NewUserService(repository.NewUserRepository(gormDB, sqlDB, utilRepo, tracer), utilRepo, tracer), userRepo, tracer).Register)
 
 	// Protected routes
 	app.Use(middleware.JWTMiddleware())
@@ -41,12 +45,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	app.Use(middleware.JaegerTracingMiddleware(tracer))
 	// app.Use(middleware.JaegerMiddleware(tracer))
 
-	// util service
-	utilRepo := repository.NewUtilRepository(gormDB, sqlDB)
-
 	// Grouped routes
 	users := version.Group("/users")
-	SetupUserRoutes(users, gormDB, sqlDB)
+	SetupUserRoutes(users, gormDB, sqlDB, utilRepo, tracer)
 
 	identifiers := version.Group("/identifiers")
 	SetupIdentifierRoutes(identifiers, gormDB, sqlDB)
