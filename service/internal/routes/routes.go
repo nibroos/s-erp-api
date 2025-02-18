@@ -67,6 +67,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	companyProfile := version.Group("/company-profiles")
 	SetupCompanyProfileRoutes(companyProfile, gormDB, sqlDB, tracer)
 
+	branch := version.Group("/branches")
+	SetupBranchRoutes(branch, gormDB, sqlDB, tracer)
+
 	customerType := version.Group("/customer-types")
 	SetupCustomerTypeRoutes(customerType, gormDB, sqlDB, utilRepo, tracer)
 
