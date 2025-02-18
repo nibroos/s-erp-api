@@ -581,6 +581,126 @@ type GetCompanyProfilesResult struct {
 	Err             error
 }
 
+type GetBranchesRequest struct {
+	ParentID       *int   `json:"parent_id"`
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateBranchRequest struct {
+	ParentID         *uint   `json:"parent_id" db:"parent_id"`
+	CompanyProfileID *uint   `json:"company_profile_id" db:"company_profile_id"`
+	OwnerName        *string `json:"owner_name" db:"owner_name"`
+	SignName         *string `json:"sign_name" db:"sign_name"`
+	Name             string  `json:"name" db:"name"`
+	Address          *string `json:"address" db:"address"`
+	Phone            *string `json:"phone" db:"phone"`
+	Email            *string `json:"email" db:"email"`
+	Website          *string `json:"website" db:"website"`
+	Logo             *string `json:"logo" db:"logo"`
+	Sign             *string `json:"sign" db:"sign"`
+	Description      *string `json:"description" db:"description"`
+	Remark           *string `json:"remark" db:"remark"`
+	Status           *int    `json:"status" db:"status"`
+}
+
+type UpdateBranchRequest struct {
+	ID               uint    `json:"id"`
+	ParentID         *uint   `json:"parent_id" db:"parent_id"`
+	CompanyProfileID *uint   `json:"company_profile_id" db:"company_profile_id"`
+	OwnerName        *string `json:"owner_name" db:"owner_name"`
+	SignName         *string `json:"sign_name" db:"sign_name"`
+	Name             string  `json:"name" db:"name"`
+	Address          *string `json:"address" db:"address"`
+	Phone            *string `json:"phone" db:"phone"`
+	Email            *string `json:"email" db:"email"`
+	Website          *string `json:"website" db:"website"`
+	Logo             *string `json:"logo" db:"logo"`
+	Sign             *string `json:"sign" db:"sign"`
+	Description      *string `json:"description" db:"description"`
+	Remark           *string `json:"remark" db:"remark"`
+	Status           *int    `json:"status" db:"status"`
+}
+
+type GetBranchByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetBranchParams struct {
+	ID               uint
+	CompanyProfileID *uint
+	IsDeleted        *int
+}
+
+func NewGetBranchParams(id uint) *GetBranchParams {
+	defaultIsDeleted := 0
+	return &GetBranchParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteBranchRequest struct {
+	ID uint `json:"id"`
+}
+
+type BranchListDTO struct {
+	ID               int     `json:"id" db:"id"`
+	ParentID         *uint   `json:"parent_id" db:"parent_id"`
+	CompanyProfileID *uint   `json:"company_profile_id" db:"company_profile_id"`
+	CompanyName      *string `json:"company_name" db:"company_name"`
+	OwnerName        *string `json:"owner_name" db:"owner_name"`
+	SignName         *string `json:"sign_name" db:"sign_name"`
+	Name             string  `json:"name" db:"name"`
+	Address          *string `json:"address" db:"address"`
+	Phone            *string `json:"phone" db:"phone"`
+	Email            *string `json:"email" db:"email"`
+	Website          *string `json:"website" db:"website"`
+	Logo             *string `json:"logo" db:"logo"`
+	Sign             *string `json:"sign" db:"sign"`
+	Description      *string `json:"description" db:"description"`
+	Remark           *string `json:"remark" db:"remark"`
+	Status           *int    `json:"status" db:"status"`
+	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        *string `json:"created_at" db:"created_at"`
+	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
+	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type BranchDetailDTO struct {
+	ID               uint    `json:"id" db:"id"`
+	ParentID         *uint   `json:"parent_id" db:"parent_id"`
+	CompanyProfileID *uint   `json:"company_profile_id" db:"company_profile_id"`
+	CompanyName      *string `json:"company_name" db:"company_name"`
+	OwnerName        *string `json:"owner_name" db:"owner_name"`
+	SignName         *string `json:"sign_name" db:"sign_name"`
+	Name             *string `json:"name" db:"name"`
+	Address          *string `json:"address" db:"address"`
+	Phone            *string `json:"phone" db:"phone"`
+	Email            *string `json:"email" db:"email"`
+	Website          *string `json:"website" db:"website"`
+	Logo             *string `json:"logo" db:"logo"`
+	Sign             *string `json:"sign" db:"sign"`
+	Description      *string `json:"description" db:"description"`
+	Remark           *string `json:"remark" db:"remark"`
+	Status           *int    `json:"status" db:"status"`
+	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        *string `json:"created_at" db:"created_at"`
+	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
+	DeletedAt        *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetBranchesResult struct {
+	Branches []BranchListDTO
+	Total    int
+	Err      error
+}
+
 type GetCustomerTypesRequest struct {
 	Global         string `json:"global"`
 	Name           string `json:"name"`
