@@ -26,7 +26,7 @@ func NewUserService(repo *repository.UserRepository, utilRepo *repository.UtilRe
 
 func (s *UserService) GetUsers(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.UserListDTO, int, error) {
 	childSpan := opentracing.StartSpan("UserService-GetUsers", opentracing.ChildOf(span.Context()))
-	users, total, err := s.repo.GetUsers(ctx, filters)
+	users, total, err := s.repo.GetUsers(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -52,14 +52,14 @@ func (s *UserService) CreateUser(ctx context.Context, tx *gorm.DB, user *models.
 	user.Password = hashedPassword
 
 	// Create user
-	if err := s.repo.CreateUser(tx, user); err != nil {
+	if err := s.repo.CreateUser(tx, user, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
 
 	// Attach roles
-	if err := s.repo.AttachRoles(tx, user, roleIDs); err != nil {
+	if err := s.repo.AttachRoles(tx, user, roleIDs, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
@@ -86,14 +86,14 @@ func (s *UserService) UpdateUser(ctx context.Context, tx *gorm.DB, user *models.
 	}
 
 	// Update user
-	if err := s.repo.UpdateUser(tx, user); err != nil {
+	if err := s.repo.UpdateUser(tx, user, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
 
 	// Attach roles
-	if err := s.repo.AttachRoles(tx, user, roleIDs); err != nil {
+	if err := s.repo.AttachRoles(tx, user, roleIDs, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
@@ -128,14 +128,14 @@ func (s *UserService) DeleteUser(ctx context.Context, tx *gorm.DB, params *dtos.
 	// Goroutine for deleting roles
 	go func() {
 		defer wg.Done()
-		err := s.repo.DeleteRolesByUserID(tx, params)
+		err := s.repo.DeleteRolesByUserID(tx, params, childSpan)
 		deleteRolesChan <- err
 	}()
 
 	// Goroutine for deleting user
 	go func() {
 		defer wg.Done()
-		err := s.repo.DeleteUser(tx, params)
+		err := s.repo.DeleteUser(tx, params, childSpan)
 		deleteUserChan <- err
 	}()
 
