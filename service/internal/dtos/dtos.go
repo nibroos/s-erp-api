@@ -1292,8 +1292,10 @@ type DeleteMsItemRequest struct {
 type MsItemListDTO struct {
 	ID               int     `json:"id" db:"id"`
 	ItemSubGroupID   *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
 	UnitID           *uint   `json:"unit_id" db:"unit_id"`
 	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string `json:"unit_name" db:"unit_name"`
 	Name             string  `json:"name" db:"name"`
 	Specification    *string `json:"specification" db:"specification"`
@@ -1312,8 +1314,10 @@ type MsItemListDTO struct {
 type MsItemDetailDTO struct {
 	ID               uint    `json:"id" db:"id"`
 	ItemSubGroupID   *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
 	UnitID           *uint   `json:"unit_id" db:"unit_id"`
 	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string `json:"unit_name" db:"unit_name"`
 	Name             string  `json:"name" db:"name"`
 	Specification    *string `json:"specification" db:"specification"`
@@ -1332,4 +1336,105 @@ type GetMsItemsResult struct {
 	MsItems []MsItemListDTO
 	Total   int
 	Err     error
+}
+
+type GetCustomersRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	CustomerTypeID string `json:"customer_type_id"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateCustomerRequest struct {
+	CustomerTypeID *uint   `json:"customer_type_id"`
+	AgentID        *uint   `json:"agent_id"`
+	Code           *string `json:"code"`
+	Name           string  `json:"name"`
+	Address        *string `json:"address"`
+	Phone          *string `json:"phone"`
+	Email          *string `json:"email"`
+	Pic            *string `json:"pic"`
+	Status         int8    `json:"status"`
+}
+
+type UpdateCustomerRequest struct {
+	ID             uint    `json:"id"`
+	CustomerTypeID *uint   `json:"customer_type_id"`
+	AgentID        *uint   `json:"agent_id"`
+	Code           *string `json:"code"`
+	Name           string  `json:"name"`
+	Address        *string `json:"address"`
+	Phone          *string `json:"phone"`
+	Email          *string `json:"email"`
+	Pic            *string `json:"pic"`
+	Status         int8    `json:"status"`
+}
+
+type GetCustomerByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetCustomerParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetCustomerParams(id uint) *GetCustomerParams {
+	defaultIsDeleted := 0
+	return &GetCustomerParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteCustomerRequest struct {
+	ID uint `json:"id"`
+}
+
+type CustomerListDTO struct {
+	ID               int     `json:"id" db:"id"`
+	CustomerTypeID   *uint   `json:"customer_type_id" db:"customer_type_id"`
+	CustomerTypeName *string `json:"customer_type_name" db:"customer_type_name"`
+	AgentID          *uint   `json:"agent_id" db:"agent_id"`
+	AgentName        *string `json:"agent_name" db:"agent_name"`
+	Code             *string `json:"code" db:"code"`
+	Name             string  `json:"name" db:"name"`
+	Address          *string `json:"address" db:"address"`
+	Phone            *string `json:"phone" db:"phone"`
+	Email            *string `json:"email" db:"email"`
+	Pic              *string `json:"pic" db:"pic"`
+	Status           int8    `json:"status" db:"status"`
+	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        *string `json:"created_at" db:"created_at"`
+	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
+	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type CustomerDetailDTO struct {
+	ID               uint    `json:"id" db:"id"`
+	CustomerTypeID   *uint   `json:"customer_type_id" db:"customer_type_id"`
+	CustomerTypeName *string `json:"customer_type_name" db:"customer_type_name"`
+	AgentID          *uint   `json:"agent_id" db:"agent_id"`
+	AgentName        *string `json:"agent_name" db:"agent_name"`
+	Code             *string `json:"code" db:"code"`
+	Name             string  `json:"name" db:"name"`
+	Address          *string `json:"address" db:"address"`
+	Phone            *string `json:"phone" db:"phone"`
+	Email            *string `json:"email" db:"email"`
+	Pic              *string `json:"pic" db:"pic"`
+	Status           int8    `json:"status" db:"status"`
+	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        *string `json:"created_at" db:"created_at"`
+	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
+	DeletedAt        *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetCustomersResult struct {
+	Customers []CustomerListDTO
+	Total     int
+	Err       error
 }

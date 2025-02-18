@@ -36,27 +36,39 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 
 	query := `SELECT *
     FROM ( 
-        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT DISTINCT ON (m.id)
+					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
+				isg.name as item_sub_group_name,
+				ig.name as item_group_name,
+				u.name as unit_name,
+
         cu.name as created_by_name,
         uu.name as updated_by_name
 
-        FROM mix_values m
-                LEFT JOIN groups g ON m.group_id = g.id
+        FROM ms_items m
+				LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id
+				LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
+				LEFT JOIN units u ON m.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-                WHERE g.name = 'item_groups'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
-        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT DISTINCT ON (m.id) 
+					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
+				isg.name as item_sub_group_name,
+				ig.name as item_group_name,
+				u.name as unit_name,
+
         cu.name as created_by_name,
         uu.name as updated_by_name
 
-        FROM mix_values m
+        FROM ms_items m
+				LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id
+				LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
+				LEFT JOIN units u ON m.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-                LEFT JOIN groups g ON m.group_id = g.id
-                WHERE g.name = 'item_groups'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -64,7 +76,7 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	i := 1
 	for key, value := range filters {
 		switch key {
-		case "name", "description", "remark":
+		case "name", "specification", "tpb_code":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -74,9 +86,25 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 		}
 	}
 
+	filterKey := map[string]string{
+		"item_sub_group_id": "item_sub_group_id",
+		"item_group_id":     "item_group_id",
+		"unit_id":           "unit_id",
+		"status":            "status",
+	}
+
+	for key, _ := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			query += fmt.Sprintf(" AND %s = $%d", value, i)
+			countQuery += fmt.Sprintf(" AND %s = $%d", value, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2)
 		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
 		i += 3
 	}
@@ -157,15 +185,23 @@ func (r *MsItemRepository) GetMsItemByID(ctx context.Context, params *dtos.GetMs
 	childSpan := opentracing.StartSpan("MsItemRepository-GetMsItemByID", opentracing.ChildOf(span.Context()))
 	var msItem dtos.MsItemDetailDTO
 
-	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	query := `
+	SELECT DISTINCT ON (m.id) 
+		m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
+	isg.name as item_sub_group_name,
+	ig.name as item_group_name,
+	u.name as unit_name,
+
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
-	FROM mix_values m
+	FROM ms_items m
+	LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id
+	LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
+	LEFT JOIN units u ON m.unit_id = u.id
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
-	LEFT JOIN groups g ON m.group_id = g.id
-	WHERE g.name = 'item_groups'`
+	WHERE 1=1`
 
 	var args []interface{}
 

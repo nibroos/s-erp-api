@@ -343,7 +343,6 @@ func (r *UserRepository) UpdateUser(tx *gorm.DB, user *models.User, span opentra
 		}
 		return nil
 	})
-
 }
 
 func (r *UserRepository) DeleteUser(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
