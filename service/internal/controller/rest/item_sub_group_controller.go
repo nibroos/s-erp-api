@@ -110,11 +110,7 @@ func (c *ItemSubGroupController) CreateItemSubGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create item subgroups", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create item subgroups", http.StatusInternalServerError, err.Error(), nil)
-	}
+	tx.Commit()
 
 	params := &dtos.GetItemSubGroupParams{ID: createdItemSubGroup.ID}
 	getItemSubGroup, err := c.service.GetItemSubGroupByID(ctx, params, parentSpan)

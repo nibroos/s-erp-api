@@ -61,8 +61,16 @@ func JSONError(ctx *fiber.Ctx, status int, err error) error {
 }
 
 // HashPassword hashes a plain text password using bcrypt.
-func HashPassword(password string) (string, error) {
+func HashPassword(password string, span opentracing.Span) (string, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("HashPassword", opentracing.ChildOf(span.Context()))
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
+	if err != nil {
+		LogErrors(childSpan, err)
+		return "", err
+	}
+
 	return string(bytes), err
 }
 

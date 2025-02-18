@@ -3,41 +3,34 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
-type UserRepository interface {
-	GetUsers(ctx context.Context, filters map[string]string) ([]dtos.UserListDTO, int, error)
-	GetUserByID(ctx context.Context, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error)
-	GetUserByEmail(ctx context.Context, email string) (*dtos.UserDetailDTO, error)
-	BeginTransaction() *gorm.DB
-	AttachRoles(tx *gorm.DB, user *models.User, roleIDs []uint32) error
-	CreateUser(tx *gorm.DB, user *models.User) error
-	UpdateUser(tx *gorm.DB, user *models.User) error
-	DeleteUser(tx *gorm.DB, id uint) error
-	DeleteRolesByUserID(tx *gorm.DB, userID uint) error
-	RestoreUser(tx *gorm.DB, id uint) error
-	Commit(tx *gorm.DB) error
+type UserRepository struct {
+	db       *gorm.DB
+	sqlDB    *sqlx.DB
+	utilRepo *UtilRepository
+	tracer   opentracing.Tracer
 }
 
-type userRepository struct {
-	db    *gorm.DB
-	sqlDB *sqlx.DB
-}
-
-func NewUserRepository(db *gorm.DB, sqlDB *sqlx.DB) *userRepository {
-	return &userRepository{
-		db:    db,
-		sqlDB: sqlDB,
+func NewUserRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tracer opentracing.Tracer) *UserRepository {
+	return &UserRepository{
+		db:       db,
+		sqlDB:    sqlDB,
+		utilRepo: utilRepo,
+		tracer:   tracer,
 	}
 }
 
-func (r *userRepository) GetUsers(ctx context.Context, filters map[string]string) ([]dtos.UserListDTO, int, error) {
+func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.UserListDTO, int, error) {
+	childSpan := opentracing.StartSpan("UserRepository-GetUsers", opentracing.ChildOf(span.Context()))
 	users := []dtos.UserListDTO{}
 	var total int
 
@@ -78,24 +71,41 @@ func (r *userRepository) GetUsers(ctx context.Context, filters map[string]string
 
 	args = append(args, perPage, (currentPage-1)*perPage)
 
-	countChan := make(chan error)
-	selectChan := make(chan error)
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(2)
 
 	// Goroutine for count query
 	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 		err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
-		countChan <- err
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
 	}()
 
 	// Goroutine for select query
 	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 		err := r.sqlDB.SelectContext(ctx, &users, query, args...)
-		selectChan <- err
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
 	}()
 
 	// Wait for both goroutines to finish
-	countErr := <-countChan
-	selectErr := <-selectChan
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
 
 	if countErr != nil {
 		return nil, 0, countErr
@@ -108,60 +118,7 @@ func (r *userRepository) GetUsers(ctx context.Context, filters map[string]string
 	return users, total, nil
 }
 
-// func (r *userRepository) GetUsers(ctx context.Context, filters map[string]string) ([]dtos.UserListDTO, string, error) {
-// 	users := []dtos.UserListDTO{}
-
-// 	query := `SELECT id, username, name, email FROM users WHERE 1=1`
-// 	var args []interface{}
-
-// 	i := 1
-// 	for key, value := range filters {
-// 		switch key {
-// 		case "username", "name", "email":
-// 			if value != "" {
-// 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-// 				args = append(args, "%"+value+"%")
-// 				i++
-// 			}
-// 		}
-// 	}
-
-// 	if value, ok := filters["global"]; ok && value != "" {
-// 		query += fmt.Sprintf(" AND (username ILIKE $%d OR name ILIKE $%d OR email ILIKE $%d)", i, i+1, i+2)
-// 		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
-// 		i += 3
-// 	}
-
-// 	allowedOrderColumns := []string{"id", "name", "description", "threshold", "created_at", "updated_at"}
-// 	orderColumn := utils.GetStringOrDefaultFromArray(filters["order_column"], allowedOrderColumns, "id")
-// 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
-// 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
-
-// 	cursor := filters["cursor"]
-// 	if cursor != "" {
-// 		query += fmt.Sprintf(" AND id > $%d", i)
-// 		args = append(args, cursor)
-// 		i++
-// 	}
-
-// 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
-// 	query += fmt.Sprintf(" LIMIT $%d", i)
-// 	args = append(args, perPage)
-
-// 	err := r.sqlDB.SelectContext(ctx, &users, query, args...)
-// 	if err != nil {
-// 		return nil, "", err
-// 	}
-
-// 	var nextCursor string
-// 	if len(users) > 0 {
-// 		nextCursor = fmt.Sprintf("%d", users[len(users)-1].ID)
-// 	}
-
-// 	return users, nextCursor, nil
-// }
-
-func (r *userRepository) GetUserByID(ctx context.Context, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
+func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
 	var user dtos.UserDetailDTO
 
 	query := `SELECT id, username, name, email, address, password FROM users WHERE id = $1`
@@ -253,7 +210,7 @@ func (r *userRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
 
 	return &user, nil
 }
-func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*dtos.UserDetailDTO, error) {
+func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dtos.UserDetailDTO, error) {
 	var user dtos.UserDetailDTO
 
 	query := `SELECT id, username, name, email, password, address FROM users WHERE deleted_at IS NULL AND (email = $1 OR username = $1)`
@@ -328,11 +285,13 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*dto
 }
 
 // BeginTransaction starts a new transaction
-func (r *userRepository) BeginTransaction() *gorm.DB {
+func (r *UserRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *userRepository) AttachRoles(tx *gorm.DB, user *models.User, roleIDs []uint32) error {
+func (r *UserRepository) AttachRoles(tx *gorm.DB, user *models.User, roleIDs []uint32, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UserRepository-AttachRoles", opentracing.ChildOf(span.Context()))
+
 	// Prepare batch insert for new role_user relationships
 	var pools []models.Pool
 	for _, roleID := range roleIDs {
@@ -345,14 +304,17 @@ func (r *userRepository) AttachRoles(tx *gorm.DB, user *models.User, roleIDs []u
 		pools = append(pools, pool)
 	}
 
+	params := &dtos.GetUserParams{ID: user.ID}
 	// delete existing roles
-	if err := r.DeleteRolesByUserID(tx, user.ID); err != nil {
+	if err := r.DeleteRolesByUserID(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
 		return err
 	}
 
 	// Insert all role_user relationships in a single query
 	if len(pools) > 0 {
 		if err := tx.Create(&pools).Error; err != nil {
+			defer childSpan.Finish()
 			return err
 		}
 	}
@@ -360,16 +322,23 @@ func (r *userRepository) AttachRoles(tx *gorm.DB, user *models.User, roleIDs []u
 	return nil
 }
 
-func (r *userRepository) CreateUser(tx *gorm.DB, user *models.User) error {
+func (r *UserRepository) CreateUser(tx *gorm.DB, user *models.User, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UserRepository-CreateUser", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(user).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *userRepository) UpdateUser(tx *gorm.DB, user *models.User) error {
+func (r *UserRepository) UpdateUser(tx *gorm.DB, user *models.User, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UserRepository-UpdateUser")
+
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(user).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -377,10 +346,14 @@ func (r *userRepository) UpdateUser(tx *gorm.DB, user *models.User) error {
 
 }
 
-func (r *userRepository) DeleteUser(tx *gorm.DB, id uint) error {
+func (r *UserRepository) DeleteUser(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UserRepository-DeleteUser", opentracing.ChildOf(span.Context()))
+
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// if err := tx.Unscoped().Delete(&models.User{}, id).Error; err != nil {
-		if err := tx.Delete(&models.User{}, id).Error; err != nil {
+		if err := tx.Delete(&models.User{}, params).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -388,22 +361,29 @@ func (r *userRepository) DeleteUser(tx *gorm.DB, id uint) error {
 }
 
 // DeleteRolesByUserID
-func (r *userRepository) DeleteRolesByUserID(tx *gorm.DB, userID uint) error {
+func (r *UserRepository) DeleteRolesByUserID(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UserRepository-DeleteRolesByUserID", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Exec(`
 			UPDATE pools SET deleted_at = NOW() 
 			WHERE group1_id = ? AND mv1_id = ?
 			AND group2_id = ?
-		`, utils.GroupIDUsers, userID, utils.GroupIDRoles).Error; err != nil {
+		`, utils.GroupIDUsers, params.ID, utils.GroupIDRoles).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
 	})
 }
 
-func (s *userRepository) RestoreUser(tx *gorm.DB, id uint) error {
+func (s *UserRepository) RestoreUser(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UserRepository-RestoreUser", opentracing.ChildOf(span.Context()))
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec("UPDATE users SET deleted_at = NULL WHERE id = ?", id).Error; err != nil {
+		var user models.User
+		if err := tx.Unscoped().Model(&user).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
 			return err
 		}
 		return nil
@@ -411,6 +391,6 @@ func (s *userRepository) RestoreUser(tx *gorm.DB, id uint) error {
 }
 
 // commit or rollback
-func (r *userRepository) Commit(tx *gorm.DB) error {
+func (r *UserRepository) Commit(tx *gorm.DB) error {
 	return tx.Commit().Error
 }

@@ -109,11 +109,7 @@ func (c *CustomerTypeController) CreateCustomerType(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create customerTypes", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create customerTypes", http.StatusInternalServerError, err.Error(), nil)
-	}
+	tx.Commit()
 
 	params := &dtos.GetCustomerTypeParams{ID: createdCustomerType.ID}
 	getCustomerType, err := c.service.GetCustomerTypeByID(ctx, params, parentSpan)

@@ -71,6 +71,11 @@ type GetUsersResult struct {
 	Err   error
 }
 
+type GetUserParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`

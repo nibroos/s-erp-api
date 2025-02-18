@@ -6,13 +6,14 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
-func SetupUserRoutes(users fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB) {
-	userRepo := repository.NewUserRepository(gormDB, sqlDB)
-	userService := service.NewUserService(userRepo)
-	userController := rest.NewUserController(userService)
+func SetupUserRoutes(users fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) {
+	userRepo := repository.NewUserRepository(gormDB, sqlDB, utilRepo, tracer)
+	userService := service.NewUserService(userRepo, utilRepo, tracer)
+	userController := rest.NewUserController(userService, userRepo, tracer)
 
 	// prefix /users
 

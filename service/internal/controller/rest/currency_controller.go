@@ -109,11 +109,7 @@ func (c *CurrencyController) CreateCurrency(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create currencies", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create currencies", http.StatusInternalServerError, err.Error(), nil)
-	}
+	tx.Commit()
 
 	params := &dtos.GetCurrencyParams{ID: createdCurrency.ID}
 	getCurrency, err := c.service.GetCurrencyByID(ctx, params, parentSpan)

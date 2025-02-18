@@ -109,11 +109,7 @@ func (c *ItemGroupController) CreateItemGroup(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create item groups", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create item groups", http.StatusInternalServerError, err.Error(), nil)
-	}
+	tx.Commit()
 
 	params := &dtos.GetItemGroupParams{ID: createdItemGroup.ID}
 	getItemGroup, err := c.service.GetItemGroupByID(ctx, params, parentSpan)
