@@ -73,6 +73,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	customerType := version.Group("/customer-types")
 	SetupCustomerTypeRoutes(customerType, gormDB, sqlDB, utilRepo, tracer)
 
+	orderType := version.Group("/order-types")
+	SetupOrderTypeRoutes(orderType, gormDB, sqlDB, utilRepo, tracer)
+
 	currency := version.Group("/currencies")
 	SetupCurrencyRoutes(currency, gormDB, sqlDB, utilRepo, tracer)
 

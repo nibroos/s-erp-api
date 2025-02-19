@@ -22,10 +22,8 @@ func NewVatStoreRequest() *VatStoreRequest {
 func (r *VatStoreRequest) Validate(req *dtos.CreateVatRequest, ctx context.Context) map[string]string {
 	// utils.DD(req)
 	rules := govalidator.MapData{
-		// "name":        []string{"required", "unique:mix_values,name"},
-		// "parent_id":   []string{"required"},
+		"name":        []string{"required", "unique:mix_values,name"},
 		"num":         []string{"float"},
-		"name":        []string{"required"},
 		"description": []string{},
 		"remarks":     []string{},
 		"status":      []string{},

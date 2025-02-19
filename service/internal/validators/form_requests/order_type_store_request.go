@@ -7,19 +7,19 @@ import (
 	"github.com/thedevsaddam/govalidator"
 )
 
-// CustomerTypeStoreRequest handles the validation for the RegisterRequest.
-type CustomerTypeStoreRequest struct {
+// OrderTypeStoreRequest handles the validation for the RegisterRequest.
+type OrderTypeStoreRequest struct {
 	Validator *govalidator.Validator
 }
 
-// NewRegisterStoreRequest creates a new instance of CustomerTypeStoreRequest.
-func NewCustomerTypeStoreRequest() *CustomerTypeStoreRequest {
+// NewRegisterStoreRequest creates a new instance of OrderTypeStoreRequest.
+func NewOrderTypeStoreRequest() *OrderTypeStoreRequest {
 	v := govalidator.New(govalidator.Options{})
-	return &CustomerTypeStoreRequest{Validator: v}
+	return &OrderTypeStoreRequest{Validator: v}
 }
 
 // Validate validates the RegisterRequest.
-func (r *CustomerTypeStoreRequest) Validate(req *dtos.CreateCustomerTypeRequest, ctx context.Context) map[string]string {
+func (r *OrderTypeStoreRequest) Validate(req *dtos.CreateOrderTypeRequest, ctx context.Context) map[string]string {
 	// utils.DD(req)
 	rules := govalidator.MapData{
 		"name":        []string{"required", "unique:mix_values,name"},

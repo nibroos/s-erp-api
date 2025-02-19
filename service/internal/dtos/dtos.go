@@ -778,6 +778,83 @@ type GetCustomerTypesResult struct {
 	Err           error
 }
 
+type GetOrderTypesRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	SimulateError  string `json:"simulate_error"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateOrderTypeRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type UpdateOrderTypeRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type GetOrderTypeByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetOrderTypeParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetOrderTypeParams(id uint) *GetOrderTypeParams {
+	defaultIsDeleted := 0
+	return &GetOrderTypeParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteOrderTypeRequest struct {
+	ID uint `json:"id"`
+}
+
+type OrderTypeListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type OrderTypeDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   string  `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetOrderTypesResult struct {
+	OrderTypes []OrderTypeListDTO
+	Total      int
+	Err        error
+}
+
 type GetMixValuesRequest struct {
 	Global         string `json:"global"`
 	Name           string `json:"name"`
@@ -1246,8 +1323,10 @@ type GetMsItemsRequest struct {
 type CreateMsItemRequest struct {
 	ItemSubGroupID uint     `json:"item_sub_group_id"`
 	UnitID         uint     `json:"unit_id"`
+	Code           *string  `json:"code"`
 	Name           string   `json:"name"`
 	Specification  *string  `json:"specification"`
+	Description    *string  `json:"description"`
 	TpbCode        *string  `json:"tpb_code"`
 	PriceSell      *float64 `json:"price_sell"`
 	PriceBuy       *float64 `json:"price_buy"`
@@ -1259,8 +1338,10 @@ type UpdateMsItemRequest struct {
 	ID             uint     `json:"id"`
 	ItemSubGroupID uint     `json:"item_sub_group_id"`
 	UnitID         uint     `json:"unit_id"`
+	Code           *string  `json:"code"`
 	Name           string   `json:"name"`
 	Specification  *string  `json:"specification"`
+	Description    *string  `json:"description"`
 	TpbCode        *string  `json:"tpb_code"`
 	PriceSell      *float64 `json:"price_sell"`
 	PriceBuy       *float64 `json:"price_buy"`
@@ -1298,7 +1379,9 @@ type MsItemListDTO struct {
 	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string `json:"unit_name" db:"unit_name"`
 	Name             string  `json:"name" db:"name"`
+	Code             *string `json:"code" db:"code"`
 	Specification    *string `json:"specification" db:"specification"`
+	Description      *string `json:"description" db:"description"`
 	TpbCode          *string `json:"tpb_code" db:"tpb_code"`
 	PriceSell        *string `json:"price_sell" db:"price_sell"`
 	PriceBuy         *string `json:"price_buy" db:"price_buy"`
@@ -1320,7 +1403,9 @@ type MsItemDetailDTO struct {
 	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string `json:"unit_name" db:"unit_name"`
 	Name             string  `json:"name" db:"name"`
+	Code             *string `json:"code" db:"code"`
 	Specification    *string `json:"specification" db:"specification"`
+	Description      *string `json:"description" db:"description"`
 	TpbCode          *string `json:"tpb_code" db:"tpb_code"`
 	PriceSell        *string `json:"price_sell" db:"price_sell"`
 	PriceBuy         *string `json:"price_buy" db:"price_buy"`
@@ -1336,6 +1421,99 @@ type GetMsItemsResult struct {
 	MsItems []MsItemListDTO
 	Total   int
 	Err     error
+}
+
+type GetItemUnitsRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	UnitID         string `json:"unit_id"`
+	MsItemID       string `json:"ms_item_id"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+// UnitID      *uint          `json:"unit_id" gorm:"column:unit_id"`
+// Conversion  float64        `json:"conversion" gorm:"column:conversion"`
+// PriceSell   *float64       `json:"price_sell" gorm:"column:price_sell"`
+// PriceBuy    *float64       `json:"price_buy" gorm:"column:price_buy"`
+// Status      int8           `json:"status" gorm:"column:status"`
+type CreateItemUnitRequest struct {
+	MsItemID   uint     `json:"ms_item_id"`
+	UnitID     uint     `json:"unit_id"`
+	Conversion *float64 `json:"conversion"`
+	PriceSell  *float64 `json:"price_sell"`
+	PriceBuy   *float64 `json:"price_buy"`
+	Status     int8     `json:"status"`
+}
+
+type UpdateItemUnitRequest struct {
+	ID         uint     `json:"id"`
+	MsItemID   uint     `json:"ms_item_id"`
+	UnitID     uint     `json:"unit_id"`
+	Conversion *float64 `json:"conversion"`
+	PriceSell  *float64 `json:"price_sell"`
+	PriceBuy   *float64 `json:"price_buy"`
+	Status     int8     `json:"status"`
+}
+
+type GetItemUnitByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetItemUnitParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetItemUnitParams(id uint) *GetItemUnitParams {
+	defaultIsDeleted := 0
+	return &GetItemUnitParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteItemUnitRequest struct {
+	ID uint `json:"id"`
+}
+
+type ItemUnitListDTO struct {
+	ID            int      `json:"id" db:"id"`
+	MsItemID      uint     `json:"ms_item_id" db:"ms_item_id"`
+	UnitID        *uint    `json:"unit_id" db:"unit_id"`
+	MsItemName    *string  `json:"ms_item_name" db:"ms_item_name"`
+	UnitName      *string  `json:"unit_name" db:"unit_name"`
+	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
+	Status        int8     `json:"status" db:"status"`
+	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string  `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string  `json:"created_at" db:"created_at"`
+	UpdatedAt     *string  `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string  `json:"deleted_at" db:"deleted_at"`
+}
+
+type ItemUnitDetailDTO struct {
+	ID            uint     `json:"id" db:"id"`
+	MsItemID      uint     `json:"ms_item_id" db:"ms_item_id"`
+	UnitID        *uint    `json:"unit_id" db:"unit_id"`
+	MsItemName    *string  `json:"ms_item_name" db:"ms_item_name"`
+	UnitName      *string  `json:"unit_name" db:"unit_name"`
+	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
+	Status        int8     `json:"status" db:"status"`
+	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string  `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string  `json:"created_at" db:"created_at"`
+	UpdatedAt     *string  `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string  `json:"deleted_at" db:"deleted_at"`
+}
+type GetItemUnitsResult struct {
+	ItemUnits []ItemUnitListDTO
+	Total     int
+	Err       error
 }
 
 type GetCustomersRequest struct {

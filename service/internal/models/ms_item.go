@@ -9,11 +9,11 @@ type MsItem struct {
 	ID             uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	ItemSubGroupID *uint          `json:"item_sub_group_id" gorm:"column:item_sub_group_id"`
 	UnitID         *uint          `json:"unit_id" gorm:"column:unit_id"`
+	Code           *string        `json:"code" gorm:"column:code"`
 	Name           string         `json:"name" gorm:"column:name"`
 	Specification  *string        `json:"specification" gorm:"column:specification"`
+	Description    *string        `json:"description" gorm:"column:description"`
 	TpbCode        *string        `json:"tpb_code" gorm:"column:tpb_code"`
-	PriceSell      *float64       `json:"price_sell" gorm:"column:price_sell"`
-	PriceBuy       *float64       `json:"price_buy" gorm:"column:price_buy"`
 	MinimumStock   *float64       `json:"minimum_stock" gorm:"column:minimum_stock"`
 	Status         int8           `json:"status" gorm:"column:status"`
 	CreatedByID    *uint          `json:"created_by_id" gorm:"column:created_by_id"`

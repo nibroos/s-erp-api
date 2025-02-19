@@ -2,27 +2,27 @@ package form_requests
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/thedevsaddam/govalidator"
 )
 
-// CustomerTypeStoreRequest handles the validation for the RegisterRequest.
-type CustomerTypeStoreRequest struct {
+// OrderTypeUpdateRequest handles the validation for the RegisterRequest.
+type OrderTypeUpdateRequest struct {
 	Validator *govalidator.Validator
 }
 
-// NewRegisterStoreRequest creates a new instance of CustomerTypeStoreRequest.
-func NewCustomerTypeStoreRequest() *CustomerTypeStoreRequest {
+// NewRegisterUpdateRequest creates a new instance of OrderTypeUpdateRequest.
+func NewOrderTypeUpdateRequest() *OrderTypeUpdateRequest {
 	v := govalidator.New(govalidator.Options{})
-	return &CustomerTypeStoreRequest{Validator: v}
+	return &OrderTypeUpdateRequest{Validator: v}
 }
 
 // Validate validates the RegisterRequest.
-func (r *CustomerTypeStoreRequest) Validate(req *dtos.CreateCustomerTypeRequest, ctx context.Context) map[string]string {
-	// utils.DD(req)
+func (r *OrderTypeUpdateRequest) Validate(req *dtos.UpdateOrderTypeRequest, ctx context.Context) map[string]string {
 	rules := govalidator.MapData{
-		"name":        []string{"required", "unique:mix_values,name"},
+		"name":        []string{"required", fmt.Sprintf("unique_ig:mix_values,name,%d", req.ID)},
 		"description": []string{},
 		"remarks":     []string{},
 		"status":      []string{},

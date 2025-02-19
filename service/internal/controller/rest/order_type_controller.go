@@ -15,21 +15,21 @@ import (
 	// "github.com/opentracing/opentracing-go/ext"
 )
 
-type MsItemController struct {
-	service *service.MsItemService
-	repo    *repository.MsItemRepository
+type OrderTypeController struct {
+	service *service.OrderTypeService
+	repo    *repository.OrderTypeRepository
 	tracer  opentracing.Tracer
 }
 
-func NewMsItemController(service *service.MsItemService, repo *repository.MsItemRepository, tracer opentracing.Tracer) *MsItemController {
-	return &MsItemController{service: service, repo: repo, tracer: tracer}
+func NewOrderTypeController(service *service.OrderTypeService, repo *repository.OrderTypeRepository, tracer opentracing.Tracer) *OrderTypeController {
+	return &OrderTypeController{service: service, repo: repo, tracer: tracer}
 }
 
-func (c *MsItemController) GetMsItems(ctx *fiber.Ctx) error {
+func (c *OrderTypeController) GetOrderTypes(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-GetMsItems", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("OrderTypeController-GetOrderTypes", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
-		// If no error, delete span
+		// If no error, not collecting span
 		if utils.FilterOtel(ctx) {
 			defer apiSpan.Finish()
 			defer parentSpan.Finish()
@@ -39,11 +39,11 @@ func (c *MsItemController) GetMsItems(ctx *fiber.Ctx) error {
 	filters, ok := ctx.Locals("filters").(map[string]string)
 
 	if !ok {
-		apiSpan.LogKV("response_body", string("MsItemController-GetMsItems: Invalid filters"))
+		apiSpan.LogKV("response_body", string("OrderTypeController-GetOrderTypes: Invalid filters"))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	msItems, total, err := c.service.GetMsItems(ctx, filters, parentSpan)
+	orderTypes, total, err := c.service.GetOrderTypes(ctx, filters, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -52,12 +52,12 @@ func (c *MsItemController) GetMsItems(ctx *fiber.Ctx) error {
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
-	return utils.GetResponse(ctx, msItems, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, orderTypes, paginationMeta, "OrderType fetched successfully", http.StatusOK, nil, nil)
 }
 
-func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
+func (c *OrderTypeController) CreateOrderType(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-CreateMsItem", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("OrderTypeController-CreateOrderType", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -66,7 +66,7 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.CreateMsItemRequest
+	var req dtos.CreateOrderTypeRequest
 
 	// Use the utility function to parse the request body
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
@@ -74,7 +74,7 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewMsItemStoreRequest().Validate(&req, ctx.Context())
+	reqValidator := form_requests.NewOrderTypeStoreRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
@@ -88,47 +88,45 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	msItem := models.MsItem{
-		Code:           req.Code,
-		Name:           req.Name,
-		ItemSubGroupID: &req.ItemSubGroupID,
-		UnitID:         &req.UnitID,
-		Specification:  req.Specification,
-		Description:    req.Description,
-		TpbCode:        req.TpbCode,
-		MinimumStock:   req.MinimumStock,
-		Status:         req.Status,
-		CreatedByID:    &userID,
+	orderType := models.MixValue{
+		Name:        req.Name,
+		GroupID:     utils.OrderTypeID,
+		Description: req.Description,
+		Remark:      req.Remark,
+		OrderItem:   nil,
+		Status:      req.Status,
+		CreatedByID: &userID,
+		OptionsJSON: "{}",
 	}
 
 	tx := c.repo.BeginTransaction()
-	createdMsItem, err := c.service.CreateMsItem(ctx, &msItem, tx, parentSpan)
+	createdOrderType, err := c.service.CreateOrderType(ctx, &orderType, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create orderTypes", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	params := &dtos.GetMsItemParams{ID: createdMsItem.ID}
-	getMsItem, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetOrderTypeParams{ID: createdOrderType.ID}
+	getOrderType, err := c.service.GetOrderTypeByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getMsItem}, paginationMeta, "Master item created successfully", http.StatusCreated, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getOrderType}, paginationMeta, "OrderType created successfully", http.StatusCreated, nil, nil)
 }
-func (c *MsItemController) GetMsItemByID(ctx *fiber.Ctx) error {
+func (c *OrderTypeController) GetOrderTypeByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-GetMsItemByID", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("OrderTypeController-GetOrderTypeByID", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -137,36 +135,36 @@ func (c *MsItemController) GetMsItemByID(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.GetMsItemByIDRequest
+	var req dtos.GetOrderTypeByIDRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	params := &dtos.GetMsItemParams{ID: req.ID}
-	msItem, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetOrderTypeParams{ID: req.ID}
+	orderType, err := c.service.GetOrderTypeByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	msItemArray := []interface{}{msItem}
+	orderTypeArray := []interface{}{orderType}
 
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, msItemArray, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, orderTypeArray, paginationMeta, "OrderType fetched successfully", http.StatusOK, nil, nil)
 }
 
-// update msItem
-func (c *MsItemController) UpdateMsItem(ctx *fiber.Ctx) error {
+// update orderType
+func (c *OrderTypeController) UpdateOrderType(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-UpdateMsItem", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("OrderTypeController-UpdateOrderType", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -175,14 +173,14 @@ func (c *MsItemController) UpdateMsItem(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.UpdateMsItemRequest
+	var req dtos.UpdateOrderTypeRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewMsItemUpdateRequest().Validate(&req, ctx.Context())
+	reqValidator := form_requests.NewOrderTypeUpdateRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
@@ -195,52 +193,49 @@ func (c *MsItemController) UpdateMsItem(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	msItem := models.MsItem{
-		ID:             req.ID,
-		Code:           req.Code,
-		Name:           req.Name,
-		ItemSubGroupID: &req.ItemSubGroupID,
-		UnitID:         &req.UnitID,
-		Specification:  req.Specification,
-		Description:    req.Description,
-		TpbCode:        req.TpbCode,
-		MinimumStock:   req.MinimumStock,
-		Status:         req.Status,
-		UpdatedByID:    &userID,
+	orderType := models.MixValue{
+		ID:          req.ID,
+		GroupID:     utils.OrderTypeID,
+		Name:        req.Name,
+		Description: req.Description,
+		Remark:      req.Remark,
+		Status:      req.Status,
+		UpdatedByID: &userID,
+		OptionsJSON: "{}",
 	}
 
 	tx := c.repo.BeginTransaction()
 
-	updatedMsItem, err := c.service.UpdateMsItem(ctx, &msItem, tx, parentSpan)
+	updatedOrderType, err := c.service.UpdateOrderType(ctx, &orderType, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		if err.Error() == "msItem name already exists" {
-			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Master item already exists", "status": http.StatusConflict})
+		if err.Error() == "orderType name already exists" {
+			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "OrderType already exists", "status": http.StatusConflict})
 		}
-		return utils.GetResponse(ctx, nil, nil, "Failed to update Master item", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to update OrderType", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	params := &dtos.GetMsItemParams{ID: updatedMsItem.ID}
-	getMsItem, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetOrderTypeParams{ID: updatedOrderType.ID}
+	getOrderType, err := c.service.GetOrderTypeByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getMsItem}, paginationMeta, "Master item updated successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getOrderType}, paginationMeta, "OrderType updated successfully", http.StatusOK, nil, nil)
 }
 
-// delete msItem
-func (c *MsItemController) DeleteMsItem(ctx *fiber.Ctx) error {
+// delete orderType
+func (c *OrderTypeController) DeleteOrderType(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-DeleteMsItem", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("OrderTypeController-DeleteOrderType", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -249,42 +244,42 @@ func (c *MsItemController) DeleteMsItem(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.DeleteMsItemRequest
+	var req dtos.DeleteOrderTypeRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	params := &dtos.GetMsItemParams{ID: req.ID}
-	// GET msItem by ID
-	_, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetOrderTypeParams{ID: req.ID}
+	// GET orderType by ID
+	_, err := c.service.GetOrderTypeByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	// Transaction handling
 	tx := c.repo.BeginTransaction()
-	err = c.service.DeleteMsItem(ctx, params, tx, parentSpan)
+	err = c.service.DeleteOrderType(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete Master item", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete OrderType", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Master item deleted successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "OrderType deleted successfully", http.StatusOK, nil, nil)
 }
 
-// restore msItem
-func (c *MsItemController) RestoreMsItem(ctx *fiber.Ctx) error {
+// restore orderType
+func (c *OrderTypeController) RestoreOrderType(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-RestoreMsItem", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("OrderTypeController-RestoreOrderType", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -293,43 +288,43 @@ func (c *MsItemController) RestoreMsItem(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.DeleteMsItemRequest
+	var req dtos.DeleteOrderTypeRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
 
 	isDeleted := 1
-	params := &dtos.GetMsItemParams{ID: req.ID, IsDeleted: &isDeleted}
-	// GET msItem by ID
-	_, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetOrderTypeParams{ID: req.ID, IsDeleted: &isDeleted}
+	// GET orderType by ID
+	_, err := c.service.GetOrderTypeByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "OrderType not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreMsItem(ctx, params, tx, parentSpan)
+	err = c.service.RestoreOrderType(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to restore Master item", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to restore OrderType", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Master item restored successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "OrderType restored successfully", http.StatusOK, nil, nil)
 }
 
-func (c *MsItemController) ExcelGetMsItems(ctx *fiber.Ctx) error {
+func (c *OrderTypeController) ExcelGetOrderTypes(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-ExcelGetMsItems", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("OrderTypeController-ExcelGetOrderTypes", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -343,18 +338,18 @@ func (c *MsItemController) ExcelGetMsItems(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	msItems, err := c.service.ExcelGetMsItems(ctx, filters, parentSpan)
+	orderTypes, err := c.service.ExcelGetOrderTypes(ctx, filters, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	return ctx.Send(msItems)
+	return ctx.Send(orderTypes)
 }
 
-func (c *MsItemController) CsvGetMsItems(ctx *fiber.Ctx) error {
+func (c *OrderTypeController) CsvGetOrderTypes(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetMsItems", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("OrderTypeController-CsvGetOrderTypes", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -368,11 +363,11 @@ func (c *MsItemController) CsvGetMsItems(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	msItems, err := c.service.CsvGetMsItems(ctx, filters, parentSpan)
+	orderTypes, err := c.service.CsvGetOrderTypes(ctx, filters, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	return ctx.Send(msItems)
+	return ctx.Send(orderTypes)
 }

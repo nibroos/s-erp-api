@@ -2,6 +2,7 @@ package form_requests
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/thedevsaddam/govalidator"
@@ -21,8 +22,7 @@ func NewPph23UpdateRequest() *Pph23UpdateRequest {
 // Validate validates the RegisterRequest.
 func (r *Pph23UpdateRequest) Validate(req *dtos.UpdatePph23Request, ctx context.Context) map[string]string {
 	rules := govalidator.MapData{
-		// "name":        []string{"required", fmt.Sprintf("unique_ig:mix_values,name,%d", req.ID)},
-		"name":        []string{"required"},
+		"name":        []string{"required", fmt.Sprintf("unique_ig:mix_values,name,%d", req.ID)},
 		"num":         []string{"numeric"},
 		"description": []string{},
 		"remarks":     []string{},

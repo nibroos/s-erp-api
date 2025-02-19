@@ -22,9 +22,7 @@ func NewPph23StoreRequest() *Pph23StoreRequest {
 func (r *Pph23StoreRequest) Validate(req *dtos.CreatePph23Request, ctx context.Context) map[string]string {
 	// utils.DD(req)
 	rules := govalidator.MapData{
-		// "name":        []string{"required", "unique:mix_values,name"},
-		// "parent_id":   []string{"required"},
-		"name":        []string{"required"},
+		"name":        []string{"required", "unique:mix_values,name"},
 		"num":         []string{"numeric"},
 		"description": []string{},
 		"remarks":     []string{},

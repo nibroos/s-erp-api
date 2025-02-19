@@ -2,6 +2,7 @@ package form_requests
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/thedevsaddam/govalidator"
@@ -21,8 +22,7 @@ func NewCurrencyUpdateRequest() *CurrencyUpdateRequest {
 // Validate validates the RegisterRequest.
 func (r *CurrencyUpdateRequest) Validate(req *dtos.UpdateCurrencyRequest, ctx context.Context) map[string]string {
 	rules := govalidator.MapData{
-		// "name":        []string{"required", fmt.Sprintf("unique_ig:mix_values,name,%d", req.ID)},
-		"name":        []string{"required"},
+		"name":        []string{"required", fmt.Sprintf("unique_ig:mix_values,name,%d", req.ID)},
 		"description": []string{},
 		"remarks":     []string{},
 		"status":      []string{},

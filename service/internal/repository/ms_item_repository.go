@@ -37,7 +37,7 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
 				isg.name as item_sub_group_name,
 				ig.name as item_group_name,
 				u.name as unit_name,
@@ -48,14 +48,15 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
         FROM ms_items m
 				LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id
 				LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
-				LEFT JOIN units u ON m.unit_id = u.id
+				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
+				LEFT JOIN units u ON iu.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
-					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
 				isg.name as item_sub_group_name,
 				ig.name as item_group_name,
 				u.name as unit_name,
@@ -66,7 +67,8 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
         FROM ms_items m
 				LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id
 				LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
-				LEFT JOIN units u ON m.unit_id = u.id
+				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
+				LEFT JOIN units u ON iu.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -76,7 +78,7 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	i := 1
 	for key, value := range filters {
 		switch key {
-		case "name", "specification", "tpb_code":
+		case "name", "specification", "tpb_code", "description":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -89,7 +91,6 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	filterKey := map[string]string{
 		"item_sub_group_id": "item_sub_group_id",
 		"item_group_id":     "item_group_id",
-		"unit_id":           "unit_id",
 		"status":            "status",
 	}
 
@@ -103,10 +104,10 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	}
 
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 3
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d OR description ILIKE $%d)", i, i+1, i+2, i+3)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d OR description ILIKE $%d)", i, i+1, i+2, i+3)
+		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%")
+		i += 4
 	}
 
 	countArgs := append([]interface{}{}, args...)

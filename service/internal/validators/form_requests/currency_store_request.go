@@ -22,9 +22,7 @@ func NewCurrencyStoreRequest() *CurrencyStoreRequest {
 func (r *CurrencyStoreRequest) Validate(req *dtos.CreateCurrencyRequest, ctx context.Context) map[string]string {
 	// utils.DD(req)
 	rules := govalidator.MapData{
-		// "name":        []string{"required", "unique:mix_values,name"},
-		// "parent_id":   []string{"required"},
-		"name":        []string{"required"},
+		"name":        []string{"required", "unique:mix_values,name"},
 		"description": []string{},
 		"remarks":     []string{},
 		"status":      []string{},

@@ -22,8 +22,7 @@ func NewItemSubGroupStoreRequest() *ItemSubGroupStoreRequest {
 func (r *ItemSubGroupStoreRequest) Validate(req *dtos.CreateItemSubGroupRequest, ctx context.Context) map[string]string {
 	// utils.DD(req)
 	rules := govalidator.MapData{
-		// "name":        []string{"required", "unique:mix_values,name"},
-		"name":          []string{"required"},
+		"name":          []string{"required", "unique:mix_values,name"},
 		"item_group_id": []string{"required"},
 		"description":   []string{},
 		"remarks":       []string{},
