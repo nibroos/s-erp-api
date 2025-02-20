@@ -2,7 +2,9 @@ package validators
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"mime/multipart"
 	"reflect"
 	"strconv"
 	"strings"
@@ -29,6 +31,7 @@ func InitValidator(database *sqlx.DB) {
 	govalidator.AddCustomRule("array", arrayRule)
 	govalidator.AddCustomRule("array_max", arrayMaxRule)
 	govalidator.AddCustomRule("exists", isExistsRule)
+	govalidator.AddCustomRule("req", requiredRule)
 }
 
 // uniqueValidator checks if a field value is unique in the database.
@@ -266,6 +269,170 @@ func isExistsRule(field string, rule string, message string, value interface{}) 
 	}
 
 	return nil
+}
+
+// isEmpty check a type is Zero
+func isEmpty(x interface{}) bool {
+	rt := reflect.TypeOf(x)
+	if rt == nil {
+		return true
+	}
+	rv := reflect.ValueOf(x)
+	switch rv.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice:
+		return rv.Len() == 0
+	}
+	return reflect.DeepEqual(x, reflect.Zero(rt).Interface())
+}
+
+func requiredRule(field string, rule string, message string, value interface{}) error {
+
+	err := fmt.Errorf("The %s field is required", field)
+	if message != "" {
+		err = errors.New(message)
+	}
+	if value == nil {
+		return err
+	}
+	if _, ok := value.(multipart.File); ok {
+		return nil
+	}
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.String, reflect.Array, reflect.Slice, reflect.Map:
+		if rv.Len() == 0 {
+			return err
+		}
+	case reflect.Int:
+		if isEmpty(value.(int)) {
+			return err
+		}
+	case reflect.Int8:
+		if isEmpty(value.(int8)) {
+			return err
+		}
+	case reflect.Int16:
+		if isEmpty(value.(int16)) {
+			return err
+		}
+	case reflect.Int32:
+		if isEmpty(value.(int32)) {
+			return err
+		}
+	case reflect.Int64:
+		if isEmpty(value.(int64)) {
+			return err
+		}
+	case reflect.Float32:
+		if isEmpty(value.(float32)) {
+			return err
+		}
+	case reflect.Float64:
+		if isEmpty(value.(float64)) {
+			return err
+		}
+	case reflect.Uint:
+		if isEmpty(value.(uint)) {
+			return err
+		}
+	case reflect.Uint8:
+		if isEmpty(value.(uint8)) {
+			return err
+		}
+	case reflect.Uint16:
+		if isEmpty(value.(uint16)) {
+			return err
+		}
+	case reflect.Uint32:
+		if isEmpty(value.(uint32)) {
+			return err
+		}
+	case reflect.Uint64:
+		if isEmpty(value.(uint64)) {
+			return err
+		}
+	case reflect.Uintptr:
+		if isEmpty(value.(uintptr)) {
+			return err
+		}
+	case reflect.Struct:
+		switch rv.Type().String() {
+		case "govalidator.Int":
+			if v, ok := value.(govalidator.Int); ok {
+				if !v.IsSet {
+					return err
+				}
+			}
+		case "govalidator.Int64":
+			if v, ok := value.(govalidator.Int64); ok {
+				if !v.IsSet {
+					return err
+				}
+			}
+		case "govalidator.Float32":
+			if v, ok := value.(govalidator.Float32); ok {
+				if !v.IsSet {
+					return err
+				}
+			}
+		case "govalidator.Float64":
+			if v, ok := value.(govalidator.Float64); ok {
+				if !v.IsSet {
+					return err
+				}
+			}
+		case "govalidator.Bool":
+			if v, ok := value.(govalidator.Bool); ok {
+				if !v.IsSet {
+					return err
+				}
+			}
+		default:
+			panic("govalidator: invalid custom type for required rule")
+
+		}
+
+	default:
+		panic("govalidator: invalid type for required rule")
+
+	}
+	return nil
+	// if value == nil {
+	// 	return fmt.Errorf("the %s field is required", field)
+	// }
+
+	// log.Println("requiredRule", field, value)
+
+	// switch v := value.(type) {
+	// case string:
+	// 	if v == "" {
+	// 		return fmt.Errorf("the %s field is required", field)
+	// 	}
+	// case int, int8, int16, int32, int64:
+	// 	if v == 0 {
+	// 		return fmt.Errorf("the %s field is required", field)
+	// 	}
+	// case uint, uint8, uint16, uint32, uint64:
+	// 	if v == 0 {
+	// 		return fmt.Errorf("the %s field is required", field)
+	// 	}
+	// case float32, float64:
+	// 	if v == 0 {
+	// 		return fmt.Errorf("the %s field is required", field)
+	// 	}
+	// case map[interface{}]interface{}:
+	// 	if len(v) == 0 {
+	// 		return fmt.Errorf("the %s field is required", field)
+	// 	}
+	// case []interface{}:
+	// 	if len(v) == 0 {
+	// 		return fmt.Errorf("the %s field is required", field)
+	// 	}
+	// default:
+	// 	return fmt.Errorf("unsupported type for field %s", field)
+	// }
+
+	// return nil
 }
 
 // TODO make a function to validate mix_values group, 2 params, group and value

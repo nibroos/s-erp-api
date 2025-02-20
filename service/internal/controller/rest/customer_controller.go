@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -72,6 +73,8 @@ func (c *CustomerController) CreateCustomer(ctx *fiber.Ctx) error {
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
 	}
+
+	log.Println("req3", req)
 
 	// Validate the request
 	reqValidator := form_requests.NewCustomerStoreRequest().Validate(&req, ctx.Context())

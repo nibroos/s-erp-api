@@ -45,11 +45,10 @@ func (r *CustomerRepository) GetCustomers(ctx context.Context, filters map[strin
         uu.name as updated_by_name
 
         FROM customers c
-				LEFT JOIN customer_types ct ON c.customer_type_id = ct.id
-				LEFT JOIN customers ag ON ag.agent_id = ig.id
+				LEFT JOIN mix_values ct ON c.customer_type_id = ct.id
+				LEFT JOIN customers ag ON ag.agent_id = ag.id
         LEFT JOIN users cu ON c.created_by_id = cu.id
         LEFT JOIN users uu ON c.updated_by_id = uu.id
-                WHERE g.name = 'agents'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -62,8 +61,8 @@ func (r *CustomerRepository) GetCustomers(ctx context.Context, filters map[strin
         uu.name as updated_by_name
 
         FROM customers c
-				LEFT JOIN customer_types ct ON c.customer_type_id = ct.id
-				LEFT JOIN customers ag ON ag.agent_id = ig.id
+				LEFT JOIN mix_values ct ON c.customer_type_id = ct.id
+				LEFT JOIN customers ag ON ag.agent_id = ag.id
         LEFT JOIN users cu ON c.created_by_id = cu.id
         LEFT JOIN users uu ON c.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -99,10 +98,10 @@ func (r *CustomerRepository) GetCustomers(ctx context.Context, filters map[strin
 	}
 
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 3
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR address ILIKE $%d OR phone ILIKE $%d OR email ILIKE $%d OR pic ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR address ILIKE $%d OR phone ILIKE $%d OR email ILIKE $%d OR pic ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5)
+		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%")
+		i += 6
 	}
 
 	countArgs := append([]interface{}{}, args...)
@@ -183,7 +182,7 @@ func (r *CustomerRepository) GetCustomerByID(ctx context.Context, params *dtos.G
 
 	query := `
 	SELECT DISTINCT ON (c.id) 
-		c.id, c.customer_type_id, c.agent_id, c.name, c.specification, c.tpb_code, c.price_sell, c.price_buy, c.minimum_stock, c.status, c.created_at, c.updated_at, c.deleted_at,
+		c.id, c.customer_type_id, c.agent_id, c.name, c.code, c.address, c.phone, c.email, c.pic, c.status, c.created_at, c.updated_at, c.deleted_at,
 	ct.name as customer_type_name,
 	ag.name as agent_name,
 
@@ -191,8 +190,8 @@ func (r *CustomerRepository) GetCustomerByID(ctx context.Context, params *dtos.G
 	uu.name as updated_by_name
 
 	FROM customers c
-	LEFT JOIN customer_types ct ON c.customer_type_id = ct.id
-	LEFT JOIN customers ag ON ag.agent_id = ig.id
+	LEFT JOIN mix_values ct ON c.customer_type_id = ct.id
+	LEFT JOIN customers ag ON ag.agent_id = ag.id
 	LEFT JOIN users cu ON c.created_by_id = cu.id
 	LEFT JOIN users uu ON c.updated_by_id = uu.id
 	WHERE 1=1`

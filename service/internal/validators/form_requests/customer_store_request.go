@@ -2,6 +2,7 @@ package form_requests
 
 import (
 	"context"
+	"log"
 
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/thedevsaddam/govalidator"
@@ -21,8 +22,8 @@ func NewCustomerStoreRequest() *CustomerStoreRequest {
 // Validate validates the RegisterRequest.
 func (r *CustomerStoreRequest) Validate(req *dtos.CreateCustomerRequest, ctx context.Context) map[string]string {
 	rules := govalidator.MapData{
-		"customer_type_id": []string{"required", "exists:mix_values,id"},
-		"agent_id":         []string{"required", "exists:customers,id"},
+		"customer_type_id": []string{"required", "numeric", "exists:mix_values,id"},
+		"agent_id":         []string{"exists:customers,id"},
 		"code":             []string{},
 		"name":             []string{"required"},
 		"address":          []string{},
@@ -32,10 +33,14 @@ func (r *CustomerStoreRequest) Validate(req *dtos.CreateCustomerRequest, ctx con
 		"status":           []string{"required"},
 	}
 
+	log.Println("rules", rules)
+
 	opts := govalidator.Options{
 		Data:  req,
 		Rules: rules,
 	}
+
+	log.Println("opts", opts)
 
 	v := govalidator.New(opts)
 	mappedErrors := v.ValidateStruct()
