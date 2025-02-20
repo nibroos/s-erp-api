@@ -88,11 +88,17 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	pph23 := version.Group("/pph23s")
 	SetupPph23Routes(pph23, gormDB, sqlDB, utilRepo, tracer)
 
+	customer := version.Group("/customers")
+	SetupCustomerRoutes(customer, gormDB, sqlDB, utilRepo, tracer)
+
 	msItem := version.Group("/ms-items")
 	SetupMsItemRoutes(msItem, gormDB, sqlDB, utilRepo, tracer)
 
-	customer := version.Group("/customers")
-	SetupCustomerRoutes(customer, gormDB, sqlDB, utilRepo, tracer)
+	itemUnit := version.Group("/item-units")
+	SetupItemUnitRoutes(itemUnit, gormDB, sqlDB, utilRepo, tracer)
+
+	branchItem := version.Group("/branch-items")
+	SetupBranchItemRoutes(branchItem, gormDB, sqlDB, utilRepo, tracer)
 
 	// Scheduler route
 	// cron := cron.New()

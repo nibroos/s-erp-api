@@ -15,6 +15,7 @@ type MsItem struct {
 	Description    *string        `json:"description" gorm:"column:description"`
 	TpbCode        *string        `json:"tpb_code" gorm:"column:tpb_code"`
 	MinimumStock   *float64       `json:"minimum_stock" gorm:"column:minimum_stock"`
+	IsAllBranch    *int           `json:"is_all_branch" gorm:"column:is_all_branch"`
 	Status         int8           `json:"status" gorm:"column:status"`
 	CreatedByID    *uint          `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID    *uint          `json:"updated_by_id" gorm:"column:updated_by_id"`

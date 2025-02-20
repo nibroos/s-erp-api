@@ -117,12 +117,16 @@ func (s *ItemUnitService) ExcelGetItemUnits(ctx *fiber.Ctx, filters map[string]s
 		return nil, err
 	}
 
-	file.SetSheetRow("ItemUnits", "A1", &[]string{"ID", "Name", "Sub Group", "Unit", "Specification", "TPB Code", "Price Sell", "Price Buy", "Minimum Stock", "Created At", "Updated At"})
+	file.SetSheetRow("ItemUnits", "A1", &[]string{"ID", "Item Name", "Unit Name", "Conversion", "Price Sell", "Price Buy", "Created At", "Updated At"})
 
 	for i, itemUnit := range itemUnits {
 		row := []interface{}{
 			itemUnit.ID,
+			utils.GetPtrVal(itemUnit.MsItemName),
 			utils.GetPtrVal(itemUnit.UnitName),
+			utils.GetFloatPtrVal(itemUnit.Conversion),
+			utils.GetFloatPtrVal(itemUnit.PriceSell),
+			utils.GetFloatPtrVal(itemUnit.PriceBuy),
 			itemUnit.CreatedAt,
 			itemUnit.UpdatedAt,
 		}
@@ -176,13 +180,13 @@ func (s *ItemUnitService) CsvGetItemUnits(ctx *fiber.Ctx, filters map[string]str
 	csv += "ID,Item Name, Unit Name, Conversion, Price Sell, Price Buy, Created At, Updated At\n"
 	// Build CSV rows
 	for _, itemUnit := range itemUnits {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s\n",
+		csv += fmt.Sprintf("%d,%s,%s,%f,%f,%f,%s,%s\n",
 			itemUnit.ID,
 			utils.GetPtrVal(itemUnit.MsItemName),
 			utils.GetPtrVal(itemUnit.UnitName),
-			// utils.GetFloatPtrVal(itemUnit.Conversion),
-			// utils.GetPtrVal(itemUnit.PriceSell),
-			// utils.GetPtrVal(itemUnit.PriceBuy),
+			utils.GetFloatPtrVal(itemUnit.Conversion),
+			utils.GetFloatPtrVal(itemUnit.PriceSell),
+			utils.GetFloatPtrVal(itemUnit.PriceBuy),
 			itemUnit.CreatedAt,
 			itemUnit.UpdatedAt,
 		)

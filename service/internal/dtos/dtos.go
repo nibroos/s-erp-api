@@ -1314,6 +1314,7 @@ type GetMsItemsRequest struct {
 	Name           string `json:"name"`
 	ItemGroupID    string `json:"item_group_id"`
 	ItemSubGroupID string `json:"item_sub_group_id"`
+	Status         string `json:"status"`
 	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
 	Page           string `json:"page" default:"1"`              // Default page to 1
 	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
@@ -1331,6 +1332,7 @@ type CreateMsItemRequest struct {
 	PriceSell      *float64 `json:"price_sell"`
 	PriceBuy       *float64 `json:"price_buy"`
 	MinimumStock   *float64 `json:"minimum_stock"`
+	IsAllBranch    *int     `json:"is_all_branch"`
 	Status         int8     `json:"status"`
 }
 
@@ -1346,6 +1348,7 @@ type UpdateMsItemRequest struct {
 	PriceSell      *float64 `json:"price_sell"`
 	PriceBuy       *float64 `json:"price_buy"`
 	MinimumStock   *float64 `json:"minimum_stock"`
+	IsAllBranch    *int     `json:"is_all_branch"`
 	Status         int8     `json:"status"`
 }
 
@@ -1386,6 +1389,7 @@ type MsItemListDTO struct {
 	PriceSell        *string `json:"price_sell" db:"price_sell"`
 	PriceBuy         *string `json:"price_buy" db:"price_buy"`
 	MinimumStock     *string `json:"minimum_stock" db:"minimum_stock"`
+	IsAllBranch      *int    `json:"is_all_branch" db:"is_all_branch"`
 	Status           int8    `json:"status" db:"status"`
 	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
@@ -1410,6 +1414,7 @@ type MsItemDetailDTO struct {
 	PriceSell        *string `json:"price_sell" db:"price_sell"`
 	PriceBuy         *string `json:"price_buy" db:"price_buy"`
 	MinimumStock     *string `json:"minimum_stock" db:"minimum_stock"`
+	IsAllBranch      *int    `json:"is_all_branch" db:"is_all_branch"`
 	Status           int8    `json:"status" db:"status"`
 	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
@@ -1428,17 +1433,13 @@ type GetItemUnitsRequest struct {
 	Name           string `json:"name"`
 	UnitID         string `json:"unit_id"`
 	MsItemID       string `json:"ms_item_id"`
+	Status         string `json:"status"`
 	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
 	Page           string `json:"page" default:"1"`              // Default page to 1
 	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
 	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
 }
 
-// UnitID      *uint          `json:"unit_id" gorm:"column:unit_id"`
-// Conversion  float64        `json:"conversion" gorm:"column:conversion"`
-// PriceSell   *float64       `json:"price_sell" gorm:"column:price_sell"`
-// PriceBuy    *float64       `json:"price_buy" gorm:"column:price_buy"`
-// Status      int8           `json:"status" gorm:"column:status"`
 type CreateItemUnitRequest struct {
 	MsItemID   uint     `json:"ms_item_id"`
 	UnitID     uint     `json:"unit_id"`
@@ -1487,6 +1488,7 @@ type ItemUnitListDTO struct {
 	UnitName      *string  `json:"unit_name" db:"unit_name"`
 	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
 	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
+	Conversion    *float64 `json:"conversion" db:"conversion"`
 	Status        int8     `json:"status" db:"status"`
 	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string  `json:"updated_by_name" db:"updated_by_name"`
@@ -1503,6 +1505,7 @@ type ItemUnitDetailDTO struct {
 	UnitName      *string  `json:"unit_name" db:"unit_name"`
 	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
 	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
+	Conversion    *float64 `json:"conversion" db:"conversion"`
 	Status        int8     `json:"status" db:"status"`
 	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string  `json:"updated_by_name" db:"updated_by_name"`
@@ -1514,6 +1517,117 @@ type GetItemUnitsResult struct {
 	ItemUnits []ItemUnitListDTO
 	Total     int
 	Err       error
+}
+
+type GetBranchItemsRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	BranchID       uint   `json:"branch_id"`
+	MsItemID       uint   `json:"ms_item_id"`
+	Status         string `json:"status"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateBranchItemRequest struct {
+	MsItemID      uint     `json:"ms_item_id"`
+	BranchID      uint     `json:"branch_id"`
+	Name          string   `json:"name" gorm:"column:name"`
+	Specification *string  `json:"specification" gorm:"column:specification"`
+	Description   *string  `json:"description" gorm:"column:description"`
+	TpbCode       *string  `json:"tpb_code" gorm:"column:tpb_code"`
+	MinimumStock  *float64 `json:"minimum_stock" gorm:"column:minimum_stock"`
+	PriceSell     *float64 `json:"price_sell"`
+	PriceBuy      *float64 `json:"price_buy"`
+	Status        int8     `json:"status"`
+}
+
+type UpdateBranchItemRequest struct {
+	ID            uint     `json:"id"`
+	MsItemID      uint     `json:"ms_item_id"`
+	BranchID      uint     `json:"branch_id"`
+	Name          string   `json:"name" gorm:"column:name"`
+	Specification *string  `json:"specification" gorm:"column:specification"`
+	Description   *string  `json:"description" gorm:"column:description"`
+	TpbCode       *string  `json:"tpb_code" gorm:"column:tpb_code"`
+	MinimumStock  *float64 `json:"minimum_stock" gorm:"column:minimum_stock"`
+	PriceSell     *float64 `json:"price_sell"`
+	PriceBuy      *float64 `json:"price_buy"`
+	Status        int8     `json:"status"`
+}
+
+type GetBranchItemByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetBranchItemParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetBranchItemParams(id uint) *GetBranchItemParams {
+	defaultIsDeleted := 0
+	return &GetBranchItemParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteBranchItemRequest struct {
+	ID uint `json:"id"`
+}
+
+type BranchItemListDTO struct {
+	ID            int      `json:"id" db:"id"`
+	MsItemID      uint     `json:"ms_item_id" db:"ms_item_id"`
+	BranchID      uint     `json:"branch_id" db:"branch_id"`
+	UnitID        uint     `json:"unit_id" db:"unit_id"`
+	MsItemName    *string  `json:"ms_item_name" db:"ms_item_name"`
+	BranchName    *string  `json:"branch_name" db:"branch_name"`
+	UnitName      *string  `json:"unit_name" db:"unit_name"`
+	Name          *string  `json:"name" db:"name"`
+	Specification *string  `json:"specification" gorm:"column:specification"`
+	Description   *string  `json:"description" gorm:"column:description"`
+	TpbCode       *string  `json:"tpb_code" gorm:"column:tpb_code"`
+	MinimumStock  *float64 `json:"minimum_stock" gorm:"column:minimum_stock"`
+	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
+	Status        int8     `json:"status" db:"status"`
+	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string  `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string  `json:"created_at" db:"created_at"`
+	UpdatedAt     *string  `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string  `json:"deleted_at" db:"deleted_at"`
+}
+
+type BranchItemDetailDTO struct {
+	ID            uint     `json:"id" db:"id"`
+	MsItemID      uint     `json:"ms_item_id" db:"ms_item_id"`
+	BranchID      uint     `json:"branch_id" db:"branch_id"`
+	UnitID        uint     `json:"unit_id" db:"unit_id"`
+	MsItemName    *string  `json:"ms_item_name" db:"ms_item_name"`
+	BranchName    *string  `json:"branch_name" db:"branch_name"`
+	UnitName      *string  `json:"unit_name" db:"unit_name"`
+	Name          *string  `json:"name" db:"name"`
+	Specification *string  `json:"specification" gorm:"column:specification"`
+	Description   *string  `json:"description" gorm:"column:description"`
+	TpbCode       *string  `json:"tpb_code" gorm:"column:tpb_code"`
+	MinimumStock  *float64 `json:"minimum_stock" gorm:"column:minimum_stock"`
+	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
+	Status        int8     `json:"status" db:"status"`
+	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string  `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string  `json:"created_at" db:"created_at"`
+	UpdatedAt     *string  `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string  `json:"deleted_at" db:"deleted_at"`
+}
+type GetBranchItemsResult struct {
+	BranchItems []BranchItemListDTO
+	Total       int
+	Err         error
 }
 
 type GetCustomersRequest struct {

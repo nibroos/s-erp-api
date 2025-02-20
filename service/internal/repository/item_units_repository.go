@@ -38,11 +38,11 @@ func (r *ItemUnitRepository) GetItemUnits(ctx context.Context, filters map[strin
     FROM ( 
         SELECT DISTINCT ON (m.id)
 					m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
-				mi.name as ms_item_name,
-				u.name as unit_name,
+					mi.name as ms_item_name,
+					u.name as unit_name,
 
-        cu.name as created_by_name,
-        uu.name as updated_by_name
+					cu.name as created_by_name,
+					uu.name as updated_by_name
 
         FROM item_units m
 				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
@@ -165,11 +165,11 @@ func (r *ItemUnitRepository) GetItemUnitByID(ctx context.Context, params *dtos.G
 	query := `
 	SELECT DISTINCT ON (m.id) 
 		m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
-	mi.name as ms_item_name,
-	u.name as unit_name,
+		mi.name as ms_item_name,
+		u.name as unit_name,
 
-	cu.name as created_by_name,
-	uu.name as updated_by_name
+		cu.name as created_by_name,
+		uu.name as updated_by_name
 
 	FROM item_units m
 	LEFT JOIN ms_items mi ON m.ms_item_id = mi.id

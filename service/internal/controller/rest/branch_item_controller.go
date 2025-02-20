@@ -15,19 +15,19 @@ import (
 	// "github.com/opentracing/opentracing-go/ext"
 )
 
-type MsItemController struct {
-	service *service.MsItemService
-	repo    *repository.MsItemRepository
+type BranchItemController struct {
+	service *service.BranchItemService
+	repo    *repository.BranchItemRepository
 	tracer  opentracing.Tracer
 }
 
-func NewMsItemController(service *service.MsItemService, repo *repository.MsItemRepository, tracer opentracing.Tracer) *MsItemController {
-	return &MsItemController{service: service, repo: repo, tracer: tracer}
+func NewBranchItemController(service *service.BranchItemService, repo *repository.BranchItemRepository, tracer opentracing.Tracer) *BranchItemController {
+	return &BranchItemController{service: service, repo: repo, tracer: tracer}
 }
 
-func (c *MsItemController) GetMsItems(ctx *fiber.Ctx) error {
+func (c *BranchItemController) GetBranchItems(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-GetMsItems", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("BranchItemController-GetBranchItems", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -39,11 +39,11 @@ func (c *MsItemController) GetMsItems(ctx *fiber.Ctx) error {
 	filters, ok := ctx.Locals("filters").(map[string]string)
 
 	if !ok {
-		apiSpan.LogKV("response_body", string("MsItemController-GetMsItems: Invalid filters"))
+		apiSpan.LogKV("response_body", string("BranchItemController-GetBranchItems: Invalid filters"))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	msItems, total, err := c.service.GetMsItems(ctx, filters, parentSpan)
+	branchItems, total, err := c.service.GetBranchItems(ctx, filters, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -52,12 +52,12 @@ func (c *MsItemController) GetMsItems(ctx *fiber.Ctx) error {
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
-	return utils.GetResponse(ctx, msItems, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, branchItems, paginationMeta, "Branch item fetched successfully", http.StatusOK, nil, nil)
 }
 
-func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
+func (c *BranchItemController) CreateBranchItem(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-CreateMsItem", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("BranchItemController-CreateBranchItem", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -66,7 +66,7 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.CreateMsItemRequest
+	var req dtos.CreateBranchItemRequest
 
 	// Use the utility function to parse the request body
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
@@ -74,7 +74,7 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewMsItemStoreRequest().Validate(&req, ctx.Context())
+	reqValidator := form_requests.NewBranchItemStoreRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
@@ -88,48 +88,46 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	msItem := models.MsItem{
-		Code:           req.Code,
-		Name:           req.Name,
-		ItemSubGroupID: &req.ItemSubGroupID,
-		UnitID:         &req.UnitID,
-		Specification:  req.Specification,
-		Description:    req.Description,
-		TpbCode:        req.TpbCode,
-		MinimumStock:   req.MinimumStock,
-		IsAllBranch:    req.IsAllBranch,
-		Status:         req.Status,
-		CreatedByID:    &userID,
+	branchItem := models.BranchItem{
+		BranchID:      req.BranchID,
+		MsItemID:      req.MsItemID,
+		Name:          req.Name,
+		Specification: req.Specification,
+		Description:   req.Description,
+		TpbCode:       req.TpbCode,
+		MinimumStock:  req.MinimumStock,
+		Status:        req.Status,
+		CreatedByID:   &userID,
 	}
 
 	tx := c.repo.BeginTransaction()
-	createdMsItem, err := c.service.CreateMsItem(ctx, &msItem, tx, parentSpan)
+	createdBranchItem, err := c.service.CreateBranchItem(ctx, &branchItem, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create branch items", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	params := &dtos.GetMsItemParams{ID: createdMsItem.ID}
-	getMsItem, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetBranchItemParams{ID: createdBranchItem.ID}
+	getBranchItem, err := c.service.GetBranchItemByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getMsItem}, paginationMeta, "Master item created successfully", http.StatusCreated, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getBranchItem}, paginationMeta, "Branch item created successfully", http.StatusCreated, nil, nil)
 }
-func (c *MsItemController) GetMsItemByID(ctx *fiber.Ctx) error {
+func (c *BranchItemController) GetBranchItemByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-GetMsItemByID", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("BranchItemController-GetBranchItemByID", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -138,36 +136,36 @@ func (c *MsItemController) GetMsItemByID(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.GetMsItemByIDRequest
+	var req dtos.GetBranchItemByIDRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	params := &dtos.GetMsItemParams{ID: req.ID}
-	msItem, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetBranchItemParams{ID: req.ID}
+	branchItem, err := c.service.GetBranchItemByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	msItemArray := []interface{}{msItem}
+	branchItemArray := []interface{}{branchItem}
 
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, msItemArray, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, branchItemArray, paginationMeta, "Branch item fetched successfully", http.StatusOK, nil, nil)
 }
 
-// update msItem
-func (c *MsItemController) UpdateMsItem(ctx *fiber.Ctx) error {
+// update branchItem
+func (c *BranchItemController) UpdateBranchItem(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-UpdateMsItem", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("BranchItemController-UpdateBranchItem", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -176,14 +174,14 @@ func (c *MsItemController) UpdateMsItem(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.UpdateMsItemRequest
+	var req dtos.UpdateBranchItemRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewMsItemUpdateRequest().Validate(&req, ctx.Context())
+	reqValidator := form_requests.NewBranchItemUpdateRequest().Validate(&req, ctx.Context())
 	if reqValidator != nil {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
@@ -196,53 +194,49 @@ func (c *MsItemController) UpdateMsItem(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	msItem := models.MsItem{
-		ID:             req.ID,
-		Code:           req.Code,
-		Name:           req.Name,
-		ItemSubGroupID: &req.ItemSubGroupID,
-		UnitID:         &req.UnitID,
-		Specification:  req.Specification,
-		Description:    req.Description,
-		TpbCode:        req.TpbCode,
-		MinimumStock:   req.MinimumStock,
-		IsAllBranch:    req.IsAllBranch,
-		Status:         req.Status,
-		UpdatedByID:    &userID,
+	branchItem := models.BranchItem{
+		ID:            req.ID,
+		Name:          req.Name,
+		Specification: req.Specification,
+		Description:   req.Description,
+		TpbCode:       req.TpbCode,
+		MinimumStock:  req.MinimumStock,
+		Status:        req.Status,
+		UpdatedByID:   &userID,
 	}
 
 	tx := c.repo.BeginTransaction()
 
-	updatedMsItem, err := c.service.UpdateMsItem(ctx, &msItem, tx, parentSpan)
+	updatedBranchItem, err := c.service.UpdateBranchItem(ctx, &branchItem, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		if err.Error() == "msItem name already exists" {
-			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Master item already exists", "status": http.StatusConflict})
+		if err.Error() == "branchItem name already exists" {
+			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Branch item already exists", "status": http.StatusConflict})
 		}
-		return utils.GetResponse(ctx, nil, nil, "Failed to update Master item", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Branch item", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	params := &dtos.GetMsItemParams{ID: updatedMsItem.ID}
-	getMsItem, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetBranchItemParams{ID: updatedBranchItem.ID}
+	getBranchItem, err := c.service.GetBranchItemByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getMsItem}, paginationMeta, "Master item updated successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getBranchItem}, paginationMeta, "Branch item updated successfully", http.StatusOK, nil, nil)
 }
 
-// delete msItem
-func (c *MsItemController) DeleteMsItem(ctx *fiber.Ctx) error {
+// delete branchItem
+func (c *BranchItemController) DeleteBranchItem(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-DeleteMsItem", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("BranchItemController-DeleteBranchItem", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -251,42 +245,42 @@ func (c *MsItemController) DeleteMsItem(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.DeleteMsItemRequest
+	var req dtos.DeleteBranchItemRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	params := &dtos.GetMsItemParams{ID: req.ID}
-	// GET msItem by ID
-	_, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetBranchItemParams{ID: req.ID}
+	// GET branchItem by ID
+	_, err := c.service.GetBranchItemByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	// Transaction handling
 	tx := c.repo.BeginTransaction()
-	err = c.service.DeleteMsItem(ctx, params, tx, parentSpan)
+	err = c.service.DeleteBranchItem(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete Master item", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Branch item", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Master item deleted successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Branch item deleted successfully", http.StatusOK, nil, nil)
 }
 
-// restore msItem
-func (c *MsItemController) RestoreMsItem(ctx *fiber.Ctx) error {
+// restore branchItem
+func (c *BranchItemController) RestoreBranchItem(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-RestoreMsItem", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("BranchItemController-RestoreBranchItem", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -295,43 +289,43 @@ func (c *MsItemController) RestoreMsItem(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.DeleteMsItemRequest
+	var req dtos.DeleteBranchItemRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
 
 	isDeleted := 1
-	params := &dtos.GetMsItemParams{ID: req.ID, IsDeleted: &isDeleted}
-	// GET msItem by ID
-	_, err := c.service.GetMsItemByID(ctx, params, parentSpan)
+	params := &dtos.GetBranchItemParams{ID: req.ID, IsDeleted: &isDeleted}
+	// GET branchItem by ID
+	_, err := c.service.GetBranchItemByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Branch item not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreMsItem(ctx, params, tx, parentSpan)
+	err = c.service.RestoreBranchItem(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to restore Master item", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to restore Branch item", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Master item restored successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Branch item restored successfully", http.StatusOK, nil, nil)
 }
 
-func (c *MsItemController) ExcelGetMsItems(ctx *fiber.Ctx) error {
+func (c *BranchItemController) ExcelGetBranchItems(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("MsItemController-ExcelGetMsItems", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("BranchItemController-ExcelGetBranchItems", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -345,18 +339,18 @@ func (c *MsItemController) ExcelGetMsItems(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	msItems, err := c.service.ExcelGetMsItems(ctx, filters, parentSpan)
+	branchItems, err := c.service.ExcelGetBranchItems(ctx, filters, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	return ctx.Send(msItems)
+	return ctx.Send(branchItems)
 }
 
-func (c *MsItemController) CsvGetMsItems(ctx *fiber.Ctx) error {
+func (c *BranchItemController) CsvGetBranchItems(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetMsItems", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetBranchItems", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -370,11 +364,11 @@ func (c *MsItemController) CsvGetMsItems(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	msItems, err := c.service.CsvGetMsItems(ctx, filters, parentSpan)
+	branchItems, err := c.service.CsvGetBranchItems(ctx, filters, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	return ctx.Send(msItems)
+	return ctx.Send(branchItems)
 }

@@ -37,10 +37,12 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
 				isg.name as item_sub_group_name,
 				ig.name as item_group_name,
 				u.name as unit_name,
+				iu.unit_id as item_unit_unit_id,
+				bi.name as branch_item_name, bi.branch_id as branch_id, bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
 
         cu.name as created_by_name,
         uu.name as updated_by_name
@@ -49,17 +51,21 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 				LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id
 				LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
 				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
-				LEFT JOIN units u ON iu.unit_id = u.id
+				-- LEFT JOIN units u ON iu.unit_id = u.id
+				LEFT JOIN mix_values u ON iu.unit_id = u.id
+				LEFT JOIN branch_items bi ON bi.ms_item_id = m.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
-					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
 				isg.name as item_sub_group_name,
 				ig.name as item_group_name,
 				u.name as unit_name,
+				iu.unit_id as item_unit_unit_id,
+				bi.name as branch_item_name, bi.branch_id as branch_id, bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
 
         cu.name as created_by_name,
         uu.name as updated_by_name
@@ -69,6 +75,7 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 				LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
 				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
 				LEFT JOIN units u ON iu.unit_id = u.id
+				LEFT JOIN branch_items bi ON bi.ms_item_id = m.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -91,6 +98,8 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	filterKey := map[string]string{
 		"item_sub_group_id": "item_sub_group_id",
 		"item_group_id":     "item_group_id",
+		"branch_id":         "branch_id",
+		"item_unit_unit_id": "item_unit_unit_id",
 		"status":            "status",
 	}
 
@@ -104,10 +113,10 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	}
 
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d OR description ILIKE $%d)", i, i+1, i+2, i+3)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d OR description ILIKE $%d)", i, i+1, i+2, i+3)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 4
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d OR description ILIKE $%d OR branch_item_name ILIKE $%d OR branch_item_specification ILIKE $%d OR branch_item_tpb_code ILIKE $%d OR branch_item_description ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d OR description ILIKE $%d OR branch_item_name ILIKE $%d OR branch_item_specification ILIKE $%d OR branch_item_tpb_code ILIKE $%d OR branch_item_description ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7)
+		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%")
+		i += 8
 	}
 
 	countArgs := append([]interface{}{}, args...)
@@ -188,13 +197,13 @@ func (r *MsItemRepository) GetMsItemByID(ctx context.Context, params *dtos.GetMs
 
 	query := `
 	SELECT DISTINCT ON (m.id) 
-		m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
-	isg.name as item_sub_group_name,
-	ig.name as item_group_name,
-	u.name as unit_name,
+		m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
+		isg.name as item_sub_group_name,
+		ig.name as item_group_name,
+		u.name as unit_name,
 
-	cu.name as created_by_name,
-	uu.name as updated_by_name
+		cu.name as created_by_name,
+		uu.name as updated_by_name
 
 	FROM ms_items m
 	LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id

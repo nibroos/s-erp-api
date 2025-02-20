@@ -1,3 +1,5 @@
+ROLLBACK;
+
 BEGIN;
 
 -- marketing, sales, purchasing, inventory, production, exim, accounting, beacukai
