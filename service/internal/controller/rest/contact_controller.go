@@ -46,8 +46,8 @@ func (c *ContactController) CreateContact(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewContactStoreRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewContactStoreRequest().Validate(&req, ctx)
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -113,8 +113,8 @@ func (c *ContactController) UpdateContact(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewContactUpdateRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewContactUpdateRequest().Validate(&req, ctx)
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -252,8 +252,8 @@ func (c *ContactController) CreateContactByAuthUser(ctx *fiber.Ctx) error {
 	req.UserID = userID
 
 	// Validate the request
-	reqValidator := form_requests.NewContactStoreRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewContactStoreRequest().Validate(&req, ctx)
+	if !isValid {
 		return utils.GetResponse(ctx, nil, nil, "Validation failed", http.StatusBadRequest, reqValidator, nil)
 	}
 
@@ -328,8 +328,8 @@ func (c *ContactController) UpdateContactByAuthUser(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewContactUpdateRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewContactUpdateRequest().Validate(&req, ctx)
+	if !isValid {
 		return utils.GetResponse(ctx, nil, nil, "Validation failed", http.StatusBadRequest, reqValidator, nil)
 	}
 

@@ -50,7 +50,9 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	originPassword := user.Password
-	hashedPassword, _ := utils.HashPassword(user.Password)
+	span := utils.StartSpanFromController(nil, nil, "TestCreateUser")
+	defer span.Finish()
+	hashedPassword, _ := utils.HashPassword(user.Password, span)
 
 	roleIDs := []uint32{1, 2}
 
@@ -127,7 +129,7 @@ func TestCreateUser(t *testing.T) {
 				mockRepo.On("Commit", tt.mockBeginTx).Return(tt.mockCommitErr)
 			}
 
-			user, err := userService.CreateUser(ctx, &tt.user, tt.roleIDs)
+			user, err := userService.CreateUser(ctx, mockDB, &tt.user, tt.roleIDs, span)
 
 			assert.Equal(t, tt.expectedErr, err)
 			if tt.expectedUser != nil {

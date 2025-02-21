@@ -71,8 +71,8 @@ func (c *UserController) CreateUser(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewUserStoreRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewUserStoreRequest().Validate(&req, ctx)
+	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
@@ -180,8 +180,8 @@ func (c *UserController) UpdateUser(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewUserdUpdateRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewUserdUpdateRequest().Validate(&req, ctx)
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -267,7 +267,7 @@ func (c *UserController) Login(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid credentials", "status": "error", "err": err.Error()})
 	}
 
-	token, err := middleware.GenerateJWT(user.ID, user.Roles, user.Permissions)
+	token, err := middleware.GenerateJWT(user.ID, user.Roles, user.Permissions, user.BranchID)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to generate token", "status": "error", "err": err.Error()})
@@ -294,9 +294,9 @@ func (c *UserController) Register(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
 	}
 
-	reqValidator := form_requests.NewRegisterStoreRequest().Validate(&req, ctx.Context())
+	reqValidator, isValid := form_requests.NewRegisterStoreRequest().Validate(&req, ctx)
 
-	if reqValidator != nil {
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -330,7 +330,7 @@ func (c *UserController) Register(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "User not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	token, err := middleware.GenerateJWT(createdUser.ID, getUser.Roles, getUser.Permissions)
+	token, err := middleware.GenerateJWT(createdUser.ID, getUser.Roles, getUser.Permissions, getUser.BranchID)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to generate token", "status": "error", "err": err.Error()})

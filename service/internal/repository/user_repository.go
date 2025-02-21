@@ -34,8 +34,13 @@ func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string
 	users := []dtos.UserListDTO{}
 	var total int
 
-	query := `SELECT id, username, name, email FROM users WHERE 1=1`
-	countQuery := `SELECT COUNT(*) FROM users WHERE 1=1`
+	query := `SELECT 
+		u.id, u.username, u.name, u.email, u.branch_id, u.address, u.password,
+		b.name as branch_name
+	FROM users u 
+	LEFT JOIN branches b ON u.branch_id = b.id
+	WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM users u WHERE 1=1`
 	var args []interface{}
 
 	i := 1
@@ -121,14 +126,20 @@ func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string
 func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
 	var user dtos.UserDetailDTO
 
-	query := `SELECT id, username, name, email, address, password FROM users WHERE id = $1`
+	query := `SELECT 
+		u.branch_id, 
+			u.id, u.username, u.name, u.email, u.address, u.password 
+		branch_name
+	FROM users u 
+	LEFT JOIN branches b ON u.branch_id = b.id
+	WHERE id = $1`
 
 	var args []interface{}
 	args = append(args, params.ID)
 
-	isDeletedQuery := ` AND deleted_at IS NULL`
+	isDeletedQuery := ` AND u.deleted_at IS NULL`
 	if params.IsDeleted != nil && *params.IsDeleted == 1 {
-		isDeletedQuery = " AND deleted_at IS NOT NULL"
+		isDeletedQuery = " AND u.deleted_at IS NOT NULL"
 	}
 
 	query += isDeletedQuery
@@ -213,7 +224,13 @@ func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
 func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dtos.UserDetailDTO, error) {
 	var user dtos.UserDetailDTO
 
-	query := `SELECT id, username, name, email, password, address FROM users WHERE deleted_at IS NULL AND (email = $1 OR username = $1)`
+	query := `SELECT 
+		u.branch_id,
+		u.id, u.username, u.name, u.email, u.password, u.address,
+		b.name as branch_name
+	FROM users u
+	LEFT JOIN branches b ON u.branch_id = b.id
+	WHERE u.deleted_at IS NULL AND (u.email = $1 OR u.username = $1)`
 	if err := r.sqlDB.GetContext(ctx, &user, query, email); err != nil {
 		return nil, err
 	}

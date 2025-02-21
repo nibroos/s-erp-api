@@ -181,19 +181,18 @@ func (r *CustomerRepository) GetCustomerByID(ctx context.Context, params *dtos.G
 	var customer dtos.CustomerDetailDTO
 
 	query := `
-	SELECT DISTINCT ON (c.id) 
+	SELECT 
 		c.id, c.customer_type_id, c.agent_id, c.name, c.code, c.address, c.phone, c.email, c.pic, c.status, c.created_at, c.updated_at, c.deleted_at,
-	ct.name as customer_type_name,
-	ag.name as agent_name,
-
-	cu.name as created_by_name,
-	uu.name as updated_by_name
+    ct.name as customer_type_name,
+    ag.name as agent_name,
+    cu.name as created_by_name,
+    uu.name as updated_by_name
 
 	FROM customers c
-	LEFT JOIN mix_values ct ON c.customer_type_id = ct.id
-	LEFT JOIN customers ag ON ag.agent_id = ag.id
-	LEFT JOIN users cu ON c.created_by_id = cu.id
-	LEFT JOIN users uu ON c.updated_by_id = uu.id
+	LEFT JOIN mix_values ct on c.customer_type_id = ct.id
+	LEFT JOIN customers ag on c.agent_id = ag.id
+	LEFT JOIN users cu on c.created_by_id = cu.id
+	LEFT JOIN users uu on c.updated_by_id = uu.id
 	WHERE 1=1`
 
 	var args []interface{}

@@ -37,21 +37,21 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.item_sub_group_id, ig.parent_id as item_group_id, m.unit_id, m.name, m.code, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
 				isg.name as item_sub_group_name,
 				ig.name as item_group_name,
 				u.name as unit_name,
 				iu.unit_id as item_unit_unit_id,
-				bi.name as branch_item_name, bi.branch_id as branch_id, bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
+				bi.branch_id as branch_id, 
+				-- bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
 
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM ms_items m
-				LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id
-				LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
-				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
-				-- LEFT JOIN units u ON iu.unit_id = u.id
+				LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
+				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+				LEFT JOIN item_units iu ON iu.id = m.unit_id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN branch_items bi ON bi.ms_item_id = m.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
@@ -60,21 +60,22 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
-					m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.item_sub_group_id, ig.parent_id as item_group_id, m.unit_id, m.name, m.code, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
 				isg.name as item_sub_group_name,
 				ig.name as item_group_name,
 				u.name as unit_name,
 				iu.unit_id as item_unit_unit_id,
-				bi.name as branch_item_name, bi.branch_id as branch_id, bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
+				bi.branch_id as branch_id, 
+				-- bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
 
         cu.name as created_by_name,
         uu.name as updated_by_name
 
         FROM ms_items m
-				LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id
-				LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
-				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
-				LEFT JOIN units u ON iu.unit_id = u.id
+				LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
+				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+				LEFT JOIN item_units iu ON iu.id = m.unit_id
+				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN branch_items bi ON bi.ms_item_id = m.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
@@ -197,7 +198,7 @@ func (r *MsItemRepository) GetMsItemByID(ctx context.Context, params *dtos.GetMs
 
 	query := `
 	SELECT DISTINCT ON (m.id) 
-		m.id, m.item_sub_group_id, ig.item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
+		m.id, m.item_sub_group_id, ig.parent_id as item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
 		isg.name as item_sub_group_name,
 		ig.name as item_group_name,
 		u.name as unit_name,
@@ -206,9 +207,9 @@ func (r *MsItemRepository) GetMsItemByID(ctx context.Context, params *dtos.GetMs
 		uu.name as updated_by_name
 
 	FROM ms_items m
-	LEFT JOIN item_sub_groups isg ON m.item_sub_group_id = isg.id
-	LEFT JOIN item_groups ig ON isg.item_group_id = ig.id
-	LEFT JOIN units u ON m.unit_id = u.id
+	LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
+	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+	LEFT JOIN mix_values u ON m.unit_id = u.id
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	WHERE 1=1`

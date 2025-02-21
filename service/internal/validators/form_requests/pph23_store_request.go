@@ -1,27 +1,25 @@
 package form_requests
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
-	"github.com/thedevsaddam/govalidator"
+	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
 // Pph23StoreRequest handles the validation for the RegisterRequest.
 type Pph23StoreRequest struct {
-	Validator *govalidator.Validator
 }
 
 // NewRegisterStoreRequest creates a new instance of Pph23StoreRequest.
 func NewPph23StoreRequest() *Pph23StoreRequest {
-	v := govalidator.New(govalidator.Options{})
-	return &Pph23StoreRequest{Validator: v}
+
+	return &Pph23StoreRequest{}
 }
 
 // Validate validates the RegisterRequest.
-func (r *Pph23StoreRequest) Validate(req *dtos.CreatePph23Request, ctx context.Context) map[string]string {
+func (r *Pph23StoreRequest) Validate(req *dtos.CreatePph23Request, ctx *fiber.Ctx) (map[string][]string, bool) {
 	// utils.DD(req)
-	rules := govalidator.MapData{
+	rules := map[string][]string{
 		"name":        []string{"required", "unique:mix_values,name"},
 		"num":         []string{"numeric"},
 		"description": []string{},
@@ -29,21 +27,20 @@ func (r *Pph23StoreRequest) Validate(req *dtos.CreatePph23Request, ctx context.C
 		"status":      []string{},
 	}
 
-	opts := govalidator.Options{
-		Data:  req,
-		Rules: rules,
-	}
+	customFieldNames := map[string]string{}
 
-	v := govalidator.New(opts)
-	mappedErrors := v.ValidateStruct()
-
-	if len(mappedErrors) == 0 {
-		return nil
+	var requestBody map[string]interface{}
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid request body"}}, false
 	}
+	request := validators.NewRequest(rules, requestBody, customFieldNames)
+	errors, valid := request.Validate()
 
-	errors := make(map[string]string)
-	for field, err := range mappedErrors {
-		errors[field] = err[0]
+	convertedErrors := make(map[string][]string)
+	for key, value := range errors {
+		if len(value) > 0 {
+			convertedErrors[key] = value
+		}
 	}
-	return errors
+	return convertedErrors, valid
 }

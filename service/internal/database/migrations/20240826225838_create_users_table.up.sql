@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(255),
   password VARCHAR(255) NOT NULL,
   address VARCHAR(255),
+  branch_id INT,
   created_by_id INT,
   updated_by_id INT,
   deleted_by_id INT,

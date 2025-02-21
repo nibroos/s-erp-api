@@ -177,7 +177,7 @@ func (s *CustomerService) CsvGetCustomers(ctx *fiber.Ctx, filters map[string]str
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Master Item\n"
+	csv += "Customers\n"
 	csv += "\n"
 
 	csv += "ID,Code,Name,Customer Type,Agent,Address,Phone,Email,PIC,Created At,Updated At\n"

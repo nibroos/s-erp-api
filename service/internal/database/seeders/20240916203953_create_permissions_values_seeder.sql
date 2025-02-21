@@ -1,6 +1,6 @@
 BEGIN;
 
--- users, role_permissions, company_profiles, customers, customer_types, warehouses, currencies,
+-- users, roles, branches, customers, customer_types, warehouses, currencies,
 -- ingoing_types, outgoing_types, order_types, items,
 -- units, shipping_terms, payment_terms, purchase_types 
 -- production_types, colors, item_groups, item_sub_groups,
@@ -45,7 +45,7 @@ VALUES
         name = 'permissions'
       LIMIT
         1
-    ), 'role_permissions', 'Role Permissions', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'roles', 'Role Permissions', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -58,7 +58,7 @@ VALUES
         name = 'permissions'
       LIMIT
         1
-    ), 'company_profiles', 'Company Profile Permissions', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'branches', 'Company Profile Permissions', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -110,7 +110,7 @@ VALUES
         name = 'permissions'
       LIMIT
         1
-    ), 'sales_orders', 'Sales Order Permissions', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'sos', 'Sales Order Permissions', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -123,7 +123,7 @@ VALUES
         name = 'permissions'
       LIMIT
         1
-    ), 'purchase_orders', 'Purchase Order Permissions', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'pos', 'Purchase Order Permissions', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -136,7 +136,7 @@ VALUES
         name = 'permissions'
       LIMIT
         1
-    ), 'inventories', 'Inventory Permissions', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'invs', 'Inventory Permissions', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   );
 

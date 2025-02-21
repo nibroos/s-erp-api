@@ -48,14 +48,18 @@ type DeleteUserRequest struct {
 }
 
 type UserListDTO struct {
-	ID       int     `json:"id"`
-	Username *string `json:"username"`
-	Name     string  `json:"name"`
-	Email    string  `json:"email"`
+	ID         int     `json:"id"`
+	Username   *string `json:"username"`
+	Name       string  `json:"name"`
+	Email      string  `json:"email"`
+	BranchID   *uint   `json:"branch_id" db:"branch_id"`
+	BranchName *string `json:"branch_name" db:"branch_name"`
 }
 
 type UserDetailDTO struct {
 	ID          uint     `json:"id"`
+	BranchID    *uint    `json:"branch_id" db:"branch_id"`
+	BranchName  *string  `json:"branch_name" db:"branch_name"`
 	Name        string   `json:"name"`
 	Username    *string  `json:"username"`
 	Email       string   `json:"email"`
@@ -1373,11 +1377,14 @@ type DeleteMsItemRequest struct {
 	ID uint `json:"id"`
 }
 
+// bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
 type MsItemListDTO struct {
 	ID               int     `json:"id" db:"id"`
 	ItemSubGroupID   *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
 	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
 	UnitID           *uint   `json:"unit_id" db:"unit_id"`
+	ItemUnitUnitID   *uint   `json:"item_unit_unit_id" db:"item_unit_unit_id"`
+	BranchID         *uint   `json:"branch_id" db:"branch_id"`
 	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
 	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string `json:"unit_name" db:"unit_name"`
@@ -1391,11 +1398,21 @@ type MsItemListDTO struct {
 	MinimumStock     *string `json:"minimum_stock" db:"minimum_stock"`
 	IsAllBranch      *int    `json:"is_all_branch" db:"is_all_branch"`
 	Status           int8    `json:"status" db:"status"`
-	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt        *string `json:"created_at" db:"created_at"`
-	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
-	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
+	// BranchItemDescription   *string `json:"branch_item_description" db:"branch_item_description"`
+	// BranchItemSpecification *string `json:"branch_item_specification" db:"branch_item_specification"`
+	// BranchItemTpbCode       *string `json:"branch_item_tpb_code" db:"branch_item_tpb_code"`
+	// BranchItemPriceSell     *string `json:"branch_item_price_sell" db:"branch_item_price_sell"`
+	// BranchItemPriceBuy      *string `json:"branch_item_price_buy" db:"branch_item_price_buy"`
+	// BranchItemMinimumStock  *string `json:"branch_item_minimum_stock" db:"branch_item_minimum_stock"`
+	// BranchItemStatus        *int8   `json:"branch_item_status" db:"branch_item_status"`
+	// BranchItemCreatedAt     *string `json:"branch_item_created_at" db:"branch_item_created_at"`
+	// BranchItemUpdatedAt     *string `json:"branch_item_updated_at" db:"branch_item_updated_at"`
+	// BranchItemDeletedAt     *string `json:"branch_item_deleted_at" db:"branch_item_deleted_at"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
 }
 
 type MsItemDetailDTO struct {

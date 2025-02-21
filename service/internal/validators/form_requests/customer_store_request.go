@@ -1,57 +1,50 @@
 package form_requests
 
 import (
-	"context"
-	"log"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
-	"github.com/thedevsaddam/govalidator"
+	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
-// CustomerStoreRequest handles the validation for the RegisterRequest.
-type CustomerStoreRequest struct {
-	Validator *govalidator.Validator
-}
+// CustomerStoreRequest handles the validation for the Request
+type CustomerStoreRequest struct{}
 
 // NewRegisterStoreRequest creates a new instance of CustomerStoreRequest.
 func NewCustomerStoreRequest() *CustomerStoreRequest {
-	v := govalidator.New(govalidator.Options{})
-	return &CustomerStoreRequest{Validator: v}
+	return &CustomerStoreRequest{}
 }
 
-// Validate validates the RegisterRequest.
-func (r *CustomerStoreRequest) Validate(req *dtos.CreateCustomerRequest, ctx context.Context) map[string]string {
-	rules := govalidator.MapData{
+// Validate validates the Request
+func (r *CustomerStoreRequest) Validate(req *dtos.CreateCustomerRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+	rules := map[string][]string{
 		"customer_type_id": []string{"required", "numeric", "exists:mix_values,id"},
 		"agent_id":         []string{"exists:customers,id"},
 		"code":             []string{},
-		"name":             []string{"required"},
+		"name":             []string{"required", "min:3"},
 		"address":          []string{},
 		"phone":            []string{},
 		"email":            []string{"email"},
 		"pic":              []string{},
-		"status":           []string{"required"},
+		"status":           []string{},
 	}
 
-	log.Println("rules", rules)
-
-	opts := govalidator.Options{
-		Data:  req,
-		Rules: rules,
+	customFieldNames := map[string]string{
+		// "customer_type_id": "Customer Type",
+		// Add more custom field names here
 	}
 
-	log.Println("opts", opts)
-
-	v := govalidator.New(opts)
-	mappedErrors := v.ValidateStruct()
-
-	if len(mappedErrors) == 0 {
-		return nil
+	var requestBody map[string]interface{}
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid request body"}}, false
 	}
+	request := validators.NewRequest(rules, requestBody, customFieldNames)
+	errors, valid := request.Validate()
 
-	errors := make(map[string]string)
-	for field, err := range mappedErrors {
-		errors[field] = err[0]
+	convertedErrors := make(map[string][]string)
+	for key, value := range errors {
+		if len(value) > 0 {
+			convertedErrors[key] = value
+		}
 	}
-	return errors
+	return convertedErrors, valid
 }

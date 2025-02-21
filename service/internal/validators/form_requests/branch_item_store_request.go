@@ -1,53 +1,50 @@
 package form_requests
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
-	"github.com/thedevsaddam/govalidator"
+	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
 // BranchItemStoreRequest handles the validation for the RegisterRequest.
 type BranchItemStoreRequest struct {
-	Validator *govalidator.Validator
 }
 
 // NewRegisterStoreRequest creates a new instance of BranchItemStoreRequest.
 func NewBranchItemStoreRequest() *BranchItemStoreRequest {
-	v := govalidator.New(govalidator.Options{})
-	return &BranchItemStoreRequest{Validator: v}
+
+	return &BranchItemStoreRequest{}
 }
 
 // Validate validates the RegisterRequest.
-func (r *BranchItemStoreRequest) Validate(req *dtos.CreateBranchItemRequest, ctx context.Context) map[string]string {
-	rules := govalidator.MapData{
+func (r *BranchItemStoreRequest) Validate(req *dtos.CreateBranchItemRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+	rules := map[string][]string{
 		"ms_item_id":    []string{"required", "exists:ms_items,id"},
 		"branch_id":     []string{"required", "exists:branches,id"},
 		"name":          []string{},
 		"specification": []string{},
 		"description":   []string{},
 		"tpb_code":      []string{},
-		"price_sell":    []string{"float"},
-		"price_buy":     []string{"float"},
-		"minimum_stock": []string{"float"},
-		"status":        []string{"required"},
+		"price_sell":    []string{"numeric"},
+		"price_buy":     []string{"numeric"},
+		"minimum_stock": []string{"numeric"},
+		"status":        []string{},
 	}
 
-	opts := govalidator.Options{
-		Data:  req,
-		Rules: rules,
-	}
+	customFieldNames := map[string]string{}
 
-	v := govalidator.New(opts)
-	mappedErrors := v.ValidateStruct()
-
-	if len(mappedErrors) == 0 {
-		return nil
+	var requestBody map[string]interface{}
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid request body"}}, false
 	}
+	request := validators.NewRequest(rules, requestBody, customFieldNames)
+	errors, valid := request.Validate()
 
-	errors := make(map[string]string)
-	for field, err := range mappedErrors {
-		errors[field] = err[0]
+	convertedErrors := make(map[string][]string)
+	for key, value := range errors {
+		if len(value) > 0 {
+			convertedErrors[key] = value
+		}
 	}
-	return errors
+	return convertedErrors, valid
 }

@@ -1,18 +1,15 @@
 package validators
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"mime/multipart"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
-	"github.com/thedevsaddam/govalidator"
 )
 
 var validate *validator.Validate
@@ -20,18 +17,178 @@ var db *sqlx.DB
 
 func InitValidator(database *sqlx.DB) {
 	db = database
-	validate = validator.New()
+}
 
-	// Register custom validation functions if needed
-	validate.RegisterValidation("unique", uniqueValidator)
+// Request defines the validation rules and data
+type Request struct {
+	Rules            map[string][]string // Rules are now arrays of strings
+	Data             map[string]interface{}
+	CustomFieldNames map[string]string
+}
 
-	// Register custom validation rules
-	govalidator.AddCustomRule("unique", uniqueRule) // Register the new rule
-	govalidator.AddCustomRule("unique_ig", uniqueIgRule)
-	govalidator.AddCustomRule("array", arrayRule)
-	govalidator.AddCustomRule("array_max", arrayMaxRule)
-	govalidator.AddCustomRule("exists", isExistsRule)
-	govalidator.AddCustomRule("req", requiredRule)
+// NewRequest creates a new Request instance
+func NewRequest(rules map[string][]string, data map[string]interface{}, customFieldNames map[string]string) *Request {
+	return &Request{
+		Rules:            rules,
+		Data:             data,
+		CustomFieldNames: customFieldNames,
+	}
+}
+
+// Validate validates the request data against the rules
+func (r *Request) Validate() (map[string][]string, bool) {
+	errors := make(map[string][]string)
+
+	for field, rules := range r.Rules {
+		value, exists := r.Data[field]
+		if !exists {
+			value = nil // Treat missing fields as nil
+		}
+
+		for _, rule := range rules {
+			ruleParts := strings.Split(rule, ":")
+			ruleName := ruleParts[0]
+			var ruleParam string
+			if len(ruleParts) > 1 {
+				ruleParam = ruleParts[1]
+			}
+
+			customFieldName := strings.ReplaceAll(field, "_", " ")
+			if customName, ok := customFieldNames[field]; ok {
+				customFieldName = customName
+			}
+			if customName, ok := r.CustomFieldNames[field]; ok {
+				customFieldName = customName
+			}
+
+			switch ruleName {
+			case "required":
+				if isEmpty(value) {
+					errors[field] = append(errors[field], fmt.Sprintf("The %s field is required", customFieldName))
+				}
+			case "email":
+				if value == nil {
+					continue
+				}
+				if !isEmail(value) {
+					errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a valid email address", customFieldName))
+				}
+			case "date":
+				if !isDate(value.(string)) {
+					errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
+				}
+			case "min":
+				min, err := strconv.Atoi(ruleParam)
+				if err != nil {
+					errors[field] = append(errors[field], "Invalid min parameter")
+					continue
+				}
+				if !isMin(value, min) {
+					errors[field] = append(errors[field], fmt.Sprintf("The %s field must be at least %d characters long", customFieldName, min))
+				}
+			// Add more rules here
+			case "max":
+				max, err := strconv.Atoi(ruleParam)
+				if err != nil {
+					errors[field] = append(errors[field], "Invalid max parameter")
+					continue
+				}
+
+				if !isMax(value, max) {
+					errors[field] = append(errors[field], fmt.Sprintf("This field must be at most %d characters long", max))
+				}
+			case "numeric":
+				if !isNumeric(value) {
+					errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a number", customFieldName))
+				}
+
+			case "float":
+				if !isFloat(value.(string)) {
+					errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a decimal number", customFieldName))
+				}
+
+			case "unique":
+				if err := uniqueRule(field, rule, "", customFieldName, value); err != nil {
+					errors[field] = append(errors[field], err.Error())
+				}
+			case "unique_ig":
+				if err := uniqueIgRule(field, rule, "", customFieldName, value); err != nil {
+					errors[field] = append(errors[field], err.Error())
+				}
+			case "array":
+				if err := arrayRule(field, rule, "", customFieldName, value); err != nil {
+					errors[field] = append(errors[field], err.Error())
+				}
+			case "array_max":
+				if err := arrayMaxRule(field, rule, "", customFieldName, value); err != nil {
+					errors[field] = append(errors[field], err.Error())
+				}
+			case "exists":
+				if value == nil {
+					continue
+				}
+				if err := isExistsRule(field, rule, "", customFieldName, value); err != nil {
+					errors[field] = append(errors[field], err.Error())
+				}
+			default:
+				errors[field] = append(errors[field], fmt.Sprintf("Unknown validation rule: %s", ruleName))
+			}
+		}
+	}
+
+	return errors, len(errors) == 0
+}
+
+func isEmail(value interface{}) bool {
+	email, ok := value.(string)
+	if !ok {
+		return false
+	}
+	emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	return regexp.MustCompile(emailRegex).MatchString(email)
+}
+
+// func isDate(value interface{}, format string) bool {
+// 	dateStr, ok := value.(string)
+// 	if !ok {
+// 		return false
+// 	}
+// 	_, err := time.Parse(format, dateStr)
+// 	return err == nil
+// }
+
+func isMin(value interface{}, min int) bool {
+	switch v := value.(type) {
+	case string:
+		return len(v) >= min
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return reflect.ValueOf(v).Int() >= int64(min)
+	default:
+		return false
+	}
+}
+
+func isMax(value interface{}, max int) bool {
+	switch v := value.(type) {
+	case string:
+		return len(v) <= max
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return reflect.ValueOf(v).Int() <= int64(max)
+	default:
+		return false
+	}
+}
+
+func isNumeric(value interface{}) bool {
+	switch v := value.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return true
+	case string:
+		_, err := strconv.ParseFloat(v, 64)
+		return err == nil
+	default:
+		return false
+	}
 }
 
 // uniqueValidator checks if a field value is unique in the database.
@@ -106,25 +263,8 @@ func ValidateUpdateUserRequest(req *dtos.UpdateUserRequest) map[string]string {
 	return errors
 }
 
-func ValidateRegisterRequest(req *dtos.RegisterRequest, ctx context.Context) map[string]string {
-	err := validate.Struct(req)
-	// utils.DD(ctx, map[string]interface{}{
-	// 	"req":      req,
-	// 	"testbool": true,
-	// 	"err":      err,
-	// })
-	if err != nil {
-		errors := make(map[string]string)
-		for _, err := range err.(validator.ValidationErrors) {
-			errors[err.Field()] = err.Tag()
-		}
-		return errors
-	}
-	return nil
-}
-
 // uniqueRule checks if a field value is unique in the database.
-func uniqueRule(field string, rule string, message string, value interface{}) error {
+func uniqueRule(field string, rule string, message string, customFieldName string, value interface{}) error {
 	valueStr, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("invalid value type")
@@ -158,7 +298,7 @@ func uniqueRule(field string, rule string, message string, value interface{}) er
 }
 
 // uniqueIgRule checks if a field value is unique in the database, ignoring the current entity.
-func uniqueIgRule(field string, rule string, message string, value interface{}) error {
+func uniqueIgRule(field string, rule string, message string, customFieldName string, value interface{}) error {
 	// Check if value is uint or string
 	var valueStr string
 	switch v := value.(type) {
@@ -198,7 +338,7 @@ func uniqueIgRule(field string, rule string, message string, value interface{}) 
 	return nil
 }
 
-func arrayRule(field string, rule string, message string, value interface{}) error {
+func arrayRule(field string, rule string, message string, customFieldName string, value interface{}) error {
 	_, ok := value.([]string)
 	if !ok {
 		return fmt.Errorf("the %s field must be an array", field)
@@ -207,7 +347,7 @@ func arrayRule(field string, rule string, message string, value interface{}) err
 	return nil
 }
 
-func arrayMaxRule(field string, rule string, message string, value interface{}) error {
+func arrayMaxRule(field string, rule string, message string, customFieldName string, value interface{}) error {
 	valueArr, ok := value.([]string)
 	if !ok {
 		return fmt.Errorf("invalid value typeb")
@@ -230,20 +370,7 @@ func arrayMaxRule(field string, rule string, message string, value interface{}) 
 	return nil
 }
 
-func isExistsRule(field string, rule string, message string, value interface{}) error {
-	// if value uint or string
-	var entityValue interface{}
-
-	// Check if value is uint or string
-	switch v := value.(type) {
-	case uint:
-		entityValue = v
-	case string:
-		entityValue = v
-	default:
-		return fmt.Errorf("invalid value type")
-	}
-
+func isExistsRule(field string, rule string, message string, customFieldName string, value interface{}) error {
 	params := strings.Split(rule, ":")
 	if len(params) != 2 {
 		return fmt.Errorf("invalid rule format")
@@ -259,13 +386,13 @@ func isExistsRule(field string, rule string, message string, value interface{}) 
 
 	var count int
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s = $1", table, column)
-	err := db.Get(&count, query, entityValue)
+	err := db.Get(&count, query, value)
 	if err != nil {
 		return fmt.Errorf("database error: %v", err)
 	}
 
 	if count == 0 {
-		return fmt.Errorf("the %s does not exist", field)
+		return fmt.Errorf("the %s does not exist", customFieldName)
 	}
 
 	return nil
@@ -285,154 +412,41 @@ func isEmpty(x interface{}) bool {
 	return reflect.DeepEqual(x, reflect.Zero(rt).Interface())
 }
 
-func requiredRule(field string, rule string, message string, value interface{}) error {
-
-	err := fmt.Errorf("The %s field is required", field)
-	if message != "" {
-		err = errors.New(message)
-	}
+func requiredRule(field string, rule string, message string, customFieldName string, value interface{}) error {
 	if value == nil {
-		return err
+		return fmt.Errorf("the %s field is required", field)
 	}
-	if _, ok := value.(multipart.File); ok {
-		return nil
-	}
-	rv := reflect.ValueOf(value)
-	switch rv.Kind() {
-	case reflect.String, reflect.Array, reflect.Slice, reflect.Map:
-		if rv.Len() == 0 {
-			return err
-		}
-	case reflect.Int:
-		if isEmpty(value.(int)) {
-			return err
-		}
-	case reflect.Int8:
-		if isEmpty(value.(int8)) {
-			return err
-		}
-	case reflect.Int16:
-		if isEmpty(value.(int16)) {
-			return err
-		}
-	case reflect.Int32:
-		if isEmpty(value.(int32)) {
-			return err
-		}
-	case reflect.Int64:
-		if isEmpty(value.(int64)) {
-			return err
-		}
-	case reflect.Float32:
-		if isEmpty(value.(float32)) {
-			return err
-		}
-	case reflect.Float64:
-		if isEmpty(value.(float64)) {
-			return err
-		}
-	case reflect.Uint:
-		if isEmpty(value.(uint)) {
-			return err
-		}
-	case reflect.Uint8:
-		if isEmpty(value.(uint8)) {
-			return err
-		}
-	case reflect.Uint16:
-		if isEmpty(value.(uint16)) {
-			return err
-		}
-	case reflect.Uint32:
-		if isEmpty(value.(uint32)) {
-			return err
-		}
-	case reflect.Uint64:
-		if isEmpty(value.(uint64)) {
-			return err
-		}
-	case reflect.Uintptr:
-		if isEmpty(value.(uintptr)) {
-			return err
-		}
-	case reflect.Struct:
-		switch rv.Type().String() {
-		case "govalidator.Int":
-			if v, ok := value.(govalidator.Int); ok {
-				if !v.IsSet {
-					return err
-				}
-			}
-		case "govalidator.Int64":
-			if v, ok := value.(govalidator.Int64); ok {
-				if !v.IsSet {
-					return err
-				}
-			}
-		case "govalidator.Float32":
-			if v, ok := value.(govalidator.Float32); ok {
-				if !v.IsSet {
-					return err
-				}
-			}
-		case "govalidator.Float64":
-			if v, ok := value.(govalidator.Float64); ok {
-				if !v.IsSet {
-					return err
-				}
-			}
-		case "govalidator.Bool":
-			if v, ok := value.(govalidator.Bool); ok {
-				if !v.IsSet {
-					return err
-				}
-			}
-		default:
-			panic("govalidator: invalid custom type for required rule")
 
+	switch v := value.(type) {
+	case string:
+		if v == "" {
+			return fmt.Errorf("the %s field is required", field)
 		}
-
+	case int, int8, int16, int32, int64:
+		if v == 0 {
+			return fmt.Errorf("the %s field is required", field)
+		}
+	case uint, uint8, uint16, uint32, uint64:
+		if v == 0 {
+			return fmt.Errorf("the %s field is required", field)
+		}
+	case float32, float64:
+		if v == 0 {
+			return fmt.Errorf("the %s field is required", field)
+		}
+	case map[interface{}]interface{}:
+		if len(v) == 0 {
+			return fmt.Errorf("the %s field is required", field)
+		}
+	case []interface{}:
+		if len(v) == 0 {
+			return fmt.Errorf("the %s field is required", field)
+		}
 	default:
-		panic("govalidator: invalid type for required rule")
-
+		return fmt.Errorf("unsupported type for field %s", field)
 	}
+
 	return nil
-	// if value == nil {
-	// 	return fmt.Errorf("the %s field is required", field)
-	// }
-
-	// log.Println("requiredRule", field, value)
-
-	// switch v := value.(type) {
-	// case string:
-	// 	if v == "" {
-	// 		return fmt.Errorf("the %s field is required", field)
-	// 	}
-	// case int, int8, int16, int32, int64:
-	// 	if v == 0 {
-	// 		return fmt.Errorf("the %s field is required", field)
-	// 	}
-	// case uint, uint8, uint16, uint32, uint64:
-	// 	if v == 0 {
-	// 		return fmt.Errorf("the %s field is required", field)
-	// 	}
-	// case float32, float64:
-	// 	if v == 0 {
-	// 		return fmt.Errorf("the %s field is required", field)
-	// 	}
-	// case map[interface{}]interface{}:
-	// 	if len(v) == 0 {
-	// 		return fmt.Errorf("the %s field is required", field)
-	// 	}
-	// case []interface{}:
-	// 	if len(v) == 0 {
-	// 		return fmt.Errorf("the %s field is required", field)
-	// 	}
-	// default:
-	// 	return fmt.Errorf("unsupported type for field %s", field)
-	// }
-
-	// return nil
 }
 
 // TODO make a function to validate mix_values group, 2 params, group and value

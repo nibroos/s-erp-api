@@ -46,8 +46,8 @@ func (c *IdentifierController) CreateIdentifier(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewIdentifierStoreRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewIdentifierStoreRequest().Validate(&req, ctx)
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -113,8 +113,8 @@ func (c *IdentifierController) UpdateIdentifier(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewIdentifierUpdateRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewIdentifierUpdateRequest().Validate(&req, ctx)
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -285,8 +285,8 @@ func (c *IdentifierController) CreateIdentifierByAuthUser(ctx *fiber.Ctx) error 
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewIdentifierStoreRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewIdentifierStoreRequest().Validate(&req, ctx)
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -333,8 +333,8 @@ func (c *IdentifierController) UpdateIdentifierByAuthUser(ctx *fiber.Ctx) error 
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewIdentifierUpdateRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewIdentifierUpdateRequest().Validate(&req, ctx)
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 

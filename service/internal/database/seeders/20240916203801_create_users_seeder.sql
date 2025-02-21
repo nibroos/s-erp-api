@@ -5,6 +5,7 @@ BEGIN;
 -- marketing, sales, purchasing, inventory, production, exim, accounting, beacukai
 INSERT INTO
   users (
+    branch_id,
     username,
     email,
     name,
@@ -15,6 +16,7 @@ INSERT INTO
   )
 VALUES
   (
+    NULL,
     'admin',
     'admin@yubipro.com',
     'Admin',
@@ -24,6 +26,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     'manager',
     'manager@yubipro.com',
     'Manager',
@@ -33,6 +36,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     'marketing',
     'marketing@yubipro.com',
     'Marketing',
@@ -42,6 +46,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     'sales',
     'sales@yubipro.com',
     'Sales',
@@ -51,6 +56,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     'purchasing',
     'purchasing@yubipro.com',
     'Purchasing',
@@ -60,6 +66,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     'inventory',
     'inventory@yubipro.com',
     'Inventory',
@@ -69,6 +76,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     'production',
     'production@yubipro.com',
     'Production',
@@ -78,6 +86,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     'exim',
     'exim@yubipro.com',
     'Exim',
@@ -87,6 +96,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     'accounting',
     'accounting@yubipro.com',
     'Accounting',
@@ -96,6 +106,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     'beacukai',
     'beacukai@yubipro.com',
     'Beacukai',

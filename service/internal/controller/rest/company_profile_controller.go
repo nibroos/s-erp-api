@@ -81,8 +81,8 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	req.CompanyStatus = utils.ParseIntNullPointer(ctx.FormValue("company_status"))
 
 	// Validate the request
-	reqValidator := form_requests.NewCompanyProfileStoreRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewCompanyProfileStoreRequest().Validate(&req, ctx)
+	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
@@ -256,8 +256,8 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewCompanyProfileUpdateRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewCompanyProfileUpdateRequest().Validate(&req, ctx)
+	if !isValid {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}

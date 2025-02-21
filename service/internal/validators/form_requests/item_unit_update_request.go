@@ -1,48 +1,45 @@
 package form_requests
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
-	"github.com/thedevsaddam/govalidator"
+	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
 // ItemUnitUpdateRequest handles the validation for the RegisterRequest.
 type ItemUnitUpdateRequest struct {
-	Validator *govalidator.Validator
 }
 
 // NewRegisterUpdateRequest creates a new instance of ItemUnitUpdateRequest.
 func NewItemUnitUpdateRequest() *ItemUnitUpdateRequest {
-	v := govalidator.New(govalidator.Options{})
-	return &ItemUnitUpdateRequest{Validator: v}
+
+	return &ItemUnitUpdateRequest{}
 }
 
 // Validate validates the RegisterRequest.
-func (r *ItemUnitUpdateRequest) Validate(req *dtos.UpdateItemUnitRequest, ctx context.Context) map[string]string {
-	rules := govalidator.MapData{
+func (r *ItemUnitUpdateRequest) Validate(req *dtos.UpdateItemUnitRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+	rules := map[string][]string{
 		"id":         []string{"required"},
-		"price_sell": []string{"float"},
-		"price_buy":  []string{"float"},
-		"conversion": []string{"float"},
+		"price_sell": []string{"numeric"},
+		"price_buy":  []string{"numeric"},
+		"conversion": []string{"numeric"},
 		"status":     []string{"required"},
 	}
 
-	opts := govalidator.Options{
-		Data:  req,
-		Rules: rules,
-	}
+	customFieldNames := map[string]string{}
 
-	v := govalidator.New(opts)
-	mappedErrors := v.ValidateStruct()
-
-	if len(mappedErrors) == 0 {
-		return nil
+	var requestBody map[string]interface{}
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid request body"}}, false
 	}
+	request := validators.NewRequest(rules, requestBody, customFieldNames)
+	errors, valid := request.Validate()
 
-	errors := make(map[string]string)
-	for field, err := range mappedErrors {
-		errors[field] = err[0]
+	convertedErrors := make(map[string][]string)
+	for key, value := range errors {
+		if len(value) > 0 {
+			convertedErrors[key] = value
+		}
 	}
-	return errors
+	return convertedErrors, valid
 }

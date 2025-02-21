@@ -17,8 +17,8 @@ INSERT INTO
   )
 VALUES
   (
+    85,
     1,
-    NULL,
     '0001',
     'Item A',
     'Item A Specification',
@@ -31,8 +31,8 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    1,
-    NULL,
+    86,
+    4,
     '0002',
     'Item B',
     'Item B Specification',
@@ -45,7 +45,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    1,
+    87,
     NULL,
     '0003',
     'Item C',
@@ -59,7 +59,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    1,
+    82,
     NULL,
     '0004',
     'Item D',
@@ -73,7 +73,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    1,
+    83,
     NULL,
     '0005',
     'Item E',
