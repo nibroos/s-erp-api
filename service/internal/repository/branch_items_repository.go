@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewBranchItemRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tra
 	}
 }
 
-func (r *BranchItemRepository) GetBranchItems(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.BranchItemListDTO, int, error) {
+func (r *BranchItemRepository) GetBranchItems(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.BranchItemListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("BranchItemRepository-GetBranchItems", opentracing.ChildOf(span.Context()))
 
@@ -118,7 +118,7 @@ func (r *BranchItemRepository) GetBranchItems(ctx context.Context, filters map[s
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -151,7 +151,7 @@ func (r *BranchItemRepository) GetBranchItems(ctx context.Context, filters map[s
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &branchItems, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &branchItems, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -177,7 +177,7 @@ func (r *BranchItemRepository) GetBranchItems(ctx context.Context, filters map[s
 	return branchItems, total, nil
 }
 
-func (r *BranchItemRepository) GetBranchItemByID(ctx context.Context, params *dtos.GetBranchItemParams, span opentracing.Span) (*dtos.BranchItemDetailDTO, error) {
+func (r *BranchItemRepository) GetBranchItemByID(ctx *fiber.Ctx, params *dtos.GetBranchItemParams, span opentracing.Span) (*dtos.BranchItemDetailDTO, error) {
 	childSpan := opentracing.StartSpan("BranchItemRepository-GetBranchItemByID", opentracing.ChildOf(span.Context()))
 	var branchItem dtos.BranchItemDetailDTO
 

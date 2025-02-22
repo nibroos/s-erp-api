@@ -31,7 +31,7 @@ func NewOrderTypeService(repo *repository.OrderTypeRepository, utilRepo *reposit
 func (s *OrderTypeService) GetOrderTypes(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.OrderTypeListDTO, int, error) {
 	childSpan := opentracing.StartSpan("OrderTypeService-GetOrderTypes", opentracing.ChildOf(span.Context()))
 
-	orderTypes, total, err := s.repo.GetOrderTypes(ctx.Context(), filters, childSpan)
+	orderTypes, total, err := s.repo.GetOrderTypes(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -54,7 +54,7 @@ func (s *OrderTypeService) CreateOrderType(ctx *fiber.Ctx, orderType *models.Mix
 func (s *OrderTypeService) GetOrderTypeByID(ctx *fiber.Ctx, params *dtos.GetOrderTypeParams, span opentracing.Span) (*dtos.OrderTypeDetailDTO, error) {
 	childSpan := opentracing.StartSpan("OrderTypeService-GetOrderTypeByID", opentracing.ChildOf(span.Context()))
 
-	orderType, err := s.repo.GetOrderTypeByID(ctx.Context(), params, childSpan)
+	orderType, err := s.repo.GetOrderTypeByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -160,7 +160,7 @@ func (s *OrderTypeService) CsvGetOrderTypes(ctx *fiber.Ctx, filters map[string]s
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()

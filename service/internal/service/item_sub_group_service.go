@@ -31,7 +31,7 @@ func NewItemSubGroupService(repo *repository.ItemSubGroupRepository, utilRepo *r
 func (s *ItemSubGroupService) GetItemSubGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ItemSubGroupListDTO, int, error) {
 	childSpan := opentracing.StartSpan("ItemSubGroupService-GetItemSubGroups", opentracing.ChildOf(span.Context()))
 
-	itemSubGroups, total, err := s.repo.GetItemSubGroups(ctx.Context(), filters, childSpan)
+	itemSubGroups, total, err := s.repo.GetItemSubGroups(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -54,7 +54,7 @@ func (s *ItemSubGroupService) CreateItemSubGroup(ctx *fiber.Ctx, itemSubGroup *m
 func (s *ItemSubGroupService) GetItemSubGroupByID(ctx *fiber.Ctx, params *dtos.GetItemSubGroupParams, span opentracing.Span) (*dtos.ItemSubGroupDetailDTO, error) {
 	childSpan := opentracing.StartSpan("ItemSubGroupService-GetItemSubGroupByID", opentracing.ChildOf(span.Context()))
 
-	itemSubGroup, err := s.repo.GetItemSubGroupByID(ctx.Context(), params, childSpan)
+	itemSubGroup, err := s.repo.GetItemSubGroupByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -160,7 +160,7 @@ func (s *ItemSubGroupService) CsvGetItemSubGroups(ctx *fiber.Ctx, filters map[st
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()

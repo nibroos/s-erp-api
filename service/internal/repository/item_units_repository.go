@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewItemUnitRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Trace
 	}
 }
 
-func (r *ItemUnitRepository) GetItemUnits(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.ItemUnitListDTO, int, error) {
+func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ItemUnitListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("ItemUnitRepository-GetItemUnits", opentracing.ChildOf(span.Context()))
 
@@ -37,7 +37,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx context.Context, filters map[strin
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.ms_item_id, m.item_unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
 					mi.name as ms_item_name,
 					u.name as unit_name,
 
@@ -46,7 +46,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx context.Context, filters map[strin
 
         FROM item_units m
 				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-				LEFT JOIN units u ON m.unit_id = u.id
+				LEFT JOIN units u ON m.item_unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -62,7 +62,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx context.Context, filters map[strin
 
         FROM item_units m
 				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-				LEFT JOIN units u ON m.unit_id = u.id
+				LEFT JOIN units u ON m.item_unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -99,7 +99,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx context.Context, filters map[strin
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -132,7 +132,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx context.Context, filters map[strin
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &itemUnits, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &itemUnits, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -158,13 +158,13 @@ func (r *ItemUnitRepository) GetItemUnits(ctx context.Context, filters map[strin
 	return itemUnits, total, nil
 }
 
-func (r *ItemUnitRepository) GetItemUnitByID(ctx context.Context, params *dtos.GetItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
+func (r *ItemUnitRepository) GetItemUnitByID(ctx *fiber.Ctx, params *dtos.GetItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
 	childSpan := opentracing.StartSpan("ItemUnitRepository-GetItemUnitByID", opentracing.ChildOf(span.Context()))
 	var itemUnit dtos.ItemUnitDetailDTO
 
 	query := `
 	SELECT DISTINCT ON (m.id) 
-		m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
+		m.id, m.ms_item_id, m.item_unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
 		mi.name as ms_item_name,
 		u.name as unit_name,
 
@@ -173,7 +173,7 @@ func (r *ItemUnitRepository) GetItemUnitByID(ctx context.Context, params *dtos.G
 
 	FROM item_units m
 	LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-	LEFT JOIN units u ON m.unit_id = u.id
+	LEFT JOIN units u ON m.item_unit_id = u.id
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	WHERE 1=1`

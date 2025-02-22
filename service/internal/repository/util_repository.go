@@ -1,8 +1,7 @@
 package repository
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"gorm.io/gorm"
@@ -20,7 +19,7 @@ func NewUtilRepository(db *gorm.DB, sqlDB *sqlx.DB) *UtilRepository {
 	}
 }
 
-func (r *UtilRepository) GetCompanyProfileByID(ctx context.Context, params *dtos.GetCompanyProfileParams) (*dtos.CompanyProfileDetailDTO, error) {
+func (r *UtilRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params *dtos.GetCompanyProfileParams) (*dtos.CompanyProfileDetailDTO, error) {
 	var CompanyProfile dtos.CompanyProfileDetailDTO
 
 	query := `SELECT cp.id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,

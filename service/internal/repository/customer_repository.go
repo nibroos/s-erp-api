@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewCustomerRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Trace
 	}
 }
 
-func (r *CustomerRepository) GetCustomers(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CustomerListDTO, int, error) {
+func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CustomerListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("CustomerRepository-GetCustomers", opentracing.ChildOf(span.Context()))
 
@@ -117,7 +117,7 @@ func (r *CustomerRepository) GetCustomers(ctx context.Context, filters map[strin
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -150,7 +150,7 @@ func (r *CustomerRepository) GetCustomers(ctx context.Context, filters map[strin
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &customers, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &customers, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -176,7 +176,7 @@ func (r *CustomerRepository) GetCustomers(ctx context.Context, filters map[strin
 	return customers, total, nil
 }
 
-func (r *CustomerRepository) GetCustomerByID(ctx context.Context, params *dtos.GetCustomerParams, span opentracing.Span) (*dtos.CustomerDetailDTO, error) {
+func (r *CustomerRepository) GetCustomerByID(ctx *fiber.Ctx, params *dtos.GetCustomerParams, span opentracing.Span) (*dtos.CustomerDetailDTO, error) {
 	childSpan := opentracing.StartSpan("CustomerRepository-GetCustomerByID", opentracing.ChildOf(span.Context()))
 	var customer dtos.CustomerDetailDTO
 

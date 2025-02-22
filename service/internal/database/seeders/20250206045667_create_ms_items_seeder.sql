@@ -3,7 +3,7 @@ BEGIN;
 INSERT INTO
   ms_items (
     item_sub_group_id,
-    unit_id,
+    item_unit_id,
     code,
     name,
     specification,

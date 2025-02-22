@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -29,18 +29,28 @@ func NewUserRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tr
 	}
 }
 
-func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.UserListDTO, int, error) {
+func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.UserListDTO, int, error) {
 	childSpan := opentracing.StartSpan("UserRepository-GetUsers", opentracing.ChildOf(span.Context()))
 	users := []dtos.UserListDTO{}
 	var total int
 
-	query := `SELECT 
-		u.id, u.username, u.name, u.email, u.branch_id, u.address, u.password,
-		b.name as branch_name
-	FROM users u 
-	LEFT JOIN branches b ON u.branch_id = b.id
-	WHERE 1=1`
-	countQuery := `SELECT COUNT(*) FROM users u WHERE 1=1`
+	query := `SELECT *
+		FROM (
+			SELECT
+				u.id, u.username, u.name, u.email, u.branch_id, u.address,
+				b.name as branch_name
+			FROM users u
+			LEFT JOIN branches b ON u.branch_id = b.id
+		) AS alias WHERE 1=1`
+
+	countQuery := `SELECT COUNT(*) FROM (
+		SELECT
+			u.id, u.username, u.name, u.email, u.branch_id, u.address,
+			b.name as branch_name
+		FROM users u
+		LEFT JOIN branches b ON u.branch_id = b.id
+	) AS alias WHERE 1=1`
+
 	var args []interface{}
 
 	i := 1
@@ -85,7 +95,7 @@ func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string
 	go func() {
 		defer wg.Done()
 		selectSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
-		err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+		err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -97,7 +107,7 @@ func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string
 	go func() {
 		defer wg.Done()
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
-		err := r.sqlDB.SelectContext(ctx, &users, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &users, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -123,7 +133,7 @@ func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string
 	return users, total, nil
 }
 
-func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
+func (r *UserRepository) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
 	var user dtos.UserDetailDTO
 
 	query := `SELECT 
@@ -151,7 +161,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
 
 	// Goroutine for user query
 	go func() {
-		err := r.sqlDB.GetContext(ctx, &user, query, args...)
+		err := r.sqlDB.GetContext(ctx.Context(), &user, query, args...)
 		userChan <- err
 	}()
 
@@ -169,7 +179,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
             AND p.deleted_at IS NULL
             AND p.mv1_id = $1
         `
-		err := r.sqlDB.SelectContext(ctx, &roleNames, roleQuery, params.ID)
+		err := r.sqlDB.SelectContext(ctx.Context(), &roleNames, roleQuery, params.ID)
 		if err == nil {
 			user.Roles = roleNames
 		}
@@ -195,7 +205,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
                 WHERE g1.name = 'users' AND g2.name = 'roles' AND p.mv1_id = $1
             )
         `
-		err := r.sqlDB.SelectContext(ctx, &permissionNames, permissionQuery, params.ID)
+		err := r.sqlDB.SelectContext(ctx.Context(), &permissionNames, permissionQuery, params.ID)
 		if err == nil {
 			user.Permissions = permissionNames
 		}
@@ -221,7 +231,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
 
 	return &user, nil
 }
-func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dtos.UserDetailDTO, error) {
+func (r *UserRepository) GetUserByEmail(ctx *fiber.Ctx, email string) (*dtos.UserDetailDTO, error) {
 	var user dtos.UserDetailDTO
 
 	query := `SELECT 
@@ -231,7 +241,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dto
 	FROM users u
 	LEFT JOIN branches b ON u.branch_id = b.id
 	WHERE u.deleted_at IS NULL AND (u.email = $1 OR u.username = $1)`
-	if err := r.sqlDB.GetContext(ctx, &user, query, email); err != nil {
+	if err := r.sqlDB.GetContext(ctx.Context(), &user, query, email); err != nil {
 		return nil, err
 	}
 
@@ -253,7 +263,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dto
             WHERE p.deleted_at IS NULL AND
 						g1.name = 'users' AND g2.name = 'roles' AND p.mv1_id = $1
         `
-		err := r.sqlDB.SelectContext(ctx, &roleNames, roleQuery, id)
+		err := r.sqlDB.SelectContext(ctx.Context(), &roleNames, roleQuery, id)
 		if err == nil {
 			user.Roles = roleNames
 		}
@@ -279,7 +289,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dto
                 WHERE g1.name = 'users' AND g2.name = 'roles' AND p.mv1_id = $1
             )
         `
-		err := r.sqlDB.SelectContext(ctx, &permissionNames, permissionQuery, id)
+		err := r.sqlDB.SelectContext(ctx.Context(), &permissionNames, permissionQuery, id)
 		if err == nil {
 			user.Permissions = permissionNames
 		}

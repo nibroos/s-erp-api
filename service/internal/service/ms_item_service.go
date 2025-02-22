@@ -31,7 +31,7 @@ func NewMsItemService(repo *repository.MsItemRepository, utilRepo *repository.Ut
 func (s *MsItemService) GetMsItems(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.MsItemListDTO, int, error) {
 	childSpan := opentracing.StartSpan("MsItemService-GetMsItems", opentracing.ChildOf(span.Context()))
 
-	msItems, total, err := s.repo.GetMsItems(ctx.Context(), filters, childSpan)
+	msItems, total, err := s.repo.GetMsItems(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -54,7 +54,7 @@ func (s *MsItemService) CreateMsItem(ctx *fiber.Ctx, msItem *models.MsItem, tx *
 func (s *MsItemService) GetMsItemByID(ctx *fiber.Ctx, params *dtos.GetMsItemParams, span opentracing.Span) (*dtos.MsItemDetailDTO, error) {
 	childSpan := opentracing.StartSpan("MsItemService-GetMsItemByID", opentracing.ChildOf(span.Context()))
 
-	msItem, err := s.repo.GetMsItemByID(ctx.Context(), params, childSpan)
+	msItem, err := s.repo.GetMsItemByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -167,7 +167,7 @@ func (s *MsItemService) CsvGetMsItems(ctx *fiber.Ctx, filters map[string]string,
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()

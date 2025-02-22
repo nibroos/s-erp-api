@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -23,7 +23,7 @@ func NewContactRepository(db *gorm.DB, sqlDB *sqlx.DB) *ContactRepository {
 	}
 }
 
-func (r *ContactRepository) ListContacts(ctx context.Context, filters map[string]string) ([]dtos.ContactListDTO, int, error) {
+func (r *ContactRepository) ListContacts(ctx *fiber.Ctx, filters map[string]string) ([]dtos.ContactListDTO, int, error) {
 	contacts := []dtos.ContactListDTO{}
 	var total int
 
@@ -88,13 +88,13 @@ func (r *ContactRepository) ListContacts(ctx context.Context, filters map[string
 
 	// Goroutine for count query
 	go func() {
-		err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+		err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 		countChan <- err
 	}()
 
 	// Goroutine for select query
 	go func() {
-		err := r.sqlDB.SelectContext(ctx, &contacts, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &contacts, query, args...)
 		selectChan <- err
 	}()
 
@@ -113,7 +113,7 @@ func (r *ContactRepository) ListContacts(ctx context.Context, filters map[string
 	return contacts, total, nil
 }
 
-func (r *ContactRepository) GetContactByID(ctx context.Context, params *dtos.GetContactParams) (*dtos.ContactDetailDTO, error) {
+func (r *ContactRepository) GetContactByID(ctx *fiber.Ctx, params *dtos.GetContactParams) (*dtos.ContactDetailDTO, error) {
 	var contact dtos.ContactDetailDTO
 	// deletedAt := params.IsDeleted
 

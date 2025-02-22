@@ -1,8 +1,7 @@
 package service
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 )
@@ -15,7 +14,7 @@ func NewUtilService(repo *repository.UtilRepository) *UtilService {
 	return &UtilService{repo: repo}
 }
 
-func (s *UtilService) GetCompanyProfileByID(ctx context.Context, params *dtos.GetCompanyProfileParams) (*dtos.CompanyProfileDetailDTO, error) {
+func (s *UtilService) GetCompanyProfileByID(ctx *fiber.Ctx, params *dtos.GetCompanyProfileParams) (*dtos.CompanyProfileDetailDTO, error) {
 	companyProfile, err := s.repo.GetCompanyProfileByID(ctx, params)
 	if err != nil {
 		return nil, err

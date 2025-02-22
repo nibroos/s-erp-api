@@ -41,7 +41,7 @@ func (c *CompanyProfileController) GetCompanyProfiles(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	companyProfiles, total, err := c.service.GetCompanyProfiles(ctx.Context(), filters, parentSpan)
+	companyProfiles, total, err := c.service.GetCompanyProfiles(ctx, filters, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -139,7 +139,7 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	createdCompanyProfile, err := c.service.CreateCompanyProfile(ctx.Context(), &companyProfile, tx, parentSpan)
+	createdCompanyProfile, err := c.service.CreateCompanyProfile(ctx, &companyProfile, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -149,7 +149,7 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	tx.Commit()
 
 	params := &dtos.GetCompanyProfileParams{ID: createdCompanyProfile.ID}
-	getCompanyProfile, err := c.service.GetCompanyProfileByID(ctx.Context(), params, parentSpan)
+	getCompanyProfile, err := c.service.GetCompanyProfileByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
@@ -183,7 +183,7 @@ func (c *CompanyProfileController) GetCompanyProfileByID(ctx *fiber.Ctx) error {
 	}
 
 	params := &dtos.GetCompanyProfileParams{ID: req.ID}
-	companyProfile, err := c.service.GetCompanyProfileByID(ctx.Context(), params, parentSpan)
+	companyProfile, err := c.service.GetCompanyProfileByID(ctx, params, parentSpan)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -283,7 +283,7 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	}
 
 	tx := c.repo.BeginTransaction()
-	updatedCompanyProfile, err := c.service.UpdateCompanyProfile(ctx.Context(), &companyProfile, tx, parentSpan)
+	updatedCompanyProfile, err := c.service.UpdateCompanyProfile(ctx, &companyProfile, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -297,7 +297,7 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	tx.Commit()
 
 	params := &dtos.GetCompanyProfileParams{ID: updatedCompanyProfile.ID}
-	getCompanyProfile, err := c.service.GetCompanyProfileByID(ctx.Context(), params, parentSpan)
+	getCompanyProfile, err := c.service.GetCompanyProfileByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusNotFound))
 		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
@@ -334,7 +334,7 @@ func (c *CompanyProfileController) DeleteCompanyProfile(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetCompanyProfileParams{ID: req.ID}
 	// GET companyProfile by ID
-	_, err := c.service.GetCompanyProfileByID(ctx.Context(), params, parentSpan)
+	_, err := c.service.GetCompanyProfileByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusNotFound))
 		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
@@ -342,7 +342,7 @@ func (c *CompanyProfileController) DeleteCompanyProfile(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	err = c.service.DeleteCompanyProfile(ctx.Context(), params, tx, parentSpan)
+	err = c.service.DeleteCompanyProfile(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -379,7 +379,7 @@ func (c *CompanyProfileController) RestoreCompanyProfile(ctx *fiber.Ctx) error {
 	isDeleted := 1
 	params := &dtos.GetCompanyProfileParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET companyProfile by ID
-	_, err := c.service.GetCompanyProfileByID(ctx.Context(), params, parentSpan)
+	_, err := c.service.GetCompanyProfileByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusNotFound))
 		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
@@ -387,7 +387,7 @@ func (c *CompanyProfileController) RestoreCompanyProfile(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	err = c.service.RestoreCompanyProfile(ctx.Context(), params, tx, parentSpan)
+	err = c.service.RestoreCompanyProfile(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -422,7 +422,7 @@ func (c *CompanyProfileController) GetPrimaryCompanyProfileByID(ctx *fiber.Ctx) 
 
 	params := &dtos.GetCompanyProfileParams{ID: req.ID}
 	params.IsPrimary = utils.ParseIntPointer("1")
-	companyProfile, err := c.service.GetCompanyProfileByID(ctx.Context(), params, parentSpan)
+	companyProfile, err := c.service.GetCompanyProfileByID(ctx, params, parentSpan)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
 	}

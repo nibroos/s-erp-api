@@ -28,7 +28,7 @@ func (c *ContactController) ListContacts(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	contacts, total, err := c.service.ListContacts(ctx.Context(), filters)
+	contacts, total, err := c.service.ListContacts(ctx, filters)
 	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -62,13 +62,13 @@ func (c *ContactController) CreateContact(ctx *fiber.Ctx) error {
 		OptionsJSON:   nil,
 	}
 
-	createdContact, err := c.service.CreateContact(ctx.Context(), &contact)
+	createdContact, err := c.service.CreateContact(ctx, &contact)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create contact", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params := &dtos.GetContactParams{ID: createdContact.ID}
-	getContact, err := c.service.GetContactByID(ctx.Context(), params)
+	getContact, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -91,7 +91,7 @@ func (c *ContactController) GetContactByID(ctx *fiber.Ctx) error {
 	}
 
 	params := &dtos.GetContactParams{ID: req.ID}
-	contact, err := c.service.GetContactByID(ctx.Context(), params)
+	contact, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -120,7 +120,7 @@ func (c *ContactController) UpdateContact(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetContactParams{ID: req.ID}
 	// Fetch the existing contact to get the current data
-	existingContact, err := c.service.GetContactByID(ctx.Context(), params)
+	existingContact, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -138,13 +138,13 @@ func (c *ContactController) UpdateContact(ctx *fiber.Ctx) error {
 		contact.TypeContactID = *req.TypeContactID
 	}
 
-	updatedContact, err := c.service.UpdateContact(ctx.Context(), &contact)
+	updatedContact, err := c.service.UpdateContact(ctx, &contact)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update contact", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params = &dtos.GetContactParams{ID: updatedContact.ID}
-	getContact, err := c.service.GetContactByID(ctx.Context(), params)
+	getContact, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -169,12 +169,12 @@ func (c *ContactController) DeleteContact(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetContactParams{ID: req.ID}
 	// GET contact by ID
-	_, err := c.service.GetContactByID(ctx.Context(), params)
+	_, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.DeleteContact(ctx.Context(), req.ID)
+	err = c.service.DeleteContact(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete contact", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -197,12 +197,12 @@ func (c *ContactController) RestoreContact(ctx *fiber.Ctx) error {
 	isDeleted := 1
 	params := &dtos.GetContactParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET contact by ID
-	_, err := c.service.GetContactByID(ctx.Context(), params)
+	_, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreContact(ctx.Context(), req.ID)
+	err = c.service.RestoreContact(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore contact", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -225,7 +225,7 @@ func (c *ContactController) ListContactsByAuthUser(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	contacts, total, err := c.service.ListContacts(ctx.Context(), filters)
+	contacts, total, err := c.service.ListContacts(ctx, filters)
 	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -268,13 +268,13 @@ func (c *ContactController) CreateContactByAuthUser(ctx *fiber.Ctx) error {
 		OptionsJSON:   nil,
 	}
 
-	createdContact, err := c.service.CreateContact(ctx.Context(), &contact)
+	createdContact, err := c.service.CreateContact(ctx, &contact)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create contact", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params := &dtos.GetContactParams{ID: createdContact.ID}
-	getContact, err := c.service.GetContactByID(ctx.Context(), params)
+	getContact, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -306,7 +306,7 @@ func (c *ContactController) GetContactByIDByAuthUser(ctx *fiber.Ctx) error {
 
 	params.UserID = userID
 
-	contact, err := c.service.GetContactByID(ctx.Context(), params)
+	contact, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -345,7 +345,7 @@ func (c *ContactController) UpdateContactByAuthUser(ctx *fiber.Ctx) error {
 	params.UserID = userID
 
 	// Fetch the existing contact to get the current data
-	existingContact, err := c.service.GetContactByID(ctx.Context(), params)
+	existingContact, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -363,13 +363,13 @@ func (c *ContactController) UpdateContactByAuthUser(ctx *fiber.Ctx) error {
 		contact.TypeContactID = *req.TypeContactID
 	}
 
-	updatedContact, err := c.service.UpdateContact(ctx.Context(), &contact)
+	updatedContact, err := c.service.UpdateContact(ctx, &contact)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update contact", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params = &dtos.GetContactParams{ID: updatedContact.ID}
-	getContact, err := c.service.GetContactByID(ctx.Context(), params)
+	getContact, err := c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -404,12 +404,12 @@ func (c *ContactController) DeleteContactByAuthUser(ctx *fiber.Ctx) error {
 	params.UserID = userID
 
 	// GET contact by ID
-	_, err = c.service.GetContactByID(ctx.Context(), params)
+	_, err = c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.DeleteContact(ctx.Context(), req.ID)
+	err = c.service.DeleteContact(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete contact", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -441,12 +441,12 @@ func (c *ContactController) RestoreContactByAuthUser(ctx *fiber.Ctx) error {
 	params := &dtos.GetContactParams{ID: req.ID, IsDeleted: &isDeleted, UserID: userID}
 
 	// GET contact by ID
-	_, err = c.service.GetContactByID(ctx.Context(), params)
+	_, err = c.service.GetContactByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Contact not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreContact(ctx.Context(), req.ID)
+	err = c.service.RestoreContact(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore contact", http.StatusInternalServerError, err.Error(), nil)
 	}

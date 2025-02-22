@@ -114,6 +114,16 @@ VALUES
     'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
+  ),
+  (
+    2,
+    'manager2',
+    'manager2@yubipro.com',
+    'Manager B2',
+    crypt('manageryubi', gen_salt('bf')),
+    'YUBIPRO',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
   );
 
 COMMIT;

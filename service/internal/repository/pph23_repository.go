@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewPph23Repository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) 
 	}
 }
 
-func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.Pph23ListDTO, int, error) {
+func (r *Pph23Repository) GetPph23s(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.Pph23ListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("Pph23Repository-GetPph23s", opentracing.ChildOf(span.Context()))
 
@@ -94,7 +94,7 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -127,7 +127,7 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &pph23s, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &pph23s, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -153,7 +153,7 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 	return pph23s, total, nil
 }
 
-func (r *Pph23Repository) GetPph23ByID(ctx context.Context, params *dtos.GetPph23Params, span opentracing.Span) (*dtos.Pph23DetailDTO, error) {
+func (r *Pph23Repository) GetPph23ByID(ctx *fiber.Ctx, params *dtos.GetPph23Params, span opentracing.Span) (*dtos.Pph23DetailDTO, error) {
 	childSpan := opentracing.StartSpan("Pph23Repository-GetPph23ByID", opentracing.ChildOf(span.Context()))
 	var pph23 dtos.Pph23DetailDTO
 

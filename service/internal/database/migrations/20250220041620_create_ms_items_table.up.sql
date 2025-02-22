@@ -3,7 +3,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS ms_items (
   id SERIAL PRIMARY KEY,
   item_sub_group_id INT NOT NULL,
-  unit_id INT,
+  item_unit_id INT,
   code TEXT,
   name VARCHAR(255) NOT NULL,
   specification TEXT,

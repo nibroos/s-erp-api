@@ -31,7 +31,7 @@ func NewCustomerService(repo *repository.CustomerRepository, utilRepo *repositor
 func (s *CustomerService) GetCustomers(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CustomerListDTO, int, error) {
 	childSpan := opentracing.StartSpan("CustomerService-GetCustomers", opentracing.ChildOf(span.Context()))
 
-	customers, total, err := s.repo.GetCustomers(ctx.Context(), filters, childSpan)
+	customers, total, err := s.repo.GetCustomers(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -54,7 +54,7 @@ func (s *CustomerService) CreateCustomer(ctx *fiber.Ctx, customer *models.Custom
 func (s *CustomerService) GetCustomerByID(ctx *fiber.Ctx, params *dtos.GetCustomerParams, span opentracing.Span) (*dtos.CustomerDetailDTO, error) {
 	childSpan := opentracing.StartSpan("CustomerService-GetCustomerByID", opentracing.ChildOf(span.Context()))
 
-	customer, err := s.repo.GetCustomerByID(ctx.Context(), params, childSpan)
+	customer, err := s.repo.GetCustomerByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -166,7 +166,7 @@ func (s *CustomerService) CsvGetCustomers(ctx *fiber.Ctx, filters map[string]str
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()

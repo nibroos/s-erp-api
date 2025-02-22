@@ -1,12 +1,15 @@
 package repository
 
 import (
-	"context"
 	"fmt"
+	"log"
+	"net/http"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
+	"github.com/nibroos/s-erp-api/service/internal/middleware"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
@@ -27,23 +30,52 @@ func NewMsItemRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer)
 	}
 }
 
-func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.MsItemListDTO, int, error) {
+func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.MsItemListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("MsItemRepository-GetMsItems", opentracing.ChildOf(span.Context()))
+
+	// Extract user ID from JWT
+	claims, err := middleware.GetAuthUser(ctx)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, 0, fiber.NewError(http.StatusUnauthorized, "Unauthorized")
+	}
+	branchID := claims["bid"]
+
+	log.Println("Branch ID:", branchID)
 
 	msItems := []dtos.MsItemListDTO{}
 	var total int
 
+	// select column
+	cdSelect := `m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock,`
+	if branchID != nil {
+		cdSelect = `
+		COALESCE(bi.name, m.name) as name,
+		COALESCE(bi.specification, m.specification) as specification,
+		COALESCE(bi.description, m.description) as description,
+		COALESCE(bi.tpb_code, m.tpb_code) as tpb_code,
+		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
+		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
+		COALESCE(bi.minimum_stock, m.minimum_stock) as minimum_stock,
+		bi.id as branch_item_id,
+		`
+	}
+
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.item_sub_group_id, ig.parent_id as item_group_id, m.unit_id, m.name, m.code, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
-				isg.name as item_sub_group_name,
-				ig.name as item_group_name,
-				u.name as unit_name,
-				iu.unit_id as item_unit_unit_id,
-				bi.branch_id as branch_id, 
-				-- bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
+					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
+					-- m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock,
+					-- conditional here --
+					` + cdSelect + `
+
+					isg.name as item_sub_group_name,
+					ig.name as item_group_name,
+					u.name as unit_name,
+					iu.unit_id as item_unit_unit_id,
+					bi.branch_id as branch_id, 
+					-- bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
 
         cu.name as created_by_name,
         uu.name as updated_by_name
@@ -51,7 +83,7 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
         FROM ms_items m
 				LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-				LEFT JOIN item_units iu ON iu.id = m.unit_id
+				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN branch_items bi ON bi.ms_item_id = m.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
@@ -60,26 +92,32 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
-					m.id, m.item_sub_group_id, ig.parent_id as item_group_id, m.unit_id, m.name, m.code, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
-				isg.name as item_sub_group_name,
-				ig.name as item_group_name,
-				u.name as unit_name,
-				iu.unit_id as item_unit_unit_id,
-				bi.branch_id as branch_id, 
-				-- bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
+					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
+					-- m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, 
+					-- conditional here --
+					` + cdSelect + `
 
-        cu.name as created_by_name,
-        uu.name as updated_by_name
+					isg.name as item_sub_group_name,
+					ig.name as item_group_name,
+					u.name as unit_name,
+					iu.unit_id as item_unit_unit_id,
+					bi.branch_id as branch_id, 
+					-- bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
+
+					cu.name as created_by_name,
+					uu.name as updated_by_name
 
         FROM ms_items m
 				LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-				LEFT JOIN item_units iu ON iu.id = m.unit_id
+				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN branch_items bi ON bi.ms_item_id = m.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	log.Println("Query:", query)
 
 	var args []interface{}
 
@@ -96,12 +134,23 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 		}
 	}
 
+	if branchID != nil {
+		query += fmt.Sprintf(" AND branch_id = $%d", i)
+		countQuery += fmt.Sprintf(" AND branch_id = $%d", i)
+		args = append(args, branchID)
+		i++
+	}
+
 	filterKey := map[string]string{
 		"item_sub_group_id": "item_sub_group_id",
 		"item_group_id":     "item_group_id",
-		"branch_id":         "branch_id",
 		"item_unit_unit_id": "item_unit_unit_id",
 		"status":            "status",
+	}
+
+	// if admin, allow to filter by branch_id
+	if branchID == nil {
+		filterKey["branch_id"] = "branch_id"
 	}
 
 	for key, _ := range filterKey {
@@ -133,7 +182,7 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -166,7 +215,7 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &msItems, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &msItems, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -192,13 +241,13 @@ func (r *MsItemRepository) GetMsItems(ctx context.Context, filters map[string]st
 	return msItems, total, nil
 }
 
-func (r *MsItemRepository) GetMsItemByID(ctx context.Context, params *dtos.GetMsItemParams, span opentracing.Span) (*dtos.MsItemDetailDTO, error) {
+func (r *MsItemRepository) GetMsItemByID(ctx *fiber.Ctx, params *dtos.GetMsItemParams, span opentracing.Span) (*dtos.MsItemDetailDTO, error) {
 	childSpan := opentracing.StartSpan("MsItemRepository-GetMsItemByID", opentracing.ChildOf(span.Context()))
 	var msItem dtos.MsItemDetailDTO
 
 	query := `
 	SELECT DISTINCT ON (m.id) 
-		m.id, m.item_sub_group_id, ig.parent_id as item_group_id, m.unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
+		m.id, m.item_sub_group_id, ig.parent_id as item_group_id, m.item_unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
 		isg.name as item_sub_group_name,
 		ig.name as item_group_name,
 		u.name as unit_name,
@@ -209,7 +258,7 @@ func (r *MsItemRepository) GetMsItemByID(ctx context.Context, params *dtos.GetMs
 	FROM ms_items m
 	LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN mix_values u ON m.unit_id = u.id
+	LEFT JOIN mix_values u ON m.item_unit_id = u.id
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	WHERE 1=1`

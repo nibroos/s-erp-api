@@ -28,7 +28,7 @@ func (c *IdentifierController) ListIdentifiers(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	identifiers, total, err := c.service.ListIdentifiers(ctx.Context(), filters)
+	identifiers, total, err := c.service.ListIdentifiers(ctx, filters)
 	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -62,13 +62,13 @@ func (c *IdentifierController) CreateIdentifier(ctx *fiber.Ctx) error {
 		OptionsJSON:      nil,
 	}
 
-	createdIdentifier, err := c.service.CreateIdentifier(ctx.Context(), &identifier)
+	createdIdentifier, err := c.service.CreateIdentifier(ctx, &identifier)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create identifier", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params := &dtos.GetIdentifierParams{ID: createdIdentifier.ID}
-	getIdentifier, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	getIdentifier, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -91,7 +91,7 @@ func (c *IdentifierController) GetIdentifierByID(ctx *fiber.Ctx) error {
 	}
 
 	params := &dtos.GetIdentifierParams{ID: req.ID}
-	identifier, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	identifier, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -120,7 +120,7 @@ func (c *IdentifierController) UpdateIdentifier(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetIdentifierParams{ID: req.ID}
 	// Fetch the existing identifier to get the current data
-	existingIdentifier, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	existingIdentifier, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -138,13 +138,13 @@ func (c *IdentifierController) UpdateIdentifier(ctx *fiber.Ctx) error {
 		identifier.TypeIdentifierID = *req.TypeIdentifierID
 	}
 
-	updatedIdentifier, err := c.service.UpdateIdentifier(ctx.Context(), &identifier)
+	updatedIdentifier, err := c.service.UpdateIdentifier(ctx, &identifier)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update identifier", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params = &dtos.GetIdentifierParams{ID: updatedIdentifier.ID}
-	getIdentifier, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	getIdentifier, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -169,12 +169,12 @@ func (c *IdentifierController) DeleteIdentifier(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetIdentifierParams{ID: req.ID}
 	// GET identifier by ID
-	_, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	_, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.DeleteIdentifier(ctx.Context(), req.ID)
+	err = c.service.DeleteIdentifier(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete identifier", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -197,12 +197,12 @@ func (c *IdentifierController) RestoreIdentifier(ctx *fiber.Ctx) error {
 	isDeleted := 1
 	params := &dtos.GetIdentifierParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET identifier by ID
-	_, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	_, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreIdentifier(ctx.Context(), req.ID)
+	err = c.service.RestoreIdentifier(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore identifier", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -225,7 +225,7 @@ func (c *IdentifierController) ListIdentifiersByAuthUser(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	identifiers, total, err := c.service.ListIdentifiersByAuthUser(ctx.Context(), filters)
+	identifiers, total, err := c.service.ListIdentifiersByAuthUser(ctx, filters)
 	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -254,7 +254,7 @@ func (c *IdentifierController) GetIdentifierByAuthUser(ctx *fiber.Ctx) error {
 	}
 
 	params := &dtos.GetIdentifierParams{ID: req.ID, UserID: userID}
-	identifier, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	identifier, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -301,13 +301,13 @@ func (c *IdentifierController) CreateIdentifierByAuthUser(ctx *fiber.Ctx) error 
 		OptionsJSON:      nil,
 	}
 
-	createdIdentifier, err := c.service.CreateIdentifier(ctx.Context(), &identifier)
+	createdIdentifier, err := c.service.CreateIdentifier(ctx, &identifier)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create identifier", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params := &dtos.GetIdentifierParams{ID: createdIdentifier.ID, UserID: userID}
-	getIdentifier, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	getIdentifier, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -340,7 +340,7 @@ func (c *IdentifierController) UpdateIdentifierByAuthUser(ctx *fiber.Ctx) error 
 
 	params := &dtos.GetIdentifierParams{ID: req.ID, UserID: userID}
 	// Fetch the existing identifier to get the current data
-	existingIdentifier, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	existingIdentifier, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -358,13 +358,13 @@ func (c *IdentifierController) UpdateIdentifierByAuthUser(ctx *fiber.Ctx) error 
 		identifier.TypeIdentifierID = *req.TypeIdentifierID
 	}
 
-	updatedIdentifier, err := c.service.UpdateIdentifier(ctx.Context(), &identifier)
+	updatedIdentifier, err := c.service.UpdateIdentifier(ctx, &identifier)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update identifier", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params = &dtos.GetIdentifierParams{ID: updatedIdentifier.ID, UserID: userID}
-	getIdentifier, err := c.service.GetIdentifierByID(ctx.Context(), params)
+	getIdentifier, err := c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -395,12 +395,12 @@ func (c *IdentifierController) DeleteIdentifierByAuthUser(ctx *fiber.Ctx) error 
 
 	params := &dtos.GetIdentifierParams{ID: req.ID, UserID: userID}
 	// GET identifier by ID
-	_, err = c.service.GetIdentifierByID(ctx.Context(), params)
+	_, err = c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.DeleteIdentifier(ctx.Context(), req.ID)
+	err = c.service.DeleteIdentifier(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete identifier", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -429,12 +429,12 @@ func (c *IdentifierController) RestoreIdentifierByAuthUser(ctx *fiber.Ctx) error
 	isDeleted := 1
 	params := &dtos.GetIdentifierParams{ID: req.ID, UserID: userID, IsDeleted: &isDeleted}
 	// GET identifier by ID
-	_, err = c.service.GetIdentifierByID(ctx.Context(), params)
+	_, err = c.service.GetIdentifierByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Identifier not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreIdentifier(ctx.Context(), req.ID)
+	err = c.service.RestoreIdentifier(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore identifier", http.StatusInternalServerError, err.Error(), nil)
 	}

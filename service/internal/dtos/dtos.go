@@ -48,10 +48,11 @@ type DeleteUserRequest struct {
 }
 
 type UserListDTO struct {
-	ID         int     `json:"id"`
-	Username   *string `json:"username"`
-	Name       string  `json:"name"`
-	Email      string  `json:"email"`
+	ID         int     `json:"id" db:"id"`
+	Username   *string `json:"username" db:"username"`
+	Name       string  `json:"name" db:"name"`
+	Email      string  `json:"email" db:"email"`
+	Address    *string `json:"address" db:"address"`
 	BranchID   *uint   `json:"branch_id" db:"branch_id"`
 	BranchName *string `json:"branch_name" db:"branch_name"`
 }
@@ -1327,7 +1328,7 @@ type GetMsItemsRequest struct {
 
 type CreateMsItemRequest struct {
 	ItemSubGroupID uint     `json:"item_sub_group_id"`
-	UnitID         uint     `json:"unit_id"`
+	ItemUnitID     uint     `json:"item_unit_id"`
 	Code           *string  `json:"code"`
 	Name           string   `json:"name"`
 	Specification  *string  `json:"specification"`
@@ -1343,7 +1344,7 @@ type CreateMsItemRequest struct {
 type UpdateMsItemRequest struct {
 	ID             uint     `json:"id"`
 	ItemSubGroupID uint     `json:"item_sub_group_id"`
-	UnitID         uint     `json:"unit_id"`
+	ItemUnitID     uint     `json:"item_unit_id"`
 	Code           *string  `json:"code"`
 	Name           string   `json:"name"`
 	Specification  *string  `json:"specification"`
@@ -1382,9 +1383,10 @@ type MsItemListDTO struct {
 	ID               int     `json:"id" db:"id"`
 	ItemSubGroupID   *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
 	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
-	UnitID           *uint   `json:"unit_id" db:"unit_id"`
+	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
 	ItemUnitUnitID   *uint   `json:"item_unit_unit_id" db:"item_unit_unit_id"`
 	BranchID         *uint   `json:"branch_id" db:"branch_id"`
+	BranchItemID     *uint   `json:"branch_item_id" db:"branch_item_id"`
 	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
 	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string `json:"unit_name" db:"unit_name"`
@@ -1419,7 +1421,7 @@ type MsItemDetailDTO struct {
 	ID               uint    `json:"id" db:"id"`
 	ItemSubGroupID   *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
 	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
-	UnitID           *uint   `json:"unit_id" db:"unit_id"`
+	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
 	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
 	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string `json:"unit_name" db:"unit_name"`

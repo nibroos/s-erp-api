@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewItemGroupRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Trac
 	}
 }
 
-func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.ItemGroupListDTO, int, error) {
+func (r *ItemGroupRepository) GetItemGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ItemGroupListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("ItemGroupRepository-GetItemGroups", opentracing.ChildOf(span.Context()))
 
@@ -94,7 +94,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -127,7 +127,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &itemGroups, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &itemGroups, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -153,7 +153,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 	return itemGroups, total, nil
 }
 
-func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, params *dtos.GetItemGroupParams, span opentracing.Span) (*dtos.ItemGroupDetailDTO, error) {
+func (r *ItemGroupRepository) GetItemGroupByID(ctx *fiber.Ctx, params *dtos.GetItemGroupParams, span opentracing.Span) (*dtos.ItemGroupDetailDTO, error) {
 	childSpan := opentracing.StartSpan("ItemGroupRepository-GetItemGroupByID", opentracing.ChildOf(span.Context()))
 	var itemGroup dtos.ItemGroupDetailDTO
 

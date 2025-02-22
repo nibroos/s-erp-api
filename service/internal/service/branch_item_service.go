@@ -31,7 +31,7 @@ func NewBranchItemService(repo *repository.BranchItemRepository, utilRepo *repos
 func (s *BranchItemService) GetBranchItems(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.BranchItemListDTO, int, error) {
 	childSpan := opentracing.StartSpan("BranchItemService-GetBranchItems", opentracing.ChildOf(span.Context()))
 
-	branchItems, total, err := s.repo.GetBranchItems(ctx.Context(), filters, childSpan)
+	branchItems, total, err := s.repo.GetBranchItems(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -54,7 +54,7 @@ func (s *BranchItemService) CreateBranchItem(ctx *fiber.Ctx, branchItem *models.
 func (s *BranchItemService) GetBranchItemByID(ctx *fiber.Ctx, params *dtos.GetBranchItemParams, span opentracing.Span) (*dtos.BranchItemDetailDTO, error) {
 	childSpan := opentracing.StartSpan("BranchItemService-GetBranchItemByID", opentracing.ChildOf(span.Context()))
 
-	branchItem, err := s.repo.GetBranchItemByID(ctx.Context(), params, childSpan)
+	branchItem, err := s.repo.GetBranchItemByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -167,7 +167,7 @@ func (s *BranchItemService) CsvGetBranchItems(ctx *fiber.Ctx, filters map[string
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()

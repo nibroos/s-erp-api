@@ -1,8 +1,7 @@
 package service
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
@@ -16,24 +15,15 @@ func NewIdentifierService(repo *repository.IdentifierRepository) *IdentifierServ
 	return &IdentifierService{repo: repo}
 }
 
-func (s *IdentifierService) ListIdentifiers(ctx context.Context, filters map[string]string) ([]dtos.IdentifierListDTO, int, error) {
-
-	resultChan := make(chan dtos.ListIdentifiersResult, 1)
-
-	go func() {
-		identifiers, total, err := s.repo.ListIdentifiers(ctx, filters)
-		resultChan <- dtos.ListIdentifiersResult{Identifiers: identifiers, Total: total, Err: err}
-	}()
-
-	select {
-	case res := <-resultChan:
-		return res.Identifiers, res.Total, res.Err
-	case <-ctx.Done():
-		return nil, 0, ctx.Err()
+func (s *IdentifierService) ListIdentifiers(ctx *fiber.Ctx, filters map[string]string) ([]dtos.IdentifierListDTO, int, error) {
+	identifiers, total, err := s.repo.ListIdentifiers(ctx, filters)
+	if err != nil {
+		return nil, 0, err
 	}
+	return identifiers, total, nil
 }
 
-func (s *IdentifierService) CreateIdentifier(ctx context.Context, identifier *models.Identifier) (*models.Identifier, error) {
+func (s *IdentifierService) CreateIdentifier(ctx *fiber.Ctx, identifier *models.Identifier) (*models.Identifier, error) {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {
@@ -53,30 +43,15 @@ func (s *IdentifierService) CreateIdentifier(ctx context.Context, identifier *mo
 	return identifier, nil
 }
 
-func (s *IdentifierService) GetIdentifierByID(ctx context.Context, params *dtos.GetIdentifierParams) (*dtos.IdentifierDetailDTO, error) {
-	identifierChan := make(chan *dtos.IdentifierDetailDTO, 1)
-	errChan := make(chan error, 1)
-
-	go func() {
-		identifier, err := s.repo.GetIdentifierByID(ctx, params)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		identifierChan <- identifier
-	}()
-
-	select {
-	case identifier := <-identifierChan:
-		return identifier, nil
-	case err := <-errChan:
+func (s *IdentifierService) GetIdentifierByID(ctx *fiber.Ctx, params *dtos.GetIdentifierParams) (*dtos.IdentifierDetailDTO, error) {
+	identifier, err := s.repo.GetIdentifierByID(ctx, params)
+	if err != nil {
 		return nil, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
+	return identifier, nil
 }
 
-func (s *IdentifierService) UpdateIdentifier(ctx context.Context, identifier *models.Identifier) (*models.Identifier, error) {
+func (s *IdentifierService) UpdateIdentifier(ctx *fiber.Ctx, identifier *models.Identifier) (*models.Identifier, error) {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {
@@ -96,7 +71,7 @@ func (s *IdentifierService) UpdateIdentifier(ctx context.Context, identifier *mo
 	return identifier, nil
 }
 
-func (s *IdentifierService) DeleteIdentifier(ctx context.Context, id uint) error {
+func (s *IdentifierService) DeleteIdentifier(ctx *fiber.Ctx, id uint) error {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {
@@ -116,7 +91,7 @@ func (s *IdentifierService) DeleteIdentifier(ctx context.Context, id uint) error
 	return nil
 }
 
-func (s *IdentifierService) RestoreIdentifier(ctx context.Context, id uint) error {
+func (s *IdentifierService) RestoreIdentifier(ctx *fiber.Ctx, id uint) error {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {
@@ -136,18 +111,10 @@ func (s *IdentifierService) RestoreIdentifier(ctx context.Context, id uint) erro
 	return nil
 }
 
-func (s *IdentifierService) ListIdentifiersByAuthUser(ctx context.Context, filters map[string]string) ([]dtos.IdentifierListDTO, int, error) {
-	resultChan := make(chan dtos.ListIdentifiersResult, 1)
-
-	go func() {
-		identifiers, total, err := s.repo.ListIdentifiers(ctx, filters)
-		resultChan <- dtos.ListIdentifiersResult{Identifiers: identifiers, Total: total, Err: err}
-	}()
-
-	select {
-	case res := <-resultChan:
-		return res.Identifiers, res.Total, res.Err
-	case <-ctx.Done():
-		return nil, 0, ctx.Err()
+func (s *IdentifierService) ListIdentifiersByAuthUser(ctx *fiber.Ctx, filters map[string]string) ([]dtos.IdentifierListDTO, int, error) {
+	identifiers, total, err := s.repo.ListIdentifiers(ctx, filters)
+	if err != nil {
+		return nil, 0, err
 	}
+	return identifiers, total, nil
 }

@@ -31,7 +31,7 @@ func NewItemUnitService(repo *repository.ItemUnitRepository, utilRepo *repositor
 func (s *ItemUnitService) GetItemUnits(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ItemUnitListDTO, int, error) {
 	childSpan := opentracing.StartSpan("ItemUnitService-GetItemUnits", opentracing.ChildOf(span.Context()))
 
-	itemUnits, total, err := s.repo.GetItemUnits(ctx.Context(), filters, childSpan)
+	itemUnits, total, err := s.repo.GetItemUnits(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -54,7 +54,7 @@ func (s *ItemUnitService) CreateItemUnit(ctx *fiber.Ctx, itemUnit *models.ItemUn
 func (s *ItemUnitService) GetItemUnitByID(ctx *fiber.Ctx, params *dtos.GetItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
 	childSpan := opentracing.StartSpan("ItemUnitService-GetItemUnitByID", opentracing.ChildOf(span.Context()))
 
-	itemUnit, err := s.repo.GetItemUnitByID(ctx.Context(), params, childSpan)
+	itemUnit, err := s.repo.GetItemUnitByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -163,7 +163,7 @@ func (s *ItemUnitService) CsvGetItemUnits(ctx *fiber.Ctx, filters map[string]str
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()

@@ -12,7 +12,7 @@ func NewRedisCache(client *redis.Client) *RedisCache {
 	return &RedisCache{Client: client}
 }
 
-// func (r *RedisCache) FetchAndCacheSubscribes(ctx context.Context, subscribes []dtos.SubscribeListDTO) error {
+// func (r *RedisCache) FetchAndCacheSubscribes(ctx *fiber.Ctx, subscribes []dtos.SubscribeListDTO) error {
 // 	// Marshal the data to JSON
 // 	data, err := json.Marshal(subscribes)
 // 	if err != nil {

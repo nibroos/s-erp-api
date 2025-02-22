@@ -1,8 +1,7 @@
 package service
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
@@ -19,7 +18,7 @@ func NewBranchService(repo *repository.BranchRepository, tracer opentracing.Trac
 	return &BranchService{repo: repo, tracer: tracer}
 }
 
-func (s *BranchService) GetBranches(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.BranchListDTO, int, error) {
+func (s *BranchService) GetBranches(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.BranchListDTO, int, error) {
 	childSpan := opentracing.StartSpan("BranchService-GetBranches")
 
 	branches, total, err := s.repo.GetBranches(ctx, filters, childSpan)
@@ -30,7 +29,7 @@ func (s *BranchService) GetBranches(ctx context.Context, filters map[string]stri
 	return branches, total, nil
 }
 
-func (s *BranchService) CreateBranch(ctx context.Context, branch *models.Branch, tx *gorm.DB, span opentracing.Span) (*models.Branch, error) {
+func (s *BranchService) CreateBranch(ctx *fiber.Ctx, branch *models.Branch, tx *gorm.DB, span opentracing.Span) (*models.Branch, error) {
 	childSpan := opentracing.StartSpan("BranchService-CreateBranch", opentracing.ChildOf(span.Context()))
 
 	// Create branch
@@ -43,7 +42,7 @@ func (s *BranchService) CreateBranch(ctx context.Context, branch *models.Branch,
 	return branch, nil
 }
 
-func (s *BranchService) GetBranchByID(ctx context.Context, params *dtos.GetBranchParams, span opentracing.Span) (*dtos.BranchDetailDTO, error) {
+func (s *BranchService) GetBranchByID(ctx *fiber.Ctx, params *dtos.GetBranchParams, span opentracing.Span) (*dtos.BranchDetailDTO, error) {
 	childSpan := opentracing.StartSpan("BranchService-GetBranchByID", opentracing.ChildOf(span.Context()))
 
 	branch, err := s.repo.GetBranchByID(ctx, params, childSpan)
@@ -54,7 +53,7 @@ func (s *BranchService) GetBranchByID(ctx context.Context, params *dtos.GetBranc
 	return branch, nil
 }
 
-func (s *BranchService) UpdateBranch(ctx context.Context, branch *models.Branch, tx *gorm.DB, span opentracing.Span) (*models.Branch, error) {
+func (s *BranchService) UpdateBranch(ctx *fiber.Ctx, branch *models.Branch, tx *gorm.DB, span opentracing.Span) (*models.Branch, error) {
 	childSpan := opentracing.StartSpan("BranchService-UpdateBranch", opentracing.ChildOf(span.Context()))
 
 	// Update branch
@@ -67,7 +66,7 @@ func (s *BranchService) UpdateBranch(ctx context.Context, branch *models.Branch,
 	return branch, nil
 }
 
-func (s *BranchService) DeleteBranch(ctx context.Context, params *dtos.GetBranchParams, tx *gorm.DB, span opentracing.Span) error {
+func (s *BranchService) DeleteBranch(ctx *fiber.Ctx, params *dtos.GetBranchParams, tx *gorm.DB, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("BranchService-DeleteBranch", opentracing.ChildOf(span.Context()))
 	// Delete branch
 	if err := s.repo.DeleteBranch(tx, params, childSpan); err != nil {
@@ -79,7 +78,7 @@ func (s *BranchService) DeleteBranch(ctx context.Context, params *dtos.GetBranch
 	return nil
 }
 
-func (s *BranchService) RestoreBranch(ctx context.Context, params *dtos.GetBranchParams, tx *gorm.DB, span opentracing.Span) error {
+func (s *BranchService) RestoreBranch(ctx *fiber.Ctx, params *dtos.GetBranchParams, tx *gorm.DB, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("BranchService-RestoreBranch", opentracing.ChildOf(span.Context()))
 	// Restore branch
 	if err := s.repo.RestoreBranch(tx, params, childSpan); err != nil {

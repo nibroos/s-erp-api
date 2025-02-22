@@ -1,8 +1,7 @@
 package mocks
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/stretchr/testify/mock"
@@ -24,17 +23,17 @@ type MockUserRepository struct {
 	mock.Mock
 }
 
-func (m *MockUserRepository) GetUsers(ctx context.Context, filters map[string]string) ([]dtos.UserListDTO, int, error) {
+func (m *MockUserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string) ([]dtos.UserListDTO, int, error) {
 	args := m.Called(ctx, filters)
 	return args.Get(0).([]dtos.UserListDTO), args.Int(1), args.Error(2)
 }
 
-func (m *MockUserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
+func (m *MockUserRepository) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
 	args := m.Called(ctx, params)
 	return args.Get(0).(*dtos.UserDetailDTO), args.Error(1)
 }
 
-func (m *MockUserRepository) GetUserByEmail(ctx context.Context, email string) (*dtos.UserDetailDTO, error) {
+func (m *MockUserRepository) GetUserByEmail(ctx *fiber.Ctx, email string) (*dtos.UserDetailDTO, error) {
 	args := m.Called(ctx, email)
 	return args.Get(0).(*dtos.UserDetailDTO), args.Error(1)
 }

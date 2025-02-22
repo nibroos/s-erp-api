@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewOrderTypeRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Trac
 	}
 }
 
-func (r *OrderTypeRepository) GetOrderTypes(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.OrderTypeListDTO, int, error) {
+func (r *OrderTypeRepository) GetOrderTypes(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.OrderTypeListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("OrderTypeRepository-GetOrderTypes", opentracing.ChildOf(span.Context()))
 
@@ -101,7 +101,7 @@ func (r *OrderTypeRepository) GetOrderTypes(ctx context.Context, filters map[str
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -134,7 +134,7 @@ func (r *OrderTypeRepository) GetOrderTypes(ctx context.Context, filters map[str
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &orderTypes, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &orderTypes, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -160,7 +160,7 @@ func (r *OrderTypeRepository) GetOrderTypes(ctx context.Context, filters map[str
 	return orderTypes, total, nil
 }
 
-func (r *OrderTypeRepository) GetOrderTypeByID(ctx context.Context, params *dtos.GetOrderTypeParams, span opentracing.Span) (*dtos.OrderTypeDetailDTO, error) {
+func (r *OrderTypeRepository) GetOrderTypeByID(ctx *fiber.Ctx, params *dtos.GetOrderTypeParams, span opentracing.Span) (*dtos.OrderTypeDetailDTO, error) {
 	childSpan := opentracing.StartSpan("OrderTypeRepository-GetOrderTypeByID", opentracing.ChildOf(span.Context()))
 	var orderType dtos.OrderTypeDetailDTO
 

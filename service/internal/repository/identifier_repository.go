@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -23,7 +23,7 @@ func NewIdentifierRepository(db *gorm.DB, sqlDB *sqlx.DB) *IdentifierRepository 
 	}
 }
 
-func (r *IdentifierRepository) ListIdentifiers(ctx context.Context, filters map[string]string) ([]dtos.IdentifierListDTO, int, error) {
+func (r *IdentifierRepository) ListIdentifiers(ctx *fiber.Ctx, filters map[string]string) ([]dtos.IdentifierListDTO, int, error) {
 	identifiers := []dtos.IdentifierListDTO{}
 	var total int
 
@@ -88,13 +88,13 @@ func (r *IdentifierRepository) ListIdentifiers(ctx context.Context, filters map[
 
 	// Goroutine for count query
 	go func() {
-		err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+		err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 		countChan <- err
 	}()
 
 	// Goroutine for select query
 	go func() {
-		err := r.sqlDB.SelectContext(ctx, &identifiers, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &identifiers, query, args...)
 		selectChan <- err
 	}()
 
@@ -113,7 +113,7 @@ func (r *IdentifierRepository) ListIdentifiers(ctx context.Context, filters map[
 	return identifiers, total, nil
 }
 
-func (r *IdentifierRepository) GetIdentifierByID(ctx context.Context, params *dtos.GetIdentifierParams) (*dtos.IdentifierDetailDTO, error) {
+func (r *IdentifierRepository) GetIdentifierByID(ctx *fiber.Ctx, params *dtos.GetIdentifierParams) (*dtos.IdentifierDetailDTO, error) {
 	var identifier dtos.IdentifierDetailDTO
 	// deletedAt := params.IsDeleted
 

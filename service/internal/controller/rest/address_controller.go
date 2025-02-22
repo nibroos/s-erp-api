@@ -28,7 +28,7 @@ func (c *AddressController) ListAddresses(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	addresses, total, err := c.service.ListAddresses(ctx.Context(), filters)
+	addresses, total, err := c.service.ListAddresses(ctx, filters)
 	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -62,13 +62,13 @@ func (c *AddressController) CreateAddress(ctx *fiber.Ctx) error {
 		OptionsJSON:   nil,
 	}
 
-	createdAddress, err := c.service.CreateAddress(ctx.Context(), &address)
+	createdAddress, err := c.service.CreateAddress(ctx, &address)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create address", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params := &dtos.GetAddressParams{ID: createdAddress.ID}
-	getAddress, err := c.service.GetAddressByID(ctx.Context(), params)
+	getAddress, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -91,7 +91,7 @@ func (c *AddressController) GetAddressByID(ctx *fiber.Ctx) error {
 	}
 
 	params := &dtos.GetAddressParams{ID: req.ID}
-	address, err := c.service.GetAddressByID(ctx.Context(), params)
+	address, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -120,7 +120,7 @@ func (c *AddressController) UpdateAddress(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetAddressParams{ID: req.ID}
 	// Fetch the existing address to get the current data
-	existingAddress, err := c.service.GetAddressByID(ctx.Context(), params)
+	existingAddress, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -138,13 +138,13 @@ func (c *AddressController) UpdateAddress(ctx *fiber.Ctx) error {
 		address.TypeAddressID = *req.TypeAddressID
 	}
 
-	updatedAddress, err := c.service.UpdateAddress(ctx.Context(), &address)
+	updatedAddress, err := c.service.UpdateAddress(ctx, &address)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update address", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params = &dtos.GetAddressParams{ID: updatedAddress.ID}
-	getAddress, err := c.service.GetAddressByID(ctx.Context(), params)
+	getAddress, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -169,12 +169,12 @@ func (c *AddressController) DeleteAddress(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetAddressParams{ID: req.ID}
 	// GET address by ID
-	_, err := c.service.GetAddressByID(ctx.Context(), params)
+	_, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.DeleteAddress(ctx.Context(), req.ID)
+	err = c.service.DeleteAddress(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete address", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -197,12 +197,12 @@ func (c *AddressController) RestoreAddress(ctx *fiber.Ctx) error {
 	isDeleted := 1
 	params := &dtos.GetAddressParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET address by ID
-	_, err := c.service.GetAddressByID(ctx.Context(), params)
+	_, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreAddress(ctx.Context(), req.ID)
+	err = c.service.RestoreAddress(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore address", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -225,7 +225,7 @@ func (c *AddressController) ListAddressesByAuthUser(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	addresses, total, err := c.service.ListAddresses(ctx.Context(), filters)
+	addresses, total, err := c.service.ListAddresses(ctx, filters)
 	if err != nil {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -268,13 +268,13 @@ func (c *AddressController) CreateAddressByAuthUser(ctx *fiber.Ctx) error {
 		OptionsJSON:   nil,
 	}
 
-	createdAddress, err := c.service.CreateAddress(ctx.Context(), &address)
+	createdAddress, err := c.service.CreateAddress(ctx, &address)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create address", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params := &dtos.GetAddressParams{ID: createdAddress.ID}
-	getAddress, err := c.service.GetAddressByID(ctx.Context(), params)
+	getAddress, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -306,7 +306,7 @@ func (c *AddressController) GetAddressByIDByAuthUser(ctx *fiber.Ctx) error {
 
 	params.UserID = userID
 
-	address, err := c.service.GetAddressByID(ctx.Context(), params)
+	address, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -345,7 +345,7 @@ func (c *AddressController) UpdateAddressByAuthUser(ctx *fiber.Ctx) error {
 	params.UserID = userID
 
 	// Fetch the existing address to get the current data
-	existingAddress, err := c.service.GetAddressByID(ctx.Context(), params)
+	existingAddress, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -363,13 +363,13 @@ func (c *AddressController) UpdateAddressByAuthUser(ctx *fiber.Ctx) error {
 		address.TypeAddressID = *req.TypeAddressID
 	}
 
-	updatedAddress, err := c.service.UpdateAddress(ctx.Context(), &address)
+	updatedAddress, err := c.service.UpdateAddress(ctx, &address)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update address", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	params = &dtos.GetAddressParams{ID: updatedAddress.ID}
-	getAddress, err := c.service.GetAddressByID(ctx.Context(), params)
+	getAddress, err := c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -404,12 +404,12 @@ func (c *AddressController) DeleteAddressByAuthUser(ctx *fiber.Ctx) error {
 	params.UserID = userID
 
 	// GET address by ID
-	_, err = c.service.GetAddressByID(ctx.Context(), params)
+	_, err = c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.DeleteAddress(ctx.Context(), req.ID)
+	err = c.service.DeleteAddress(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete address", http.StatusInternalServerError, err.Error(), nil)
 	}
@@ -441,12 +441,12 @@ func (c *AddressController) RestoreAddressByAuthUser(ctx *fiber.Ctx) error {
 	params := &dtos.GetAddressParams{ID: req.ID, IsDeleted: &isDeleted, UserID: userID}
 
 	// GET address by ID
-	_, err = c.service.GetAddressByID(ctx.Context(), params)
+	_, err = c.service.GetAddressByID(ctx, params)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Address not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreAddress(ctx.Context(), req.ID)
+	err = c.service.RestoreAddress(ctx, req.ID)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Failed to restore address", http.StatusInternalServerError, err.Error(), nil)
 	}

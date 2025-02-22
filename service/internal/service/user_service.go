@@ -1,10 +1,10 @@
 package service
 
 import (
-	"context"
 	"errors"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
@@ -24,7 +24,7 @@ func NewUserService(repo *repository.UserRepository, utilRepo *repository.UtilRe
 	return &UserService{repo: repo, utilRepo: utilRepo, tracer: tracer}
 }
 
-func (s *UserService) GetUsers(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.UserListDTO, int, error) {
+func (s *UserService) GetUsers(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.UserListDTO, int, error) {
 	childSpan := opentracing.StartSpan("UserService-GetUsers", opentracing.ChildOf(span.Context()))
 	users, total, err := s.repo.GetUsers(ctx, filters, childSpan)
 	if err != nil {
@@ -34,7 +34,7 @@ func (s *UserService) GetUsers(ctx context.Context, filters map[string]string, s
 	return users, total, nil
 }
 
-func (s *UserService) CreateUser(ctx context.Context, tx *gorm.DB, user *models.User, roleIDs []uint32, span opentracing.Span) (*models.User, error) {
+func (s *UserService) CreateUser(ctx *fiber.Ctx, tx *gorm.DB, user *models.User, roleIDs []uint32, span opentracing.Span) (*models.User, error) {
 	childSpan := opentracing.StartSpan("UserService-CreateUser", opentracing.ChildOf(span.Context()))
 	// Hash password before saving
 	if user.Password == "" {
@@ -68,7 +68,7 @@ func (s *UserService) CreateUser(ctx context.Context, tx *gorm.DB, user *models.
 	return user, nil
 }
 
-func (s *UserService) GetUserByID(ctx context.Context, params *dtos.GetUserByIDParams, span opentracing.Span) (*dtos.UserDetailDTO, error) {
+func (s *UserService) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDParams, span opentracing.Span) (*dtos.UserDetailDTO, error) {
 	childSpan := opentracing.StartSpan("UserService-GetUserByID", opentracing.ChildOf(span.Context()))
 	user, err := s.repo.GetUserByID(ctx, params)
 	if err != nil {
@@ -78,7 +78,7 @@ func (s *UserService) GetUserByID(ctx context.Context, params *dtos.GetUserByIDP
 	return user, nil
 }
 
-func (s *UserService) UpdateUser(ctx context.Context, tx *gorm.DB, user *models.User, roleIDs []uint32, span opentracing.Span) (*models.User, error) {
+func (s *UserService) UpdateUser(ctx *fiber.Ctx, tx *gorm.DB, user *models.User, roleIDs []uint32, span opentracing.Span) (*models.User, error) {
 	childSpan := opentracing.StartSpan("UserService-UpdateUser", opentracing.ChildOf(span.Context()))
 
 	if len(roleIDs) == 0 {
@@ -102,7 +102,7 @@ func (s *UserService) UpdateUser(ctx context.Context, tx *gorm.DB, user *models.
 	return user, nil
 }
 
-func (s *UserService) Authenticate(ctx context.Context, email, password string) (*dtos.UserDetailDTO, error) {
+func (s *UserService) Authenticate(ctx *fiber.Ctx, email, password string) (*dtos.UserDetailDTO, error) {
 	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (s *UserService) Authenticate(ctx context.Context, email, password string) 
 	return user, nil
 }
 
-func (s *UserService) DeleteUser(ctx context.Context, tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
+func (s *UserService) DeleteUser(ctx *fiber.Ctx, tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserService-DeleteUser", opentracing.ChildOf(span.Context()))
 
 	var wg sync.WaitGroup
@@ -162,7 +162,7 @@ func (s *UserService) DeleteUser(ctx context.Context, tx *gorm.DB, params *dtos.
 	return nil
 }
 
-func (s *UserService) RestoreUser(ctx context.Context, tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
+func (s *UserService) RestoreUser(ctx *fiber.Ctx, tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserService-RestoreUser", opentracing.ChildOf(span.Context()))
 	// Restore user
 	if err := s.repo.RestoreUser(tx, params, span); err != nil {
