@@ -92,14 +92,14 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 		Code:           req.Code,
 		Name:           req.Name,
 		ItemSubGroupID: &req.ItemSubGroupID,
-		UnitID:         &req.ItemUnitID,
-		Specification:  req.Specification,
-		Description:    req.Description,
-		TpbCode:        req.TpbCode,
-		MinimumStock:   req.MinimumStock,
-		IsAllBranch:    req.IsAllBranch,
-		Status:         req.Status,
-		CreatedByID:    &userID,
+		// ItemUnitID:     &req.ItemUnitID,
+		Specification: req.Specification,
+		Description:   req.Description,
+		TpbCode:       req.TpbCode,
+		MinimumStock:  req.MinimumStock,
+		IsAllBranch:   req.IsAllBranch,
+		Status:        req.Status,
+		CreatedByID:   &userID,
 	}
 
 	tx := c.repo.BeginTransaction()
@@ -111,6 +111,13 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 		utils.LogResponse(apiSpan, response)
 		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
 	}
+
+	// bulk create item units
+	err = c.service.CreateItemUnits(ctx, req.Units, createdMsItem.ID, tx, parentSpan)
+
+	// get selected item unit id by unit id
+
+	// update ms item with selected item unit id
 
 	tx.Commit()
 
@@ -201,7 +208,7 @@ func (c *MsItemController) UpdateMsItem(ctx *fiber.Ctx) error {
 		Code:           req.Code,
 		Name:           req.Name,
 		ItemSubGroupID: &req.ItemSubGroupID,
-		UnitID:         &req.ItemUnitID,
+		ItemUnitID:     &req.ItemUnitID,
 		Specification:  req.Specification,
 		Description:    req.Description,
 		TpbCode:        req.TpbCode,

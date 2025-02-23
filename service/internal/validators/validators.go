@@ -108,26 +108,29 @@ func (r *Request) Validate() (map[string][]string, bool) {
 				}
 
 			case "unique":
-				if err := uniqueRule(field, rule, "", customFieldName, value); err != nil {
+				if err := uniqueRule(customFieldName, rule, value); err != nil {
 					errors[field] = append(errors[field], err.Error())
 				}
 			case "unique_ig":
-				if err := uniqueIgRule(field, rule, "", customFieldName, value); err != nil {
+				if err := uniqueIgRule(customFieldName, rule, value); err != nil {
 					errors[field] = append(errors[field], err.Error())
 				}
 			case "array":
-				if err := arrayRule(field, rule, "", customFieldName, value); err != nil {
+				if value == nil {
+					continue
+				}
+				if err := arrayRule(customFieldName, value); err != nil {
 					errors[field] = append(errors[field], err.Error())
 				}
 			case "array_max":
-				if err := arrayMaxRule(field, rule, "", customFieldName, value); err != nil {
+				if err := arrayMaxRule(customFieldName, rule, value); err != nil {
 					errors[field] = append(errors[field], err.Error())
 				}
 			case "exists":
 				if value == nil {
 					continue
 				}
-				if err := isExistsRule(field, rule, "", customFieldName, value); err != nil {
+				if err := isExistsRule(customFieldName, rule, value); err != nil {
 					errors[field] = append(errors[field], err.Error())
 				}
 			default:
@@ -136,7 +139,131 @@ func (r *Request) Validate() (map[string][]string, bool) {
 		}
 	}
 
+	// Handle nested rules for arrays of objects
+	for field, rules := range r.Rules {
+		if strings.Contains(field, ".*.") {
+			fieldParts := strings.Split(field, ".*.")
+			arrayField := fieldParts[0]
+			nestedField := fieldParts[1]
+
+			arrayValue, exists := r.Data[arrayField]
+			if !exists || !isArray(arrayValue) {
+				continue
+			}
+
+			for i, item := range arrayValue.([]interface{}) {
+				if itemMap, ok := item.(map[string]interface{}); ok {
+					nestedValue, exists := itemMap[nestedField]
+					if !exists {
+						nestedValue = nil
+					}
+
+					for _, rule := range rules {
+						ruleParts := strings.Split(rule, ":")
+						ruleName := ruleParts[0]
+						var ruleParam string
+						if len(ruleParts) > 1 {
+							ruleParam = ruleParts[1]
+						}
+
+						customFieldName := strings.ReplaceAll(nestedField, "_", " ")
+						if customName, ok := customFieldNames[nestedField]; ok {
+							customFieldName = customName
+						}
+						if customName, ok := r.CustomFieldNames[nestedField]; ok {
+							customFieldName = customName
+						}
+
+						switch ruleName {
+						case "required":
+							if isEmpty(nestedValue) {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field is required", customFieldName))
+							}
+						case "email":
+							if nestedValue == nil {
+								continue
+							}
+							if !isEmail(nestedValue) {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a valid email address", customFieldName))
+							}
+						case "date":
+							if !isDate(nestedValue.(string)) {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
+							}
+						case "min":
+							min, err := strconv.Atoi(ruleParam)
+							if err != nil {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], "Invalid min parameter")
+								continue
+							}
+							if !isMin(nestedValue, min) {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be at least %d characters long", customFieldName, min))
+							}
+						// Add more rules here
+						case "max":
+							max, err := strconv.Atoi(ruleParam)
+							if err != nil {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], "Invalid max parameter")
+								continue
+							}
+
+							if !isMax(nestedValue, max) {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("This field must be at most %d characters long", max))
+							}
+						case "numeric":
+							if !isNumeric(nestedValue) {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a number", customFieldName))
+							}
+
+						case "float":
+							if !isFloat(nestedValue.(string)) {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a decimal number", customFieldName))
+							}
+
+						case "unique":
+							if err := uniqueRule(customFieldName, rule, nestedValue); err != nil {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], err.Error())
+							}
+						case "unique_ig":
+							if err := uniqueIgRule(customFieldName, rule, nestedValue); err != nil {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], err.Error())
+							}
+						case "array":
+							if nestedValue == nil {
+								continue
+							}
+							if err := arrayRule(customFieldName, nestedValue); err != nil {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], err.Error())
+							}
+						case "array_max":
+							if err := arrayMaxRule(customFieldName, rule, nestedValue); err != nil {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], err.Error())
+							}
+						case "exists":
+							if nestedValue == nil {
+								continue
+							}
+							if err := isExistsRule(customFieldName, rule, nestedValue); err != nil {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], err.Error())
+							}
+						default:
+							errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("Unknown validation rule: %s", ruleName))
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return errors, len(errors) == 0
+}
+
+func isArray(x interface{}) bool {
+	rt := reflect.TypeOf(x)
+	if rt == nil {
+		return false
+	}
+	return rt.Kind() == reflect.Slice
 }
 
 func isEmail(value interface{}) bool {
@@ -264,7 +391,7 @@ func ValidateUpdateUserRequest(req *dtos.UpdateUserRequest) map[string]string {
 }
 
 // uniqueRule checks if a field value is unique in the database.
-func uniqueRule(field string, rule string, message string, customFieldName string, value interface{}) error {
+func uniqueRule(field string, rule string, value interface{}) error {
 	valueStr, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("invalid value type")
@@ -298,7 +425,7 @@ func uniqueRule(field string, rule string, message string, customFieldName strin
 }
 
 // uniqueIgRule checks if a field value is unique in the database, ignoring the current entity.
-func uniqueIgRule(field string, rule string, message string, customFieldName string, value interface{}) error {
+func uniqueIgRule(field string, rule string, value interface{}) error {
 	// Check if value is uint or string
 	var valueStr string
 	switch v := value.(type) {
@@ -338,7 +465,7 @@ func uniqueIgRule(field string, rule string, message string, customFieldName str
 	return nil
 }
 
-func arrayRule(field string, rule string, message string, customFieldName string, value interface{}) error {
+func arrayRule(field string, value interface{}) error {
 	_, ok := value.([]string)
 	if !ok {
 		return fmt.Errorf("the %s field must be an array", field)
@@ -347,7 +474,7 @@ func arrayRule(field string, rule string, message string, customFieldName string
 	return nil
 }
 
-func arrayMaxRule(field string, rule string, message string, customFieldName string, value interface{}) error {
+func arrayMaxRule(field string, rule string, value interface{}) error {
 	valueArr, ok := value.([]string)
 	if !ok {
 		return fmt.Errorf("invalid value typeb")
@@ -370,7 +497,7 @@ func arrayMaxRule(field string, rule string, message string, customFieldName str
 	return nil
 }
 
-func isExistsRule(field string, rule string, message string, customFieldName string, value interface{}) error {
+func isExistsRule(field string, rule string, value interface{}) error {
 	params := strings.Split(rule, ":")
 	if len(params) != 2 {
 		return fmt.Errorf("invalid rule format")
@@ -392,7 +519,7 @@ func isExistsRule(field string, rule string, message string, customFieldName str
 	}
 
 	if count == 0 {
-		return fmt.Errorf("the %s does not exist", customFieldName)
+		return fmt.Errorf("the %s does not exist", field)
 	}
 
 	return nil
@@ -412,7 +539,7 @@ func isEmpty(x interface{}) bool {
 	return reflect.DeepEqual(x, reflect.Zero(rt).Interface())
 }
 
-func requiredRule(field string, rule string, message string, customFieldName string, value interface{}) error {
+func requiredRule(field string, value interface{}) error {
 	if value == nil {
 		return fmt.Errorf("the %s field is required", field)
 	}

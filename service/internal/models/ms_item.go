@@ -8,7 +8,7 @@ type MsItem struct {
 	gorm.Model
 	ID             uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	ItemSubGroupID *uint          `json:"item_sub_group_id" gorm:"column:item_sub_group_id"`
-	UnitID         *uint          `json:"unit_id" gorm:"column:unit_id"`
+	ItemUnitID     *uint          `json:"item_unit_id" gorm:"column:item_unit_id"`
 	Code           *string        `json:"code" gorm:"column:code"`
 	Name           string         `json:"name" gorm:"column:name"`
 	Specification  *string        `json:"specification" gorm:"column:specification"`

@@ -1326,6 +1326,12 @@ type GetMsItemsRequest struct {
 	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
 }
 
+type CreateMsItemUnitsRequest struct {
+	UnitID    uint    `json:"unit_id"`
+	PriceSell float64 `json:"price_sell"`
+	PriceBuy  float64 `json:"price_buy"`
+}
+
 type CreateMsItemRequest struct {
 	ItemSubGroupID uint     `json:"item_sub_group_id"`
 	ItemUnitID     uint     `json:"item_unit_id"`
@@ -1339,6 +1345,7 @@ type CreateMsItemRequest struct {
 	MinimumStock   *float64 `json:"minimum_stock"`
 	IsAllBranch    *int     `json:"is_all_branch"`
 	Status         int8     `json:"status"`
+	Units          []CreateMsItemUnitsRequest
 }
 
 type UpdateMsItemRequest struct {

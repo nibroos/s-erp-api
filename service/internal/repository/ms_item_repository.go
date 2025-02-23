@@ -348,3 +348,29 @@ func (s *MsItemRepository) RestoreMsItem(tx *gorm.DB, params *dtos.GetMsItemPara
 		return nil
 	})
 }
+
+func (r *MsItemRepository) CreateItemUnits(tx *gorm.DB, itemUnits []dtos.CreateMsItemUnitsRequest, msItemID uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("MsItemRepository-CreateItemUnits", opentracing.ChildOf(span.Context()))
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// bulk insert
+		result := tx.CreateInBatches(itemUnits, len(itemUnits))
+		if result.Error != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, result.Error)
+			return result.Error
+		}
+
+		return nil
+	})
+}
+
+func (r *MsItemRepository) GetItemUnitIDBySelectedItemID(tx *gorm.DB, selectedItemID uint, span opentracing.Span) ([]uint, error) {
+	childSpan := opentracing.StartSpan("MsItemRepository-GetItemUnitIDBySelectedItemID", opentracing.ChildOf(span.Context()))
+	var itemUnitIDs []uint
+	query := `SELECT id FROM item_units WHERE item_id = $1`
+	if err := tx.Select("id").Where("item_id = ?", selectedItemID).Find(&itemUnitIDs).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+	return itemUnitIDs, nil
+}

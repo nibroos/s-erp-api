@@ -199,3 +199,16 @@ func (s *MsItemService) CsvGetMsItems(ctx *fiber.Ctx, filters map[string]string,
 
 	return []byte(csv), nil
 }
+
+// msItem *models.MsItem
+func (s *MsItemService) CreateItemUnits(ctx *fiber.Ctx, itemUnits []dtos.CreateMsItemUnitsRequest, msItemID uint, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("MsItemService-CreateItemUnits", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreateItemUnits(tx, itemUnits, msItemID, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
+	return nil
+}
