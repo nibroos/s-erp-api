@@ -46,7 +46,7 @@ VALUES
   ),
   (
     87,
-    NULL,
+    6,
     '0003',
     'Item C',
     'Item C Specification',
@@ -74,7 +74,7 @@ VALUES
   ),
   (
     83,
-    NULL,
+    7,
     '0005',
     'Item E',
     'Item E Specification',

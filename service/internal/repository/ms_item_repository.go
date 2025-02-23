@@ -43,6 +43,9 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 	branchID := claims["bid"]
 
 	log.Println("Branch ID:", branchID)
+	isAdmin := utils.IsAdmin(ctx)
+
+	log.Println("Is Admin:", isAdmin)
 
 	msItems := []dtos.MsItemListDTO{}
 	var total int
@@ -50,6 +53,7 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 	// select column
 	cdSelect := `m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock,`
 	if branchID != nil {
+		// log.Println("Branch ID:", branchID)
 		cdSelect = `
 		COALESCE(bi.name, m.name) as name,
 		COALESCE(bi.specification, m.specification) as specification,
@@ -58,6 +62,11 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
 		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
 		COALESCE(bi.minimum_stock, m.minimum_stock) as minimum_stock,
+		COALESCE(bi.status, m.status) as status,
+		COALESCE(bi.created_at, m.created_at) as created_at,
+		COALESCE(bi.updated_at, m.updated_at) as updated_at,
+		COALESCE(bi.deleted_at, m.deleted_at) as deleted_at,
+
 		bi.id as branch_item_id,
 		`
 	}
@@ -65,8 +74,9 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
-					-- m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock,
+					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
+					m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock,
+					m.status, m.created_at, m.updated_at, m.deleted_at,
 					-- conditional here --
 					` + cdSelect + `
 
@@ -85,15 +95,16 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
-				LEFT JOIN branch_items bi ON bi.ms_item_id = m.id
+				LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
-					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
-					-- m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, 
+					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
+					m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, 
+					m.status, m.created_at, m.updated_at, m.deleted_at,
 					-- conditional here --
 					` + cdSelect + `
 
@@ -112,12 +123,12 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
-				LEFT JOIN branch_items bi ON bi.ms_item_id = m.id
+				LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
-	log.Println("Query:", query)
+	// log.Println("Query:", query)
 
 	var args []interface{}
 
@@ -135,8 +146,8 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 	}
 
 	if branchID != nil {
-		query += fmt.Sprintf(" AND branch_id = $%d", i)
-		countQuery += fmt.Sprintf(" AND branch_id = $%d", i)
+		query += fmt.Sprintf(" AND (branch_id = $%d OR is_all_branch = 1)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d OR is_all_branch = 1)", i)
 		args = append(args, branchID)
 		i++
 	}

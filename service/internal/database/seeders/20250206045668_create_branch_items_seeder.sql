@@ -3,7 +3,7 @@ BEGIN;
 INSERT INTO
   branch_items (
     branch_id,
-    ms_item_id,
+    item_unit_id,
     name,
     specification,
     description,
@@ -46,10 +46,10 @@ VALUES
   ),
   (
     1,
-    2,
-    'Item B',
-    'Item B Specification',
-    'Item B Description',
+    4,
+    'Item B1',
+    'Item B1 Specification',
+    'Item B1 Description',
     '0002',
     3,
     300,
@@ -60,10 +60,10 @@ VALUES
   ),
   (
     1,
-    3,
-    'Item C',
-    'Item C Specification',
-    'Item C Description',
+    6,
+    'Item C1',
+    'Item C1 Specification',
+    'Item C1 Description',
     '0003',
     4,
     4000,

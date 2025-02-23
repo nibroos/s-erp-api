@@ -3,7 +3,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS branch_items (
   id SERIAL PRIMARY KEY,
   branch_id INT NOT NULL,
-  ms_item_id INT,
+  item_unit_id INT,
   name VARCHAR(255) NOT NULL,
   specification TEXT,
   description TEXT,

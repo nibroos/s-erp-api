@@ -106,6 +106,44 @@ VALUES
     1,
     1,
     CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        mix_values.id
+      FROM
+        mix_values
+        JOIN groups ON mix_values.group_id = groups.id
+      WHERE
+        groups.name = 'units'
+        AND mix_values.name = 'PIECE'
+    ),
+    3,
+    1,
+    5000,
+    4500,
+    1,
+    1,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        mix_values.id
+      FROM
+        mix_values
+        JOIN groups ON mix_values.group_id = groups.id
+      WHERE
+        groups.name = 'units'
+        AND mix_values.name = 'CM'
+    ),
+    5,
+    1,
+    150,
+    120,
+    1,
+    1,
+    CURRENT_TIMESTAMP
   );
 
 COMMIT;
