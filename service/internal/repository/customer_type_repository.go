@@ -204,7 +204,6 @@ func (r *CustomerTypeRepository) BeginTransaction() *gorm.DB {
 func (r *CustomerTypeRepository) CreateCustomerType(tx *gorm.DB, customerType *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CustomerTypeRepository-CreateCustomerType", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(customerType).Error; err != nil {
-		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -215,7 +214,6 @@ func (r *CustomerTypeRepository) UpdateCustomerType(tx *gorm.DB, customerType *m
 	childSpan := opentracing.StartSpan("CustomerTypeRepository-UpdateCustomerType", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(customerType).Error; err != nil {
-			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -228,7 +226,6 @@ func (r *CustomerTypeRepository) DeleteCustomerType(tx *gorm.DB, params *dtos.Ge
 	childSpan := opentracing.StartSpan("CustomerTypeRepository-DeleteCustomerType", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -241,7 +238,6 @@ func (s *CustomerTypeRepository) RestoreCustomerType(tx *gorm.DB, params *dtos.G
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var customerType models.MixValue
 		if err := tx.Unscoped().Model(&customerType).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}

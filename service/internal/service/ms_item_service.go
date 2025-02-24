@@ -184,7 +184,7 @@ func (s *MsItemService) CsvGetMsItems(ctx *fiber.Ctx, filters map[string]string,
 	csv += "ID,Name,Sub Group,Unit,Specification,TPB Code,Price Sell,Price Buy,Minimum Stock\n"
 	// Build CSV rows
 	for _, msItem := range msItems {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s\n",
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%v,%v,%v\n",
 			msItem.ID,
 			msItem.Name,
 			utils.GetPtrVal(msItem.ItemSubGroupName),
@@ -201,7 +201,7 @@ func (s *MsItemService) CsvGetMsItems(ctx *fiber.Ctx, filters map[string]string,
 }
 
 // msItem *models.MsItem
-func (s *MsItemService) CreateItemUnits(ctx *fiber.Ctx, itemUnits []dtos.CreateMsItemUnitsRequest, msItemID uint, tx *gorm.DB, span opentracing.Span) error {
+func (s *MsItemService) CreateItemUnits(ctx *fiber.Ctx, itemUnits []models.ItemUnit, msItemID uint, tx *gorm.DB, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("MsItemService-CreateItemUnits", opentracing.ChildOf(span.Context()))
 
 	if err := s.repo.CreateItemUnits(tx, itemUnits, msItemID, childSpan); err != nil {
@@ -211,4 +211,15 @@ func (s *MsItemService) CreateItemUnits(ctx *fiber.Ctx, itemUnits []dtos.CreateM
 	}
 
 	return nil
+}
+
+func (s *MsItemService) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, params *dtos.GetMsItemItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
+	childSpan := opentracing.StartSpan("MsItemService-GetMsItemByID", opentracing.ChildOf(span.Context()))
+
+	msItem, err := s.repo.GetItemUnitIDBySelectedItemID(ctx, params, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return msItem, nil
 }

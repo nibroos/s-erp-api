@@ -37,7 +37,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.ms_item_id, m.item_unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
 					mi.name as ms_item_name,
 					u.name as unit_name,
 
@@ -46,7 +46,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 
         FROM item_units m
 				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-				LEFT JOIN units u ON m.item_unit_id = u.id
+				LEFT JOIN units u ON m.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -62,7 +62,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 
         FROM item_units m
 				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-				LEFT JOIN units u ON m.item_unit_id = u.id
+				LEFT JOIN units u ON m.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -164,7 +164,7 @@ func (r *ItemUnitRepository) GetItemUnitByID(ctx *fiber.Ctx, params *dtos.GetIte
 
 	query := `
 	SELECT DISTINCT ON (m.id) 
-		m.id, m.ms_item_id, m.item_unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
+		m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
 		mi.name as ms_item_name,
 		u.name as unit_name,
 
@@ -173,7 +173,7 @@ func (r *ItemUnitRepository) GetItemUnitByID(ctx *fiber.Ctx, params *dtos.GetIte
 
 	FROM item_units m
 	LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-	LEFT JOIN units u ON m.item_unit_id = u.id
+	LEFT JOIN units u ON m.unit_id = u.id
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	WHERE 1=1`

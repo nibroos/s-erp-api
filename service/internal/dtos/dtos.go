@@ -1327,25 +1327,26 @@ type GetMsItemsRequest struct {
 }
 
 type CreateMsItemUnitsRequest struct {
-	UnitID    uint    `json:"unit_id"`
-	PriceSell float64 `json:"price_sell"`
-	PriceBuy  float64 `json:"price_buy"`
+	UnitID     uint    `json:"unit_id"`
+	Conversion float64 `json:"conversion"`
+	PriceSell  float64 `json:"price_sell"`
+	PriceBuy   float64 `json:"price_buy"`
 }
 
 type CreateMsItemRequest struct {
-	ItemSubGroupID uint     `json:"item_sub_group_id"`
-	ItemUnitID     uint     `json:"item_unit_id"`
-	Code           *string  `json:"code"`
-	Name           string   `json:"name"`
-	Specification  *string  `json:"specification"`
-	Description    *string  `json:"description"`
-	TpbCode        *string  `json:"tpb_code"`
-	PriceSell      *float64 `json:"price_sell"`
-	PriceBuy       *float64 `json:"price_buy"`
-	MinimumStock   *float64 `json:"minimum_stock"`
-	IsAllBranch    *int     `json:"is_all_branch"`
-	Status         int8     `json:"status"`
-	Units          []CreateMsItemUnitsRequest
+	ItemSubGroupID uint    `json:"item_sub_group_id"`
+	ItemUnitID     uint    `json:"item_unit_id"`
+	Code           *string `json:"code"`
+	Name           string  `json:"name"`
+	Specification  *string `json:"specification"`
+	Description    *string `json:"description"`
+	TpbCode        *string `json:"tpb_code"`
+	// PriceSell      *float64 `json:"price_sell"`
+	// PriceBuy       *float64 `json:"price_buy"`
+	MinimumStock *float64 `json:"minimum_stock"`
+	IsAllBranch  *int     `json:"is_all_branch"`
+	Status       int8     `json:"status"`
+	Units        []CreateMsItemUnitsRequest
 }
 
 type UpdateMsItemRequest struct {
@@ -1379,6 +1380,13 @@ func NewGetMsItemParams(id uint) *GetMsItemParams {
 		ID:        id,
 		IsDeleted: &defaultIsDeleted,
 	}
+}
+
+type GetMsItemItemUnitParams struct {
+	ID        uint
+	MsItemID  uint
+	UnitID    uint
+	IsDeleted *int
 }
 
 type DeleteMsItemRequest struct {

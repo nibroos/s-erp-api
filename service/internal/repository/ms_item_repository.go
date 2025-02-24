@@ -52,7 +52,7 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 
 	// select column
 	cdSelect := `m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock,`
-	if branchID != nil {
+	if branchID != nil && !isAdmin {
 		// log.Println("Branch ID:", branchID)
 		cdSelect = `
 		COALESCE(bi.name, m.name) as name,
@@ -69,15 +69,16 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 
 		bi.id as branch_item_id,
 		`
+	} else {
+		cdSelect = `
+		m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.status, m.created_at, m.updated_at, m.deleted_at,
+		`
 	}
 
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
 					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
-					m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock,
-					m.status, m.created_at, m.updated_at, m.deleted_at,
-					-- conditional here --
 					` + cdSelect + `
 
 					isg.name as item_sub_group_name,
@@ -85,7 +86,6 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 					u.name as unit_name,
 					iu.unit_id as item_unit_unit_id,
 					bi.branch_id as branch_id, 
-					-- bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
 
         cu.name as created_by_name,
         uu.name as updated_by_name
@@ -103,9 +103,6 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
 					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
-					m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, 
-					m.status, m.created_at, m.updated_at, m.deleted_at,
-					-- conditional here --
 					` + cdSelect + `
 
 					isg.name as item_sub_group_name,
@@ -113,7 +110,6 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 					u.name as unit_name,
 					iu.unit_id as item_unit_unit_id,
 					bi.branch_id as branch_id, 
-					-- bi.specification as branch_item_specification, bi.description as branch_item_description, bi.tpb_code as branch_item_tpb_code, bi.price_sell as branch_item_price_sell, bi.price_buy as branch_item_price_buy, bi.minimum_stock as branch_item_minimum_stock, bi.status as branch_item_status, bi.created_at as branch_item_created_at, bi.updated_at as branch_item_updated_at, bi.deleted_at as branch_item_deleted_at,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -256,34 +252,37 @@ func (r *MsItemRepository) GetMsItemByID(ctx *fiber.Ctx, params *dtos.GetMsItemP
 	childSpan := opentracing.StartSpan("MsItemRepository-GetMsItemByID", opentracing.ChildOf(span.Context()))
 	var msItem dtos.MsItemDetailDTO
 
-	query := `
-	SELECT DISTINCT ON (m.id) 
-		m.id, m.item_sub_group_id, ig.parent_id as item_group_id, m.item_unit_id, m.name, m.specification, m.tpb_code, m.price_sell, m.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
-		isg.name as item_sub_group_name,
-		ig.name as item_group_name,
-		u.name as unit_name,
+	query := ` SELECT *
+	FROM (
+		
+		SELECT DISTINCT ON (m.id) 
+			m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.name, m.specification, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock, m.is_all_branch, m.status, m.created_at, m.updated_at, m.deleted_at,
+			isg.name as item_sub_group_name,
+			ig.name as item_group_name,
+			u.name as unit_name,
 
-		cu.name as created_by_name,
-		uu.name as updated_by_name
+			cu.name as created_by_name,
+			uu.name as updated_by_name
 
-	FROM ms_items m
-	LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
-	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN mix_values u ON m.item_unit_id = u.id
-	LEFT JOIN users cu ON m.created_by_id = cu.id
-	LEFT JOIN users uu ON m.updated_by_id = uu.id
-	WHERE 1=1`
+		FROM ms_items m
+		LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
+		LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+		LEFT JOIN item_units iu ON iu.id = m.item_unit_id
+		LEFT JOIN mix_values u ON iu.unit_id = u.id
+		LEFT JOIN users cu ON m.created_by_id = cu.id
+		LEFT JOIN users uu ON m.updated_by_id = uu.id
+	) AS alias WHERE 1=1`
 
 	var args []interface{}
 
 	i := 1
-	query += " AND m.id = $1"
+	query += " AND id = $1"
 	args = append(args, params.ID)
 	i++
 
-	isDeletedQuery := ` AND m.deleted_at IS NULL`
+	isDeletedQuery := ` AND deleted_at IS NULL`
 	if params.IsDeleted != nil && *params.IsDeleted == 1 {
-		isDeletedQuery = " AND m.deleted_at IS NOT NULL"
+		isDeletedQuery = " AND deleted_at IS NOT NULL"
 	}
 
 	query += isDeletedQuery
@@ -304,7 +303,6 @@ func (r *MsItemRepository) BeginTransaction() *gorm.DB {
 func (r *MsItemRepository) CreateMsItem(tx *gorm.DB, msItem *models.MsItem, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("MsItemRepository-CreateMsItem", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(msItem).Error; err != nil {
-		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -315,7 +313,6 @@ func (r *MsItemRepository) UpdateMsItem(tx *gorm.DB, msItem *models.MsItem, span
 	childSpan := opentracing.StartSpan("MsItemRepository-UpdateMsItem", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(msItem).Error; err != nil {
-			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -328,7 +325,6 @@ func (r *MsItemRepository) DeleteMsItem(tx *gorm.DB, params *dtos.GetMsItemParam
 	childSpan := opentracing.StartSpan("MsItemRepository-DeleteMsItem", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Delete(&models.MsItem{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -341,7 +337,6 @@ func (s *MsItemRepository) RestoreMsItem(tx *gorm.DB, params *dtos.GetMsItemPara
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var msItem models.MsItem
 		if err := tx.Unscoped().Model(&msItem).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -349,13 +344,12 @@ func (s *MsItemRepository) RestoreMsItem(tx *gorm.DB, params *dtos.GetMsItemPara
 	})
 }
 
-func (r *MsItemRepository) CreateItemUnits(tx *gorm.DB, itemUnits []dtos.CreateMsItemUnitsRequest, msItemID uint, span opentracing.Span) error {
+func (r *MsItemRepository) CreateItemUnits(tx *gorm.DB, itemUnits []models.ItemUnit, msItemID uint, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("MsItemRepository-CreateItemUnits", opentracing.ChildOf(span.Context()))
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// bulk insert
 		result := tx.CreateInBatches(itemUnits, len(itemUnits))
 		if result.Error != nil {
-			defer childSpan.Finish()
 			utils.LogErrors(childSpan, result.Error)
 			return result.Error
 		}
@@ -364,13 +358,35 @@ func (r *MsItemRepository) CreateItemUnits(tx *gorm.DB, itemUnits []dtos.CreateM
 	})
 }
 
-func (r *MsItemRepository) GetItemUnitIDBySelectedItemID(tx *gorm.DB, selectedItemID uint, span opentracing.Span) ([]uint, error) {
+func (r *MsItemRepository) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, params *dtos.GetMsItemItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
 	childSpan := opentracing.StartSpan("MsItemRepository-GetItemUnitIDBySelectedItemID", opentracing.ChildOf(span.Context()))
-	var itemUnitIDs []uint
-	query := `SELECT id FROM item_units WHERE item_id = $1`
-	if err := tx.Select("id").Where("item_id = ?", selectedItemID).Find(&itemUnitIDs).Error; err != nil {
+	var msItem dtos.ItemUnitDetailDTO
+
+	query := ` SELECT *
+		FROM (
+			SELECT DISTINCT ON (m.id)
+				m.id, m.ms_item_id, m.unit_id
+
+        FROM item_units m
+				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
+    ) AS alias WHERE 1=1`
+
+	var args []interface{}
+
+	i := 1
+	query += " AND ms_item_id = $1"
+	args = append(args, params.MsItemID)
+	i++
+
+	// unit_id
+	query += " AND unit_id = $2"
+	args = append(args, params.UnitID)
+	i++
+
+	if err := r.sqlDB.Get(&msItem, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
-	return itemUnitIDs, nil
+
+	return &msItem, nil
 }

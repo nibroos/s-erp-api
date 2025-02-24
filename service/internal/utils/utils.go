@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -370,8 +369,6 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 
 	// Convert empty strings to null in the struct fields
 	convertEmptyStringsToNull(out)
-
-	log.Println("out", out)
 
 	return nil
 }
