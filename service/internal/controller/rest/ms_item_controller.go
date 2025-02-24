@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -114,9 +113,9 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 	}
 
 	// bulk create item units
-	itemUnits := make([]models.ItemUnit, 0)
+	itemUnits := make([]*models.ItemUnit, 0)
 	for _, unit := range req.Units {
-		itemUnit := models.ItemUnit{
+		itemUnit := &models.ItemUnit{
 			MsItemID:    createdMsItem.ID,
 			UnitID:      unit.UnitID,
 			Conversion:  &unit.Conversion,
@@ -139,15 +138,13 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 
 	// get selected item unit id by unit id
 	paramsItemUnit := &dtos.GetMsItemItemUnitParams{MsItemID: createdMsItem.ID, UnitID: req.ItemUnitID}
-	selectedItemUnit, err := c.service.GetItemUnitIDBySelectedItemID(ctx, paramsItemUnit, parentSpan)
+	selectedItemUnit, err := c.service.GetItemUnitIDBySelectedItemID(ctx, tx, paramsItemUnit, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
 		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
 	}
-
-	log.Println("selectedItemUnit:", selectedItemUnit)
 
 	// update ms item with selected item unit id
 	msItem.ItemUnitID = &selectedItemUnit.ID

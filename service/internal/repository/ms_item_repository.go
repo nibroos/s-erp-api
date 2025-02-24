@@ -300,6 +300,11 @@ func (r *MsItemRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
+// Rollback all changes in the transaction
+func (r *MsItemRepository) Rollback() *gorm.DB {
+	return r.db.Rollback()
+}
+
 func (r *MsItemRepository) CreateMsItem(tx *gorm.DB, msItem *models.MsItem, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("MsItemRepository-CreateMsItem", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(msItem).Error; err != nil {
@@ -311,54 +316,52 @@ func (r *MsItemRepository) CreateMsItem(tx *gorm.DB, msItem *models.MsItem, span
 
 func (r *MsItemRepository) UpdateMsItem(tx *gorm.DB, msItem *models.MsItem, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("MsItemRepository-UpdateMsItem", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(msItem).Error; err != nil {
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(msItem).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *MsItemRepository) DeleteMsItem(tx *gorm.DB, params *dtos.GetMsItemParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("MsItemRepository-DeleteMsItem", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MsItem{}, params.ID).Error; err != nil {
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MsItem{}, params.ID).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }
 
 func (s *MsItemRepository) RestoreMsItem(tx *gorm.DB, params *dtos.GetMsItemParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("MsItemRepository-RestoreMsItem", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var msItem models.MsItem
-		if err := tx.Unscoped().Model(&msItem).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var msItem models.MsItem
+	if err := tx.Unscoped().Model(&msItem).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
-func (r *MsItemRepository) CreateItemUnits(tx *gorm.DB, itemUnits []models.ItemUnit, msItemID uint, span opentracing.Span) error {
+func (r *MsItemRepository) CreateItemUnits(tx *gorm.DB, itemUnits []*models.ItemUnit, msItemID uint, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("MsItemRepository-CreateItemUnits", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// bulk insert
-		result := tx.CreateInBatches(itemUnits, len(itemUnits))
-		if result.Error != nil {
-			utils.LogErrors(childSpan, result.Error)
-			return result.Error
-		}
+	// bulk insert
+	log.Println("len(itemUnits):", len(itemUnits))
+	result := tx.CreateInBatches(itemUnits, len(itemUnits))
 
-		return nil
-	})
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return result.Error
+	}
+
+	return nil
 }
 
-func (r *MsItemRepository) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, params *dtos.GetMsItemItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
+// func (r *MsItemRepository) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, params *dtos.GetMsItemItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
+func (r *MsItemRepository) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, tx *gorm.DB, params *dtos.GetMsItemItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
 	childSpan := opentracing.StartSpan("MsItemRepository-GetItemUnitIDBySelectedItemID", opentracing.ChildOf(span.Context()))
 	var msItem dtos.ItemUnitDetailDTO
 
@@ -383,7 +386,8 @@ func (r *MsItemRepository) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, params 
 	args = append(args, params.UnitID)
 	i++
 
-	if err := r.sqlDB.Get(&msItem, query, args...); err != nil {
+	// if err := r.sqlDB.Get(&msItem, query, args...); err != nil {
+	if err := tx.Raw(query, args...).Scan(&msItem).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}

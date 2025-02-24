@@ -362,58 +362,50 @@ func (r *UserRepository) CreateUser(tx *gorm.DB, user *models.User, span opentra
 func (r *UserRepository) UpdateUser(tx *gorm.DB, user *models.User, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserRepository-UpdateUser")
 
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(user).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(user).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *UserRepository) DeleteUser(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserRepository-DeleteUser", opentracing.ChildOf(span.Context()))
 
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.User{}, id).Error; err != nil {
-		if err := tx.Delete(&models.User{}, params).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+	// if err := tx.Unscoped().Delete(&models.User{}, id).Error; err != nil {
+	if err := tx.Delete(&models.User{}, params).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 // DeleteRolesByUserID
 func (r *UserRepository) DeleteRolesByUserID(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserRepository-DeleteRolesByUserID", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec(`
+	if err := tx.Exec(`
 			UPDATE pools SET deleted_at = NOW() 
 			WHERE group1_id = ? AND mv1_id = ?
 			AND group2_id = ?
 		`, utils.GroupIDUsers, params.ID, utils.GroupIDRoles).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *UserRepository) RestoreUser(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserRepository-RestoreUser", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var user models.User
-		if err := tx.Unscoped().Model(&user).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+	var user models.User
+	if err := tx.Unscoped().Model(&user).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 // commit or rollback

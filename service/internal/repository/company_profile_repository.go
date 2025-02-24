@@ -284,38 +284,38 @@ func (r *CompanyProfileRepository) CreateCompanyProfile(tx *gorm.DB, CompanyProf
 
 func (r *CompanyProfileRepository) UpdateCompanyProfile(tx *gorm.DB, CompanyProfile *models.CompanyProfile, span opentracing.Span) error {
 	childSpan := r.tracer.StartSpan("CompanyProfileRepository-UpdateCompanyProfile", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.CompanyProfile{}).Where("id = ?", CompanyProfile.ID).Select("*").Omit("created_at", "created_by_id").Updates(CompanyProfile).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Model(&models.CompanyProfile{}).Where("id = ?", CompanyProfile.ID).Select("*").Omit("created_at", "created_by_id").Updates(CompanyProfile).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }
 
 func (r *CompanyProfileRepository) DeleteCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams, span opentracing.Span) error {
 	childSpan := r.tracer.StartSpan("CompanyProfileRepository-DeleteCompanyProfile", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.CompanyProfile{}, id).Error; err != nil {
-		if err := tx.Delete(&models.CompanyProfile{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	// if err := tx.Unscoped().Delete(&models.CompanyProfile{}, id).Error; err != nil {
+	if err := tx.Delete(&models.CompanyProfile{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }
 
 func (s *CompanyProfileRepository) RestoreCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams, span opentracing.Span) error {
 	childSpan := s.tracer.StartSpan("CompanyProfileRepository-RestoreCompanyProfile", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var CompanyProfile models.CompanyProfile
-		if err := tx.Unscoped().Model(&CompanyProfile).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var CompanyProfile models.CompanyProfile
+	if err := tx.Unscoped().Model(&CompanyProfile).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }

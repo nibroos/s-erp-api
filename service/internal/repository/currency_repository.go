@@ -213,38 +213,34 @@ func (r *CurrencyRepository) CreateCurrency(tx *gorm.DB, currency *models.MixVal
 
 func (r *CurrencyRepository) UpdateCurrency(tx *gorm.DB, currency *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CurrencyRepository-UpdateCurrency", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(currency).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(currency).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *CurrencyRepository) DeleteCurrency(tx *gorm.DB, params *dtos.GetCurrencyParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CurrencyRepository-DeleteCurrency", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *CurrencyRepository) RestoreCurrency(tx *gorm.DB, params *dtos.GetCurrencyParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CurrencyRepository-RestoreCurrency", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var currency models.MixValue
-		if err := tx.Unscoped().Model(&currency).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var currency models.MixValue
+	if err := tx.Unscoped().Model(&currency).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

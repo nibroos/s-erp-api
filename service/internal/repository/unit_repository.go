@@ -206,38 +206,34 @@ func (r *UnitRepository) CreateUnit(tx *gorm.DB, unit *models.MixValue, span ope
 
 func (r *UnitRepository) UpdateUnit(tx *gorm.DB, unit *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UnitRepository-UpdateUnit", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(unit).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(unit).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *UnitRepository) DeleteUnit(tx *gorm.DB, params *dtos.GetUnitParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UnitRepository-DeleteUnit", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *UnitRepository) RestoreUnit(tx *gorm.DB, params *dtos.GetUnitParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UnitRepository-RestoreUnit", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var unit models.MixValue
-		if err := tx.Unscoped().Model(&unit).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var unit models.MixValue
+	if err := tx.Unscoped().Model(&unit).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

@@ -220,40 +220,36 @@ func (r *VatRepository) CreateVat(tx *gorm.DB, vat *models.MixValue, span opentr
 
 func (r *VatRepository) UpdateVat(tx *gorm.DB, vat *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("VatRepository-UpdateVat", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(vat).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(vat).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *VatRepository) DeleteVat(tx *gorm.DB, params *dtos.GetVatParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("VatRepository-DeleteVat", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *VatRepository) RestoreVat(tx *gorm.DB, params *dtos.GetVatParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("VatRepository-RestoreVat", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var vat models.MixValue
-		if err := tx.Unscoped().Model(&vat).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var vat models.MixValue
+	if err := tx.Unscoped().Model(&vat).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *VatRepository) GetVatHistories(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.VatHistoryListDTO, int, error) {
@@ -457,38 +453,34 @@ func (r *VatRepository) GetVatHistoryByID(ctx *fiber.Ctx, params *dtos.GetVatHis
 
 func (r *VatRepository) UpdateVatHistory(tx *gorm.DB, vat *models.VatHistory, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("VatRepository-UpdateVatHistory", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("vat_id", "created_at", "created_by_id").Updates(vat).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("vat_id", "created_at", "created_by_id").Updates(vat).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *VatRepository) DeleteVatHistory(tx *gorm.DB, params *dtos.GetVatHistoryParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("VatRepository-DeleteVatHistory", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.VatHistory{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.VatHistory{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *VatRepository) RestoreVatHistory(tx *gorm.DB, params *dtos.GetVatHistoryParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("VatRepository-RestoreVatHistory", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var vat models.VatHistory
-		if err := tx.Unscoped().Model(&vat).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var vat models.VatHistory
+	if err := tx.Unscoped().Model(&vat).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

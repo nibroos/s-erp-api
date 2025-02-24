@@ -215,38 +215,34 @@ func (r *ItemSubGroupRepository) CreateItemSubGroup(tx *gorm.DB, itemSubGroup *m
 
 func (r *ItemSubGroupRepository) UpdateItemSubGroup(tx *gorm.DB, itemSubGroup *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemSubGroupRepository-UpdateItemSubGroup", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemSubGroup).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemSubGroup).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *ItemSubGroupRepository) DeleteItemSubGroup(tx *gorm.DB, params *dtos.GetItemSubGroupParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemSubGroupRepository-DeleteItemSubGroup", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *ItemSubGroupRepository) RestoreItemSubGroup(tx *gorm.DB, params *dtos.GetItemSubGroupParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemSubGroupRepository-RestoreItemSubGroup", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var itemSubGroup models.MixValue
-		if err := tx.Unscoped().Model(&itemSubGroup).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var itemSubGroup models.MixValue
+	if err := tx.Unscoped().Model(&itemSubGroup).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

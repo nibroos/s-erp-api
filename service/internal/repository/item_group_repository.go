@@ -206,38 +206,34 @@ func (r *ItemGroupRepository) CreateItemGroup(tx *gorm.DB, itemGroup *models.Mix
 
 func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemGroupRepository-UpdateItemGroup", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemGroup).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemGroup).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *ItemGroupRepository) DeleteItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemGroupRepository-DeleteItemGroup", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *ItemGroupRepository) RestoreItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemGroupRepository-RestoreItemGroup", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var itemGroup models.MixValue
-		if err := tx.Unscoped().Model(&itemGroup).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var itemGroup models.MixValue
+	if err := tx.Unscoped().Model(&itemGroup).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

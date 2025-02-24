@@ -213,38 +213,34 @@ func (r *OrderTypeRepository) CreateOrderType(tx *gorm.DB, orderType *models.Mix
 
 func (r *OrderTypeRepository) UpdateOrderType(tx *gorm.DB, orderType *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("OrderTypeRepository-UpdateOrderType", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(orderType).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(orderType).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *OrderTypeRepository) DeleteOrderType(tx *gorm.DB, params *dtos.GetOrderTypeParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("OrderTypeRepository-DeleteOrderType", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *OrderTypeRepository) RestoreOrderType(tx *gorm.DB, params *dtos.GetOrderTypeParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("OrderTypeRepository-RestoreOrderType", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var orderType models.MixValue
-		if err := tx.Unscoped().Model(&orderType).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var orderType models.MixValue
+	if err := tx.Unscoped().Model(&orderType).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

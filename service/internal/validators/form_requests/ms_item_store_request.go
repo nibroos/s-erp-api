@@ -20,12 +20,11 @@ func NewMsItemStoreRequest() *MsItemStoreRequest {
 func (r *MsItemStoreRequest) Validate(req *dtos.CreateMsItemRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	// utils.DD(req)
 	rules := map[string][]string{
-		"item_sub_group_id": []string{"required", "exists:mix_values,id"},
-		"name":              []string{"required"},
-		"specification":     []string{},
-		"tpb_code":          []string{},
-		// "price_sell":         []string{"numeric"},
-		// "price_buy":          []string{"numeric"},
+		"item_sub_group_id":  []string{"required", "exists:mix_values,id"},
+		"name":               []string{"required"},
+		"specification":      []string{},
+		"description":        []string{},
+		"tpb_code":           []string{},
 		"minimum_stock":      []string{"numeric"},
 		"status":             []string{},
 		"item_unit_id":       []string{"required"},

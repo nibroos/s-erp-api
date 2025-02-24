@@ -206,38 +206,34 @@ func (r *Pph23Repository) CreatePph23(tx *gorm.DB, pph23 *models.MixValue, span 
 
 func (r *Pph23Repository) UpdatePph23(tx *gorm.DB, pph23 *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("Pph23Repository-UpdatePph23", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(pph23).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(pph23).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *Pph23Repository) DeletePph23(tx *gorm.DB, params *dtos.GetPph23Params, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("Pph23Repository-DeletePph23", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *Pph23Repository) RestorePph23(tx *gorm.DB, params *dtos.GetPph23Params, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("Pph23Repository-RestorePph23", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var pph23 models.MixValue
-		if err := tx.Unscoped().Model(&pph23).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var pph23 models.MixValue
+	if err := tx.Unscoped().Model(&pph23).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

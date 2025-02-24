@@ -166,30 +166,26 @@ func (r *AddressRepository) CreateAddress(tx *gorm.DB, address *models.Address) 
 }
 
 func (r *AddressRepository) UpdateAddress(tx *gorm.DB, address *models.Address) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(address).Error; err != nil {
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(address).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *AddressRepository) DeleteAddress(tx *gorm.DB, id uint) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.Address{}, id).Error; err != nil {
-		if err := tx.Delete(&models.Address{}, id).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+
+	// if err := tx.Unscoped().Delete(&models.Address{}, id).Error; err != nil {
+	if err := tx.Delete(&models.Address{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *AddressRepository) RestoreAddress(tx *gorm.DB, id uint) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec("UPDATE addresses SET deleted_at = NULL WHERE id = ?", id).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Exec("UPDATE addresses SET deleted_at = NULL WHERE id = ?", id).Error; err != nil {
+		return err
+	}
+	return nil
 }

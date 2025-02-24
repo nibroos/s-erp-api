@@ -23,11 +23,11 @@ func (r *MsItemUpdateRequest) Validate(req *dtos.UpdateMsItemRequest, ctx *fiber
 		"item_sub_group_id": []string{"required", "exists:mix_values,id"},
 		"name":              []string{"required"},
 		"specification":     []string{},
+		"description":       []string{},
 		"tpb_code":          []string{},
-		"price_sell":        []string{"numeric"},
-		"price_buy":         []string{"numeric"},
 		"minimum_stock":     []string{"numeric"},
 		"status":            []string{},
+		"item_unit_id":      []string{"required"},
 	}
 
 	customFieldNames := map[string]string{}

@@ -288,38 +288,38 @@ func (r *BranchRepository) CreateBranch(tx *gorm.DB, Branch *models.Branch, span
 
 func (r *BranchRepository) UpdateBranch(tx *gorm.DB, Branch *models.Branch, span opentracing.Span) error {
 	childSpan := r.tracer.StartSpan("BranchRepository-UpdateBranch", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.Branch{}).Where("id = ?", Branch.ID).Select("*").Omit("created_at", "created_by_id").Updates(Branch).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Model(&models.Branch{}).Where("id = ?", Branch.ID).Select("*").Omit("created_at", "created_by_id").Updates(Branch).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }
 
 func (r *BranchRepository) DeleteBranch(tx *gorm.DB, params *dtos.GetBranchParams, span opentracing.Span) error {
 	childSpan := r.tracer.StartSpan("BranchRepository-DeleteBranch", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.Branch{}, id).Error; err != nil {
-		if err := tx.Delete(&models.Branch{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	// if err := tx.Unscoped().Delete(&models.Branch{}, id).Error; err != nil {
+	if err := tx.Delete(&models.Branch{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }
 
 func (s *BranchRepository) RestoreBranch(tx *gorm.DB, params *dtos.GetBranchParams, span opentracing.Span) error {
 	childSpan := s.tracer.StartSpan("BranchRepository-RestoreBranch", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var Branch models.Branch
-		if err := tx.Unscoped().Model(&Branch).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var Branch models.Branch
+	if err := tx.Unscoped().Model(&Branch).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }

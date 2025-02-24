@@ -160,30 +160,23 @@ func (r *IdentifierRepository) CreateIdentifier(tx *gorm.DB, identifier *models.
 }
 
 func (r *IdentifierRepository) UpdateIdentifier(tx *gorm.DB, identifier *models.Identifier) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(identifier).Error; err != nil {
-			return err
-		}
-		return nil
-	})
-
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(identifier).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *IdentifierRepository) DeleteIdentifier(tx *gorm.DB, id uint) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.Identifier{}, id).Error; err != nil {
-		if err := tx.Delete(&models.Identifier{}, id).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+	// if err := tx.Unscoped().Delete(&models.Identifier{}, id).Error; err != nil {
+	if err := tx.Delete(&models.Identifier{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *IdentifierRepository) RestoreIdentifier(tx *gorm.DB, id uint) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec("UPDATE identifiers SET deleted_at = NULL WHERE id = ?", id).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+	if err := tx.Exec("UPDATE identifiers SET deleted_at = NULL WHERE id = ?", id).Error; err != nil {
+		return err
+	}
+	return nil
 }
