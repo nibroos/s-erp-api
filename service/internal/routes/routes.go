@@ -58,32 +58,47 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	addresses := version.Group("/addresses")
 	SetupAddressRoutes(addresses, gormDB, sqlDB)
 
-	itemGroup := version.Group("/item-groups")
-	SetupItemGroupRoutes(itemGroup, gormDB, sqlDB, utilRepo, tracer)
+	itemGroups := version.Group("/item-groups")
+	SetupItemGroupRoutes(itemGroups, gormDB, sqlDB, utilRepo, tracer)
 
-	itemSubGroup := version.Group("/item-sub-groups")
-	SetupItemSubGroupRoutes(itemSubGroup, gormDB, sqlDB, utilRepo, tracer)
+	itemSubGroups := version.Group("/item-sub-groups")
+	SetupItemSubGroupRoutes(itemSubGroups, gormDB, sqlDB, utilRepo, tracer)
 
-	companyProfile := version.Group("/company-profiles")
-	SetupCompanyProfileRoutes(companyProfile, gormDB, sqlDB, tracer)
+	companyProfiles := version.Group("/company-profiles")
+	SetupCompanyProfileRoutes(companyProfiles, gormDB, sqlDB, tracer)
 
-	branch := version.Group("/branches")
-	SetupBranchRoutes(branch, gormDB, sqlDB, tracer)
+	branches := version.Group("/branches")
+	SetupBranchRoutes(branches, gormDB, sqlDB, tracer)
 
-	customerType := version.Group("/customer-types")
-	SetupCustomerTypeRoutes(customerType, gormDB, sqlDB, utilRepo, tracer)
+	customerTypes := version.Group("/customer-types")
+	SetupCustomerTypeRoutes(customerTypes, gormDB, sqlDB, utilRepo, tracer)
 
-	currency := version.Group("/currencies")
-	SetupCurrencyRoutes(currency, gormDB, sqlDB, utilRepo, tracer)
+	orderTypes := version.Group("/order-types")
+	SetupOrderTypeRoutes(orderTypes, gormDB, sqlDB, utilRepo, tracer)
 
-	unit := version.Group("/units")
-	SetupUnitRoutes(unit, gormDB, sqlDB, utilRepo, tracer)
+	currencies := version.Group("/currencies")
+	SetupCurrencyRoutes(currencies, gormDB, sqlDB, utilRepo, tracer)
 
-	vat := version.Group("/vats")
-	SetupVatRoutes(vat, gormDB, sqlDB, utilRepo, tracer)
+	units := version.Group("/units")
+	SetupUnitRoutes(units, gormDB, sqlDB, utilRepo, tracer)
 
-	pph23 := version.Group("/pph23s")
-	SetupPph23Routes(pph23, gormDB, sqlDB, utilRepo, tracer)
+	vats := version.Group("/vats")
+	SetupVatRoutes(vats, gormDB, sqlDB, utilRepo, tracer)
+
+	pph23s := version.Group("/pph23s")
+	SetupPph23Routes(pph23s, gormDB, sqlDB, utilRepo, tracer)
+
+	customers := version.Group("/customers")
+	SetupCustomerRoutes(customers, gormDB, sqlDB, utilRepo, tracer)
+
+	msItems := version.Group("/ms-items")
+	SetupMsItemRoutes(msItems, gormDB, sqlDB, utilRepo, tracer)
+
+	itemUnits := version.Group("/item-units")
+	SetupItemUnitRoutes(itemUnits, gormDB, sqlDB, utilRepo, tracer)
+
+	branchItems := version.Group("/branch-items")
+	SetupBranchItemRoutes(branchItems, gormDB, sqlDB, utilRepo, tracer)
 
 	// Scheduler route
 	// cron := cron.New()

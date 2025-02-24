@@ -74,8 +74,8 @@ func (c *ItemGroupController) CreateItemGroup(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewItemGroupStoreRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewItemGroupStoreRequest().Validate(&req, ctx)
+	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
@@ -180,8 +180,8 @@ func (c *ItemGroupController) UpdateItemGroup(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewItemGroupUpdateRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewItemGroupUpdateRequest().Validate(&req, ctx)
+	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}

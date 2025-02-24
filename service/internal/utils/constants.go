@@ -17,4 +17,5 @@ const (
 	ItemSubGroupID = 11
 	VatID          = 12
 	Pph23ID        = 13
+	OrderTypeID    = 28
 )

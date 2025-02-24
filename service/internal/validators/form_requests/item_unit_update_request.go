@@ -1,0 +1,45 @@
+package form_requests
+
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/nibroos/s-erp-api/service/internal/dtos"
+	"github.com/nibroos/s-erp-api/service/internal/validators"
+)
+
+// ItemUnitUpdateRequest handles the validation for the RegisterRequest.
+type ItemUnitUpdateRequest struct {
+}
+
+// NewRegisterUpdateRequest creates a new instance of ItemUnitUpdateRequest.
+func NewItemUnitUpdateRequest() *ItemUnitUpdateRequest {
+
+	return &ItemUnitUpdateRequest{}
+}
+
+// Validate validates the RegisterRequest.
+func (r *ItemUnitUpdateRequest) Validate(req *dtos.UpdateItemUnitRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+	rules := map[string][]string{
+		"id":         []string{"required"},
+		"price_sell": []string{"numeric"},
+		"price_buy":  []string{"numeric"},
+		"conversion": []string{"numeric"},
+		"status":     []string{"required"},
+	}
+
+	customFieldNames := map[string]string{}
+
+	var requestBody map[string]interface{}
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid request body"}}, false
+	}
+	request := validators.NewRequest(rules, requestBody, customFieldNames)
+	errors, valid := request.Validate()
+
+	convertedErrors := make(map[string][]string)
+	for key, value := range errors {
+		if len(value) > 0 {
+			convertedErrors[key] = value
+		}
+	}
+	return convertedErrors, valid
+}

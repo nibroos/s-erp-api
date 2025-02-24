@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -23,7 +23,7 @@ func NewAddressRepository(db *gorm.DB, sqlDB *sqlx.DB) *AddressRepository {
 	}
 }
 
-func (r *AddressRepository) ListAddresses(ctx context.Context, filters map[string]string) ([]dtos.AddressListDTO, int, error) {
+func (r *AddressRepository) ListAddresses(ctx *fiber.Ctx, filters map[string]string) ([]dtos.AddressListDTO, int, error) {
 	addresses := []dtos.AddressListDTO{}
 	var total int
 
@@ -88,13 +88,13 @@ func (r *AddressRepository) ListAddresses(ctx context.Context, filters map[strin
 
 	// Goroutine for count query
 	go func() {
-		err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+		err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 		countChan <- err
 	}()
 
 	// Goroutine for select query
 	go func() {
-		err := r.sqlDB.SelectContext(ctx, &addresses, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &addresses, query, args...)
 		selectChan <- err
 	}()
 
@@ -113,7 +113,7 @@ func (r *AddressRepository) ListAddresses(ctx context.Context, filters map[strin
 	return addresses, total, nil
 }
 
-func (r *AddressRepository) GetAddressByID(ctx context.Context, params *dtos.GetAddressParams) (*dtos.AddressDetailDTO, error) {
+func (r *AddressRepository) GetAddressByID(ctx *fiber.Ctx, params *dtos.GetAddressParams) (*dtos.AddressDetailDTO, error) {
 	var address dtos.AddressDetailDTO
 	// deletedAt := params.IsDeleted
 
@@ -166,30 +166,26 @@ func (r *AddressRepository) CreateAddress(tx *gorm.DB, address *models.Address) 
 }
 
 func (r *AddressRepository) UpdateAddress(tx *gorm.DB, address *models.Address) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(address).Error; err != nil {
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(address).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *AddressRepository) DeleteAddress(tx *gorm.DB, id uint) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.Address{}, id).Error; err != nil {
-		if err := tx.Delete(&models.Address{}, id).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+
+	// if err := tx.Unscoped().Delete(&models.Address{}, id).Error; err != nil {
+	if err := tx.Delete(&models.Address{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *AddressRepository) RestoreAddress(tx *gorm.DB, id uint) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec("UPDATE addresses SET deleted_at = NULL WHERE id = ?", id).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Exec("UPDATE addresses SET deleted_at = NULL WHERE id = ?", id).Error; err != nil {
+		return err
+	}
+	return nil
 }

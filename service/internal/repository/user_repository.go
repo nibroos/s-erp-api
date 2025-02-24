@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -29,13 +29,28 @@ func NewUserRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tr
 	}
 }
 
-func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.UserListDTO, int, error) {
+func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.UserListDTO, int, error) {
 	childSpan := opentracing.StartSpan("UserRepository-GetUsers", opentracing.ChildOf(span.Context()))
 	users := []dtos.UserListDTO{}
 	var total int
 
-	query := `SELECT id, username, name, email FROM users WHERE 1=1`
-	countQuery := `SELECT COUNT(*) FROM users WHERE 1=1`
+	query := `SELECT *
+		FROM (
+			SELECT
+				u.id, u.username, u.name, u.email, u.branch_id, u.address,
+				b.name as branch_name
+			FROM users u
+			LEFT JOIN branches b ON u.branch_id = b.id
+		) AS alias WHERE 1=1`
+
+	countQuery := `SELECT COUNT(*) FROM (
+		SELECT
+			u.id, u.username, u.name, u.email, u.branch_id, u.address,
+			b.name as branch_name
+		FROM users u
+		LEFT JOIN branches b ON u.branch_id = b.id
+	) AS alias WHERE 1=1`
+
 	var args []interface{}
 
 	i := 1
@@ -80,7 +95,7 @@ func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string
 	go func() {
 		defer wg.Done()
 		selectSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
-		err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+		err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -92,7 +107,7 @@ func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string
 	go func() {
 		defer wg.Done()
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
-		err := r.sqlDB.SelectContext(ctx, &users, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &users, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -118,17 +133,23 @@ func (r *UserRepository) GetUsers(ctx context.Context, filters map[string]string
 	return users, total, nil
 }
 
-func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
+func (r *UserRepository) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
 	var user dtos.UserDetailDTO
 
-	query := `SELECT id, username, name, email, address, password FROM users WHERE id = $1`
+	query := `SELECT 
+		u.branch_id, 
+			u.id, u.username, u.name, u.email, u.address, u.password 
+		branch_name
+	FROM users u 
+	LEFT JOIN branches b ON u.branch_id = b.id
+	WHERE id = $1`
 
 	var args []interface{}
 	args = append(args, params.ID)
 
-	isDeletedQuery := ` AND deleted_at IS NULL`
+	isDeletedQuery := ` AND u.deleted_at IS NULL`
 	if params.IsDeleted != nil && *params.IsDeleted == 1 {
-		isDeletedQuery = " AND deleted_at IS NOT NULL"
+		isDeletedQuery = " AND u.deleted_at IS NOT NULL"
 	}
 
 	query += isDeletedQuery
@@ -140,7 +161,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
 
 	// Goroutine for user query
 	go func() {
-		err := r.sqlDB.GetContext(ctx, &user, query, args...)
+		err := r.sqlDB.GetContext(ctx.Context(), &user, query, args...)
 		userChan <- err
 	}()
 
@@ -158,7 +179,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
             AND p.deleted_at IS NULL
             AND p.mv1_id = $1
         `
-		err := r.sqlDB.SelectContext(ctx, &roleNames, roleQuery, params.ID)
+		err := r.sqlDB.SelectContext(ctx.Context(), &roleNames, roleQuery, params.ID)
 		if err == nil {
 			user.Roles = roleNames
 		}
@@ -184,7 +205,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
                 WHERE g1.name = 'users' AND g2.name = 'roles' AND p.mv1_id = $1
             )
         `
-		err := r.sqlDB.SelectContext(ctx, &permissionNames, permissionQuery, params.ID)
+		err := r.sqlDB.SelectContext(ctx.Context(), &permissionNames, permissionQuery, params.ID)
 		if err == nil {
 			user.Permissions = permissionNames
 		}
@@ -210,11 +231,17 @@ func (r *UserRepository) GetUserByID(ctx context.Context, params *dtos.GetUserBy
 
 	return &user, nil
 }
-func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dtos.UserDetailDTO, error) {
+func (r *UserRepository) GetUserByEmail(ctx *fiber.Ctx, email string) (*dtos.UserDetailDTO, error) {
 	var user dtos.UserDetailDTO
 
-	query := `SELECT id, username, name, email, password, address FROM users WHERE deleted_at IS NULL AND (email = $1 OR username = $1)`
-	if err := r.sqlDB.GetContext(ctx, &user, query, email); err != nil {
+	query := `SELECT 
+		u.branch_id,
+		u.id, u.username, u.name, u.email, u.password, u.address,
+		b.name as branch_name
+	FROM users u
+	LEFT JOIN branches b ON u.branch_id = b.id
+	WHERE u.deleted_at IS NULL AND (u.email = $1 OR u.username = $1)`
+	if err := r.sqlDB.GetContext(ctx.Context(), &user, query, email); err != nil {
 		return nil, err
 	}
 
@@ -236,7 +263,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dto
             WHERE p.deleted_at IS NULL AND
 						g1.name = 'users' AND g2.name = 'roles' AND p.mv1_id = $1
         `
-		err := r.sqlDB.SelectContext(ctx, &roleNames, roleQuery, id)
+		err := r.sqlDB.SelectContext(ctx.Context(), &roleNames, roleQuery, id)
 		if err == nil {
 			user.Roles = roleNames
 		}
@@ -262,7 +289,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*dto
                 WHERE g1.name = 'users' AND g2.name = 'roles' AND p.mv1_id = $1
             )
         `
-		err := r.sqlDB.SelectContext(ctx, &permissionNames, permissionQuery, id)
+		err := r.sqlDB.SelectContext(ctx.Context(), &permissionNames, permissionQuery, id)
 		if err == nil {
 			user.Permissions = permissionNames
 		}
@@ -335,59 +362,50 @@ func (r *UserRepository) CreateUser(tx *gorm.DB, user *models.User, span opentra
 func (r *UserRepository) UpdateUser(tx *gorm.DB, user *models.User, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserRepository-UpdateUser")
 
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(user).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
-
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(user).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *UserRepository) DeleteUser(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserRepository-DeleteUser", opentracing.ChildOf(span.Context()))
 
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.User{}, id).Error; err != nil {
-		if err := tx.Delete(&models.User{}, params).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+	// if err := tx.Unscoped().Delete(&models.User{}, id).Error; err != nil {
+	if err := tx.Delete(&models.User{}, params).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 // DeleteRolesByUserID
 func (r *UserRepository) DeleteRolesByUserID(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserRepository-DeleteRolesByUserID", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec(`
+	if err := tx.Exec(`
 			UPDATE pools SET deleted_at = NOW() 
 			WHERE group1_id = ? AND mv1_id = ?
 			AND group2_id = ?
 		`, utils.GroupIDUsers, params.ID, utils.GroupIDRoles).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *UserRepository) RestoreUser(tx *gorm.DB, params *dtos.GetUserParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UserRepository-RestoreUser", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var user models.User
-		if err := tx.Unscoped().Model(&user).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+	var user models.User
+	if err := tx.Unscoped().Model(&user).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 // commit or rollback

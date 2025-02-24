@@ -1,17 +1,5 @@
 BEGIN;
 
--- group_id	name	discount	unit	is_active
--- 2	Packaging	15	%	1
--- 2	Material	\N	\N	1
--- 2	Barang Jadi	\N	\N	1
--- 2	Barang Setengah Jadi	\N	\N	1
--- 2	Bahan Penolong	15	\N	1
--- 1	Peralatan Kantor	0	\N	1
--- 2	Fiber	0	\N	1
--- 2	Mesin	0	\N	1
--- 2	Peralatan Pabrik	0	\N	1
--- 2	Scrap	\N	\N	1
--- 2	Reject	\N	\N	1
 INSERT INTO
   mix_values (
     group_id,

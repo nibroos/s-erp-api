@@ -1,27 +1,25 @@
 package form_requests
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
-	"github.com/thedevsaddam/govalidator"
+	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
 // UserStoreRequest handles the validation for the RegisterRequest.
 type UserStoreRequest struct {
-	Validator *govalidator.Validator
 }
 
 // NewRegisterStoreRequest creates a new instance of UserStoreRequest.
 func NewUserStoreRequest() *UserStoreRequest {
-	v := govalidator.New(govalidator.Options{})
-	return &UserStoreRequest{Validator: v}
+
+	return &UserStoreRequest{}
 }
 
 // Validate validates the RegisterRequest.
-func (r *UserStoreRequest) Validate(req *dtos.CreateUserRequest, ctx context.Context) map[string]string {
+func (r *UserStoreRequest) Validate(req *dtos.CreateUserRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	// utils.DD(req)
-	rules := govalidator.MapData{
+	rules := map[string][]string{
 		"name":     []string{"required", "min:3"},
 		"username": []string{"unique:users,username"},
 		"email":    []string{"required", "email", "unique:users,email"},
@@ -29,26 +27,20 @@ func (r *UserStoreRequest) Validate(req *dtos.CreateUserRequest, ctx context.Con
 		"role_ids": []string{"required"},
 	}
 
-	messages := govalidator.MapData{
-		"role_ids": []string{"required:The roles field is required."},
-	}
+	customFieldNames := map[string]string{}
 
-	opts := govalidator.Options{
-		Data:     req,
-		Rules:    rules,
-		Messages: messages,
+	var requestBody map[string]interface{}
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid request body"}}, false
 	}
+	request := validators.NewRequest(rules, requestBody, customFieldNames)
+	errors, valid := request.Validate()
 
-	v := govalidator.New(opts)
-	mappedErrors := v.ValidateStruct()
-
-	if len(mappedErrors) == 0 {
-		return nil
+	convertedErrors := make(map[string][]string)
+	for key, value := range errors {
+		if len(value) > 0 {
+			convertedErrors[key] = value
+		}
 	}
-
-	errors := make(map[string]string)
-	for field, err := range mappedErrors {
-		errors[field] = err[0]
-	}
-	return errors
+	return convertedErrors, valid
 }

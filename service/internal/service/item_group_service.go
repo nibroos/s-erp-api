@@ -31,7 +31,7 @@ func NewItemGroupService(repo *repository.ItemGroupRepository, utilRepo *reposit
 func (s *ItemGroupService) GetItemGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ItemGroupListDTO, int, error) {
 	childSpan := opentracing.StartSpan("ItemGroupService-GetItemGroups", opentracing.ChildOf(span.Context()))
 
-	itemGroups, total, err := s.repo.GetItemGroups(ctx.Context(), filters, childSpan)
+	itemGroups, total, err := s.repo.GetItemGroups(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -54,7 +54,7 @@ func (s *ItemGroupService) CreateItemGroup(ctx *fiber.Ctx, itemGroup *models.Mix
 func (s *ItemGroupService) GetItemGroupByID(ctx *fiber.Ctx, params *dtos.GetItemGroupParams, span opentracing.Span) (*dtos.ItemGroupDetailDTO, error) {
 	childSpan := opentracing.StartSpan("ItemGroupService-GetItemGroupByID", opentracing.ChildOf(span.Context()))
 
-	itemGroup, err := s.repo.GetItemGroupByID(ctx.Context(), params, childSpan)
+	itemGroup, err := s.repo.GetItemGroupByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -160,7 +160,7 @@ func (s *ItemGroupService) CsvGetItemGroups(ctx *fiber.Ctx, filters map[string]s
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()

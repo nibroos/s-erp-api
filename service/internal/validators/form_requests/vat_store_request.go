@@ -1,54 +1,49 @@
 package form_requests
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
-	"github.com/thedevsaddam/govalidator"
+	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
 // VatStoreRequest handles the validation for the RegisterRequest.
 type VatStoreRequest struct {
-	Validator *govalidator.Validator
 }
 
 // NewRegisterStoreRequest creates a new instance of VatStoreRequest.
 func NewVatStoreRequest() *VatStoreRequest {
-	v := govalidator.New(govalidator.Options{})
-	return &VatStoreRequest{Validator: v}
+
+	return &VatStoreRequest{}
 }
 
 // Validate validates the RegisterRequest.
-func (r *VatStoreRequest) Validate(req *dtos.CreateVatRequest, ctx context.Context) map[string]string {
+func (r *VatStoreRequest) Validate(req *dtos.CreateVatRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	// utils.DD(req)
-	rules := govalidator.MapData{
-		// "name":        []string{"required", "unique:mix_values,name"},
-		// "parent_id":   []string{"required"},
-		"num":         []string{"float"},
-		"name":        []string{"required"},
+	rules := map[string][]string{
+		"name":        []string{"required", "unique:mix_values,name"},
+		"num":         []string{"numeric"},
 		"description": []string{},
 		"remarks":     []string{},
 		"status":      []string{},
-		"divider":     []string{"float"},
-		"multiplier":  []string{"float"},
+		"divider":     []string{"numeric"},
+		"multiplier":  []string{"numeric"},
 		"changed_at":  []string{},
 	}
 
-	opts := govalidator.Options{
-		Data:  req,
-		Rules: rules,
-	}
+	customFieldNames := map[string]string{}
 
-	v := govalidator.New(opts)
-	mappedErrors := v.ValidateStruct()
-
-	if len(mappedErrors) == 0 {
-		return nil
+	var requestBody map[string]interface{}
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid request body"}}, false
 	}
+	request := validators.NewRequest(rules, requestBody, customFieldNames)
+	errors, valid := request.Validate()
 
-	errors := make(map[string]string)
-	for field, err := range mappedErrors {
-		errors[field] = err[0]
+	convertedErrors := make(map[string][]string)
+	for key, value := range errors {
+		if len(value) > 0 {
+			convertedErrors[key] = value
+		}
 	}
-	return errors
+	return convertedErrors, valid
 }

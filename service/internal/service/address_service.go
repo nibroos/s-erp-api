@@ -1,8 +1,7 @@
 package service
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
@@ -16,24 +15,15 @@ func NewAddressService(repo *repository.AddressRepository) *AddressService {
 	return &AddressService{repo: repo}
 }
 
-func (s *AddressService) ListAddresses(ctx context.Context, filters map[string]string) ([]dtos.AddressListDTO, int, error) {
-
-	resultChan := make(chan dtos.ListAddressesResult, 1)
-
-	go func() {
-		addresses, total, err := s.repo.ListAddresses(ctx, filters)
-		resultChan <- dtos.ListAddressesResult{Addresses: addresses, Total: total, Err: err}
-	}()
-
-	select {
-	case res := <-resultChan:
-		return res.Addresses, res.Total, res.Err
-	case <-ctx.Done():
-		return nil, 0, ctx.Err()
+func (s *AddressService) ListAddresses(ctx *fiber.Ctx, filters map[string]string) ([]dtos.AddressListDTO, int, error) {
+	addresses, total, err := s.repo.ListAddresses(ctx, filters)
+	if err != nil {
+		return nil, 0, err
 	}
+	return addresses, total, nil
 }
 
-func (s *AddressService) CreateAddress(ctx context.Context, address *models.Address) (*models.Address, error) {
+func (s *AddressService) CreateAddress(ctx *fiber.Ctx, address *models.Address) (*models.Address, error) {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {
@@ -53,30 +43,16 @@ func (s *AddressService) CreateAddress(ctx context.Context, address *models.Addr
 	return address, nil
 }
 
-func (s *AddressService) GetAddressByID(ctx context.Context, params *dtos.GetAddressParams) (*dtos.AddressDetailDTO, error) {
-	addressChan := make(chan *dtos.AddressDetailDTO, 1)
-	errChan := make(chan error, 1)
-
-	go func() {
-		address, err := s.repo.GetAddressByID(ctx, params)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		addressChan <- address
-	}()
-
-	select {
-	case address := <-addressChan:
-		return address, nil
-	case err := <-errChan:
+func (s *AddressService) GetAddressByID(ctx *fiber.Ctx, params *dtos.GetAddressParams) (*dtos.AddressDetailDTO, error) {
+	address, err := s.repo.GetAddressByID(ctx, params)
+	if err != nil {
 		return nil, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
+
+	return address, nil
 }
 
-func (s *AddressService) UpdateAddress(ctx context.Context, address *models.Address) (*models.Address, error) {
+func (s *AddressService) UpdateAddress(ctx *fiber.Ctx, address *models.Address) (*models.Address, error) {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {
@@ -96,7 +72,7 @@ func (s *AddressService) UpdateAddress(ctx context.Context, address *models.Addr
 	return address, nil
 }
 
-func (s *AddressService) DeleteAddress(ctx context.Context, id uint) error {
+func (s *AddressService) DeleteAddress(ctx *fiber.Ctx, id uint) error {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {
@@ -116,7 +92,7 @@ func (s *AddressService) DeleteAddress(ctx context.Context, id uint) error {
 	return nil
 }
 
-func (s *AddressService) RestoreAddress(ctx context.Context, id uint) error {
+func (s *AddressService) RestoreAddress(ctx *fiber.Ctx, id uint) error {
 	// Transaction handling
 	tx := s.repo.BeginTransaction()
 	if err := tx.Error; err != nil {

@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewCompanyProfileRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing
 	}
 }
 
-func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CompanyProfileListDTO, int, error) {
+func (r *CompanyProfileRepository) GetCompanyProfiles(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CompanyProfileListDTO, int, error) {
 	childSpan := opentracing.StartSpan("CompanyProfileRepository-GetCompanyProfiles")
 
 	companyProfiles := []dtos.CompanyProfileListDTO{}
@@ -127,7 +127,7 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 		if filters["is_csv"] != "1" {
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -159,7 +159,7 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 		defer wg.Done()
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &companyProfiles, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &companyProfiles, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -198,7 +198,7 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx context.Context, filte
 	return companyProfiles, total, nil
 }
 
-func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx context.Context, params *dtos.GetCompanyProfileParams, span opentracing.Span) (*dtos.CompanyProfileDetailDTO, error) {
+func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params *dtos.GetCompanyProfileParams, span opentracing.Span) (*dtos.CompanyProfileDetailDTO, error) {
 	childSpan := r.tracer.StartSpan("CompanyProfileRepository-GetCompanyProfileByID", opentracing.ChildOf(span.Context()))
 	var CompanyProfile dtos.CompanyProfileDetailDTO
 
@@ -284,38 +284,38 @@ func (r *CompanyProfileRepository) CreateCompanyProfile(tx *gorm.DB, CompanyProf
 
 func (r *CompanyProfileRepository) UpdateCompanyProfile(tx *gorm.DB, CompanyProfile *models.CompanyProfile, span opentracing.Span) error {
 	childSpan := r.tracer.StartSpan("CompanyProfileRepository-UpdateCompanyProfile", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.CompanyProfile{}).Where("id = ?", CompanyProfile.ID).Select("*").Omit("created_at", "created_by_id").Updates(CompanyProfile).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Model(&models.CompanyProfile{}).Where("id = ?", CompanyProfile.ID).Select("*").Omit("created_at", "created_by_id").Updates(CompanyProfile).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }
 
 func (r *CompanyProfileRepository) DeleteCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams, span opentracing.Span) error {
 	childSpan := r.tracer.StartSpan("CompanyProfileRepository-DeleteCompanyProfile", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.CompanyProfile{}, id).Error; err != nil {
-		if err := tx.Delete(&models.CompanyProfile{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	// if err := tx.Unscoped().Delete(&models.CompanyProfile{}, id).Error; err != nil {
+	if err := tx.Delete(&models.CompanyProfile{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }
 
 func (s *CompanyProfileRepository) RestoreCompanyProfile(tx *gorm.DB, params *dtos.GetCompanyProfileParams, span opentracing.Span) error {
 	childSpan := s.tracer.StartSpan("CompanyProfileRepository-RestoreCompanyProfile", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var CompanyProfile models.CompanyProfile
-		if err := tx.Unscoped().Model(&CompanyProfile).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var CompanyProfile models.CompanyProfile
+	if err := tx.Unscoped().Model(&CompanyProfile).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }

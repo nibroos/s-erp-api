@@ -37,9 +37,10 @@ func JWTMiddleware() fiber.Handler {
 }
 
 // GenerateJWT generates a new JWT toke
-func GenerateJWT(userID uint, roles []string, permissions []string) (string, error) {
+func GenerateJWT(userID uint, roles []string, permissions []string, bid *uint) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":     userID,
+		"bid":         bid,
 		"roles":       roles,
 		"permissions": permissions,
 		"exp":         time.Now().Add(time.Hour * 72).Unix(),

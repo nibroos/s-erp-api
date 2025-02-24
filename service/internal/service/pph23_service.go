@@ -31,7 +31,7 @@ func NewPph23Service(repo *repository.Pph23Repository, utilRepo *repository.Util
 func (s *Pph23Service) GetPph23s(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.Pph23ListDTO, int, error) {
 	childSpan := opentracing.StartSpan("Pph23Service-GetPph23s", opentracing.ChildOf(span.Context()))
 
-	pph23s, total, err := s.repo.GetPph23s(ctx.Context(), filters, childSpan)
+	pph23s, total, err := s.repo.GetPph23s(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -54,7 +54,7 @@ func (s *Pph23Service) CreatePph23(ctx *fiber.Ctx, pph23 *models.MixValue, tx *g
 func (s *Pph23Service) GetPph23ByID(ctx *fiber.Ctx, params *dtos.GetPph23Params, span opentracing.Span) (*dtos.Pph23DetailDTO, error) {
 	childSpan := opentracing.StartSpan("Pph23Service-GetPph23ByID", opentracing.ChildOf(span.Context()))
 
-	pph23, err := s.repo.GetPph23ByID(ctx.Context(), params, childSpan)
+	pph23, err := s.repo.GetPph23ByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -160,7 +160,7 @@ func (s *Pph23Service) CsvGetPph23s(ctx *fiber.Ctx, filters map[string]string, s
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"io"
 	"log"
 	"net/http"
@@ -147,7 +146,7 @@ func main() {
 	// }
 
 	// Fetch needed data from the database and cache it in Redis
-	config.FetchCachedData(context.Background(), sqlDB)
+	config.FetchCachedData(&fiber.Ctx{}, sqlDB)
 
 	// Initialize the validator with the database connection
 	validators.InitValidator(sqlDB)

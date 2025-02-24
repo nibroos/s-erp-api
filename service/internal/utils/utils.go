@@ -676,3 +676,22 @@ func AddHostURLToImageURL(imageURL string) string {
 	}
 	return fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), RemoveDotAtStart(imageURL))
 }
+
+func IsAdmin(ctx *fiber.Ctx) bool {
+	userClaims, ok := ctx.Locals("user").(jwt.MapClaims)
+	if !ok {
+		return false
+	}
+
+	roles, ok := userClaims["roles"].([]interface{})
+	if !ok {
+		return false
+	}
+
+	for _, role := range roles {
+		if role == "superadmin" {
+			return true
+		}
+	}
+	return false
+}

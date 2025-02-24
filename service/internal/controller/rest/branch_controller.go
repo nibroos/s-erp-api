@@ -41,7 +41,7 @@ func (c *BranchController) GetBranches(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	branches, total, err := c.service.GetBranches(ctx.Context(), filters, parentSpan)
+	branches, total, err := c.service.GetBranches(ctx, filters, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -81,8 +81,8 @@ func (c *BranchController) CreateBranch(ctx *fiber.Ctx) error {
 	req.Status = utils.ParseIntNullPointer(ctx.FormValue("status"))
 
 	// Validate the request
-	reqValidator := form_requests.NewBranchStoreRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewBranchStoreRequest().Validate(&req, ctx)
+	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
@@ -139,7 +139,7 @@ func (c *BranchController) CreateBranch(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	createdBranch, err := c.service.CreateBranch(ctx.Context(), &branch, tx, parentSpan)
+	createdBranch, err := c.service.CreateBranch(ctx, &branch, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -149,7 +149,7 @@ func (c *BranchController) CreateBranch(ctx *fiber.Ctx) error {
 	tx.Commit()
 
 	params := &dtos.GetBranchParams{ID: createdBranch.ID}
-	getBranch, err := c.service.GetBranchByID(ctx.Context(), params, parentSpan)
+	getBranch, err := c.service.GetBranchByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Branch not found", http.StatusNotFound, err.Error(), nil)
@@ -183,7 +183,7 @@ func (c *BranchController) GetBranchByID(ctx *fiber.Ctx) error {
 	}
 
 	params := &dtos.GetBranchParams{ID: req.ID}
-	branch, err := c.service.GetBranchByID(ctx.Context(), params, parentSpan)
+	branch, err := c.service.GetBranchByID(ctx, params, parentSpan)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Branch not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -256,8 +256,8 @@ func (c *BranchController) UpdateBranch(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewBranchUpdateRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewBranchUpdateRequest().Validate(&req, ctx)
+	if !isValid {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
@@ -283,7 +283,7 @@ func (c *BranchController) UpdateBranch(ctx *fiber.Ctx) error {
 	}
 
 	tx := c.repo.BeginTransaction()
-	updatedBranch, err := c.service.UpdateBranch(ctx.Context(), &branch, tx, parentSpan)
+	updatedBranch, err := c.service.UpdateBranch(ctx, &branch, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -297,7 +297,7 @@ func (c *BranchController) UpdateBranch(ctx *fiber.Ctx) error {
 	tx.Commit()
 
 	params := &dtos.GetBranchParams{ID: updatedBranch.ID}
-	getBranch, err := c.service.GetBranchByID(ctx.Context(), params, parentSpan)
+	getBranch, err := c.service.GetBranchByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusNotFound))
 		return utils.GetResponse(ctx, nil, nil, "Branch not found", http.StatusNotFound, err.Error(), nil)
@@ -334,7 +334,7 @@ func (c *BranchController) DeleteBranch(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetBranchParams{ID: req.ID}
 	// GET branch by ID
-	_, err := c.service.GetBranchByID(ctx.Context(), params, parentSpan)
+	_, err := c.service.GetBranchByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusNotFound))
 		return utils.GetResponse(ctx, nil, nil, "Branch not found", http.StatusNotFound, err.Error(), nil)
@@ -342,7 +342,7 @@ func (c *BranchController) DeleteBranch(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	err = c.service.DeleteBranch(ctx.Context(), params, tx, parentSpan)
+	err = c.service.DeleteBranch(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -379,7 +379,7 @@ func (c *BranchController) RestoreBranch(ctx *fiber.Ctx) error {
 	isDeleted := 1
 	params := &dtos.GetBranchParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET branch by ID
-	_, err := c.service.GetBranchByID(ctx.Context(), params, parentSpan)
+	_, err := c.service.GetBranchByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusNotFound))
 		return utils.GetResponse(ctx, nil, nil, "Branch not found", http.StatusNotFound, err.Error(), nil)
@@ -387,7 +387,7 @@ func (c *BranchController) RestoreBranch(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	err = c.service.RestoreBranch(ctx.Context(), params, tx, parentSpan)
+	err = c.service.RestoreBranch(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))

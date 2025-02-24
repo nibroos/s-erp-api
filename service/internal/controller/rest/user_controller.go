@@ -41,7 +41,7 @@ func (c *UserController) GetUsers(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	users, total, err := c.service.GetUsers(ctx.Context(), filters, parentSpan)
+	users, total, err := c.service.GetUsers(ctx, filters, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -71,8 +71,8 @@ func (c *UserController) CreateUser(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewUserStoreRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewUserStoreRequest().Validate(&req, ctx)
+	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
@@ -97,7 +97,7 @@ func (c *UserController) CreateUser(ctx *fiber.Ctx) error {
 	}
 
 	tx := c.repo.BeginTransaction()
-	createdUser, err := c.service.CreateUser(ctx.Context(), tx, &user, req.RoleIDs, parentSpan)
+	createdUser, err := c.service.CreateUser(ctx, tx, &user, req.RoleIDs, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
@@ -112,7 +112,7 @@ func (c *UserController) CreateUser(ctx *fiber.Ctx) error {
 	tx.Commit()
 
 	params := &dtos.GetUserByIDParams{ID: createdUser.ID}
-	getUser, err := c.service.GetUserByID(ctx.Context(), params, parentSpan)
+	getUser, err := c.service.GetUserByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -146,7 +146,7 @@ func (c *UserController) GetUserByID(ctx *fiber.Ctx) error {
 	}
 
 	params := &dtos.GetUserByIDParams{ID: req.ID}
-	user, err := c.service.GetUserByID(ctx.Context(), params, parentSpan)
+	user, err := c.service.GetUserByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -180,13 +180,13 @@ func (c *UserController) UpdateUser(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator := form_requests.NewUserdUpdateRequest().Validate(&req, ctx.Context())
-	if reqValidator != nil {
+	reqValidator, isValid := form_requests.NewUserdUpdateRequest().Validate(&req, ctx)
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
 	// Fetch existing user
-	existingUser, err := c.service.GetUserByID(ctx.Context(), &dtos.GetUserByIDParams{ID: req.ID}, parentSpan)
+	existingUser, err := c.service.GetUserByID(ctx, &dtos.GetUserByIDParams{ID: req.ID}, parentSpan)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "User not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -220,7 +220,7 @@ func (c *UserController) UpdateUser(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	updatedUser, err := c.service.UpdateUser(ctx.Context(), tx, &user, req.RoleIDs, parentSpan)
+	updatedUser, err := c.service.UpdateUser(ctx, tx, &user, req.RoleIDs, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -233,7 +233,7 @@ func (c *UserController) UpdateUser(ctx *fiber.Ctx) error {
 	tx.Commit()
 
 	params := &dtos.GetUserByIDParams{ID: updatedUser.ID}
-	getUser, err := c.service.GetUserByID(ctx.Context(), params, parentSpan)
+	getUser, err := c.service.GetUserByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "User not found", http.StatusNotFound, err.Error(), nil)
@@ -261,13 +261,13 @@ func (c *UserController) Login(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request", "status": "error", "err": err.Error()})
 	}
 
-	user, err := c.service.Authenticate(ctx.Context(), req.Email, req.Password)
+	user, err := c.service.Authenticate(ctx, req.Email, req.Password)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid credentials", "status": "error", "err": err.Error()})
 	}
 
-	token, err := middleware.GenerateJWT(user.ID, user.Roles, user.Permissions)
+	token, err := middleware.GenerateJWT(user.ID, user.Roles, user.Permissions, user.BranchID)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to generate token", "status": "error", "err": err.Error()})
@@ -294,9 +294,9 @@ func (c *UserController) Register(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
 	}
 
-	reqValidator := form_requests.NewRegisterStoreRequest().Validate(&req, ctx.Context())
+	reqValidator, isValid := form_requests.NewRegisterStoreRequest().Validate(&req, ctx)
 
-	if reqValidator != nil {
+	if !isValid {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
@@ -311,7 +311,7 @@ func (c *UserController) Register(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	createdUser, err := c.service.CreateUser(ctx.Context(), tx, &user, roleIDS, parentSpan)
+	createdUser, err := c.service.CreateUser(ctx, tx, &user, roleIDS, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -324,13 +324,13 @@ func (c *UserController) Register(ctx *fiber.Ctx) error {
 	tx.Commit()
 
 	params := &dtos.GetUserByIDParams{ID: createdUser.ID}
-	getUser, err := c.service.GetUserByID(ctx.Context(), params, parentSpan)
+	getUser, err := c.service.GetUserByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "User not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	token, err := middleware.GenerateJWT(createdUser.ID, getUser.Roles, getUser.Permissions)
+	token, err := middleware.GenerateJWT(createdUser.ID, getUser.Roles, getUser.Permissions, getUser.BranchID)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to generate token", "status": "error", "err": err.Error()})
@@ -368,7 +368,7 @@ func (c *UserController) DeleteUser(ctx *fiber.Ctx) error {
 
 	params := &dtos.GetUserByIDParams{ID: req.ID}
 	// GET user by ID
-	_, err := c.service.GetUserByID(ctx.Context(), params, parentSpan)
+	_, err := c.service.GetUserByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "User not found", http.StatusNotFound, err.Error(), nil)
@@ -377,7 +377,7 @@ func (c *UserController) DeleteUser(ctx *fiber.Ctx) error {
 	tx := c.repo.BeginTransaction()
 
 	getUserParams := &dtos.GetUserParams{ID: req.ID}
-	err = c.service.DeleteUser(ctx.Context(), tx, getUserParams, parentSpan)
+	err = c.service.DeleteUser(ctx, tx, getUserParams, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -415,7 +415,7 @@ func (c *UserController) RestoreUser(ctx *fiber.Ctx) error {
 	isDeleted := 1
 	params := &dtos.GetUserByIDParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET user by ID
-	_, err := c.service.GetUserByID(ctx.Context(), params, parentSpan)
+	_, err := c.service.GetUserByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "User not found", http.StatusNotFound, err.Error(), nil)
@@ -424,7 +424,7 @@ func (c *UserController) RestoreUser(ctx *fiber.Ctx) error {
 	tx := c.repo.BeginTransaction()
 
 	getUserParams := &dtos.GetUserParams{ID: req.ID}
-	err = c.service.RestoreUser(ctx.Context(), tx, getUserParams, parentSpan)
+	err = c.service.RestoreUser(ctx, tx, getUserParams, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))

@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewCurrencyRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Trace
 	}
 }
 
-func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.CurrencyListDTO, int, error) {
+func (r *CurrencyRepository) GetCurrencies(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CurrencyListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("CurrencyRepository-GetCurrencies", opentracing.ChildOf(span.Context()))
 
@@ -101,7 +101,7 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -134,7 +134,7 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &currencies, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &currencies, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -160,7 +160,7 @@ func (r *CurrencyRepository) GetCurrencies(ctx context.Context, filters map[stri
 	return currencies, total, nil
 }
 
-func (r *CurrencyRepository) GetCurrencyByID(ctx context.Context, params *dtos.GetCurrencyParams, span opentracing.Span) (*dtos.CurrencyDetailDTO, error) {
+func (r *CurrencyRepository) GetCurrencyByID(ctx *fiber.Ctx, params *dtos.GetCurrencyParams, span opentracing.Span) (*dtos.CurrencyDetailDTO, error) {
 	childSpan := opentracing.StartSpan("CurrencyRepository-GetCurrencyByID", opentracing.ChildOf(span.Context()))
 	var currency dtos.CurrencyDetailDTO
 
@@ -213,38 +213,34 @@ func (r *CurrencyRepository) CreateCurrency(tx *gorm.DB, currency *models.MixVal
 
 func (r *CurrencyRepository) UpdateCurrency(tx *gorm.DB, currency *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CurrencyRepository-UpdateCurrency", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(currency).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(currency).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *CurrencyRepository) DeleteCurrency(tx *gorm.DB, params *dtos.GetCurrencyParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CurrencyRepository-DeleteCurrency", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *CurrencyRepository) RestoreCurrency(tx *gorm.DB, params *dtos.GetCurrencyParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CurrencyRepository-RestoreCurrency", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var currency models.MixValue
-		if err := tx.Unscoped().Model(&currency).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var currency models.MixValue
+	if err := tx.Unscoped().Model(&currency).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

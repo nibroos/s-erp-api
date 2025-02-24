@@ -31,7 +31,7 @@ func NewCurrencyService(repo *repository.CurrencyRepository, utilRepo *repositor
 func (s *CurrencyService) GetCurrencies(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CurrencyListDTO, int, error) {
 	childSpan := opentracing.StartSpan("CurrencyService-GetCurrencies", opentracing.ChildOf(span.Context()))
 
-	currencies, total, err := s.repo.GetCurrencies(ctx.Context(), filters, childSpan)
+	currencies, total, err := s.repo.GetCurrencies(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
@@ -54,7 +54,7 @@ func (s *CurrencyService) CreateCurrency(ctx *fiber.Ctx, currency *models.MixVal
 func (s *CurrencyService) GetCurrencyByID(ctx *fiber.Ctx, params *dtos.GetCurrencyParams, span opentracing.Span) (*dtos.CurrencyDetailDTO, error) {
 	childSpan := opentracing.StartSpan("CurrencyService-GetCurrencyByID", opentracing.ChildOf(span.Context()))
 
-	currency, err := s.repo.GetCurrencyByID(ctx.Context(), params, childSpan)
+	currency, err := s.repo.GetCurrencyByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -160,7 +160,7 @@ func (s *CurrencyService) CsvGetCurrencies(ctx *fiber.Ctx, filters map[string]st
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx.Context(), &companyProfileParams)
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()

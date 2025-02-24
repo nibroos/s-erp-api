@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewPph23Repository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) 
 	}
 }
 
-func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.Pph23ListDTO, int, error) {
+func (r *Pph23Repository) GetPph23s(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.Pph23ListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("Pph23Repository-GetPph23s", opentracing.ChildOf(span.Context()))
 
@@ -94,7 +94,7 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -127,7 +127,7 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &pph23s, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &pph23s, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -153,7 +153,7 @@ func (r *Pph23Repository) GetPph23s(ctx context.Context, filters map[string]stri
 	return pph23s, total, nil
 }
 
-func (r *Pph23Repository) GetPph23ByID(ctx context.Context, params *dtos.GetPph23Params, span opentracing.Span) (*dtos.Pph23DetailDTO, error) {
+func (r *Pph23Repository) GetPph23ByID(ctx *fiber.Ctx, params *dtos.GetPph23Params, span opentracing.Span) (*dtos.Pph23DetailDTO, error) {
 	childSpan := opentracing.StartSpan("Pph23Repository-GetPph23ByID", opentracing.ChildOf(span.Context()))
 	var pph23 dtos.Pph23DetailDTO
 
@@ -206,38 +206,34 @@ func (r *Pph23Repository) CreatePph23(tx *gorm.DB, pph23 *models.MixValue, span 
 
 func (r *Pph23Repository) UpdatePph23(tx *gorm.DB, pph23 *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("Pph23Repository-UpdatePph23", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(pph23).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(pph23).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *Pph23Repository) DeletePph23(tx *gorm.DB, params *dtos.GetPph23Params, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("Pph23Repository-DeletePph23", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *Pph23Repository) RestorePph23(tx *gorm.DB, params *dtos.GetPph23Params, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("Pph23Repository-RestorePph23", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var pph23 models.MixValue
-		if err := tx.Unscoped().Model(&pph23).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var pph23 models.MixValue
+	if err := tx.Unscoped().Model(&pph23).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

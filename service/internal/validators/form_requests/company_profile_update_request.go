@@ -1,27 +1,25 @@
 package form_requests
 
 import (
-	"context"
-
+	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
-	"github.com/thedevsaddam/govalidator"
+	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
 // CompanyProfileUpdateRequest handles the validation for the RegisterRequest.
 type CompanyProfileUpdateRequest struct {
-	Validator *govalidator.Validator
 }
 
 // NewRegisterUpdateRequest creates a new instance of CompanyProfileUpdateRequest.
 func NewCompanyProfileUpdateRequest() *CompanyProfileUpdateRequest {
-	v := govalidator.New(govalidator.Options{})
-	return &CompanyProfileUpdateRequest{Validator: v}
+
+	return &CompanyProfileUpdateRequest{}
 }
 
 // Validate validates the RegisterRequest.
-func (r *CompanyProfileUpdateRequest) Validate(req *dtos.UpdateCompanyProfileRequest, ctx context.Context) map[string]string {
+func (r *CompanyProfileUpdateRequest) Validate(req *dtos.UpdateCompanyProfileRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	// utils.DD(req)
-	rules := govalidator.MapData{
+	rules := map[string][]string{
 		// "name":        []string{"required"},
 		"company_name":        []string{"required"},
 		"company_owner_name":  []string{},
@@ -37,21 +35,20 @@ func (r *CompanyProfileUpdateRequest) Validate(req *dtos.UpdateCompanyProfileReq
 		"company_status":      []string{},
 	}
 
-	opts := govalidator.Options{
-		Data:  req,
-		Rules: rules,
-	}
+	customFieldNames := map[string]string{}
 
-	v := govalidator.New(opts)
-	mappedErrors := v.ValidateStruct()
-
-	if len(mappedErrors) == 0 {
-		return nil
+	var requestBody map[string]interface{}
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid request body"}}, false
 	}
+	request := validators.NewRequest(rules, requestBody, customFieldNames)
+	errors, valid := request.Validate()
 
-	errors := make(map[string]string)
-	for field, err := range mappedErrors {
-		errors[field] = err[0]
+	convertedErrors := make(map[string][]string)
+	for key, value := range errors {
+		if len(value) > 0 {
+			convertedErrors[key] = value
+		}
 	}
-	return errors
+	return convertedErrors, valid
 }

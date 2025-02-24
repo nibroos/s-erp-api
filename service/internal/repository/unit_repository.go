@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewUnitRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *
 	}
 }
 
-func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.UnitListDTO, int, error) {
+func (r *UnitRepository) GetUnits(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.UnitListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("UnitRepository-GetUnits", opentracing.ChildOf(span.Context()))
 
@@ -94,7 +94,7 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -127,7 +127,7 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &units, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &units, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -153,7 +153,7 @@ func (r *UnitRepository) GetUnits(ctx context.Context, filters map[string]string
 	return units, total, nil
 }
 
-func (r *UnitRepository) GetUnitByID(ctx context.Context, params *dtos.GetUnitParams, span opentracing.Span) (*dtos.UnitDetailDTO, error) {
+func (r *UnitRepository) GetUnitByID(ctx *fiber.Ctx, params *dtos.GetUnitParams, span opentracing.Span) (*dtos.UnitDetailDTO, error) {
 	childSpan := opentracing.StartSpan("UnitRepository-GetUnitByID", opentracing.ChildOf(span.Context()))
 	var unit dtos.UnitDetailDTO
 
@@ -206,38 +206,34 @@ func (r *UnitRepository) CreateUnit(tx *gorm.DB, unit *models.MixValue, span ope
 
 func (r *UnitRepository) UpdateUnit(tx *gorm.DB, unit *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UnitRepository-UpdateUnit", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(unit).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(unit).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *UnitRepository) DeleteUnit(tx *gorm.DB, params *dtos.GetUnitParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UnitRepository-DeleteUnit", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *UnitRepository) RestoreUnit(tx *gorm.DB, params *dtos.GetUnitParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("UnitRepository-RestoreUnit", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var unit models.MixValue
-		if err := tx.Unscoped().Model(&unit).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var unit models.MixValue
+	if err := tx.Unscoped().Model(&unit).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }

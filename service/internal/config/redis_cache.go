@@ -1,9 +1,8 @@
 package config
 
 import (
-	"context"
-
 	"github.com/go-redis/redis/v8"
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -15,7 +14,7 @@ func NewRedisCache(client *redis.Client) *RedisCache {
 	return &RedisCache{Client: client}
 }
 
-func FetchCachedData(ctx context.Context, sqlDB *sqlx.DB) error {
+func FetchCachedData(ctx *fiber.Ctx, sqlDB *sqlx.DB) error {
 	// err := FetchAndCacheSubscribes(ctx, sqlDB)
 	// if err != nil {
 	// 	return err
@@ -24,7 +23,7 @@ func FetchCachedData(ctx context.Context, sqlDB *sqlx.DB) error {
 	return nil
 }
 
-// func FetchAndCacheSubscribes(ctx context.Context, sqlDB *sqlx.DB) error {
+// func FetchAndCacheSubscribes(ctx *fiber.Ctx, sqlDB *sqlx.DB) error {
 // 	var subscribes []dtos.SubscribeListDTO
 
 // 	query := `SELECT s.id, s.name, s.description, s.created_at, s.updated_at, s.deleted_at,
@@ -35,7 +34,7 @@ func FetchCachedData(ctx context.Context, sqlDB *sqlx.DB) error {
 //     LEFT JOIN users uu ON s.updated_by_id = uu.id
 //     WHERE s.deleted_at IS NULL`
 
-// 	err := sqlDB.SelectContext(ctx, &subscribes, query)
+// 	err := sqlDB.SelectContext(ctx.Context(), &subscribes, query)
 // 	if err != nil {
 // 		return err
 // 	}
@@ -55,7 +54,7 @@ func FetchCachedData(ctx context.Context, sqlDB *sqlx.DB) error {
 // 	return nil
 // }
 
-// func FetchAndCacheSubscribes(ctx context.Context, gormDB *gorm.DB, sqlDB *sqlx.DB, redisCache *cache.RedisCache) error {
+// func FetchAndCacheSubscribes(ctx *fiber.Ctx, gormDB *gorm.DB, sqlDB *sqlx.DB, redisCache *cache.RedisCache) error {
 // 	repo := repository.NewSubscribeRepository(gormDB, sqlDB, redisCache)
 // 	err := repo.FetchAndCacheSubscribes(ctx)
 // 	if err != nil {

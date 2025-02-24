@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewBranchRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer)
 	}
 }
 
-func (r *BranchRepository) GetBranches(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.BranchListDTO, int, error) {
+func (r *BranchRepository) GetBranches(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.BranchListDTO, int, error) {
 	childSpan := opentracing.StartSpan("BranchRepository-GetBranches")
 
 	branches := []dtos.BranchListDTO{}
@@ -135,7 +135,7 @@ func (r *BranchRepository) GetBranches(ctx context.Context, filters map[string]s
 		if filters["is_csv"] != "1" {
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -167,7 +167,7 @@ func (r *BranchRepository) GetBranches(ctx context.Context, filters map[string]s
 		defer wg.Done()
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &branches, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &branches, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -206,7 +206,7 @@ func (r *BranchRepository) GetBranches(ctx context.Context, filters map[string]s
 	return branches, total, nil
 }
 
-func (r *BranchRepository) GetBranchByID(ctx context.Context, params *dtos.GetBranchParams, span opentracing.Span) (*dtos.BranchDetailDTO, error) {
+func (r *BranchRepository) GetBranchByID(ctx *fiber.Ctx, params *dtos.GetBranchParams, span opentracing.Span) (*dtos.BranchDetailDTO, error) {
 	childSpan := r.tracer.StartSpan("BranchRepository-GetBranchByID", opentracing.ChildOf(span.Context()))
 	var Branch dtos.BranchDetailDTO
 
@@ -288,38 +288,38 @@ func (r *BranchRepository) CreateBranch(tx *gorm.DB, Branch *models.Branch, span
 
 func (r *BranchRepository) UpdateBranch(tx *gorm.DB, Branch *models.Branch, span opentracing.Span) error {
 	childSpan := r.tracer.StartSpan("BranchRepository-UpdateBranch", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.Branch{}).Where("id = ?", Branch.ID).Select("*").Omit("created_at", "created_by_id").Updates(Branch).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Model(&models.Branch{}).Where("id = ?", Branch.ID).Select("*").Omit("created_at", "created_by_id").Updates(Branch).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }
 
 func (r *BranchRepository) DeleteBranch(tx *gorm.DB, params *dtos.GetBranchParams, span opentracing.Span) error {
 	childSpan := r.tracer.StartSpan("BranchRepository-DeleteBranch", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		// if err := tx.Unscoped().Delete(&models.Branch{}, id).Error; err != nil {
-		if err := tx.Delete(&models.Branch{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	// if err := tx.Unscoped().Delete(&models.Branch{}, id).Error; err != nil {
+	if err := tx.Delete(&models.Branch{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }
 
 func (s *BranchRepository) RestoreBranch(tx *gorm.DB, params *dtos.GetBranchParams, span opentracing.Span) error {
 	childSpan := s.tracer.StartSpan("BranchRepository-RestoreBranch", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var Branch models.Branch
-		if err := tx.Unscoped().Model(&Branch).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var Branch models.Branch
+	if err := tx.Unscoped().Model(&Branch).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
 }

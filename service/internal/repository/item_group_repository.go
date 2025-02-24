@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -27,7 +27,7 @@ func NewItemGroupRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Trac
 	}
 }
 
-func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[string]string, span opentracing.Span) ([]dtos.ItemGroupListDTO, int, error) {
+func (r *ItemGroupRepository) GetItemGroups(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ItemGroupListDTO, int, error) {
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("ItemGroupRepository-GetItemGroups", opentracing.ChildOf(span.Context()))
 
@@ -94,7 +94,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
-			err := r.sqlDB.GetContext(ctx, &total, countQuery, countArgs...)
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
 			if err != nil {
 				utils.LogErrors(countSpan, err)
 				countSpan.LogKV("query", countQuery)
@@ -127,7 +127,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx, &itemGroups, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &itemGroups, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -153,7 +153,7 @@ func (r *ItemGroupRepository) GetItemGroups(ctx context.Context, filters map[str
 	return itemGroups, total, nil
 }
 
-func (r *ItemGroupRepository) GetItemGroupByID(ctx context.Context, params *dtos.GetItemGroupParams, span opentracing.Span) (*dtos.ItemGroupDetailDTO, error) {
+func (r *ItemGroupRepository) GetItemGroupByID(ctx *fiber.Ctx, params *dtos.GetItemGroupParams, span opentracing.Span) (*dtos.ItemGroupDetailDTO, error) {
 	childSpan := opentracing.StartSpan("ItemGroupRepository-GetItemGroupByID", opentracing.ChildOf(span.Context()))
 	var itemGroup dtos.ItemGroupDetailDTO
 
@@ -206,38 +206,34 @@ func (r *ItemGroupRepository) CreateItemGroup(tx *gorm.DB, itemGroup *models.Mix
 
 func (r *ItemGroupRepository) UpdateItemGroup(tx *gorm.DB, itemGroup *models.MixValue, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemGroupRepository-UpdateItemGroup", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemGroup).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
 
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemGroup).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (r *ItemGroupRepository) DeleteItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemGroupRepository-DeleteItemGroup", opentracing.ChildOf(span.Context()))
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
 
 func (s *ItemGroupRepository) RestoreItemGroup(tx *gorm.DB, params *dtos.GetItemGroupParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemGroupRepository-RestoreItemGroup", opentracing.ChildOf(span.Context()))
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var itemGroup models.MixValue
-		if err := tx.Unscoped().Model(&itemGroup).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
-			defer childSpan.Finish()
-			utils.LogErrors(childSpan, err)
-			return err
-		}
-		return nil
-	})
+
+	var itemGroup models.MixValue
+	if err := tx.Unscoped().Model(&itemGroup).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
 }
