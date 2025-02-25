@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -167,7 +166,6 @@ func (s *ItemUnitService) CsvGetItemUnits(ctx *fiber.Ctx, filters map[string]str
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()
-		log.Println("CsvGetItemUnits error:", err)
 	} else {
 		appName = *companyProfile.CompanyName
 	}
@@ -187,8 +185,8 @@ func (s *ItemUnitService) CsvGetItemUnits(ctx *fiber.Ctx, filters map[string]str
 			utils.GetFloatPtrVal(itemUnit.Conversion),
 			utils.GetFloatPtrVal(itemUnit.PriceSell),
 			utils.GetFloatPtrVal(itemUnit.PriceBuy),
-			itemUnit.CreatedAt,
-			itemUnit.UpdatedAt,
+			utils.GetPtrVal(itemUnit.CreatedAt),
+			utils.GetPtrVal(itemUnit.UpdatedAt),
 		)
 	}
 
