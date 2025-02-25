@@ -82,17 +82,17 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 		}
 	}
 
-	filterKey := map[string]string{
-		"customer_type_id": "customer_type_id",
-		"agent_id":         "agent_id",
-		"status":           "status",
+	filterKey := []string{
+		"customer_type_id",
+		"agent_id",
+		"status",
 	}
 
-	for key, _ := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			query += fmt.Sprintf(" AND %s = $%d", value, i)
-			countQuery += fmt.Sprintf(" AND %s = $%d", value, i)
-			args = append(args, value)
+	for key := range filterKey {
+		if filters[filterKey[key]] != "" {
+			query += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+			countQuery += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+			args = append(args, filters[filterKey[key]])
 			i++
 		}
 	}

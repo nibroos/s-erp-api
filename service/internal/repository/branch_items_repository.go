@@ -82,18 +82,18 @@ func (r *BranchItemRepository) GetBranchItems(ctx *fiber.Ctx, filters map[string
 
 	i := 1
 
-	filterKey := map[string]string{
-		"branch_id":  "branch_id",
-		"ms_item_id": "ms_item_id",
-		"unit_id":    "unit_id",
-		"status":     "status",
+	filterKey := []string{
+		"branch_id",
+		"ms_item_id",
+		"unit_id",
+		"status",
 	}
 
-	for key, _ := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			query += fmt.Sprintf(" AND %s = $%d", value, i)
-			countQuery += fmt.Sprintf(" AND %s = $%d", value, i)
-			args = append(args, value)
+	for key := range filterKey {
+		if filters[filterKey[key]] != "" {
+			query += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+			countQuery += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+			args = append(args, filters[filterKey[key]])
 			i++
 		}
 	}

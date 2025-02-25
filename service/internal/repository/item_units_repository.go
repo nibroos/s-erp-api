@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
@@ -46,23 +47,24 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 
         FROM item_units m
 				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-				LEFT JOIN units u ON m.unit_id = u.id
+				LEFT JOIN mix_values u ON m.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
+					m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
 					
-				mi.name as ms_item_name,
-				u.name as unit_name,
+					mi.name as ms_item_name,
+					u.name as unit_name,
 
-        cu.name as created_by_name,
-        uu.name as updated_by_name
+					cu.name as created_by_name,
+					uu.name as updated_by_name
 
         FROM item_units m
 				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-				LEFT JOIN units u ON m.unit_id = u.id
+				LEFT JOIN mix_values u ON m.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -71,17 +73,13 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 
 	i := 1
 
-	filterKey := map[string]string{
-		"ms_item_id": "ms_item_id",
-		"unit_id":    "unit_id",
-		"status":     "status",
-	}
+	filterKey := []string{"ms_item_id", "unit_id", "status"}
 
-	for key, _ := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			query += fmt.Sprintf(" AND %s = $%d", value, i)
-			countQuery += fmt.Sprintf(" AND %s = $%d", value, i)
-			args = append(args, value)
+	for key := range filterKey {
+		if filters[filterKey[key]] != "" {
+			query += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+			countQuery += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+			args = append(args, filters[filterKey[key]])
 			i++
 		}
 	}
@@ -112,7 +110,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "unit_name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
@@ -124,6 +122,8 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
 		args = append(args, perPage, (currentPage-1)*perPage)
 	}
+
+	log.Println(query)
 
 	// Goroutine for select query
 	wg.Add(1)
@@ -173,7 +173,7 @@ func (r *ItemUnitRepository) GetItemUnitByID(ctx *fiber.Ctx, params *dtos.GetIte
 
 	FROM item_units m
 	LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-	LEFT JOIN units u ON m.unit_id = u.id
+	LEFT JOIN mix_values u ON m.unit_id = u.id
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
 	WHERE 1=1`
@@ -218,7 +218,9 @@ func (r *ItemUnitRepository) CreateItemUnit(tx *gorm.DB, itemUnit *models.ItemUn
 func (r *ItemUnitRepository) UpdateItemUnit(tx *gorm.DB, itemUnit *models.ItemUnit, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ItemUnitRepository-UpdateItemUnit", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(itemUnit).Error; err != nil {
+	if err := tx.Select("*").Omit(
+		"ms_item_id", "unit_id", "created_at", "created_by_id",
+	).Updates(itemUnit).Error; err != nil {
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
