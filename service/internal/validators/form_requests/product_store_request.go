@@ -6,18 +6,18 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
-// CatalogStoreRequest handles the validation for the RegisterRequest.
-type CatalogStoreRequest struct {
+// ProductStoreRequest handles the validation for the RegisterRequest.
+type ProductStoreRequest struct {
 }
 
-// NewRegisterStoreRequest creates a new instance of CatalogStoreRequest.
-func NewCatalogStoreRequest() *CatalogStoreRequest {
+// NewRegisterStoreRequest creates a new instance of ProductStoreRequest.
+func NewProductStoreRequest() *ProductStoreRequest {
 
-	return &CatalogStoreRequest{}
+	return &ProductStoreRequest{}
 }
 
 // Validate validates the RegisterRequest.
-func (r *CatalogStoreRequest) Validate(req *dtos.CreateCatalogRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+func (r *ProductStoreRequest) Validate(req *dtos.CreateProductRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 
 	rules := map[string][]string{
 		"unit_id":             []string{"exists:mix_values,id"},

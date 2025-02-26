@@ -69,6 +69,8 @@ Postman credentials:
 
 ### 🖥️ Prometheus & Grafana
 - Grafana will fail at first run, because user credentials need to be created manually in the postgres database.
+`CREATE ROLE grafana WITH LOGIN PASSWORD 'secret';`
+`CREATE DATABASE grafana;`
 - Login with the user and password. The default user and password is `admin` and `admin`.
 - Dashboard ID
   - PostgreSQL: `9628`

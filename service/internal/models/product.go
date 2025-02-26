@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type Catalog struct {
+type Product struct {
 	gorm.Model
 	ID            uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	UnitID        *uint          `json:"unit_id" gorm:"column:unit_id"`

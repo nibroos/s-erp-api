@@ -1,6 +1,6 @@
 BEGIN;
 
-CREATE TABLE IF NOT EXISTS catalogs (
+CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   unit_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
   collection_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
@@ -26,10 +26,10 @@ CREATE TABLE IF NOT EXISTS catalogs (
   deleted_at timestamp with time zone
 );
 
-CREATE INDEX idx_catalogs_unit_id ON catalogs(unit_id);
+CREATE INDEX idx_products_unit_id ON products(unit_id);
 
-CREATE INDEX idx_catalogs_collection_id ON catalogs(collection_id);
+CREATE INDEX idx_products_collection_id ON products(collection_id);
 
-CREATE INDEX idx_catalogs_branch_id ON catalogs(branch_id);
+CREATE INDEX idx_products_branch_id ON products(branch_id);
 
 COMMIT;

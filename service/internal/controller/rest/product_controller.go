@@ -15,19 +15,19 @@ import (
 	// "github.com/opentracing/opentracing-go/ext"
 )
 
-type CatalogController struct {
-	service *service.CatalogService
-	repo    *repository.CatalogRepository
+type ProductController struct {
+	service *service.ProductService
+	repo    *repository.ProductRepository
 	tracer  opentracing.Tracer
 }
 
-func NewCatalogController(service *service.CatalogService, repo *repository.CatalogRepository, tracer opentracing.Tracer) *CatalogController {
-	return &CatalogController{service: service, repo: repo, tracer: tracer}
+func NewProductController(service *service.ProductService, repo *repository.ProductRepository, tracer opentracing.Tracer) *ProductController {
+	return &ProductController{service: service, repo: repo, tracer: tracer}
 }
 
-func (c *CatalogController) GetCatalogs(ctx *fiber.Ctx) error {
+func (c *ProductController) GetProducts(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CatalogController-GetCatalogs", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("ProductController-GetProducts", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -39,11 +39,11 @@ func (c *CatalogController) GetCatalogs(ctx *fiber.Ctx) error {
 	filters, ok := ctx.Locals("filters").(map[string]string)
 
 	if !ok {
-		apiSpan.LogKV("response_body", string("CatalogController-GetCatalogs: Invalid filters"))
+		apiSpan.LogKV("response_body", string("ProductController-GetProducts: Invalid filters"))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	catalogs, total, err := c.service.GetCatalogs(ctx, filters, parentSpan)
+	products, total, err := c.service.GetProducts(ctx, filters, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -52,12 +52,12 @@ func (c *CatalogController) GetCatalogs(ctx *fiber.Ctx) error {
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
-	return utils.GetResponse(ctx, catalogs, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, products, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
 }
 
-func (c *CatalogController) CreateCatalog(ctx *fiber.Ctx) error {
+func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CatalogController-CreateCatalog", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("ProductController-CreateProduct", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -66,7 +66,7 @@ func (c *CatalogController) CreateCatalog(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.CreateCatalogRequest
+	var req dtos.CreateProductRequest
 
 	// Use the utility function to parse the request body
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
@@ -74,7 +74,7 @@ func (c *CatalogController) CreateCatalog(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator, isValid := form_requests.NewCatalogStoreRequest().Validate(&req, ctx)
+	reqValidator, isValid := form_requests.NewProductStoreRequest().Validate(&req, ctx)
 	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
@@ -94,7 +94,7 @@ func (c *CatalogController) CreateCatalog(ctx *fiber.Ctx) error {
 		branchID = req.BranchID
 	}
 
-	catalog := models.Catalog{
+	product := models.Product{
 		UnitID:        req.UnitID,
 		CollectionID:  req.CollectionID,
 		BranchID:      branchID.(*uint),
@@ -114,13 +114,13 @@ func (c *CatalogController) CreateCatalog(ctx *fiber.Ctx) error {
 	}
 
 	tx := c.repo.BeginTransaction()
-	createdCatalog, err := c.service.CreateCatalog(ctx, &catalog, tx, parentSpan)
+	createdProduct, err := c.service.CreateProduct(ctx, &product, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create catalog", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create product", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	// bulk create item boms
@@ -136,19 +136,19 @@ func (c *CatalogController) CreateCatalog(ctx *fiber.Ctx) error {
 		boms = append(boms, bom)
 	}
 
-	err = c.service.CreateBoms(ctx, boms, createdCatalog.ID, tx, parentSpan)
+	err = c.service.CreateBoms(ctx, boms, createdProduct.ID, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create catalog", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create product", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	params := &dtos.GetCatalogParams{ID: createdCatalog.ID}
-	getCatalog, err := c.service.GetCatalogByID(ctx, params, parentSpan)
+	params := &dtos.GetProductParams{ID: createdProduct.ID}
+	getProduct, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -158,11 +158,11 @@ func (c *CatalogController) CreateCatalog(ctx *fiber.Ctx) error {
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getCatalog}, paginationMeta, "Master item created successfully", http.StatusCreated, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getProduct}, paginationMeta, "Master item created successfully", http.StatusCreated, nil, nil)
 }
-func (c *CatalogController) GetCatalogByID(ctx *fiber.Ctx) error {
+func (c *ProductController) GetProductByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CatalogController-GetCatalogByID", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("ProductController-GetProductByID", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -171,7 +171,7 @@ func (c *CatalogController) GetCatalogByID(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.GetCatalogByIDRequest
+	var req dtos.GetProductByIDRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
@@ -181,26 +181,26 @@ func (c *CatalogController) GetCatalogByID(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	params := &dtos.GetCatalogParams{ID: req.ID}
-	catalog, err := c.service.GetCatalogByID(ctx, params, parentSpan)
+	params := &dtos.GetProductParams{ID: req.ID}
+	product, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
 		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	catalogArray := []interface{}{catalog}
+	productArray := []interface{}{product}
 
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, catalogArray, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, productArray, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
 }
 
-// update catalog
-func (c *CatalogController) UpdateCatalog(ctx *fiber.Ctx) error {
+// update product
+func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CatalogController-UpdateCatalog", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("ProductController-UpdateProduct", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -209,14 +209,14 @@ func (c *CatalogController) UpdateCatalog(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.UpdateCatalogRequest
+	var req dtos.UpdateProductRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
 	}
 
 	// Validate the request
-	reqValidator, isValid := form_requests.NewCatalogUpdateRequest().Validate(&req, ctx)
+	reqValidator, isValid := form_requests.NewProductUpdateRequest().Validate(&req, ctx)
 	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
@@ -229,7 +229,7 @@ func (c *CatalogController) UpdateCatalog(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	catalog := models.Catalog{
+	product := models.Product{
 		ID:            req.ID,
 		UnitID:        req.UnitID,
 		CollectionID:  req.CollectionID,
@@ -250,23 +250,40 @@ func (c *CatalogController) UpdateCatalog(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	updatedCatalog, err := c.service.UpdateCatalog(ctx, &catalog, tx, parentSpan)
+	updatedProduct, err := c.service.UpdateProduct(ctx, &product, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		if err.Error() == "catalog name already exists" {
+		if err.Error() == "product name already exists" {
 			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Master item already exists", "status": http.StatusConflict})
 		}
 		return utils.GetResponse(ctx, nil, nil, "Failed to update Master item", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	// Bulk/Create Update Batch Boms
+	boms := make([]*models.Bom, 0)
+	for _, bom := range req.Boms {
+		bom := &models.Bom{
+			ID:          bom.ID,
+			MsItemID:    &bom.MsItemID,
+			ItemUnitID:  &bom.ItemUnitID,
+			Qty:         &bom.Qty,
+			Remark:      bom.Remark,
+			UpdatedByID: &userID,
+		}
+		boms = append(boms, bom)
+	}
+
+	err = c.service.BulkCreateUpdateBoms(ctx, boms, updatedProduct.ID, tx, parentSpan)
+	if err != nil {
+		return utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update Master item", http.StatusInternalServerError)
+	}
 
 	tx.Commit()
 
-	params := &dtos.GetCatalogParams{ID: updatedCatalog.ID}
-	getCatalog, err := c.service.GetCatalogByID(ctx, params, parentSpan)
+	params := &dtos.GetProductParams{ID: updatedProduct.ID}
+	getProduct, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
@@ -275,13 +292,13 @@ func (c *CatalogController) UpdateCatalog(ctx *fiber.Ctx) error {
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getCatalog}, paginationMeta, "Master item updated successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getProduct}, paginationMeta, "Master item updated successfully", http.StatusOK, nil, nil)
 }
 
-// delete catalog
-func (c *CatalogController) DeleteCatalog(ctx *fiber.Ctx) error {
+// delete product
+func (c *ProductController) DeleteProduct(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CatalogController-DeleteCatalog", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("ProductController-DeleteProduct", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -290,7 +307,7 @@ func (c *CatalogController) DeleteCatalog(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.DeleteCatalogRequest
+	var req dtos.DeleteProductRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
 		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
@@ -300,9 +317,9 @@ func (c *CatalogController) DeleteCatalog(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	params := &dtos.GetCatalogParams{ID: req.ID}
-	// GET catalog by ID
-	_, err := c.service.GetCatalogByID(ctx, params, parentSpan)
+	params := &dtos.GetProductParams{ID: req.ID}
+	// GET product by ID
+	_, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
@@ -310,7 +327,7 @@ func (c *CatalogController) DeleteCatalog(ctx *fiber.Ctx) error {
 
 	// Transaction handling
 	tx := c.repo.BeginTransaction()
-	err = c.service.DeleteCatalog(ctx, params, tx, parentSpan)
+	err = c.service.DeleteProduct(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -322,10 +339,10 @@ func (c *CatalogController) DeleteCatalog(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, nil, nil, "Master item deleted successfully", http.StatusOK, nil, nil)
 }
 
-// restore catalog
-func (c *CatalogController) RestoreCatalog(ctx *fiber.Ctx) error {
+// restore product
+func (c *ProductController) RestoreProduct(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CatalogController-RestoreCatalog", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("ProductController-RestoreProduct", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -334,7 +351,7 @@ func (c *CatalogController) RestoreCatalog(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.DeleteCatalogRequest
+	var req dtos.DeleteProductRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -348,15 +365,15 @@ func (c *CatalogController) RestoreCatalog(ctx *fiber.Ctx) error {
 	tx := c.repo.BeginTransaction()
 
 	isDeleted := 1
-	params := &dtos.GetCatalogParams{ID: req.ID, IsDeleted: &isDeleted}
-	// GET catalog by ID
-	_, err := c.service.GetCatalogByID(ctx, params, parentSpan)
+	params := &dtos.GetProductParams{ID: req.ID, IsDeleted: &isDeleted}
+	// GET product by ID
+	_, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreCatalog(ctx, params, tx, parentSpan)
+	err = c.service.RestoreProduct(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -368,9 +385,9 @@ func (c *CatalogController) RestoreCatalog(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, nil, nil, "Master item restored successfully", http.StatusOK, nil, nil)
 }
 
-func (c *CatalogController) ExcelGetCatalogs(ctx *fiber.Ctx) error {
+func (c *ProductController) ExcelGetProducts(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CatalogController-ExcelGetCatalogs", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("ProductController-ExcelGetProducts", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -384,18 +401,18 @@ func (c *CatalogController) ExcelGetCatalogs(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	catalogs, err := c.service.ExcelGetCatalogs(ctx, filters, parentSpan)
+	products, err := c.service.ExcelGetProducts(ctx, filters, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	return ctx.Send(catalogs)
+	return ctx.Send(products)
 }
 
-func (c *CatalogController) CsvGetCatalogs(ctx *fiber.Ctx) error {
+func (c *ProductController) CsvGetProducts(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetCatalogs", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetProducts", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -409,11 +426,11 @@ func (c *CatalogController) CsvGetCatalogs(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	catalogs, err := c.service.CsvGetCatalogs(ctx, filters, parentSpan)
+	products, err := c.service.CsvGetProducts(ctx, filters, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	return ctx.Send(catalogs)
+	return ctx.Send(products)
 }

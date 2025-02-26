@@ -1,9 +1,13 @@
 package repository
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
+	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
 
@@ -50,4 +54,79 @@ func (r *UtilRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params *dtos.GetC
 	}
 
 	return &CompanyProfile, nil
+}
+
+// BulkUpdate updates multiple rows in a single query.
+//
+// idColumn: The name of the primary key column (e.g., "id").
+//
+// data: A slice of maps, where each map contains the primary key value and the new values for the columns to update.
+//
+// Example data:
+//
+//	[]map[string]interface{}{
+//	    {"id": 1, "price_buy": 400, "quantity": 10},
+//	    {"id": 2, "price_buy": 500, "quantity": 20},
+//	}
+func (r *UtilRepository) BulkUpdate(tx *gorm.DB, tableName string, idColumn string, data []map[string]interface{}, span opentracing.Span) error {
+	if len(data) == 0 {
+		return nil // No data to update
+	}
+
+	// Start a child span for tracing
+	childSpan := opentracing.StartSpan("BulkUpdate", opentracing.ChildOf(span.Context()))
+
+	// Step 1: Extract column names (excluding the primary key)
+	columns := make([]string, 0)
+	for key := range data[0] {
+		if key != idColumn {
+			columns = append(columns, key)
+		}
+	}
+
+	// Step 2: Build the SET clause with CASE statements for each column
+	var setBuilder strings.Builder
+	var args []interface{}
+	for _, column := range columns {
+		setBuilder.WriteString(fmt.Sprintf("%s = CASE %s ", column, idColumn))
+
+		// Add WHEN-THEN clauses for each row
+		for _, item := range data {
+			setBuilder.WriteString("WHEN ? THEN ? ")
+			args = append(args, item[idColumn], item[column]) // Append the ID and column value
+		}
+		setBuilder.WriteString("END, ")
+	}
+
+	// Remove the trailing comma and space
+	setClause := strings.TrimSuffix(setBuilder.String(), ", ")
+
+	// Step 3: Build the WHERE clause
+	var whereBuilder strings.Builder
+	whereBuilder.WriteString(fmt.Sprintf("%s IN (", idColumn))
+	placeholders := strings.Repeat("?, ", len(data)-1) + "?"
+	whereBuilder.WriteString(placeholders)
+	whereBuilder.WriteString(")")
+
+	// Step 4: Combine the full query
+	query := fmt.Sprintf(`
+        UPDATE %s
+        SET %s
+        WHERE %s
+    `, tableName, setClause, whereBuilder.String())
+
+	// Step 5: Append IDs to the args for the WHERE clause
+	for _, item := range data {
+		args = append(args, item[idColumn])
+	}
+
+	// Step 6: Execute the query
+	result := tx.Exec(query, args...)
+	if result.Error != nil {
+		defer childSpan.Finish()
+		childSpan.LogKV("rows_affected", result.RowsAffected)
+		return result.Error
+	}
+
+	return nil
 }

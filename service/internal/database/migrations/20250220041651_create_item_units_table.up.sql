@@ -20,9 +20,4 @@ CREATE INDEX idx_item_units_unit_id ON item_units(unit_id);
 
 CREATE INDEX idx_item_units_ms_item_id ON item_units(ms_item_id);
 
-ALTER TABLE
-  ms_items
-ADD
-  CONSTRAINT fk_ms_items_item_unit_id FOREIGN KEY (item_unit_id) REFERENCES item_units (id) ON DELETE RESTRICT;
-
 COMMIT;

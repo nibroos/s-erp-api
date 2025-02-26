@@ -1755,7 +1755,7 @@ type GetCustomersResult struct {
 	Err       error
 }
 
-type GetCatalogsRequest struct {
+type GetProductsRequest struct {
 	Global         string `json:"global"`
 	Name           string `json:"name"`
 	Sku            string `json:"sku"`
@@ -1779,7 +1779,7 @@ type CreateBomsRequest struct {
 	Remark     *string `json:"remark"`
 }
 
-type CreateCatalogRequest struct {
+type CreateProductRequest struct {
 	UnitID        *uint    `json:"unit_id"`
 	CollectionID  *uint    `json:"collection_id"`
 	BranchID      *uint    `json:"branch_id"`
@@ -1807,7 +1807,7 @@ type UpdateBomsRequest struct {
 	Remark     *string `json:"remark"`
 }
 
-type UpdateCatalogRequest struct {
+type UpdateProductRequest struct {
 	ID            uint     `json:"id"`
 	UnitID        *uint    `json:"unit_id"`
 	BranchID      *uint    `json:"branch_id"`
@@ -1828,34 +1828,34 @@ type UpdateCatalogRequest struct {
 	Boms          []UpdateBomsRequest
 }
 
-type GetCatalogByIDRequest struct {
+type GetProductByIDRequest struct {
 	ID uint `json:"id"`
 }
 
-type GetCatalogParams struct {
+type GetProductParams struct {
 	ID        uint
 	IsDeleted *int
 }
 
-func NewGetCatalogParams(id uint) *GetCatalogParams {
+func NewGetProductParams(id uint) *GetProductParams {
 	defaultIsDeleted := 0
-	return &GetCatalogParams{
+	return &GetProductParams{
 		ID:        id,
 		IsDeleted: &defaultIsDeleted,
 	}
 }
 
-type GetCatalogBomParams struct {
+type GetProductBomParams struct {
 	ID        uint
-	CatalogID uint
+	ProductID uint
 	IsDeleted *int
 }
 
-type DeleteCatalogRequest struct {
+type DeleteProductRequest struct {
 	ID uint `json:"id"`
 }
 
-type CatalogListDTO struct {
+type ProductListDTO struct {
 	ID             int     `json:"id" db:"id"`
 	UnitID         *uint   `json:"unit_id" db:"unit_id"`
 	CollectionID   *uint   `json:"collection_id" db:"collection_id"`
@@ -1883,7 +1883,7 @@ type CatalogListDTO struct {
 	DeleteAt       *string `json:"deleted_at" db:"deleted_at"`
 }
 
-type CatalogBomListDTO struct {
+type ProductBomListDTO struct {
 	ID            *uint   `json:"id" db:"id"`
 	MsItemID      uint    `json:"ms_item_id" db:"ms_item_id"`
 	ItemUnitID    uint    `json:"item_unit_id" db:"item_unit_id"`
@@ -1898,7 +1898,7 @@ type CatalogBomListDTO struct {
 	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
 }
 
-type CatalogDetailDTO struct {
+type ProductDetailDTO struct {
 	ID             uint    `json:"id" db:"id"`
 	UnitID         *uint   `json:"unit_id" db:"unit_id"`
 	CollectionID   *uint   `json:"collection_id" db:"collection_id"`
@@ -1925,8 +1925,8 @@ type CatalogDetailDTO struct {
 	UpdatedAt      *string `json:"updated_at" db:"updated_at"`
 	DeletedAt      *string `json:"deleted_at" db:"deleted_at"`
 }
-type GetCatalogsResult struct {
-	Catalogs []CatalogListDTO
+type GetProductsResult struct {
+	Products []ProductListDTO
 	Total    int
 	Err      error
 }

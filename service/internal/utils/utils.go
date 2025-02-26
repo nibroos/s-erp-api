@@ -22,6 +22,7 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 	jLog "github.com/opentracing/opentracing-go/log"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type Meta struct {
@@ -694,4 +695,10 @@ func IsAdmin(ctx *fiber.Ctx) bool {
 		}
 	}
 	return false
+}
+
+func ErrTrxResponse(ctx *fiber.Ctx, tx *gorm.DB, apiSpan opentracing.Span, err error, message string, status int16) error {
+	tx.Rollback()
+	LogResponse(apiSpan, WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+	return GetResponse(ctx, nil, nil, message, status, err.Error(), nil)
 }
