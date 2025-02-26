@@ -1415,21 +1415,11 @@ type MsItemListDTO struct {
 	MinimumStock     *string `json:"minimum_stock" db:"minimum_stock"`
 	IsAllBranch      *int    `json:"is_all_branch" db:"is_all_branch"`
 	Status           int8    `json:"status" db:"status"`
-	// BranchItemDescription   *string `json:"branch_item_description" db:"branch_item_description"`
-	// BranchItemSpecification *string `json:"branch_item_specification" db:"branch_item_specification"`
-	// BranchItemTpbCode       *string `json:"branch_item_tpb_code" db:"branch_item_tpb_code"`
-	// BranchItemPriceSell     *string `json:"branch_item_price_sell" db:"branch_item_price_sell"`
-	// BranchItemPriceBuy      *string `json:"branch_item_price_buy" db:"branch_item_price_buy"`
-	// BranchItemMinimumStock  *string `json:"branch_item_minimum_stock" db:"branch_item_minimum_stock"`
-	// BranchItemStatus        *int8   `json:"branch_item_status" db:"branch_item_status"`
-	// BranchItemCreatedAt     *string `json:"branch_item_created_at" db:"branch_item_created_at"`
-	// BranchItemUpdatedAt     *string `json:"branch_item_updated_at" db:"branch_item_updated_at"`
-	// BranchItemDeletedAt     *string `json:"branch_item_deleted_at" db:"branch_item_deleted_at"`
-	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt     *string `json:"created_at" db:"created_at"`
-	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
-	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        *string `json:"created_at" db:"created_at"`
+	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
+	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
 }
 
 type MsItemDetailDTO struct {
@@ -1763,4 +1753,180 @@ type GetCustomersResult struct {
 	Customers []CustomerListDTO
 	Total     int
 	Err       error
+}
+
+type GetCatalogsRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	Sku            string `json:"sku"`
+	Barcode        string `json:"barcode"`
+	ExpiredAt      string `json:"expired_at"`
+	Remark         string `json:"remark"`
+	FactoryCode    string `json:"factory_code"`
+	UnitID         string `json:"unit_id"`
+	CollectionID   string `json:"collection_id"`
+	Status         string `json:"status"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateBomsRequest struct {
+	MsItemID   uint    `json:"ms_item_id"`
+	ItemUnitID uint    `json:"item_unit_id"`
+	Qty        float64 `json:"qty"`
+	Remark     *string `json:"remark"`
+}
+
+type CreateCatalogRequest struct {
+	UnitID        *uint    `json:"unit_id"`
+	CollectionID  *uint    `json:"collection_id"`
+	BranchID      *uint    `json:"branch_id"`
+	Code          *string  `json:"code"`
+	FactoryCode   *string  `json:"factory_code"`
+	Name          string   `json:"name"`
+	Sku           *string  `json:"sku"`
+	Barcode       *string  `json:"barcode"`
+	Specification *string  `json:"specification"`
+	Description   *string  `json:"description"`
+	Remark        *string  `json:"remark"`
+	PriceSell     *float64 `json:"price_sell"`
+	PriceBuy      *float64 `json:"price_buy"`
+	Margin        *float64 `json:"margin"`
+	Status        int8     `json:"status"`
+	ExpiredAt     *string  `json:"expired_at"`
+	Boms          []CreateBomsRequest
+}
+
+type UpdateBomsRequest struct {
+	ID         *uint   `json:"id"`
+	MsItemID   uint    `json:"ms_item_id"`
+	ItemUnitID uint    `json:"item_unit_id"`
+	Qty        float64 `json:"qty"`
+	Remark     *string `json:"remark"`
+}
+
+type UpdateCatalogRequest struct {
+	ID            uint     `json:"id"`
+	UnitID        *uint    `json:"unit_id"`
+	BranchID      *uint    `json:"branch_id"`
+	CollectionID  *uint    `json:"collection_id"`
+	Code          *string  `json:"code"`
+	FactoryCode   *string  `json:"factory_code"`
+	Name          string   `json:"name"`
+	Sku           *string  `json:"sku"`
+	Barcode       *string  `json:"barcode"`
+	Specification *string  `json:"specification"`
+	Description   *string  `json:"description"`
+	Remark        *string  `json:"remark"`
+	PriceSell     *float64 `json:"price_sell"`
+	PriceBuy      *float64 `json:"price_buy"`
+	Margin        *float64 `json:"margin"`
+	Status        int8     `json:"status"`
+	ExpiredAt     *string  `json:"expired_at"`
+	Boms          []UpdateBomsRequest
+}
+
+type GetCatalogByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetCatalogParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetCatalogParams(id uint) *GetCatalogParams {
+	defaultIsDeleted := 0
+	return &GetCatalogParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type GetCatalogBomParams struct {
+	ID        uint
+	CatalogID uint
+	IsDeleted *int
+}
+
+type DeleteCatalogRequest struct {
+	ID uint `json:"id"`
+}
+
+type CatalogListDTO struct {
+	ID             int     `json:"id" db:"id"`
+	UnitID         *uint   `json:"unit_id" db:"unit_id"`
+	CollectionID   *uint   `json:"collection_id" db:"collection_id"`
+	BranchID       *uint   `json:"branch_id" db:"branch_id"`
+	UnitName       *string `json:"unit_name" db:"unit_name"`
+	CollectionName *string `json:"collection_name" db:"collection_name"`
+	BranchName     *string `json:"branch_name" db:"branch_name"`
+	Code           *string `json:"code" db:"code"`
+	FactoryCode    *string `json:"factory_code" db:"factory_code"`
+	Name           string  `json:"name" db:"name"`
+	Sku            *string `json:"sku" db:"sku"`
+	Barcode        *string `json:"barcode" db:"barcode"`
+	Specification  *string `json:"specification" db:"specification"`
+	Description    *string `json:"description" db:"description"`
+	Remark         *string `json:"remark" db:"remark"`
+	PriceSell      *string `json:"price_sell" db:"price_sell"`
+	PriceBuy       *string `json:"price_buy" db:"price_buy"`
+	Margin         *string `json:"margin" db:"margin"`
+	ExpiredAt      *string `json:"expired_at" db:"expired_at"`
+	Status         int8    `json:"status" db:"status"`
+	CreatedByName  *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName  *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt      *string `json:"created_at" db:"created_at"`
+	UpdatedAt      *string `json:"updated_at" db:"updated_at"`
+	DeleteAt       *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type CatalogBomListDTO struct {
+	ID            *uint   `json:"id" db:"id"`
+	MsItemID      uint    `json:"ms_item_id" db:"ms_item_id"`
+	ItemUnitID    uint    `json:"item_unit_id" db:"item_unit_id"`
+	Qty           float64 `json:"qty" db:"qty"`
+	Remark        *string `json:"remark" db:"remark"`
+	MsItemName    *string `json:"ms_item_name" db:"ms_item_name"`
+	ItemUnitName  *string `json:"item_unit_name" db:"item_unit_name"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type CatalogDetailDTO struct {
+	ID             uint    `json:"id" db:"id"`
+	UnitID         *uint   `json:"unit_id" db:"unit_id"`
+	CollectionID   *uint   `json:"collection_id" db:"collection_id"`
+	BranchID       *uint   `json:"branch_id" db:"branch_id"`
+	UnitName       *string `json:"unit_name" db:"unit_name"`
+	CollectionName *string `json:"collection_name" db:"collection_name"`
+	BranchName     *string `json:"branch_name" db:"branch_name"`
+	Code           *string `json:"code" db:"code"`
+	FactoryCode    *string `json:"factory_code" db:"factory_code"`
+	Name           string  `json:"name" db:"name"`
+	Sku            *string `json:"sku" db:"sku"`
+	Barcode        *string `json:"barcode" db:"barcode"`
+	Specification  *string `json:"specification" db:"specification"`
+	Description    *string `json:"description" db:"description"`
+	Remark         *string `json:"remark" db:"remark"`
+	PriceSell      *string `json:"price_sell" db:"price_sell"`
+	PriceBuy       *string `json:"price_buy" db:"price_buy"`
+	Margin         *string `json:"margin" db:"margin"`
+	ExpiredAt      *string `json:"expired_at" db:"expired_at"`
+	Status         int8    `json:"status" db:"status"`
+	CreatedByName  *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName  *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt      *string `json:"created_at" db:"created_at"`
+	UpdatedAt      *string `json:"updated_at" db:"updated_at"`
+	DeletedAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetCatalogsResult struct {
+	Catalogs []CatalogListDTO
+	Total    int
+	Err      error
 }

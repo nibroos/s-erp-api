@@ -2,14 +2,14 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS ms_items (
   id SERIAL PRIMARY KEY,
-  item_sub_group_id INT NOT NULL,
+  item_sub_group_id INT NOT NULL REFERENCES mix_values(id) ON DELETE RESTRICT,
   item_unit_id INT,
   code TEXT,
   name VARCHAR(255) NOT NULL,
   specification TEXT,
   description TEXT,
   tpb_code TEXT,
-  minimum_stock DECIMAL(18, 5),
+  minimum_stock DECIMAL(20, 5),
   is_all_branch INT,
   status INT,
   created_by_id INT,
@@ -19,5 +19,9 @@ CREATE TABLE IF NOT EXISTS ms_items (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
+
+CREATE INDEX idx_ms_items_item_sub_group_id ON ms_items(item_sub_group_id);
+
+CREATE INDEX idx_ms_items_item_unit_id ON ms_items(item_unit_id);
 
 COMMIT;

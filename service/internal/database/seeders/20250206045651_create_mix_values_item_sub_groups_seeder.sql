@@ -263,6 +263,29 @@ VALUES
     1,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'item_sub_groups'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'Service'
+    ),
+    'Maintenance',
+    'Maintenance',
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
   );
 
 COMMIT;

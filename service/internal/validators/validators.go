@@ -121,6 +121,9 @@ func (r *Request) Validate() (map[string][]string, bool) {
 								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("This field must be at most %d characters long", max))
 							}
 						case "numeric":
+							if nestedValue == nil {
+								continue
+							}
 							if !isNumeric(nestedValue) {
 								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a number", customFieldName))
 							}
@@ -215,6 +218,10 @@ func (r *Request) Validate() (map[string][]string, bool) {
 						errors[field] = append(errors[field], fmt.Sprintf("This field must be at most %d characters long", max))
 					}
 				case "numeric":
+					if value == nil {
+						continue
+					}
+
 					if !isNumeric(value) {
 						errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a number", customFieldName))
 					}

@@ -531,8 +531,8 @@ func StartSpanFromController(ctx *fiber.Ctx, tracer opentracing.Tracer, funcDesc
 	// Add custom tag to indicate per-service/per-layer tracing
 	parentSpan.SetTag("type", "service")
 
-	requestBody := ctx.Body()
-	parentSpan.LogKV("request_body", string(requestBody))
+	// requestBody := ctx.Body()
+	// parentSpan.LogKV("request_body", string(requestBody))
 	// headers
 	httpHeaders := make(http.Header)
 	ctx.Request().Header.VisitAll(func(key, value []byte) {
