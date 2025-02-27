@@ -1456,7 +1456,7 @@ type GetItemUnitsRequest struct {
 	Global         string `json:"global"`
 	Name           string `json:"name"`
 	UnitID         string `json:"unit_id"`
-	MsItemID       string `json:"ms_item_id"`
+	ProductID      string `json:"product_id"`
 	Status         string `json:"status"`
 	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
 	Page           string `json:"page" default:"1"`              // Default page to 1
@@ -1465,7 +1465,7 @@ type GetItemUnitsRequest struct {
 }
 
 type CreateItemUnitRequest struct {
-	MsItemID   uint     `json:"ms_item_id"`
+	ProductID  uint     `json:"product_id"`
 	UnitID     uint     `json:"unit_id"`
 	Conversion *float64 `json:"conversion"`
 	PriceSell  *float64 `json:"price_sell"`
@@ -1475,7 +1475,7 @@ type CreateItemUnitRequest struct {
 
 type UpdateItemUnitRequest struct {
 	ID         uint     `json:"id"`
-	MsItemID   uint     `json:"ms_item_id"`
+	ProductID  uint     `json:"product_id"`
 	UnitID     uint     `json:"unit_id"`
 	Conversion *float64 `json:"conversion"`
 	PriceSell  *float64 `json:"price_sell"`
@@ -1506,9 +1506,9 @@ type DeleteItemUnitRequest struct {
 
 type ItemUnitListDTO struct {
 	ID            int      `json:"id" db:"id"`
-	MsItemID      uint     `json:"ms_item_id" db:"ms_item_id"`
+	ProductID     uint     `json:"product_id" db:"product_id"`
 	UnitID        *uint    `json:"unit_id" db:"unit_id"`
-	MsItemName    *string  `json:"ms_item_name" db:"ms_item_name"`
+	ProductName   *string  `json:"product_name" db:"product_name"`
 	UnitName      *string  `json:"unit_name" db:"unit_name"`
 	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
 	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
@@ -1523,9 +1523,9 @@ type ItemUnitListDTO struct {
 
 type ItemUnitDetailDTO struct {
 	ID            uint     `json:"id" db:"id"`
-	MsItemID      uint     `json:"ms_item_id" db:"ms_item_id"`
+	ProductID     uint     `json:"product_id" db:"product_id"`
 	UnitID        *uint    `json:"unit_id" db:"unit_id"`
-	MsItemName    *string  `json:"ms_item_name" db:"ms_item_name"`
+	ProductName   *string  `json:"product_name" db:"product_name"`
 	UnitName      *string  `json:"unit_name" db:"unit_name"`
 	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
 	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
@@ -1547,7 +1547,8 @@ type GetBranchItemsRequest struct {
 	Global         string `json:"global"`
 	Name           string `json:"name"`
 	BranchID       uint   `json:"branch_id"`
-	MsItemID       uint   `json:"ms_item_id"`
+	UnitID         uint   `json:"unit_id"`
+	ProductID      uint   `json:"product_id"`
 	Status         string `json:"status"`
 	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
 	Page           string `json:"page" default:"1"`              // Default page to 1
@@ -1556,30 +1557,42 @@ type GetBranchItemsRequest struct {
 }
 
 type CreateBranchItemRequest struct {
-	MsItemID      uint     `json:"ms_item_id"`
 	BranchID      uint     `json:"branch_id"`
-	Name          string   `json:"name" gorm:"column:name"`
-	Specification *string  `json:"specification" gorm:"column:specification"`
-	Description   *string  `json:"description" gorm:"column:description"`
-	TpbCode       *string  `json:"tpb_code" gorm:"column:tpb_code"`
-	MinimumStock  *float64 `json:"minimum_stock" gorm:"column:minimum_stock"`
+	ItemUnitID    uint     `json:"item_unit_id"`
+	Code          *string  `json:"code"`
+	FactoryCode   *string  `json:"factory_code"`
+	Name          string   `json:"name"`
+	Sku           *string  `json:"sku"`
+	Barcode       *string  `json:"barcode"`
+	Specification *string  `json:"specification"`
+	Description   *string  `json:"description"`
+	Remark        *string  `json:"remark"`
+	TpbCode       *string  `json:"tpb_code"`
+	MinimumStock  *float64 `json:"minimum_stock"`
 	PriceSell     *float64 `json:"price_sell"`
 	PriceBuy      *float64 `json:"price_buy"`
 	Status        int8     `json:"status"`
+	ExpiredAt     *string  `json:"expired_at"`
 }
 
 type UpdateBranchItemRequest struct {
 	ID            uint     `json:"id"`
-	MsItemID      uint     `json:"ms_item_id"`
 	BranchID      uint     `json:"branch_id"`
-	Name          string   `json:"name" gorm:"column:name"`
-	Specification *string  `json:"specification" gorm:"column:specification"`
-	Description   *string  `json:"description" gorm:"column:description"`
-	TpbCode       *string  `json:"tpb_code" gorm:"column:tpb_code"`
-	MinimumStock  *float64 `json:"minimum_stock" gorm:"column:minimum_stock"`
+	ItemUnitID    uint     `json:"item_unit_id"`
+	Code          *string  `json:"code"`
+	FactoryCode   *string  `json:"factory_code"`
+	Name          string   `json:"name"`
+	Sku           *string  `json:"sku"`
+	Barcode       *string  `json:"barcode"`
+	Specification *string  `json:"specification"`
+	Description   *string  `json:"description"`
+	Remark        *string  `json:"remark"`
+	TpbCode       *string  `json:"tpb_code"`
+	MinimumStock  *float64 `json:"minimum_stock"`
 	PriceSell     *float64 `json:"price_sell"`
 	PriceBuy      *float64 `json:"price_buy"`
 	Status        int8     `json:"status"`
+	ExpiredAt     *string  `json:"expired_at"`
 }
 
 type GetBranchItemByIDRequest struct {
@@ -1605,10 +1618,10 @@ type DeleteBranchItemRequest struct {
 
 type BranchItemListDTO struct {
 	ID            int      `json:"id" db:"id"`
-	MsItemID      uint     `json:"ms_item_id" db:"ms_item_id"`
+	ProductID     uint     `json:"product_id" db:"product_id"`
 	BranchID      uint     `json:"branch_id" db:"branch_id"`
 	UnitID        uint     `json:"unit_id" db:"unit_id"`
-	MsItemName    *string  `json:"ms_item_name" db:"ms_item_name"`
+	ProductName   *string  `json:"product_name" db:"product_name"`
 	BranchName    *string  `json:"branch_name" db:"branch_name"`
 	UnitName      *string  `json:"unit_name" db:"unit_name"`
 	Name          *string  `json:"name" db:"name"`
@@ -1628,10 +1641,10 @@ type BranchItemListDTO struct {
 
 type BranchItemDetailDTO struct {
 	ID            uint     `json:"id" db:"id"`
-	MsItemID      uint     `json:"ms_item_id" db:"ms_item_id"`
+	ProductID     uint     `json:"product_id" db:"product_id"`
 	BranchID      uint     `json:"branch_id" db:"branch_id"`
 	UnitID        uint     `json:"unit_id" db:"unit_id"`
-	MsItemName    *string  `json:"ms_item_name" db:"ms_item_name"`
+	ProductName   *string  `json:"ms_item_name" db:"ms_item_name"`
 	BranchName    *string  `json:"branch_name" db:"branch_name"`
 	UnitName      *string  `json:"unit_name" db:"unit_name"`
 	Name          *string  `json:"name" db:"name"`
@@ -1763,6 +1776,7 @@ type GetProductsRequest struct {
 	ExpiredAt      string `json:"expired_at"`
 	Remark         string `json:"remark"`
 	FactoryCode    string `json:"factory_code"`
+	ItemSubGroupID string `json:"item_sub_group_id"`
 	UnitID         string `json:"unit_id"`
 	Status         string `json:"status"`
 	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
@@ -1772,58 +1786,65 @@ type GetProductsRequest struct {
 }
 
 type CreateBomsRequest struct {
-	MsItemID   uint    `json:"ms_item_id"`
-	ItemUnitID uint    `json:"item_unit_id"`
-	Qty        float64 `json:"qty"`
-	Remark     *string `json:"remark"`
+	ProductItemID uint    `json:"product_item_id"`
+	ItemUnitID    uint    `json:"item_unit_id"`
+	Qty           float64 `json:"qty"`
+	Remark        *string `json:"remark"`
 }
 
 // TODO : merge master item with product
 type CreateProductRequest struct {
-	UnitID        *uint               `json:"unit_id"`
-	BranchID      *uint               `json:"branch_id"`
-	Code          *string             `json:"code"`
-	FactoryCode   *string             `json:"factory_code"`
-	Name          string              `json:"name"`
-	Sku           *string             `json:"sku"`
-	Barcode       *string             `json:"barcode"`
-	Specification *string             `json:"specification"`
-	Description   *string             `json:"description"`
-	Remark        *string             `json:"remark"`
-	PriceSell     *float64            `json:"price_sell"`
-	PriceBuy      *float64            `json:"price_buy"`
-	Margin        *float64            `json:"margin"`
-	Status        int8                `json:"status"`
-	ExpiredAt     *string             `json:"expired_at"`
-	Boms          []CreateBomsRequest `json:"boms"`
+	ItemSubGroupID uint                       `json:"item_sub_group_id"`
+	ItemUnitID     uint                       `json:"item_unit_id"`
+	Code           *string                    `json:"code"`
+	FactoryCode    *string                    `json:"factory_code"`
+	Name           string                     `json:"name"`
+	Sku            *string                    `json:"sku"`
+	Barcode        *string                    `json:"barcode"`
+	Specification  *string                    `json:"specification"`
+	Description    *string                    `json:"description"`
+	Remark         *string                    `json:"remark"`
+	PriceSell      *float64                   `json:"price_sell"`
+	PriceBuy       *float64                   `json:"price_buy"`
+	Margin         *float64                   `json:"margin"`
+	TpbCode        *string                    `json:"tpb_code"`
+	MinimumStock   *float64                   `json:"minimum_stock"`
+	IsAllBranch    *int                       `json:"is_all_branch"`
+	Status         int8                       `json:"status"`
+	ExpiredAt      *string                    `json:"expired_at"`
+	Units          []CreateMsItemUnitsRequest `json:"units"`
+	Boms           []CreateBomsRequest        `json:"boms"`
 }
 
 type UpdateBomsRequest struct {
-	ID         *uint   `json:"id"`
-	MsItemID   uint    `json:"ms_item_id"`
-	ItemUnitID uint    `json:"item_unit_id"`
-	Qty        float64 `json:"qty"`
-	Remark     *string `json:"remark"`
+	ID            *uint   `json:"id"`
+	ProductItemID uint    `json:"product_item_id"`
+	ItemUnitID    uint    `json:"item_unit_id"`
+	Qty           float64 `json:"qty"`
+	Remark        *string `json:"remark"`
 }
 
 type UpdateProductRequest struct {
-	ID            uint     `json:"id"`
-	UnitID        *uint    `json:"unit_id"`
-	BranchID      *uint    `json:"branch_id"`
-	Code          *string  `json:"code"`
-	FactoryCode   *string  `json:"factory_code"`
-	Name          string   `json:"name"`
-	Sku           *string  `json:"sku"`
-	Barcode       *string  `json:"barcode"`
-	Specification *string  `json:"specification"`
-	Description   *string  `json:"description"`
-	Remark        *string  `json:"remark"`
-	PriceSell     *float64 `json:"price_sell"`
-	PriceBuy      *float64 `json:"price_buy"`
-	Margin        *float64 `json:"margin"`
-	Status        int8     `json:"status"`
-	ExpiredAt     *string  `json:"expired_at"`
-	Boms          []UpdateBomsRequest
+	ID             uint                `json:"id"`
+	ItemSubGroupID uint                `json:"item_sub_group_id"`
+	ItemUnitID     uint                `json:"item_unit_id"`
+	Code           *string             `json:"code"`
+	FactoryCode    *string             `json:"factory_code"`
+	Name           string              `json:"name"`
+	Sku            *string             `json:"sku"`
+	Barcode        *string             `json:"barcode"`
+	Specification  *string             `json:"specification"`
+	Description    *string             `json:"description"`
+	Remark         *string             `json:"remark"`
+	PriceSell      *float64            `json:"price_sell"`
+	PriceBuy       *float64            `json:"price_buy"`
+	Margin         *float64            `json:"margin"`
+	TpbCode        *string             `json:"tpb_code"`
+	MinimumStock   *float64            `json:"minimum_stock"`
+	IsAllBranch    *int                `json:"is_all_branch"`
+	Status         int8                `json:"status"`
+	ExpiredAt      *string             `json:"expired_at"`
+	Boms           []UpdateBomsRequest `json:"boms"`
 }
 
 type GetProductByIDRequest struct {
@@ -1854,76 +1875,96 @@ type DeleteProductRequest struct {
 }
 
 type ProductListDTO struct {
-	ID            int     `json:"id" db:"id"`
-	ProductID     *uint   `json:"product_id" db:"product_id"`
-	UnitID        *uint   `json:"unit_id" db:"unit_id"`
-	BranchID      *uint   `json:"branch_id" db:"branch_id"`
-	UnitName      *string `json:"unit_name" db:"unit_name"`
-	BranchName    *string `json:"branch_name" db:"branch_name"`
-	Code          *string `json:"code" db:"code"`
-	FactoryCode   *string `json:"factory_code" db:"factory_code"`
-	Name          string  `json:"name" db:"name"`
-	Sku           *string `json:"sku" db:"sku"`
-	Barcode       *string `json:"barcode" db:"barcode"`
-	Specification *string `json:"specification" db:"specification"`
-	Description   *string `json:"description" db:"description"`
-	Remark        *string `json:"remark" db:"remark"`
-	PriceSell     *string `json:"price_sell" db:"price_sell"`
-	PriceBuy      *string `json:"price_buy" db:"price_buy"`
-	Margin        *string `json:"margin" db:"margin"`
-	ExpiredAt     *string `json:"expired_at" db:"expired_at"`
-	Status        int8    `json:"status" db:"status"`
-	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt     *string `json:"created_at" db:"created_at"`
-	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
-	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+	ID               int     `json:"id" db:"id"`
+	ProductID        *uint   `json:"product_id" db:"product_id"`
+	ItemSubGroupID   uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
+	ItemUnitID       uint    `json:"item_unit_id" db:"item_unit_id"`
+	ItemUnitUnitID   *uint   `json:"item_unit_unit_id" db:"item_unit_unit_id"`
+	BranchID         *uint   `json:"branch_id" db:"branch_id"`
+	BranchItemID     *uint   `json:"branch_item_id" db:"branch_item_id"`
+	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
+	UnitName         *string `json:"unit_name" db:"unit_name"`
+	BranchName       *string `json:"branch_name" db:"branch_name"`
+	Code             *string `json:"code" db:"code"`
+	FactoryCode      *string `json:"factory_code" db:"factory_code"`
+	Name             string  `json:"name" db:"name"`
+	Sku              *string `json:"sku" db:"sku"`
+	Barcode          *string `json:"barcode" db:"barcode"`
+	Specification    *string `json:"specification" db:"specification"`
+	Description      *string `json:"description" db:"description"`
+	TpbCode          *string `json:"tpb_code" db:"tpb_code"`
+	MinimumStock     *string `json:"minimum_stock" db:"minimum_stock"`
+	IsAllBranch      *int    `json:"is_all_branch" db:"is_all_branch"`
+	Remark           *string `json:"remark" db:"remark"`
+	PriceSell        *string `json:"price_sell" db:"price_sell"`
+	PriceBuy         *string `json:"price_buy" db:"price_buy"`
+	Margin           *string `json:"margin" db:"margin"`
+	ExpiredAt        *string `json:"expired_at" db:"expired_at"`
+	Status           int8    `json:"status" db:"status"`
+	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        *string `json:"created_at" db:"created_at"`
+	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
+	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
 }
 
 type ProductBomListDTO struct {
-	ID            *uint   `json:"id" db:"id"`
-	BomID         *uint   `json:"bom_id" db:"bom_id"`
-	ProductID     uint    `json:"product_id" db:"product_id"`
-	MsItemID      uint    `json:"ms_item_id" db:"ms_item_id"`
-	ItemUnitID    uint    `json:"item_unit_id" db:"item_unit_id"`
-	Qty           float64 `json:"qty" db:"qty"`
-	Remark        *string `json:"remark" db:"remark"`
-	MsItemName    *string `json:"ms_item_name" db:"ms_item_name"`
-	ItemUnitName  *string `json:"item_unit_name" db:"item_unit_name"`
-	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt     *string `json:"created_at" db:"created_at"`
-	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
-	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+	ID              *uint   `json:"id" db:"id"`
+	BomID           *uint   `json:"bom_id" db:"bom_id"`
+	ProductID       uint    `json:"product_id" db:"product_id"`
+	ProductItemID   uint    `json:"product_item_id" db:"product_item_id"`
+	ItemUnitID      uint    `json:"item_unit_id" db:"item_unit_id"`
+	UnitName        *string `json:"unit_name" db:"unit_name"`
+	Qty             float64 `json:"qty" db:"qty"`
+	Remark          *string `json:"remark" db:"remark"`
+	ProductItemName *string `json:"product_item_name" db:"product_item_name"`
+	ItemUnitName    *string `json:"item_unit_name" db:"item_unit_name"`
+	CreatedByName   *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName   *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt       *string `json:"created_at" db:"created_at"`
+	UpdatedAt       *string `json:"updated_at" db:"updated_at"`
+	DeleteAt        *string `json:"deleted_at" db:"deleted_at"`
 }
 
 type ProductDetailDTO struct {
-	ID            uint                `json:"id" db:"id"`
-	ProductID     *uint               `json:"product_id" db:"product_id"`
-	UnitID        *uint               `json:"unit_id" db:"unit_id"`
-	BranchID      *uint               `json:"branch_id" db:"branch_id"`
-	UnitName      *string             `json:"unit_name" db:"unit_name"`
-	BranchName    *string             `json:"branch_name" db:"branch_name"`
-	Code          *string             `json:"code" db:"code"`
-	FactoryCode   *string             `json:"factory_code" db:"factory_code"`
-	Name          string              `json:"name" db:"name"`
-	Sku           *string             `json:"sku" db:"sku"`
-	Barcode       *string             `json:"barcode" db:"barcode"`
-	Specification *string             `json:"specification" db:"specification"`
-	Description   *string             `json:"description" db:"description"`
-	Remark        *string             `json:"remark" db:"remark"`
-	PriceSell     *string             `json:"price_sell" db:"price_sell"`
-	PriceBuy      *string             `json:"price_buy" db:"price_buy"`
-	Margin        *string             `json:"margin" db:"margin"`
-	ExpiredAt     *string             `json:"expired_at" db:"expired_at"`
-	Status        int8                `json:"status" db:"status"`
-	CreatedByName *string             `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName *string             `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt     *string             `json:"created_at" db:"created_at"`
-	UpdatedAt     *string             `json:"updated_at" db:"updated_at"`
-	DeletedAt     *string             `json:"deleted_at" db:"deleted_at"`
-	Boms          []ProductBomListDTO `json:"boms"`
+	ID               uint                `json:"id" db:"id"`
+	ProductID        *uint               `json:"product_id" db:"product_id"`
+	ItemSubGroupID   uint                `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID      *uint               `json:"item_group_id" db:"item_group_id"`
+	ItemUnitID       uint                `json:"item_unit_id" db:"item_unit_id"`
+	ItemUnitUnitID   *uint               `json:"item_unit_unit_id" db:"item_unit_unit_id"`
+	BranchID         *uint               `json:"branch_id" db:"branch_id"`
+	BranchItemID     *uint               `json:"branch_item_id" db:"branch_item_id"`
+	ItemSubGroupName *string             `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string             `json:"item_group_name" db:"item_group_name"`
+	UnitName         *string             `json:"unit_name" db:"unit_name"`
+	BranchName       *string             `json:"branch_name" db:"branch_name"`
+	Code             *string             `json:"code" db:"code"`
+	FactoryCode      *string             `json:"factory_code" db:"factory_code"`
+	Name             string              `json:"name" db:"name"`
+	Sku              *string             `json:"sku" db:"sku"`
+	Barcode          *string             `json:"barcode" db:"barcode"`
+	Specification    *string             `json:"specification" db:"specification"`
+	Description      *string             `json:"description" db:"description"`
+	TpbCode          *string             `json:"tpb_code" db:"tpb_code"`
+	MinimumStock     *string             `json:"minimum_stock" db:"minimum_stock"`
+	IsAllBranch      *int                `json:"is_all_branch" db:"is_all_branch"`
+	Remark           *string             `json:"remark" db:"remark"`
+	PriceSell        *string             `json:"price_sell" db:"price_sell"`
+	PriceBuy         *string             `json:"price_buy" db:"price_buy"`
+	Margin           *string             `json:"margin" db:"margin"`
+	ExpiredAt        *string             `json:"expired_at" db:"expired_at"`
+	Status           int8                `json:"status" db:"status"`
+	CreatedByName    *string             `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string             `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        *string             `json:"created_at" db:"created_at"`
+	UpdatedAt        *string             `json:"updated_at" db:"updated_at"`
+	DeleteAt         *string             `json:"deleted_at" db:"deleted_at"`
+	Boms             []ProductBomListDTO `json:"boms"`
 }
+
 type GetProductsResult struct {
 	Products []ProductListDTO
 	Total    int

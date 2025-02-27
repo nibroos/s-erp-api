@@ -88,15 +88,26 @@ func (c *BranchItemController) CreateBranchItem(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
+	margin := ((*req.PriceSell - *req.PriceBuy) / *req.PriceSell) * 100
+
 	branchItem := models.BranchItem{
 		BranchID:      req.BranchID,
-		MsItemID:      req.MsItemID,
+		ItemUnitID:    req.ItemUnitID,
+		Code:          req.Code,
+		FactoryCode:   req.FactoryCode,
 		Name:          req.Name,
+		Sku:           req.Sku,
+		Barcode:       req.Barcode,
 		Specification: req.Specification,
 		Description:   req.Description,
+		Remark:        req.Remark,
 		TpbCode:       req.TpbCode,
 		MinimumStock:  req.MinimumStock,
+		PriceSell:     req.PriceSell,
+		PriceBuy:      req.PriceBuy,
+		Margin:        &margin,
 		Status:        req.Status,
+		ExpiredAt:     req.ExpiredAt,
 		CreatedByID:   &userID,
 	}
 
@@ -194,14 +205,25 @@ func (c *BranchItemController) UpdateBranchItem(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
+	margin := ((*req.PriceSell - *req.PriceBuy) / *req.PriceSell) * 100
+
 	branchItem := models.BranchItem{
 		ID:            req.ID,
+		Code:          req.Code,
+		FactoryCode:   req.FactoryCode,
 		Name:          req.Name,
+		Sku:           req.Sku,
+		Barcode:       req.Barcode,
 		Specification: req.Specification,
 		Description:   req.Description,
+		Remark:        req.Remark,
 		TpbCode:       req.TpbCode,
 		MinimumStock:  req.MinimumStock,
+		PriceSell:     req.PriceSell,
+		PriceBuy:      req.PriceBuy,
+		Margin:        &margin,
 		Status:        req.Status,
+		ExpiredAt:     req.ExpiredAt,
 		UpdatedByID:   &userID,
 	}
 

@@ -89,30 +89,24 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Unauthorized", http.StatusUnauthorized, err.Error(), nil)
 	}
 	userID := uint(claims["user_id"].(float64))
-	branchID := claims["bid"]
-
-	isAdmin := utils.IsAdmin(ctx)
-	if isAdmin {
-		branchID = req.BranchID
-	}
 
 	product := models.Product{
-		UnitID:        req.UnitID,
-		BranchID:      branchID.(*uint),
-		Code:          req.Code,
-		FactoryCode:   req.FactoryCode,
-		Name:          req.Name,
-		Sku:           req.Sku,
-		Barcode:       req.Barcode,
-		Specification: req.Specification,
-		Description:   req.Description,
-		Remark:        req.Remark,
-		PriceSell:     req.PriceSell,
-		PriceBuy:      req.PriceBuy,
-		Margin:        req.Margin,
-		Status:        req.Status,
-		ExpiredAt:     req.ExpiredAt,
-		CreatedByID:   &userID,
+		ItemSubGroupID: req.ItemSubGroupID,
+		ItemUnitID:     req.ItemUnitID,
+		Code:           req.Code,
+		FactoryCode:    req.FactoryCode,
+		Name:           req.Name,
+		Sku:            req.Sku,
+		Barcode:        req.Barcode,
+		Specification:  req.Specification,
+		Description:    req.Description,
+		TpbCode:        req.TpbCode,
+		MinimumStock:   req.MinimumStock,
+		IsAllBranch:    req.IsAllBranch,
+		Remark:         req.Remark,
+		Status:         req.Status,
+		ExpiredAt:      req.ExpiredAt,
+		CreatedByID:    &userID,
 	}
 
 	tx := c.repo.BeginTransaction()
@@ -126,12 +120,12 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 	boms := make([]*models.Bom, 0)
 	for _, bom := range req.Boms {
 		bom := &models.Bom{
-			ProductID:   &createdProduct.ID,
-			MsItemID:    &bom.MsItemID,
-			ItemUnitID:  &bom.ItemUnitID,
-			Qty:         &bom.Qty,
-			Remark:      bom.Remark,
-			CreatedByID: &userID,
+			ProductID:     &createdProduct.ID,
+			ProductItemID: &bom.ProductItemID,
+			ItemUnitID:    &bom.ItemUnitID,
+			Qty:           &bom.Qty,
+			Remark:        bom.Remark,
+			CreatedByID:   &userID,
 		}
 		boms = append(boms, bom)
 	}
@@ -237,21 +231,23 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 	userID := uint(claims["user_id"].(float64))
 
 	product := models.Product{
-		ID:            req.ID,
-		UnitID:        req.UnitID,
-		Code:          req.Code,
-		FactoryCode:   req.FactoryCode,
-		Name:          req.Name,
-		Sku:           req.Sku,
-		Barcode:       req.Barcode,
-		Specification: req.Specification,
-		Description:   req.Description,
-		Remark:        req.Remark,
-		PriceSell:     req.PriceSell,
-		PriceBuy:      req.PriceBuy,
-		Margin:        req.Margin,
-		Status:        req.Status,
-		UpdatedByID:   &userID,
+		ID:             req.ID,
+		ItemSubGroupID: req.ItemSubGroupID,
+		ItemUnitID:     req.ItemUnitID,
+		Code:           req.Code,
+		FactoryCode:    req.FactoryCode,
+		Name:           req.Name,
+		Sku:            req.Sku,
+		Barcode:        req.Barcode,
+		Specification:  req.Specification,
+		Description:    req.Description,
+		TpbCode:        req.TpbCode,
+		MinimumStock:   req.MinimumStock,
+		IsAllBranch:    req.IsAllBranch,
+		Remark:         req.Remark,
+		Status:         req.Status,
+		ExpiredAt:      req.ExpiredAt,
+		UpdatedByID:    &userID,
 	}
 
 	tx := c.repo.BeginTransaction()
@@ -271,13 +267,13 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 	boms := make([]*models.Bom, 0)
 	for _, bom := range req.Boms {
 		bom := &models.Bom{
-			ID:          bom.ID,
-			ProductID:   &updatedProduct.ID,
-			MsItemID:    &bom.MsItemID,
-			ItemUnitID:  &bom.ItemUnitID,
-			Qty:         &bom.Qty,
-			Remark:      bom.Remark,
-			UpdatedByID: &userID,
+			ID:            bom.ID,
+			ProductID:     &updatedProduct.ID,
+			ProductItemID: &bom.ProductItemID,
+			ItemUnitID:    &bom.ItemUnitID,
+			Qty:           &bom.Qty,
+			Remark:        bom.Remark,
+			UpdatedByID:   &userID,
 		}
 		boms = append(boms, bom)
 	}

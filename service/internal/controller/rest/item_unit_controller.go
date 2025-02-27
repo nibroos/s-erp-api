@@ -12,7 +12,6 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/nibroos/s-erp-api/service/internal/validators/form_requests"
 	"github.com/opentracing/opentracing-go"
-	// "github.com/opentracing/opentracing-go/ext"
 )
 
 type ItemUnitController struct {
@@ -89,7 +88,7 @@ func (c *ItemUnitController) CreateItemUnit(ctx *fiber.Ctx) error {
 	userID := uint(claims["user_id"].(float64))
 
 	itemUnit := models.ItemUnit{
-		MsItemID:    req.MsItemID,
+		ProductID:   req.ProductID,
 		UnitID:      req.UnitID,
 		Conversion:  req.Conversion,
 		PriceSell:   req.PriceSell,

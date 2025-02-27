@@ -37,15 +37,15 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
-					mi.name as ms_item_name,
+					m.id, m.product_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.margin, m.status, m.created_at, m.updated_at, m.deleted_at,
+					p.name as product_name,
 					u.name as unit_name,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
         FROM item_units m
-				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
+				LEFT JOIN products p ON m.product_id = p.id
 				LEFT JOIN mix_values u ON m.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
@@ -53,16 +53,16 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
-					m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.product_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.margin, m.status, m.created_at, m.updated_at, m.deleted_at,
 					
-					mi.name as ms_item_name,
+					p.name as product_name,
 					u.name as unit_name,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
         FROM item_units m
-				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
+				LEFT JOIN products p ON m.product_id = p.id
 				LEFT JOIN mix_values u ON m.unit_id = u.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
@@ -72,7 +72,7 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 
 	i := 1
 
-	filterKey := []string{"ms_item_id", "unit_id", "status"}
+	filterKey := []string{"product_id", "unit_id", "status"}
 
 	for key := range filterKey {
 		if filters[filterKey[key]] != "" {
@@ -161,15 +161,15 @@ func (r *ItemUnitRepository) GetItemUnitByID(ctx *fiber.Ctx, params *dtos.GetIte
 
 	query := `
 	SELECT DISTINCT ON (m.id) 
-		m.id, m.ms_item_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
-		mi.name as ms_item_name,
+		m.id, m.product_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.margin, m.status, m.created_at, m.updated_at, m.deleted_at,
+		p.name as product_name,
 		u.name as unit_name,
 
 		cu.name as created_by_name,
 		uu.name as updated_by_name
 
 	FROM item_units m
-	LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
+	LEFT JOIN products p ON m.product_id = p.id
 	LEFT JOIN mix_values u ON m.unit_id = u.id
 	LEFT JOIN users cu ON m.created_by_id = cu.id
 	LEFT JOIN users uu ON m.updated_by_id = uu.id
@@ -216,7 +216,7 @@ func (r *ItemUnitRepository) UpdateItemUnit(tx *gorm.DB, itemUnit *models.ItemUn
 	childSpan := opentracing.StartSpan("ItemUnitRepository-UpdateItemUnit", opentracing.ChildOf(span.Context()))
 
 	if err := tx.Select("*").Omit(
-		"ms_item_id", "unit_id", "created_at", "created_by_id",
+		"product_id", "unit_id", "created_at", "created_by_id",
 	).Updates(itemUnit).Error; err != nil {
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)

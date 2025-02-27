@@ -3,10 +3,11 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS item_units (
   id SERIAL PRIMARY KEY,
   unit_id INT NOT NULL REFERENCES mix_values (id) ON DELETE RESTRICT,
-  ms_item_id INT NOT NULL REFERENCES ms_items (id) ON DELETE RESTRICT,
+  product_id INT NOT NULL REFERENCES products (id) ON DELETE RESTRICT,
   conversion DECIMAL(20, 5),
   price_sell DECIMAL(20, 5),
   price_buy DECIMAL(20, 5),
+  margin DECIMAL(20, 5),
   status INT,
   created_by_id INT,
   updated_by_id INT,
@@ -18,6 +19,6 @@ CREATE TABLE IF NOT EXISTS item_units (
 
 CREATE INDEX idx_item_units_unit_id ON item_units(unit_id);
 
-CREATE INDEX idx_item_units_ms_item_id ON item_units(ms_item_id);
+CREATE INDEX idx_item_units_product_id ON item_units(product_id);
 
 COMMIT;

@@ -2,7 +2,8 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
-  unit_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  item_sub_group_id INT NOT NULL REFERENCES mix_values(id) ON DELETE RESTRICT,
+  item_unit_id INT,
   branch_id INT REFERENCES branches(id) ON DELETE RESTRICT,
   code TEXT,
   factory_code TEXT,
@@ -12,9 +13,9 @@ CREATE TABLE IF NOT EXISTS products (
   specification TEXT,
   description TEXT,
   remark TEXT,
-  price_sell DECIMAL(20, 5),
-  price_buy DECIMAL(20, 5),
-  margin DECIMAL(20, 5),
+  tpb_code TEXT,
+  minimum_stock DECIMAL(20, 5),
+  is_all_branch INT,
   status INT,
   expired_at timestamp with time zone,
   created_by_id INT,
