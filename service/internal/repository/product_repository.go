@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -37,6 +36,13 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	// Create a child span for the controller
 	childSpan := opentracing.StartSpan("ProductRepository-GetProducts", opentracing.ChildOf(span.Context()))
 
+	// Simulate an error for testing Jaeger tracing
+	if filters["simulate_error"] == "true" {
+		utils.LogErrors(childSpan, fmt.Errorf("simulated error"))
+
+		return nil, 0, fmt.Errorf("simulated error")
+	}
+
 	// Extract user ID from JWT
 	claims, err := middleware.GetAuthUser(ctx)
 	if err != nil {
@@ -58,36 +64,36 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.collection_id, m.unit_id, m.branch_id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.price_sell, m.price_buy, m.margin, m.expired_at, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.unit_id, m.branch_id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.price_sell, m.price_buy, m.margin, m.expired_at, m.status, m.created_at, m.updated_at, m.deleted_at,
 
-					c.name as collection_name,
+					m.id as product_id,
 					u.name as unit_name,
-					bi.branch_id as branch_id, 
+					bi.name as branch_name,
 
-        cu.name as created_by_name,
-        uu.name as updated_by_name
+					cu.name as created_by_name,
+					uu.name as updated_by_name
 
         FROM products m
-				LEFT JOIN mix_values c ON m.collection_id = c.id
 				LEFT JOIN mix_values u ON m.unit_id = u.id
+				LEFT JOIN branches bi ON m.branch_id = bi.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
-					m.id, m.collection_id, m.unit_id, m.branch_id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.price_sell, m.price_buy, m.margin, m.expired_at, m.status, m.created_at, m.updated_at, m.deleted_at,
+					m.id, m.unit_id, m.branch_id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.price_sell, m.price_buy, m.margin, m.expired_at, m.status, m.created_at, m.updated_at, m.deleted_at,
 
-					c.name as collection_name,
+					m.id as product_id,
 					u.name as unit_name,
-					bi.branch_id as branch_id,
+					bi.name as branch_name,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
         FROM products m
-				LEFT JOIN mix_values c ON m.collection_id = c.id
 				LEFT JOIN mix_values u ON m.unit_id = u.id
+				LEFT JOIN branches bi ON m.branch_id = bi.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -122,9 +128,8 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	}
 
 	filterKey := map[string]string{
-		"collection_id": "collection_id",
-		"unit_id":       "unit_id",
-		"status":        "status",
+		"unit_id": "unit_id",
+		"status":  "status",
 	}
 
 	for key, _ := range filterKey {
@@ -223,8 +228,9 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
 	FROM (
 		
 		SELECT DISTINCT ON (m.id) 
-			m.id, m.collection_id, m.unit_id, m.branch_id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.price_sell, m.price_buy, m.margin, m.expired_at, m.status, m.created_at, m.updated_at, m.deleted_at,
-			c.name as collection_name,
+			m.id, m.unit_id, m.branch_id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.price_sell, m.price_buy, m.margin, m.expired_at, m.status, m.created_at, m.updated_at, m.deleted_at,
+
+			m.id as product_id,
 			u.name as unit_name,
 			b.name as branch_name,
 
@@ -232,7 +238,6 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
 			uu.name as updated_by_name
 
 		FROM products m
-		LEFT JOIN mix_values c ON m.collection_id = isg.id
 		LEFT JOIN mix_values u ON m.unit_id = u.id
 		LEFT JOIN branches b ON m.branch_id = b.id
 		LEFT JOIN users cu ON m.created_by_id = cu.id
@@ -330,24 +335,23 @@ func (r *ProductRepository) CreateBoms(tx *gorm.DB, boms []*models.Bom, productI
 // bulk/batch update boms
 func (r *ProductRepository) UpdateBoms(tx *gorm.DB, boms []*models.Bom, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("BomRepository-UpdateBoms", opentracing.ChildOf(span.Context()))
-	defer childSpan.Finish()
 
 	data := make([]map[string]interface{}, 0)
 	for _, bom := range boms {
 		data = append(data, map[string]interface{}{
 			"id":            bom.ID,
+			"product_id":    bom.ProductID,
 			"ms_item_id":    bom.MsItemID,
 			"item_unit_id":  bom.ItemUnitID,
 			"qty":           bom.Qty,
 			"remark":        bom.Remark,
-			"updated_at":    time.Now(),
 			"updated_by_id": bom.UpdatedByID,
+			"updated_at":    time.Now(),
 		})
 	}
 
-	log.Println("data", data)
-
-	if err := r.utilRepo.BulkUpdate(tx, "boms", "id", data, childSpan); err != nil {
+	// if err := r.utilRepo.BulkUpdate(tx, "boms", "id", data, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "boms", "id", data, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -364,4 +368,33 @@ func (r *ProductRepository) DeleteBomsWhereNotIn(tx *gorm.DB, productID uint, bo
 	}
 
 	return nil
+}
+
+func (r *ProductRepository) GetBomsByProductID(ctx *fiber.Ctx, productID uint, span opentracing.Span) ([]dtos.ProductBomListDTO, error) {
+	childSpan := opentracing.StartSpan("ProductRepository-GetBomsByProductID", opentracing.ChildOf(span.Context()))
+
+	boms := []dtos.ProductBomListDTO{}
+
+	query := `SELECT b.id, b.product_id, b.ms_item_id, b.item_unit_id, b.qty, b.remark, b.created_at, b.updated_at, b.deleted_at,
+		b.id as bom_id,
+		mi.name as ms_item_name, 
+		u.name as item_unit_name,
+
+		cu.name as created_by_name,
+		uu.name as updated_by_name
+
+	FROM boms b
+	LEFT JOIN ms_items mi ON b.ms_item_id = mi.id
+	LEFT JOIN item_units iu ON b.item_unit_id = iu.id
+	LEFT JOIN mix_values u ON iu.unit_id = u.id
+	LEFT JOIN users cu ON b.created_by_id = cu.id
+	LEFT JOIN users uu ON b.updated_by_id = uu.id
+	WHERE b.product_id = $1 AND b.deleted_at IS NULL`
+
+	if err := r.sqlDB.SelectContext(ctx.Context(), &boms, query, productID); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return boms, nil
 }

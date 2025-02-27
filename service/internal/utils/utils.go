@@ -18,6 +18,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
+	"github.com/nibroos/s-erp-api/service/internal/auth"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	jLog "github.com/opentracing/opentracing-go/log"
@@ -701,4 +702,27 @@ func ErrTrxResponse(ctx *fiber.Ctx, tx *gorm.DB, apiSpan opentracing.Span, err e
 	tx.Rollback()
 	LogResponse(apiSpan, WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 	return GetResponse(ctx, nil, nil, message, status, err.Error(), nil)
+}
+
+func ErrGetReponse(ctx *fiber.Ctx, apiSpan opentracing.Span, err error, message string, status int16) error {
+	response := WrapResponse(nil, nil, err.Error(), status)
+	LogResponse(apiSpan, response)
+	return SendResponse(ctx, response, int(status))
+}
+
+func ErrValidResponse(ctx *fiber.Ctx, apiSpan opentracing.Span, message string, errors map[string][]string) error {
+	LogResponse(apiSpan, errors)
+	return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": errors, "message": "Validation failed", "status": http.StatusBadRequest})
+}
+
+func GetClaims(ctx *fiber.Ctx, parentSpan opentracing.Span) jwt.MapClaims {
+	// Extract user ID from JWT
+	claims, err := auth.GetAuthUser(ctx)
+	if err != nil {
+		LogErrors(parentSpan, err)
+		GetResponse(ctx, nil, nil, "Unauthorized", http.StatusUnauthorized, err.Error(), nil)
+		return nil
+	}
+
+	return claims
 }

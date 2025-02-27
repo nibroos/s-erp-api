@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -164,7 +163,6 @@ func (s *Pph23Service) CsvGetPph23s(ctx *fiber.Ctx, filters map[string]string, s
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()
-		log.Println("CsvGetPph23s error:", err)
 	} else {
 		appName = *companyProfile.CompanyName
 	}

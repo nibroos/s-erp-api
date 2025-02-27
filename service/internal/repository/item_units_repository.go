@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
@@ -122,8 +121,6 @@ func (r *ItemUnitRepository) GetItemUnits(ctx *fiber.Ctx, filters map[string]str
 		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
 		args = append(args, perPage, (currentPage-1)*perPage)
 	}
-
-	log.Println(query)
 
 	// Goroutine for select query
 	wg.Add(1)

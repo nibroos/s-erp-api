@@ -56,72 +56,68 @@ func (r *UtilRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params *dtos.GetC
 	return &CompanyProfile, nil
 }
 
-// BulkUpdate updates multiple rows in a single query.
+// Upsert performs an INSERT ... ON CONFLICT operation for any table.
 //
-// idColumn: The name of the primary key column (e.g., "id").
+// table: The table name.
 //
-// data: A slice of maps, where each map contains the primary key value and the new values for the columns to update.
+// idColumn: The column with a unique constraint.
 //
-// Example data:
+// data: A map of column-value pairs to insert/update.
 //
 //	[]map[string]interface{}{
 //	    {"id": 1, "price_buy": 400, "quantity": 10},
 //	    {"id": 2, "price_buy": 500, "quantity": 20},
 //	}
-func (r *UtilRepository) BulkUpdate(tx *gorm.DB, tableName string, idColumn string, data []map[string]interface{}, span opentracing.Span) error {
-	if len(data) == 0 {
-		return nil // No data to update
-	}
-
+func (r *UtilRepository) Upsert(tx *gorm.DB, table string, idColumn string, data []map[string]interface{}, span opentracing.Span) error {
 	// Start a child span for tracing
 	childSpan := opentracing.StartSpan("BulkUpdate", opentracing.ChildOf(span.Context()))
 
-	// Step 1: Extract column names (excluding the primary key)
-	columns := make([]string, 0)
-	for key := range data[0] {
-		if key != idColumn {
-			columns = append(columns, key)
-		}
+	if len(data) == 0 {
+		return nil // No data to upsert
 	}
 
-	// Step 2: Build the SET clause with CASE statements for each column
-	var setBuilder strings.Builder
-	var args []interface{}
+	// Get the columns from the first row
+	columns := make([]string, 0, len(data[0]))
+	for column := range data[0] {
+		columns = append(columns, column)
+	}
+
+	// Prepare the VALUES clause and arguments
+	var valueStrings []string
+	var valueArgs []interface{}
+	for _, row := range data {
+		var placeholders []string
+		for _, column := range columns {
+			placeholders = append(placeholders, fmt.Sprintf("$%d", len(valueArgs)+1))
+			valueArgs = append(valueArgs, row[column])
+		}
+		valueStrings = append(valueStrings, fmt.Sprintf("(%s)", strings.Join(placeholders, ", ")))
+	}
+
+	// Prepare the UPDATE clause
+	var updates []string
 	for _, column := range columns {
-		setBuilder.WriteString(fmt.Sprintf("%s = CASE %s ", column, idColumn))
-
-		// Add WHEN-THEN clauses for each row
-		for _, item := range data {
-			setBuilder.WriteString("WHEN ? THEN ? ")
-			args = append(args, item[idColumn], item[column]) // Append the ID and column value
+		if column != idColumn { // Skip the conflict column in the UPDATE clause
+			updates = append(updates, fmt.Sprintf("%s = EXCLUDED.%s", column, column))
 		}
-		setBuilder.WriteString("END, ")
 	}
 
-	// Remove the trailing comma and space
-	setClause := strings.TrimSuffix(setBuilder.String(), ", ")
-
-	// Step 3: Build the WHERE clause
-	var whereBuilder strings.Builder
-	whereBuilder.WriteString(fmt.Sprintf("%s IN (", idColumn))
-	placeholders := strings.Repeat("?, ", len(data)-1) + "?"
-	whereBuilder.WriteString(placeholders)
-	whereBuilder.WriteString(")")
-
-	// Step 4: Combine the full query
+	// Construct the query
 	query := fmt.Sprintf(`
-        UPDATE %s
-        SET %s
-        WHERE %s
-    `, tableName, setClause, whereBuilder.String())
+        INSERT INTO %s (%s)
+        VALUES %s
+        ON CONFLICT (%s)
+        DO UPDATE SET %s
+    `,
+		table,
+		strings.Join(columns, ", "),
+		strings.Join(valueStrings, ", "),
+		idColumn,
+		strings.Join(updates, ", "),
+	)
 
-	// Step 5: Append IDs to the args for the WHERE clause
-	for _, item := range data {
-		args = append(args, item[idColumn])
-	}
-
-	// Step 6: Execute the query
-	result := tx.Exec(query, args...)
+	// Execute the query
+	result := tx.Exec(query, valueArgs...)
 	if result.Error != nil {
 		defer childSpan.Finish()
 		childSpan.LogKV("rows_affected", result.RowsAffected)

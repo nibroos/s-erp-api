@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -117,18 +117,23 @@ func (s *ProductService) ExcelGetProducts(ctx *fiber.Ctx, filters map[string]str
 		return nil, err
 	}
 
-	file.SetSheetRow("Products", "A1", &[]string{"ID", "Name", "Sub Group", "Unit", "Specification", "TPB Code", "Price Sell", "Price Buy", "Minimum Stock", "Created At", "Updated At"})
+	file.SetSheetRow("Products", "A1", &[]string{"ID", "Branch", "Code", "Factory Code", "Name", "Sku", "Barcode", "Unit", "Specification", "Desc", "Remark", "Price Sell", "Price Buy"})
 
 	for i, product := range products {
 		row := []interface{}{
 			product.ID,
+			*product.BranchName,
+			utils.GetPtrVal(product.Code),
+			utils.GetPtrVal(product.FactoryCode),
 			product.Name,
+			utils.GetPtrVal(product.Sku),
+			utils.GetPtrVal(product.Barcode),
 			utils.GetPtrVal(product.UnitName),
 			utils.GetPtrVal(product.Specification),
+			utils.GetPtrVal(product.Description),
+			utils.GetPtrVal(product.Remark),
 			utils.GetPtrVal(product.PriceSell),
 			utils.GetPtrVal(product.PriceBuy),
-			product.CreatedAt,
-			product.UpdatedAt,
 		}
 		file.SetSheetRow("Products", fmt.Sprintf("A%d", i+2), &row)
 	}
@@ -167,24 +172,30 @@ func (s *ProductService) CsvGetProducts(ctx *fiber.Ctx, filters map[string]strin
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()
-		log.Println("CsvGetProducts error:", err)
 	} else {
 		appName = *companyProfile.CompanyName
 	}
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Master Item\n"
+	csv += "Master Product\n"
 	csv += "\n"
 
-	csv += "ID,Name,Sub Group,Unit,Specification,TPB Code,Price Sell,Price Buy,Minimum Stock\n"
+	csv += "ID,Branch,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
 	// Build CSV rows
 	for _, product := range products {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%v,%v,%v\n",
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
 			product.ID,
+			*product.BranchName,
+			utils.GetPtrVal(product.Code),
+			utils.GetPtrVal(product.FactoryCode),
 			product.Name,
+			utils.GetPtrVal(product.Sku),
+			utils.GetPtrVal(product.Barcode),
 			utils.GetPtrVal(product.UnitName),
 			utils.GetPtrVal(product.Specification),
+			utils.GetPtrVal(product.Description),
+			utils.GetPtrVal(product.Remark),
 			utils.GetPtrVal(product.PriceSell),
 			utils.GetPtrVal(product.PriceBuy),
 		)
@@ -217,8 +228,13 @@ func (s *ProductService) BulkCreateUpdateBoms(ctx *fiber.Ctx, boms []*models.Bom
 	// get all ids
 	bomIDs := []uint{}
 
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
 	for _, bom := range boms {
 		if bom.ID == nil {
+			bom.CreatedByID = &userID
+			bom.CreatedAt = time.Now()
 			bulkCreateBoms = append(bulkCreateBoms, bom)
 		} else {
 			bulkUpdateBoms = append(bulkUpdateBoms, bom)
@@ -252,4 +268,15 @@ func (s *ProductService) BulkCreateUpdateBoms(ctx *fiber.Ctx, boms []*models.Bom
 	}
 
 	return nil
+}
+
+func (s *ProductService) GetBomsByProductID(ctx *fiber.Ctx, productID uint, span opentracing.Span) ([]dtos.ProductBomListDTO, error) {
+	childSpan := opentracing.StartSpan("ProductService-GetBomsByProductID", opentracing.ChildOf(span.Context()))
+
+	boms, err := s.repo.GetBomsByProductID(ctx, productID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return boms, nil
 }

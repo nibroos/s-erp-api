@@ -21,7 +21,6 @@ func (r *ProductStoreRequest) Validate(req *dtos.CreateProductRequest, ctx *fibe
 
 	rules := map[string][]string{
 		"unit_id":             []string{"exists:mix_values,id"},
-		"collection_id":       []string{"exists:mix_values,id"},
 		"branch_id":           []string{"exists:branches,id"},
 		"code":                []string{},
 		"factory_code":        []string{},
@@ -35,7 +34,7 @@ func (r *ProductStoreRequest) Validate(req *dtos.CreateProductRequest, ctx *fibe
 		"price_buy":           []string{"numeric"},
 		"margin":              []string{"numeric"},
 		"status":              []string{},
-		"expired_at":          []string{},
+		"expired_at":          []string{"date:yyyy-MM-dd"},
 		"boms":                []string{"array"},
 		"boms.*.ms_item_id":   []string{"exists:ms_items,id"},
 		"boms.*.item_unit_id": []string{"exists:item_units,id"},

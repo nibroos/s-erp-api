@@ -45,14 +45,17 @@ func (c *ProductController) GetProducts(ctx *fiber.Ctx) error {
 
 	products, total, err := c.service.GetProducts(ctx, filters, parentSpan)
 	if err != nil {
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.SendResponse(ctx, response, http.StatusInternalServerError)
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
+	}
+
+	productIDs := make([]uint, 0)
+	for _, product := range products {
+		productIDs = append(productIDs, uint(product.ID))
 	}
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
-	return utils.GetResponse(ctx, products, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, products, paginationMeta, "Master product fetched successfully", http.StatusOK, nil, nil)
 }
 
 func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
@@ -76,8 +79,7 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 	// Validate the request
 	reqValidator, isValid := form_requests.NewProductStoreRequest().Validate(&req, ctx)
 	if !isValid {
-		utils.LogResponse(apiSpan, reqValidator)
-		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
+		return utils.ErrValidResponse(ctx, apiSpan, "Failed to create product", reqValidator)
 	}
 
 	// Extract user ID from JWT
@@ -96,7 +98,6 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 
 	product := models.Product{
 		UnitID:        req.UnitID,
-		CollectionID:  req.CollectionID,
 		BranchID:      branchID.(*uint),
 		Code:          req.Code,
 		FactoryCode:   req.FactoryCode,
@@ -110,6 +111,7 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 		PriceBuy:      req.PriceBuy,
 		Margin:        req.Margin,
 		Status:        req.Status,
+		ExpiredAt:     req.ExpiredAt,
 		CreatedByID:   &userID,
 	}
 
@@ -117,16 +119,14 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 	createdProduct, err := c.service.CreateProduct(ctx, &product, tx, parentSpan)
 
 	if err != nil {
-		tx.Rollback()
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create product", http.StatusInternalServerError, err.Error(), nil)
+		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create product", http.StatusInternalServerError)
 	}
 
 	// bulk create item boms
 	boms := make([]*models.Bom, 0)
 	for _, bom := range req.Boms {
 		bom := &models.Bom{
+			ProductID:   &createdProduct.ID,
 			MsItemID:    &bom.MsItemID,
 			ItemUnitID:  &bom.ItemUnitID,
 			Qty:         &bom.Qty,
@@ -139,10 +139,7 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 	err = c.service.CreateBoms(ctx, boms, createdProduct.ID, tx, parentSpan)
 
 	if err != nil {
-		tx.Rollback()
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create product", http.StatusInternalServerError, err.Error(), nil)
+		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create BOM", http.StatusInternalServerError)
 	}
 
 	tx.Commit()
@@ -150,15 +147,20 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 	params := &dtos.GetProductParams{ID: createdProduct.ID}
 	getProduct, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
 	}
+
+	createdBoms, err := c.service.GetBomsByProductID(ctx, createdProduct.ID, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
+	}
+
+	getProduct.Boms = createdBoms
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getProduct}, paginationMeta, "Master item created successfully", http.StatusCreated, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getProduct}, paginationMeta, "Master product created successfully", http.StatusCreated, nil, nil)
 }
 func (c *ProductController) GetProductByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
@@ -174,27 +176,32 @@ func (c *ProductController) GetProductByID(ctx *fiber.Ctx) error {
 	var req dtos.GetProductByIDRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Master product not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Master product not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	params := &dtos.GetProductParams{ID: req.ID}
 	product, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
 	}
+
+	boms, err := c.service.GetBomsByProductID(ctx, req.ID, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
+	}
+
+	product.Boms = boms
 
 	productArray := []interface{}{product}
 
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, productArray, paginationMeta, "Master item fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, productArray, paginationMeta, "Master product fetched successfully", http.StatusOK, nil, nil)
 }
 
 // update product
@@ -232,7 +239,6 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 	product := models.Product{
 		ID:            req.ID,
 		UnitID:        req.UnitID,
-		CollectionID:  req.CollectionID,
 		Code:          req.Code,
 		FactoryCode:   req.FactoryCode,
 		Name:          req.Name,
@@ -256,9 +262,9 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		if err.Error() == "product name already exists" {
-			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Master item already exists", "status": http.StatusConflict})
+			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Master product already exists", "status": http.StatusConflict})
 		}
-		return utils.GetResponse(ctx, nil, nil, "Failed to update Master item", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Master product", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	// Bulk/Create Update Batch Boms
@@ -266,6 +272,7 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 	for _, bom := range req.Boms {
 		bom := &models.Bom{
 			ID:          bom.ID,
+			ProductID:   &updatedProduct.ID,
 			MsItemID:    &bom.MsItemID,
 			ItemUnitID:  &bom.ItemUnitID,
 			Qty:         &bom.Qty,
@@ -277,7 +284,7 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 
 	err = c.service.BulkCreateUpdateBoms(ctx, boms, updatedProduct.ID, tx, parentSpan)
 	if err != nil {
-		return utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update Master item", http.StatusInternalServerError)
+		return utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update Master product", http.StatusInternalServerError)
 	}
 
 	tx.Commit()
@@ -286,13 +293,20 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 	getProduct, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Master product not found", http.StatusNotFound, err.Error(), nil)
 	}
+
+	createdBoms, err := c.service.GetBomsByProductID(ctx, getProduct.ID, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
+	}
+
+	getProduct.Boms = createdBoms
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getProduct}, paginationMeta, "Master item updated successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getProduct}, paginationMeta, "Master product updated successfully", http.StatusOK, nil, nil)
 }
 
 // delete product
@@ -310,11 +324,11 @@ func (c *ProductController) DeleteProduct(ctx *fiber.Ctx) error {
 	var req dtos.DeleteProductRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Master product not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Master product not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	params := &dtos.GetProductParams{ID: req.ID}
@@ -322,7 +336,7 @@ func (c *ProductController) DeleteProduct(ctx *fiber.Ctx) error {
 	_, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Master product not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	// Transaction handling
@@ -331,12 +345,12 @@ func (c *ProductController) DeleteProduct(ctx *fiber.Ctx) error {
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete Master item", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Master product", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Master item deleted successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Master product deleted successfully", http.StatusOK, nil, nil)
 }
 
 // restore product
@@ -355,11 +369,11 @@ func (c *ProductController) RestoreProduct(ctx *fiber.Ctx) error {
 
 	if err := ctx.BodyParser(&req); err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Master product not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Master product not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
@@ -370,19 +384,19 @@ func (c *ProductController) RestoreProduct(ctx *fiber.Ctx) error {
 	_, err := c.service.GetProductByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Master item not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Master product not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	err = c.service.RestoreProduct(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to restore Master item", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to restore Master product", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Master item restored successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Master product restored successfully", http.StatusOK, nil, nil)
 }
 
 func (c *ProductController) ExcelGetProducts(ctx *fiber.Ctx) error {

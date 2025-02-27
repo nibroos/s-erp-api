@@ -286,6 +286,29 @@ VALUES
     1,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'item_sub_groups'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'Office'
+    ),
+    'Produk',
+    'Produk',
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
   );
 
 COMMIT;

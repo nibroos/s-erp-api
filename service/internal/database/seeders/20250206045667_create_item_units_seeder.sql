@@ -144,6 +144,120 @@ VALUES
     1,
     1,
     CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        mix_values.id
+      FROM
+        mix_values
+        JOIN groups ON mix_values.group_id = groups.id
+      WHERE
+        groups.name = 'units'
+        AND mix_values.name = 'PIECE'
+    ),
+    6,
+    1,
+    1600000,
+    1520000,
+    1,
+    1,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        mix_values.id
+      FROM
+        mix_values
+        JOIN groups ON mix_values.group_id = groups.id
+      WHERE
+        groups.name = 'units'
+        AND mix_values.name = 'PIECE'
+    ),
+    7,
+    1,
+    1100000,
+    1000000,
+    1,
+    1,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        mix_values.id
+      FROM
+        mix_values
+        JOIN groups ON mix_values.group_id = groups.id
+      WHERE
+        groups.name = 'units'
+        AND mix_values.name = 'PIECE'
+    ),
+    8,
+    1,
+    3571000,
+    3700000,
+    1,
+    1,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        mix_values.id
+      FROM
+        mix_values
+        JOIN groups ON mix_values.group_id = groups.id
+      WHERE
+        groups.name = 'units'
+        AND mix_values.name = 'PIECE'
+    ),
+    9,
+    1,
+    2100000,
+    2300000,
+    1,
+    1,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        mix_values.id
+      FROM
+        mix_values
+        JOIN groups ON mix_values.group_id = groups.id
+      WHERE
+        groups.name = 'units'
+        AND mix_values.name = 'PIECE'
+    ),
+    10,
+    1,
+    950000,
+    1150000,
+    1,
+    1,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        mix_values.id
+      FROM
+        mix_values
+        JOIN groups ON mix_values.group_id = groups.id
+      WHERE
+        groups.name = 'units'
+        AND mix_values.name = 'PIECE'
+    ),
+    11,
+    1,
+    300000,
+    350000,
+    1,
+    1,
+    CURRENT_TIMESTAMP
   );
 
 COMMIT;

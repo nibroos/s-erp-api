@@ -92,6 +92,9 @@ func (r *Request) Validate() (map[string][]string, bool) {
 								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a valid email address", customFieldName))
 							}
 						case "date":
+							if value == nil {
+								continue
+							}
 							if !isDate(nestedValue.(string)) {
 								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
 							}
@@ -194,6 +197,9 @@ func (r *Request) Validate() (map[string][]string, bool) {
 						errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a valid email address", customFieldName))
 					}
 				case "date":
+					if value == nil {
+						continue
+					}
 					if !isDate(value.(string)) {
 						errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
 					}

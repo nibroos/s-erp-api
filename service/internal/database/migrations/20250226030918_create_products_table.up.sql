@@ -3,7 +3,6 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   unit_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
-  collection_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
   branch_id INT REFERENCES branches(id) ON DELETE RESTRICT,
   code TEXT,
   factory_code TEXT,
@@ -27,8 +26,6 @@ CREATE TABLE IF NOT EXISTS products (
 );
 
 CREATE INDEX idx_products_unit_id ON products(unit_id);
-
-CREATE INDEX idx_products_collection_id ON products(collection_id);
 
 CREATE INDEX idx_products_branch_id ON products(branch_id);
 

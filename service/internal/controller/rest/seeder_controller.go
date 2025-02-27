@@ -55,6 +55,8 @@ func (c *SeederController) RunSeeders(ctx *fiber.Ctx) error {
 		"20250206045667_create_item_units_seeder.sql",
 		"20250206045668_create_branch_items_seeder.sql",
 		"20250206045669_create_vat_histories_seeder.sql",
+		"20250206045670_create_products_seeder.sql",
+		"20250206045671_create_boms_seeder.sql",
 	}
 
 	// Get the seed files directory from the environment variable

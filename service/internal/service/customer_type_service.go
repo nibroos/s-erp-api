@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -164,7 +163,6 @@ func (s *CustomerTypeService) CsvGetCustomerTypes(ctx *fiber.Ctx, filters map[st
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()
-		log.Println("CsvGetCustomerTypes error:", err)
 	} else {
 		appName = *companyProfile.CompanyName
 	}
