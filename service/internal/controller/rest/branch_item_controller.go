@@ -93,7 +93,6 @@ func (c *BranchItemController) CreateBranchItem(ctx *fiber.Ctx) error {
 	branchItem := models.BranchItem{
 		BranchID:      req.BranchID,
 		ItemUnitID:    req.ItemUnitID,
-		Code:          req.Code,
 		FactoryCode:   req.FactoryCode,
 		Name:          req.Name,
 		Sku:           req.Sku,
@@ -209,7 +208,6 @@ func (c *BranchItemController) UpdateBranchItem(ctx *fiber.Ctx) error {
 
 	branchItem := models.BranchItem{
 		ID:            req.ID,
-		Code:          req.Code,
 		FactoryCode:   req.FactoryCode,
 		Name:          req.Name,
 		Sku:           req.Sku,

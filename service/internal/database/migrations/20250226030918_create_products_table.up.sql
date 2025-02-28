@@ -4,7 +4,6 @@ CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   item_sub_group_id INT NOT NULL REFERENCES mix_values(id) ON DELETE RESTRICT,
   item_unit_id INT,
-  branch_id INT REFERENCES branches(id) ON DELETE RESTRICT,
   code TEXT,
   factory_code TEXT,
   name VARCHAR(255) NOT NULL,
@@ -26,8 +25,8 @@ CREATE TABLE IF NOT EXISTS products (
   deleted_at timestamp with time zone
 );
 
-CREATE INDEX idx_products_unit_id ON products(unit_id);
+CREATE INDEX idx_products_item_sub_group_id ON products(item_sub_group_id);
 
-CREATE INDEX idx_products_branch_id ON products(branch_id);
+CREATE INDEX idx_products_item_unit_id ON products(item_unit_id);
 
 COMMIT;

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS boms (
   deleted_at timestamp with time zone
 );
 
-CREATE INDEX idx_boms_ms_item_id ON boms(product_item_id);
+CREATE INDEX idx_boms_product_item_id ON boms(product_item_id);
 
 CREATE INDEX idx_boms_item_unit_id ON boms(item_unit_id);
 

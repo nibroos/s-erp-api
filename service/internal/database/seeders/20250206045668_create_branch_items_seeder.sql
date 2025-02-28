@@ -11,6 +11,7 @@ INSERT INTO
     minimum_stock,
     price_sell,
     price_buy,
+    margin,
     status,
     created_by_id,
     created_at
@@ -26,6 +27,7 @@ VALUES
     2,
     2000,
     800,
+    60,
     1,
     1,
     CURRENT_TIMESTAMP
@@ -40,6 +42,7 @@ VALUES
     5,
     2300,
     1000,
+    56.52,
     1,
     1,
     CURRENT_TIMESTAMP
@@ -54,6 +57,7 @@ VALUES
     3,
     300,
     100,
+    66.67,
     1,
     1,
     CURRENT_TIMESTAMP
@@ -68,6 +72,7 @@ VALUES
     4,
     4000,
     2000,
+    100,
     1,
     1,
     CURRENT_TIMESTAMP

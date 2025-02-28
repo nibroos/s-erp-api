@@ -1389,6 +1389,13 @@ type GetMsItemItemUnitParams struct {
 	IsDeleted *int
 }
 
+type GetProductItemUnitParams struct {
+	ID        uint
+	ProductID uint
+	UnitID    uint
+	IsDeleted *int
+}
+
 type DeleteMsItemRequest struct {
 	ID uint `json:"id"`
 }
@@ -1879,7 +1886,7 @@ type ProductListDTO struct {
 	ProductID        *uint   `json:"product_id" db:"product_id"`
 	ItemSubGroupID   uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
 	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
-	ItemUnitID       uint    `json:"item_unit_id" db:"item_unit_id"`
+	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
 	ItemUnitUnitID   *uint   `json:"item_unit_unit_id" db:"item_unit_unit_id"`
 	BranchID         *uint   `json:"branch_id" db:"branch_id"`
 	BranchItemID     *uint   `json:"branch_item_id" db:"branch_item_id"`
@@ -1911,21 +1918,24 @@ type ProductListDTO struct {
 }
 
 type ProductBomListDTO struct {
-	ID              *uint   `json:"id" db:"id"`
-	BomID           *uint   `json:"bom_id" db:"bom_id"`
-	ProductID       uint    `json:"product_id" db:"product_id"`
-	ProductItemID   uint    `json:"product_item_id" db:"product_item_id"`
-	ItemUnitID      uint    `json:"item_unit_id" db:"item_unit_id"`
-	UnitName        *string `json:"unit_name" db:"unit_name"`
-	Qty             float64 `json:"qty" db:"qty"`
-	Remark          *string `json:"remark" db:"remark"`
-	ProductItemName *string `json:"product_item_name" db:"product_item_name"`
-	ItemUnitName    *string `json:"item_unit_name" db:"item_unit_name"`
-	CreatedByName   *string `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName   *string `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt       *string `json:"created_at" db:"created_at"`
-	UpdatedAt       *string `json:"updated_at" db:"updated_at"`
-	DeleteAt        *string `json:"deleted_at" db:"deleted_at"`
+	ID               *uint   `json:"id" db:"id"`
+	BomID            *uint   `json:"bom_id" db:"bom_id"`
+	ProductID        uint    `json:"product_id" db:"product_id"`
+	ProductItemID    uint    `json:"product_item_id" db:"product_item_id"`
+	ItemSubGroupID   *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
+	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
+	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
+	Qty              float64 `json:"qty" db:"qty"`
+	Remark           *string `json:"remark" db:"remark"`
+	ProductItemName  *string `json:"product_item_name" db:"product_item_name"`
+	ItemUnitName     *string `json:"item_unit_name" db:"item_unit_name"`
+	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        *string `json:"created_at" db:"created_at"`
+	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
+	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
 }
 
 type ProductDetailDTO struct {

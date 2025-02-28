@@ -92,7 +92,7 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 
 	product := models.Product{
 		ItemSubGroupID: req.ItemSubGroupID,
-		ItemUnitID:     req.ItemUnitID,
+		ItemUnitID:     &req.ItemUnitID,
 		Code:           req.Code,
 		FactoryCode:    req.FactoryCode,
 		Name:           req.Name,
@@ -114,6 +114,51 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 
 	if err != nil {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create product", http.StatusInternalServerError)
+	}
+
+	// bulk create item units
+	itemUnits := make([]*models.ItemUnit, 0)
+	for _, unit := range req.Units {
+		itemUnit := &models.ItemUnit{
+			// MsItemID:    createdMsItem.ID,
+			ProductID:   createdProduct.ID,
+			UnitID:      unit.UnitID,
+			Conversion:  &unit.Conversion,
+			PriceSell:   &unit.PriceSell,
+			PriceBuy:    &unit.PriceBuy,
+			Status:      1,
+			CreatedByID: &userID,
+		}
+		itemUnits = append(itemUnits, itemUnit)
+	}
+
+	err = c.service.CreateItemUnits(ctx, itemUnits, createdProduct.ID, tx, parentSpan)
+
+	if err != nil {
+		tx.Rollback()
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	// get selected item unit id by unit id
+	paramsItemUnit := &dtos.GetProductItemUnitParams{ProductID: createdProduct.ID, UnitID: req.ItemUnitID}
+	selectedItemUnit, err := c.service.GetItemUnitIDBySelectedItemID(ctx, tx, paramsItemUnit, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	// update ms item with selected item unit id
+	product.ItemUnitID = &selectedItemUnit.ID
+	_, err = c.service.UpdateProduct(ctx, &product, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	// bulk create item boms
@@ -233,7 +278,7 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 	product := models.Product{
 		ID:             req.ID,
 		ItemSubGroupID: req.ItemSubGroupID,
-		ItemUnitID:     req.ItemUnitID,
+		ItemUnitID:     &req.ItemUnitID,
 		Code:           req.Code,
 		FactoryCode:    req.FactoryCode,
 		Name:           req.Name,

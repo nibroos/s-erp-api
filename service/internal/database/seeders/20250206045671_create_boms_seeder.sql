@@ -3,7 +3,7 @@ BEGIN;
 INSERT INTO
   boms (
     product_id,
-    ms_item_id,
+    product_item_id,
     item_unit_id,
     qty,
     remark,
@@ -12,7 +12,7 @@ INSERT INTO
   )
 VALUES
   (
-    1,
+    12,
     6,
     8,
     1,
@@ -21,7 +21,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    1,
+    12,
     7,
     9,
     1,
@@ -30,7 +30,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    2,
+    13,
     8,
     10,
     1,
@@ -39,7 +39,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    2,
+    13,
     9,
     11,
     2,
@@ -48,7 +48,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    2,
+    13,
     10,
     12,
     1,
@@ -57,7 +57,7 @@ VALUES
     CURRENT_TIMESTAMP
   ),
   (
-    2,
+    13,
     11,
     13,
     1,

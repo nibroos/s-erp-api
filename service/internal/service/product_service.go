@@ -270,6 +270,19 @@ func (s *ProductService) BulkCreateUpdateBoms(ctx *fiber.Ctx, boms []*models.Bom
 	return nil
 }
 
+// msItem *models.MsItem
+func (s *ProductService) CreateItemUnits(ctx *fiber.Ctx, itemUnits []*models.ItemUnit, productID uint, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ProductService-CreateItemUnits", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.CreateItemUnits(tx, itemUnits, productID, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
+	return nil
+}
+
 func (s *ProductService) GetBomsByProductID(ctx *fiber.Ctx, productID uint, span opentracing.Span) ([]dtos.ProductBomListDTO, error) {
 	childSpan := opentracing.StartSpan("ProductService-GetBomsByProductID", opentracing.ChildOf(span.Context()))
 
@@ -279,4 +292,15 @@ func (s *ProductService) GetBomsByProductID(ctx *fiber.Ctx, productID uint, span
 		return nil, err
 	}
 	return boms, nil
+}
+
+func (s *ProductService) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, tx *gorm.DB, params *dtos.GetProductItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
+	childSpan := opentracing.StartSpan("ProductService-GetMsItemByID", opentracing.ChildOf(span.Context()))
+
+	msItem, err := s.repo.GetItemUnitIDBySelectedItemID(ctx, tx, params, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return msItem, nil
 }
