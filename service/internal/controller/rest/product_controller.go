@@ -151,7 +151,7 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	// update ms item with selected item unit id
+	// update product with selected item unit id
 	product.ItemUnitID = &selectedItemUnit.ID
 	_, err = c.service.UpdateProduct(ctx, &product, tx, parentSpan)
 	if err != nil {

@@ -1799,7 +1799,6 @@ type CreateBomsRequest struct {
 	Remark        *string `json:"remark"`
 }
 
-// TODO : merge master item with product
 type CreateProductRequest struct {
 	ItemSubGroupID uint                       `json:"item_sub_group_id"`
 	ItemUnitID     uint                       `json:"item_unit_id"`

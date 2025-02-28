@@ -14,8 +14,7 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   order_no TEXT,
   remark TEXT,
   ship_dest TEXT,
-  status TEXT,
-  qty_out DECIMAL(20, 5),
+  status TEXT qty_out DECIMAL(20, 5),
   vat_perc DECIMAL(20, 5),
   pph23_perc DECIMAL(20, 5),
   exchange_rate DECIMAL(20, 5),
@@ -28,8 +27,6 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   shipping_at timestamp with time zone,
   agree_at timestamp with time zone,
   due_at timestamp with time zone,
-  letter_type TEXT,
-  letter_url TEXT,
   created_by_id INT,
   updated_by_id INT,
   deleted_by_id INT,
@@ -38,9 +35,7 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   deleted_at timestamp with time zone
 );
 
-COMMENT ON COLUMN sales_orders.letter_type IS 'img, pdf, doc, etc';
-
-COMMENT ON COLUMN sales_orders.letter_url IS 'url to the letter file';
+COMMENT ON COLUMN sales_orders.status IS 'WAITING, PROCESS, SHIPPED, PENDING, CANCEL, INVOICE, FINISH';
 
 CREATE INDEX idx_sales_orders_customer_id ON sales_orders(customer_id);
 

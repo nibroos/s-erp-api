@@ -294,6 +294,36 @@ VALUES
     1,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'units'
+    ),
+    'PAIR',
+    'Pair',
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'units'
+    ),
+    'LOT',
+    'Lot',
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
   );
 
 COMMIT;

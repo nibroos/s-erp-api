@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS so_dts (
   ref_id INT,
   item_unit_id INT REFERENCES item_units(id) ON DELETE RESTRICT,
   vat_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  product_id INT REFERENCES products(id) ON DELETE RESTRICT,
+  ref_json JSONB,
   ref_type TEXT,
   remark TEXT,
   vat_perc DECIMAL(20, 5),
@@ -16,6 +18,13 @@ CREATE TABLE IF NOT EXISTS so_dts (
   disc_am DECIMAL(20, 5),
   disc_perc DECIMAL(20, 5),
   total_am DECIMAL(20, 5),
+  p_qty_out DECIMAL(20, 5),
+  p_qty DECIMAL(20, 5),
+  p_price_sell DECIMAL(20, 5),
+  p_subtotal DECIMAL(20, 5),
+  p_disc_am DECIMAL(20, 5),
+  p_disc_perc DECIMAL(20, 5),
+  p_total_am DECIMAL(20, 5),
   created_by_id INT,
   updated_by_id INT,
   deleted_by_id INT,
@@ -31,5 +40,7 @@ CREATE INDEX idx_so_dts_ref_id ON so_dts(ref_id);
 CREATE INDEX idx_so_dts_item_unit_id ON so_dts(item_unit_id);
 
 CREATE INDEX idx_so_dts_vat_id ON so_dts(vat_id);
+
+CREATE INDEX idx_so_dts_product_id ON so_dts(product_id);
 
 COMMIT;
