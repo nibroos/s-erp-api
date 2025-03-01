@@ -3,7 +3,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS branches (
   id SERIAL PRIMARY KEY,
   parent_id INT,
-  company_profile_id INT,
+  company_profile_id INT REFERENCES company_profiles(id) ON DELETE RESTRICT,
   name VARCHAR(255) NOT NULL,
   owner_name TEXT,
   sign_name TEXT,
@@ -24,5 +24,9 @@ CREATE TABLE IF NOT EXISTS branches (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
+
+CREATE INDEX idx_branches_parent_id ON branches (parent_id);
+
+CREATE INDEX idx_branches_company_profile_id ON branches (company_profile_id);
 
 COMMIT;

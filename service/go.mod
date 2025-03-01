@@ -16,7 +16,6 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.10.0
-	github.com/thedevsaddam/govalidator v1.9.10
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/xuri/excelize/v2 v2.9.0
 	golang.org/x/crypto v0.28.0

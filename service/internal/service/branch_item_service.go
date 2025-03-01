@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -171,7 +170,6 @@ func (s *BranchItemService) CsvGetBranchItems(ctx *fiber.Ctx, filters map[string
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()
-		log.Println("CsvGetBranchItems error:", err)
 	} else {
 		appName = *companyProfile.CompanyName
 	}

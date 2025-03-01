@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 
@@ -42,10 +41,7 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 	}
 	branchID := claims["bid"]
 
-	log.Println("Branch ID:", branchID)
 	isAdmin := utils.IsAdmin(ctx)
-
-	log.Println("Is Admin:", isAdmin)
 
 	msItems := []dtos.MsItemListDTO{}
 	var total int
@@ -53,7 +49,7 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 	// select column
 	cdSelect := `m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock,`
 	if branchID != nil && !isAdmin {
-		// log.Println("Branch ID:", branchID)
+
 		cdSelect = `
 		COALESCE(bi.name, m.name) as name,
 		COALESCE(bi.specification, m.specification) as specification,
@@ -123,8 +119,6 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
-
-	// log.Println("Query:", query)
 
 	var args []interface{}
 
@@ -349,7 +343,7 @@ func (s *MsItemRepository) RestoreMsItem(tx *gorm.DB, params *dtos.GetMsItemPara
 func (r *MsItemRepository) CreateItemUnits(tx *gorm.DB, itemUnits []*models.ItemUnit, msItemID uint, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("MsItemRepository-CreateItemUnits", opentracing.ChildOf(span.Context()))
 	// bulk insert
-	log.Println("len(itemUnits):", len(itemUnits))
+
 	result := tx.CreateInBatches(itemUnits, len(itemUnits))
 
 	if result.Error != nil {

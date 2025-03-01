@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -164,7 +163,6 @@ func (s *CurrencyService) CsvGetCurrencies(ctx *fiber.Ctx, filters map[string]st
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()
-		log.Println("CsvGetCurrencies error:", err)
 	} else {
 		appName = *companyProfile.CompanyName
 	}

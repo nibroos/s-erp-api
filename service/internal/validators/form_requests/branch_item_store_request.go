@@ -19,7 +19,7 @@ func NewBranchItemStoreRequest() *BranchItemStoreRequest {
 // Validate validates the RegisterRequest.
 func (r *BranchItemStoreRequest) Validate(req *dtos.CreateBranchItemRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
-		"ms_item_id":    []string{"required", "exists:ms_items,id"},
+		"product_id":    []string{"required", "exists:products,id"},
 		"branch_id":     []string{"required", "exists:branches,id"},
 		"name":          []string{},
 		"specification": []string{},

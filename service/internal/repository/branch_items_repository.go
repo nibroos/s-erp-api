@@ -37,8 +37,8 @@ func (r *BranchItemRepository) GetBranchItems(ctx *fiber.Ctx, filters map[string
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.ms_item_id, m.branch_id, m.name, m.specification, m.description, m.tpb_code, m.minimum_stock, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
-					mi.name as ms_item_name,
+					m.id, m.product_id, m.branch_id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.tpb_code, m.minimum_stock, m.price_sell, m.price_buy, m.margin, m.status, m.created_at, m.updated_at, m.deleted_at,
+					p.name as product_name,
 					u.name as unit_name,
 					iu.unit_id,
 					b.name as branch_name,
@@ -47,8 +47,8 @@ func (r *BranchItemRepository) GetBranchItems(ctx *fiber.Ctx, filters map[string
 					uu.name as updated_by_name
 
         FROM branch_items m
-				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-				LEFT JOIN item_units iu ON mi.id = iu.ms_item_id
+				LEFT JOIN item_units iu ON m.item_unit_id = iu.id
+				LEFT JOIN products p ON iu.product_id = p.id
 				LEFT JOIN units u ON iu.unit_id = u.id
 				LEFT JOIN branches b ON m.branch_id = b.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
@@ -57,21 +57,18 @@ func (r *BranchItemRepository) GetBranchItems(ctx *fiber.Ctx, filters map[string
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id) 
-					m.id, m.ms_item_id, m.branch_id, m.name, m.specification, m.description, m.tpb_code, m.minimum_stock, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
-					mi.name as ms_item_name,
+					m.id, m.product_id, m.branch_id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.tpb_code, m.minimum_stock, m.price_sell, m.price_buy, m.margin, m.status, m.created_at, m.updated_at, m.deleted_at,
+					p.name as product_name,
 					u.name as unit_name,
 					iu.unit_id,
 					b.name as branch_name,
-						
-					mi.name as ms_item_name,
-					u.name as unit_name,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
         FROM branch_items m
-				LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-				LEFT JOIN item_units iu ON mi.id = iu.ms_item_id
+				LEFT JOIN item_units iu ON m.item_unit_id = iu.id
+				LEFT JOIN products p ON iu.product_id = p.id
 				LEFT JOIN units u ON iu.unit_id = u.id
 				LEFT JOIN branches b ON m.branch_id = b.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
@@ -84,7 +81,7 @@ func (r *BranchItemRepository) GetBranchItems(ctx *fiber.Ctx, filters map[string
 
 	filterKey := []string{
 		"branch_id",
-		"ms_item_id",
+		"product_id",
 		"unit_id",
 		"status",
 	}
@@ -99,10 +96,10 @@ func (r *BranchItemRepository) GetBranchItems(ctx *fiber.Ctx, filters map[string
 	}
 
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2, i+3)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2, i+3)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 4
+		query += fmt.Sprintf(" AND (code ILIKE $%d OR factory_code ILIKE $%d OR name ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8)
+		countQuery += fmt.Sprintf(" AND (code ILIKE $%d OR factory_code ILIKE $%d OR name ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8)
+		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%")
+		i += 9
 	}
 
 	countArgs := append([]interface{}{}, args...)
@@ -183,20 +180,17 @@ func (r *BranchItemRepository) GetBranchItemByID(ctx *fiber.Ctx, params *dtos.Ge
 
 	query := `
 	SELECT DISTINCT ON (m.id) 
-			m.id, m.ms_item_id, m.branch_id, m.name, m.specification, m.description, m.tpb_code, m.minimum_stock, m.price_sell, m.price_buy, m.status, m.created_at, m.updated_at, m.deleted_at,
-			mi.name as ms_item_name,
+			m.id, m.product_id, m.branch_id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.tpb_code, m.minimum_stock, m.price_sell, m.price_buy, m.margin, m.status, m.created_at, m.updated_at, m.deleted_at,
+			p.name as product_name,
 			u.name as unit_name,
 			iu.unit_id,
 			b.name as branch_name,
 				
-			mi.name as ms_item_name,
-			u.name as unit_name,
-
 			cu.name as created_by_name,
 			uu.name as updated_by_name
 	FROM branch_items m
-	LEFT JOIN ms_items mi ON m.ms_item_id = mi.id
-	LEFT JOIN item_units iu ON mi.id = iu.ms_item_id
+	LEFT JOIN item_units iu ON m.item_unit_id = iu.id
+	LEFT JOIN products p ON iu.product_id = p.id
 	LEFT JOIN units u ON iu.unit_id = u.id
 	LEFT JOIN branches b ON m.branch_id = b.id
 	LEFT JOIN users cu ON m.created_by_id = cu.id

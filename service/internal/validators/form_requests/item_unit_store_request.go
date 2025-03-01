@@ -19,7 +19,7 @@ func NewItemUnitStoreRequest() *ItemUnitStoreRequest {
 // Validate validates the RegisterRequest.
 func (r *ItemUnitStoreRequest) Validate(req *dtos.CreateItemUnitRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
-		"ms_item_id": []string{"required", "exists:ms_items,id"},
+		"product_id": []string{"required", "exists:products,id"},
 		"unit_id":    []string{"required", "exists:mix_values,id"},
 		"price_sell": []string{"numeric"},
 		"price_buy":  []string{"numeric"},

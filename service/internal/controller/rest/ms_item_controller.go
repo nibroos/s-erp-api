@@ -116,7 +116,7 @@ func (c *MsItemController) CreateMsItem(ctx *fiber.Ctx) error {
 	itemUnits := make([]*models.ItemUnit, 0)
 	for _, unit := range req.Units {
 		itemUnit := &models.ItemUnit{
-			MsItemID:    createdMsItem.ID,
+			// MsItemID:    createdMsItem.ID,
 			UnitID:      unit.UnitID,
 			Conversion:  &unit.Conversion,
 			PriceSell:   &unit.PriceSell,

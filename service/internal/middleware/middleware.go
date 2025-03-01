@@ -253,12 +253,12 @@ func JaegerTracingMiddleware(tracer opentracing.Tracer) fiber.Handler {
 			ext.HTTPMethod.Set(span, c.Method())
 			ext.HTTPUrl.Set(span, c.Path())
 
-			// Capture the request body
-			var bodyBytes []byte
-			if c.Body() != nil {
-				bodyBytes = c.Body()
-				span.LogKV("request_body", string(bodyBytes)) // Log the request body
-			}
+			// // Capture the request body
+			// var bodyBytes []byte
+			// if c.Body() != nil {
+			// 	bodyBytes = c.Body()
+			// 	span.LogKV("request_body", string(bodyBytes)) // Log the request body
+			// }
 
 			// Pass the context with the span to the next handler
 			ctx := opentracing.ContextWithSpan(c.Context(), span)

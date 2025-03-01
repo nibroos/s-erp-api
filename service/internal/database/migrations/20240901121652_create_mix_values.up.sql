@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS mix_values (
   id SERIAL PRIMARY KEY,
-  group_id INT NOT NULL,
+  group_id INT NOT NULL REFERENCES groups(id) ON DELETE RESTRICT,
   parent_id INT,
   name VARCHAR(500) NOT NULL,
   description TEXT,
@@ -18,5 +18,9 @@ CREATE TABLE IF NOT EXISTS mix_values (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
+
+CREATE INDEX idx_mix_values_group_id ON mix_values (group_id);
+
+CREATE INDEX idx_mix_values_parent_id ON mix_values (parent_id);
 
 COMMIT;

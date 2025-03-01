@@ -92,6 +92,9 @@ func (r *Request) Validate() (map[string][]string, bool) {
 								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a valid email address", customFieldName))
 							}
 						case "date":
+							if value == nil {
+								continue
+							}
 							if !isDate(nestedValue.(string)) {
 								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
 							}
@@ -121,6 +124,9 @@ func (r *Request) Validate() (map[string][]string, bool) {
 								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("This field must be at most %d characters long", max))
 							}
 						case "numeric":
+							if nestedValue == nil {
+								continue
+							}
 							if !isNumeric(nestedValue) {
 								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a number", customFieldName))
 							}
@@ -191,6 +197,9 @@ func (r *Request) Validate() (map[string][]string, bool) {
 						errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a valid email address", customFieldName))
 					}
 				case "date":
+					if value == nil {
+						continue
+					}
 					if !isDate(value.(string)) {
 						errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
 					}
@@ -215,6 +224,10 @@ func (r *Request) Validate() (map[string][]string, bool) {
 						errors[field] = append(errors[field], fmt.Sprintf("This field must be at most %d characters long", max))
 					}
 				case "numeric":
+					if value == nil {
+						continue
+					}
+
 					if !isNumeric(value) {
 						errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a number", customFieldName))
 					}

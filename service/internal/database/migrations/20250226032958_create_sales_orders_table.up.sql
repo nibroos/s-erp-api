@@ -1,0 +1,59 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS sales_orders (
+  id SERIAL PRIMARY KEY,
+  customer_id INT REFERENCES customers(id) ON DELETE RESTRICT,
+  order_type_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  currency_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  warehouse_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  payment_id INT,
+  vat_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  pph23_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  branch_id INT REFERENCES branches(id) ON DELETE RESTRICT,
+  po_buyer TEXT,
+  order_no TEXT,
+  remark TEXT,
+  ship_dest TEXT,
+  status TEXT,
+  qty_out DECIMAL(20, 5),
+  vat_perc DECIMAL(20, 5),
+  pph23_perc DECIMAL(20, 5),
+  exchange_rate DECIMAL(20, 5),
+  total_qty DECIMAL(20, 5),
+  subtotal DECIMAL(20, 5),
+  total_discount DECIMAL(20, 5),
+  total_pph23 DECIMAL(20, 5),
+  total_vat DECIMAL(20, 5),
+  grand_total DECIMAL(20, 5),
+  shipping_at timestamp with time zone,
+  agree_at timestamp with time zone,
+  due_at timestamp with time zone,
+  letter_type TEXT,
+  letter_url TEXT,
+  created_by_id INT,
+  updated_by_id INT,
+  deleted_by_id INT,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone,
+  deleted_at timestamp with time zone
+);
+
+COMMENT ON COLUMN sales_orders.letter_type IS 'img, pdf, doc, etc';
+
+COMMENT ON COLUMN sales_orders.letter_url IS 'url to the letter file';
+
+CREATE INDEX idx_sales_orders_customer_id ON sales_orders(customer_id);
+
+CREATE INDEX idx_sales_orders_order_type_id ON sales_orders(order_type_id);
+
+CREATE INDEX idx_sales_orders_currency_id ON sales_orders(currency_id);
+
+CREATE INDEX idx_sales_orders_warehouse_id ON sales_orders(warehouse_id);
+
+CREATE INDEX idx_sales_orders_vat_id ON sales_orders(vat_id);
+
+CREATE INDEX idx_sales_orders_pph23_id ON sales_orders(pph23_id);
+
+CREATE INDEX idx_sales_orders_branch_id ON sales_orders(branch_id);
+
+COMMIT;

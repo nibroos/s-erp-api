@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
@@ -308,7 +307,6 @@ func (r *VatRepository) GetVatHistories(ctx *fiber.Ctx, filters map[string]strin
 	if value, ok := filters["vat_id"]; ok && value != "" {
 		query += fmt.Sprintf(" AND vat_id = $%d", i)
 		countQuery += fmt.Sprintf(" AND vat_id = $%d", i)
-		log.Println("VAT ID", value)
 		args = append(args, value)
 		i++
 	}
@@ -426,7 +424,6 @@ func (r *VatRepository) GetVatHistoryByID(ctx *fiber.Ctx, params *dtos.GetVatHis
 		query += " AND vh.id = $1"
 		args = append(args, params.ID)
 		i++
-		log.Println("ID", params.ID)
 	}
 
 	// if params.VatID != nil {

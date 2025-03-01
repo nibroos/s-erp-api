@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -164,7 +163,6 @@ func (s *UnitService) CsvGetUnits(ctx *fiber.Ctx, filters map[string]string, spa
 	appName := "App"
 	if err != nil {
 		defer childSpan.Finish()
-		log.Println("CsvGetUnits error:", err)
 	} else {
 		appName = *companyProfile.CompanyName
 	}

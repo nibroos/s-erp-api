@@ -121,7 +121,7 @@ func (s *ItemUnitService) ExcelGetItemUnits(ctx *fiber.Ctx, filters map[string]s
 	for i, itemUnit := range itemUnits {
 		row := []interface{}{
 			itemUnit.ID,
-			utils.GetPtrVal(itemUnit.MsItemName),
+			utils.GetPtrVal(itemUnit.ProductName),
 			utils.GetPtrVal(itemUnit.UnitName),
 			utils.GetFloatPtrVal(itemUnit.Conversion),
 			utils.GetFloatPtrVal(itemUnit.PriceSell),
@@ -180,7 +180,7 @@ func (s *ItemUnitService) CsvGetItemUnits(ctx *fiber.Ctx, filters map[string]str
 	for _, itemUnit := range itemUnits {
 		csv += fmt.Sprintf("%d,%s,%s,%f,%f,%f,%s,%s\n",
 			itemUnit.ID,
-			utils.GetPtrVal(itemUnit.MsItemName),
+			utils.GetPtrVal(itemUnit.ProductName),
 			utils.GetPtrVal(itemUnit.UnitName),
 			utils.GetFloatPtrVal(itemUnit.Conversion),
 			utils.GetFloatPtrVal(itemUnit.PriceSell),
