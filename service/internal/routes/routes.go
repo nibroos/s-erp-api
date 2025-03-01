@@ -103,6 +103,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	products := version.Group("/products")
 	SetupProductRoutes(products, gormDB, sqlDB, utilRepo, tracer)
 
+	quotations := version.Group("/quotations")
+	SetupQuotationRoutes(quotations, gormDB, sqlDB, utilRepo, tracer)
+
 	// Scheduler route
 	// cron := cron.New()
 	// schedulerController := rest.NewSchedulerController(cron, gormDB, sqlDB)

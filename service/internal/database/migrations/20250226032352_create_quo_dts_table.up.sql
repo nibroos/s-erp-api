@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   item_unit_id INT REFERENCES item_units(id) ON DELETE RESTRICT,
   vat_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
   product_id INT REFERENCES products(id) ON DELETE RESTRICT,
+  product_item_unit_id INT REFERENCES item_units(id) ON DELETE RESTRICT,
+  quo_dt_ref_id INT,
   ref_json JSONB,
   ref_type TEXT,
   remark TEXT,
@@ -43,5 +45,9 @@ CREATE INDEX idx_quo_dts_item_unit_id ON quo_dts(item_unit_id);
 CREATE INDEX idx_quo_dts_vat_id ON quo_dts(vat_id);
 
 CREATE INDEX idx_quo_dts_product_id ON quo_dts(product_id);
+
+CREATE INDEX idex_quo_product_item_unit_id ON quo_dts(product_item_unit_id);
+
+CREATE INDEX idx_quo_dt_ref_id ON quo_dts(quo_dt_ref_id);
 
 COMMIT;
