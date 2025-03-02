@@ -2,6 +2,9 @@ package rest
 
 import (
 	"net/http"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -264,7 +267,8 @@ func (c *UserController) Login(ctx *fiber.Ctx) error {
 	user, err := c.service.Authenticate(ctx, req.Email, req.Password)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid credentials", "status": "error", "err": err.Error()})
+		// return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid credentials", "status": "error", "err": err.Error()})
+		return ctx.Status(http.StatusUnauthorized).JSON(fiber.Map{"message": "Invalid credentials, make sure your email/username and password are correct", "status": "error", "err": err.Error()})
 	}
 
 	token, err := middleware.GenerateJWT(user.ID, user.Roles, user.Permissions, user.BranchID)
@@ -273,7 +277,15 @@ func (c *UserController) Login(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to generate token", "status": "error", "err": err.Error()})
 	}
 
-	return utils.GetResponse(ctx, []interface{}{user}, nil, "User authenticated successfully", http.StatusOK, nil, map[string]string{"token": token})
+	expiresAt := os.Getenv("JWT_EXPIRES_MINUTE_AT")
+	// to date
+	expiredAtInt, err := strconv.Atoi(expiresAt)
+	if err != nil {
+		return err
+	}
+	expiredAt := time.Now().Add(time.Minute * time.Duration(expiredAtInt)).Format("2006-01-02 15:04:05")
+
+	return utils.GetResponse(ctx, user, nil, "User authenticated successfully", http.StatusOK, nil, map[string]string{"token": token, "expired_at": expiredAt})
 }
 
 func (c *UserController) Register(ctx *fiber.Ctx) error {

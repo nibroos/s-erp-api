@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -163,6 +164,10 @@ func main() {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: middleware.ErrorHandler,
 	})
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+	}))
 
 	app.Use(PromDurationMiddleware)
 

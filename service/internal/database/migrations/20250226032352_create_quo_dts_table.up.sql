@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   disc_am DECIMAL(20, 5),
   disc_perc DECIMAL(20, 5),
   total_am DECIMAL(20, 5),
-  vat_perc DECIMAL(20, 5),
   p_qty_so DECIMAL(20, 5),
   p_qty DECIMAL(20, 5),
   p_price_sell DECIMAL(20, 5),

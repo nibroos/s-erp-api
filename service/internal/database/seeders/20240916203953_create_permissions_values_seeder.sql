@@ -58,7 +58,7 @@ VALUES
         name = 'permissions'
       LIMIT
         1
-    ), 'branches', 'Company Profile Permissions', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'r', 'Read Report Permissions', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -71,7 +71,7 @@ VALUES
         name = 'permissions'
       LIMIT
         1
-    ), 'customers', 'Customer Permissions', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'cst', 'Customer Permissions', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -84,7 +84,7 @@ VALUES
         name = 'permissions'
       LIMIT
         1
-    ), 'masters', 'Master Permissions', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'ms', 'Master Permissions', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (

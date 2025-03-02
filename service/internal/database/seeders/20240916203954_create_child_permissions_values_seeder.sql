@@ -149,7 +149,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'role_permissions'
+        name = 'roles'
       LIMIT
         1
     ), 'c_roles', 'Permission to create role permissions', 1, '{}', CURRENT_TIMESTAMP,
@@ -171,7 +171,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'role_permissions'
+        name = 'roles'
       LIMIT
         1
     ), 'r_roles', 'Permission to read role permissions', 1, '{}', CURRENT_TIMESTAMP,
@@ -193,7 +193,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'role_permissions'
+        name = 'roles'
       LIMIT
         1
     ), 'u_roles', 'Permission to update role permissions', 1, '{}', CURRENT_TIMESTAMP,
@@ -215,7 +215,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'role_permissions'
+        name = 'roles'
       LIMIT
         1
     ), 'd_roles', 'Permission to delete role permissions', 1, '{}', CURRENT_TIMESTAMP,
@@ -237,7 +237,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'role_permissions'
+        name = 'roles'
       LIMIT
         1
     ), 'rs_roles', 'Permission to restore role permissions', 1, '{}', CURRENT_TIMESTAMP,
@@ -259,7 +259,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'branches'
+        name = 'roles'
       LIMIT
         1
     ), 'c_branches', 'Permission to create company profiles', 1, '{}', CURRENT_TIMESTAMP,
@@ -281,7 +281,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'branches'
+        name = 'roles'
       LIMIT
         1
     ), 'r_branches', 'Permission to read company profiles', 1, '{}', CURRENT_TIMESTAMP,
@@ -303,7 +303,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'branches'
+        name = 'roles'
       LIMIT
         1
     ), 'u_branches', 'Permission to update company profiles', 1, '{}', CURRENT_TIMESTAMP,
@@ -325,7 +325,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'branches'
+        name = 'roles'
       LIMIT
         1
     ), 'd_branches', 'Permission to delete company profiles', 1, '{}', CURRENT_TIMESTAMP,
@@ -347,7 +347,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'branches'
+        name = 'roles'
       LIMIT
         1
     ), 'rs_branches', 'Permission to restore company profiles', 1, '{}', CURRENT_TIMESTAMP,
@@ -369,7 +369,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'customers'
+        name = 'cst'
       LIMIT
         1
     ), 'c_customers', 'Permission to create customers', 1, '{}', CURRENT_TIMESTAMP,
@@ -391,7 +391,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'customers'
+        name = 'cst'
       LIMIT
         1
     ), 'r_customers', 'Permission to read customers', 1, '{}', CURRENT_TIMESTAMP,
@@ -413,7 +413,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'customers'
+        name = 'cst'
       LIMIT
         1
     ), 'u_customers', 'Permission to update customers', 1, '{}', CURRENT_TIMESTAMP,
@@ -435,7 +435,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'customers'
+        name = 'cst'
       LIMIT
         1
     ), 'd_customers', 'Permission to delete customers', 1, '{}', CURRENT_TIMESTAMP,
@@ -457,7 +457,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'customers'
+        name = 'cst'
       LIMIT
         1
     ), 'rs_customers', 'Permission to restore customers', 1, '{}', CURRENT_TIMESTAMP,
@@ -479,10 +479,10 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'masters'
+        name = 'ms'
       LIMIT
         1
-    ), 'c_masters', 'Permission to create masters', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'c_ms', 'Permission to create masters', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -501,10 +501,10 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'masters'
+        name = 'ms'
       LIMIT
         1
-    ), 'r_masters', 'Permission to read masters', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'r_ms', 'Permission to read masters', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -523,10 +523,10 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'masters'
+        name = 'ms'
       LIMIT
         1
-    ), 'u_masters', 'Permission to update masters', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'u_ms', 'Permission to update masters', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -545,10 +545,10 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'masters'
+        name = 'ms'
       LIMIT
         1
-    ), 'd_masters', 'Permission to delete masters', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'd_ms', 'Permission to delete masters', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -567,10 +567,10 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'masters'
+        name = 'ms'
       LIMIT
         1
-    ), 'rs_masters', 'Permission to restore masters', 1, '{}', CURRENT_TIMESTAMP,
+    ), 'rs_ms', 'Permission to restore masters', 1, '{}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (

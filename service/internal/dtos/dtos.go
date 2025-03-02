@@ -435,7 +435,7 @@ type ItemSubGroupListDTO struct {
 	ID            int     `json:"id" db:"id"`
 	ParentID      *uint   `json:"parent_id" db:"parent_id"`
 	Name          string  `json:"name" db:"name"`
-	SubGroupName  string  `json:"sub_group_name" db:"sub_group_name"`
+	GroupName     string  `json:"group_name" db:"group_name"`
 	Description   string  `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
@@ -450,7 +450,7 @@ type ItemSubGroupDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	ParentID      *uint   `json:"parent_id" db:"parent_id"`
 	Name          string  `json:"name" db:"name"`
-	SubGroupName  string  `json:"sub_group_name" db:"sub_group_name"`
+	GroupName     string  `json:"group_name" db:"group_name"`
 	Description   string  `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`

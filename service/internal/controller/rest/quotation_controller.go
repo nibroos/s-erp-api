@@ -126,7 +126,7 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 	}
 
 	// bulk create item quoDts ref ms items / product->boms
-	quoDts, err := c.service.MapQuoDts(ctx, req, createdQuotation, userID, parentSpan)
+	quoDts, err := c.service.MapCreateQuoDts(ctx, req, createdQuotation, userID, parentSpan)
 	if err != nil {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Details", http.StatusInternalServerError)
 	}

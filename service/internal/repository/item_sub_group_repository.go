@@ -38,7 +38,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
     FROM ( 
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 				m.parent_id,
-				p.name as sub_group_name,
+				p.name as group_name,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -53,7 +53,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 				m.parent_id,
-				p.name as sub_group_name,
+				p.name as group_name,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -165,7 +165,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx *fiber.Ctx, params *dto
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 	m.parent_id,
-	p.name as sub_group_name,
+	p.name as group_name,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 

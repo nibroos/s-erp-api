@@ -178,7 +178,7 @@ func (s *ItemSubGroupService) CsvGetItemSubGroups(ctx *fiber.Ctx, filters map[st
 		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s\n",
 			itemSubGroup.ID,
 			itemSubGroup.Name,
-			itemSubGroup.SubGroupName,
+			itemSubGroup.GroupName,
 			utils.GetPtrVal(&itemSubGroup.Description),
 			utils.GetPtrVal(itemSubGroup.Remark),
 			utils.GetPtrVal(itemSubGroup.CreatedAt),

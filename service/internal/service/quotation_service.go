@@ -259,7 +259,7 @@ func (s *QuotationService) GetQuoDtsByQuotationID(ctx *fiber.Ctx, quotationID ui
 	return boms, nil
 }
 
-func (s *QuotationService) MapQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuotation *models.Quotation, userID uint, span opentracing.Span) ([]*models.QuoDt, error) {
+func (s *QuotationService) MapCreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuotation *models.Quotation, userID uint, span opentracing.Span) ([]*models.QuoDt, error) {
 	// childSpan := opentracing.StartSpan("QuotationService-MapQuoDtsToQuotation", opentracing.ChildOf(span.Context()))
 
 	quoDts := []*models.QuoDt{}
