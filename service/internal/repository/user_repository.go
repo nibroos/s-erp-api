@@ -142,7 +142,7 @@ func (r *UserRepository) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDPar
 		branch_name
 	FROM users u 
 	LEFT JOIN branches b ON u.branch_id = b.id
-	WHERE id = $1`
+	WHERE u.id = $1`
 
 	var args []interface{}
 	args = append(args, params.ID)

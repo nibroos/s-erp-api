@@ -395,7 +395,9 @@ type GetItemGroupsResult struct {
 type GetItemSubGroupsRequest struct {
 	Global         string  `json:"global"`
 	Name           string  `json:"name"`
-	PerPage        *string `json:"per_page" default:"10"`         // Default per_page to 10
+	PerPage        *string `json:"per_page" default:"10"` // Default per_page to 10
+	ParentIds      *string `json:"parent_ids"`
+	ParentId       *uint   `json:"parent_id"`
 	Page           *string `json:"page" default:"1"`              // Default page to 1
 	OrderColumn    string  `json:"order_column" default:"id"`     // Default order column to "id"
 	OrderDirection string  `json:"order_direction" default:"asc"` // Default order direction to "asc"
@@ -984,6 +986,7 @@ type DeleteCurrencyRequest struct {
 type CurrencyListDTO struct {
 	ID            int     `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
+	Num           string  `json:"num" db:"num"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
@@ -997,6 +1000,7 @@ type CurrencyListDTO struct {
 type CurrencyDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
+	Num           string  `json:"num" db:"num"`
 	Description   string  `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
