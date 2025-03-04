@@ -377,7 +377,7 @@ type ItemGroupListDTO struct {
 type ItemGroupDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
@@ -438,7 +438,7 @@ type ItemSubGroupListDTO struct {
 	ParentID      *uint   `json:"parent_id" db:"parent_id"`
 	Name          string  `json:"name" db:"name"`
 	GroupName     string  `json:"group_name" db:"group_name"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
@@ -453,7 +453,7 @@ type ItemSubGroupDetailDTO struct {
 	ParentID      *uint   `json:"parent_id" db:"parent_id"`
 	Name          string  `json:"name" db:"name"`
 	GroupName     string  `json:"group_name" db:"group_name"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByID   uint    `json:"created_by_id" db:"created_by_id"`
@@ -770,7 +770,7 @@ type CustomerTypeListDTO struct {
 type CustomerTypeDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
@@ -847,7 +847,7 @@ type OrderTypeListDTO struct {
 type OrderTypeDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
@@ -923,7 +923,7 @@ type MixValueListDTO struct {
 type MixValueDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
@@ -1001,7 +1001,7 @@ type CurrencyDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
 	Num           string  `json:"num" db:"num"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
@@ -1077,7 +1077,7 @@ type UnitListDTO struct {
 type UnitDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
@@ -1181,7 +1181,7 @@ type VatDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
 	Num           string  `json:"num" db:"num"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	Multiplier    *string `json:"multiplier" db:"multiplier"`
@@ -1303,7 +1303,7 @@ type Pph23ListDTO struct {
 type Pph23DetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
-	Description   string  `json:"description" db:"description"`
+	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
