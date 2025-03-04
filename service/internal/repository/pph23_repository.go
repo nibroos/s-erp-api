@@ -36,7 +36,7 @@ func (r *Pph23Repository) GetPph23s(ctx *fiber.Ctx, filters map[string]string, s
 
 	query := `SELECT *
     FROM ( 
-        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -48,7 +48,7 @@ func (r *Pph23Repository) GetPph23s(ctx *fiber.Ctx, filters map[string]string, s
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
-        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -157,7 +157,7 @@ func (r *Pph23Repository) GetPph23ByID(ctx *fiber.Ctx, params *dtos.GetPph23Para
 	childSpan := opentracing.StartSpan("Pph23Repository-GetPph23ByID", opentracing.ChildOf(span.Context()))
 	var pph23 dtos.Pph23DetailDTO
 
-	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	query := `SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,12 +39,18 @@ func JWTMiddleware() fiber.Handler {
 
 // GenerateJWT generates a new JWT toke
 func GenerateJWT(userID uint, roles []string, permissions []string, bid *uint) (string, error) {
+	expiresAt := os.Getenv("JWT_EXPIRES_MINUTE_AT")
+	expiredAtInt, err := strconv.Atoi(expiresAt)
+	if err != nil {
+		return "", err
+	}
+
 	claims := jwt.MapClaims{
 		"user_id":     userID,
 		"bid":         bid,
 		"roles":       roles,
 		"permissions": permissions,
-		"exp":         time.Now().Add(time.Hour * 72).Unix(),
+		"exp":         time.Now().Add(time.Minute * time.Duration(expiredAtInt)).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

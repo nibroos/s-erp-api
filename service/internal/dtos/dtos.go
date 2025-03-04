@@ -395,7 +395,9 @@ type GetItemGroupsResult struct {
 type GetItemSubGroupsRequest struct {
 	Global         string  `json:"global"`
 	Name           string  `json:"name"`
-	PerPage        *string `json:"per_page" default:"10"`         // Default per_page to 10
+	PerPage        *string `json:"per_page" default:"10"` // Default per_page to 10
+	ParentIds      *string `json:"parent_ids"`
+	ParentId       *uint   `json:"parent_id"`
 	Page           *string `json:"page" default:"1"`              // Default page to 1
 	OrderColumn    string  `json:"order_column" default:"id"`     // Default order column to "id"
 	OrderDirection string  `json:"order_direction" default:"asc"` // Default order direction to "asc"
@@ -435,7 +437,7 @@ type ItemSubGroupListDTO struct {
 	ID            int     `json:"id" db:"id"`
 	ParentID      *uint   `json:"parent_id" db:"parent_id"`
 	Name          string  `json:"name" db:"name"`
-	SubGroupName  string  `json:"sub_group_name" db:"sub_group_name"`
+	GroupName     string  `json:"group_name" db:"group_name"`
 	Description   string  `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
@@ -450,7 +452,7 @@ type ItemSubGroupDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	ParentID      *uint   `json:"parent_id" db:"parent_id"`
 	Name          string  `json:"name" db:"name"`
-	SubGroupName  string  `json:"sub_group_name" db:"sub_group_name"`
+	GroupName     string  `json:"group_name" db:"group_name"`
 	Description   string  `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
@@ -984,6 +986,7 @@ type DeleteCurrencyRequest struct {
 type CurrencyListDTO struct {
 	ID            int     `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
+	Num           string  `json:"num" db:"num"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
@@ -997,6 +1000,7 @@ type CurrencyListDTO struct {
 type CurrencyDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
+	Num           string  `json:"num" db:"num"`
 	Description   string  `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`
@@ -1799,7 +1803,6 @@ type CreateBomsRequest struct {
 	Remark        *string `json:"remark"`
 }
 
-// TODO : merge master item with product
 type CreateProductRequest struct {
 	ItemSubGroupID uint                       `json:"item_sub_group_id"`
 	ItemUnitID     uint                       `json:"item_unit_id"`

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -74,6 +75,28 @@ func ConvertRequestToFilters() fiber.Handler {
 					filters[key] = strconv.Itoa(v)
 				case float64:
 					filters[key] = strconv.FormatFloat(v, 'f', -1, 64)
+				// case array
+				case []interface{}:
+					var arr []string
+					for _, val := range v {
+						switch valType := val.(type) {
+						case string:
+							arr = append(arr, valType)
+						case int:
+							arr = append(arr, strconv.Itoa(valType))
+						case float64:
+							arr = append(arr, strconv.FormatFloat(valType, 'f', -1, 64))
+						}
+					}
+					filters[key] = strings.Join(arr, ",")
+				// case object
+				case map[string]interface{}:
+					jsonValue, err := json.Marshal(v)
+					if err != nil {
+						log.Printf("Failed to marshal object for key %s: %v", key, err)
+					} else {
+						filters[key] = string(jsonValue)
+					}
 				default:
 					log.Printf("Unsupported type for key %s: %T", key, v)
 				}

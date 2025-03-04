@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
@@ -38,7 +39,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
     FROM ( 
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 				m.parent_id,
-				p.name as sub_group_name,
+				p.name as group_name,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -53,7 +54,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 				m.parent_id,
-				p.name as sub_group_name,
+				p.name as group_name,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -70,13 +71,41 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 	i := 1
 	for key, value := range filters {
 		switch key {
-		case "name", "description", "remark", "parent_id":
+		case "name", "description", "remark":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				args = append(args, "%"+value+"%")
 				i++
 			}
+		}
+	}
+
+	arrayFilterKey := map[string]string{
+		"parent_ids": "parent_id",
+	}
+
+	log.Println("filters1", filters)
+
+	for key, value := range arrayFilterKey {
+		log.Println("key", key, "value", value, "filterkey", filters[key])
+		if len(filters[key]) > 0 {
+			query += fmt.Sprintf(" AND %s IN (%s)", value, filters[key])
+			countQuery += fmt.Sprintf(" AND %s IN (%s)", value, filters[key])
+		}
+	}
+
+	filterKey := []string{
+		"parent_id",
+		"status",
+	}
+
+	for key := range filterKey {
+		if filters[filterKey[key]] != "" {
+			query += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+			countQuery += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+			args = append(args, filters[filterKey[key]])
+			i++
 		}
 	}
 
@@ -165,7 +194,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx *fiber.Ctx, params *dto
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
 	m.parent_id,
-	p.name as sub_group_name,
+	p.name as group_name,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
