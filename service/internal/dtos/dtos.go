@@ -408,7 +408,7 @@ type CreateItemSubGroupRequest struct {
 	Description *string `json:"description"`
 	Remark      *string `json:"remark"`
 	Status      int8    `json:"status"`
-	ItemGroupID uint    `json:"item_group_id"`
+	ItemGroupID uint    `json:"item_group_id" gorm:"column:parent_id"`
 }
 
 type UpdateItemSubGroupRequest struct {
@@ -417,7 +417,7 @@ type UpdateItemSubGroupRequest struct {
 	Description *string `json:"description"`
 	Remark      *string `json:"remark"`
 	Status      int8    `json:"status"`
-	ItemGroupID uint    `json:"item_group_id"`
+	ItemGroupID uint    `json:"item_group_id" gorm:"column:parent_id"`
 }
 
 type GetItemSubGroupByIDRequest struct {
@@ -451,6 +451,7 @@ type ItemSubGroupListDTO struct {
 type ItemSubGroupDetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	ParentID      *uint   `json:"parent_id" db:"parent_id"`
+	ItemGroupID   *uint   `json:"item_group_id" db:"item_group_id"`
 	Name          string  `json:"name" db:"name"`
 	GroupName     string  `json:"group_name" db:"group_name"`
 	Description   *string `json:"description" db:"description"`
