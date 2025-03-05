@@ -1,0 +1,238 @@
+package repository
+
+import (
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/jmoiron/sqlx"
+	"github.com/nibroos/s-erp-api/service/internal/dtos"
+	"github.com/nibroos/s-erp-api/service/internal/models"
+	"github.com/nibroos/s-erp-api/service/internal/utils"
+	"github.com/opentracing/opentracing-go"
+	"gorm.io/gorm"
+)
+
+type ShippingTermRepository struct {
+	db     *gorm.DB
+	sqlDB  *sqlx.DB
+	tracer opentracing.Tracer
+}
+
+func NewShippingTermRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *ShippingTermRepository {
+	return &ShippingTermRepository{
+		db:     db,
+		sqlDB:  sqlDB,
+		tracer: tracer,
+	}
+}
+
+func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ShippingTermListDTO, int, error) {
+	childSpan := opentracing.StartSpan("ShippingTermRepository-GetShippingTerms", opentracing.ChildOf(span.Context()))
+
+	shippingTerms := []dtos.ShippingTermListDTO{}
+	var total int
+
+	query := `SELECT *
+    FROM ( 
+        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        cu.name as created_by_name,
+        uu.name as updated_by_name
+
+        FROM mix_values m
+        LEFT JOIN groups g ON m.group_id = g.id
+        LEFT JOIN users cu ON m.created_by_id = cu.id
+        LEFT JOIN users uu ON m.updated_by_id = uu.id
+        WHERE g.name = 'shipping_terms'
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	countQuery := `SELECT COUNT(*) FROM (
+        SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+        cu.name as created_by_name,
+        uu.name as updated_by_name
+
+        FROM mix_values m
+        LEFT JOIN users cu ON m.created_by_id = cu.id
+        LEFT JOIN users uu ON m.updated_by_id = uu.id
+        LEFT JOIN groups g ON m.group_id = g.id
+        WHERE g.name = 'shipping_terms'
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	var args []interface{}
+
+	i := 1
+	for key, value := range filters {
+		switch key {
+		case "name", "description", "remark":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if value, ok := filters["global"]; ok && value != "" {
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
+		i += 3
+	}
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &shippingTerms, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return shippingTerms, total, nil
+}
+
+func (r *ShippingTermRepository) GetShippingTermByID(ctx *fiber.Ctx, params *dtos.GetShippingTermParams, span opentracing.Span) (*dtos.ShippingTermDetailDTO, error) {
+	childSpan := opentracing.StartSpan("ShippingTermRepository-GetShippingTermByID", opentracing.ChildOf(span.Context()))
+	var term dtos.ShippingTermDetailDTO
+
+	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+    cu.name as created_by_name,
+    uu.name as updated_by_name
+
+    FROM mix_values m
+    LEFT JOIN users cu ON m.created_by_id = cu.id
+    LEFT JOIN users uu ON m.updated_by_id = uu.id
+    LEFT JOIN groups g ON m.group_id = g.id
+    WHERE g.name = 'shipping_terms'`
+
+	var args []interface{}
+
+	i := 1
+	query += " AND m.id = $1"
+	args = append(args, params.ID)
+	i++
+
+	isDeletedQuery := ` AND m.deleted_at IS NULL`
+	if params.IsDeleted != nil && *params.IsDeleted == 1 {
+		isDeletedQuery = " AND m.deleted_at IS NOT NULL"
+	}
+
+	query += isDeletedQuery
+
+	if err := r.sqlDB.Get(&term, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return &term, nil
+}
+
+func (r *ShippingTermRepository) BeginTransaction() *gorm.DB {
+	return r.db.Begin()
+}
+
+func (r *ShippingTermRepository) CreateShippingTerm(tx *gorm.DB, term *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ShippingTermRepository-CreateShippingTerm", opentracing.ChildOf(span.Context()))
+	if err := tx.Create(term).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+}
+
+func (r *ShippingTermRepository) UpdateShippingTerm(tx *gorm.DB, term *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ShippingTermRepository-UpdateShippingTerm", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(term).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+}
+
+func (r *ShippingTermRepository) DeleteShippingTerm(tx *gorm.DB, params *dtos.GetShippingTermParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ShippingTermRepository-DeleteShippingTerm", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Model(&models.MixValue{}).Where("id = ?", params.ID).Updates(map[string]interface{}{
+		"deleted_at":    time.Now(),
+		"deleted_by_id": params.DeletedByID,
+	}).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+}
+
+func (r *ShippingTermRepository) RestoreShippingTerm(tx *gorm.DB, params *dtos.GetShippingTermParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ShippingTermRepository-RestoreShippingTerm", opentracing.ChildOf(span.Context()))
+
+	var term models.MixValue
+	if err := tx.Unscoped().Model(&term).Where("id = ?", params.ID).Updates(map[string]interface{}{
+		"deleted_at":    nil,
+		"deleted_by_id": nil,
+	}).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+}
