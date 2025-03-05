@@ -37,7 +37,7 @@ func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, spa
 	query := `SELECT *
 		FROM (
 			SELECT
-				u.id, u.username, u.name, u.email, u.branch_id, u.address,
+				u.id, u.username, u.name, u.email, u.branch_id, u.address, u.status,
 				b.name as branch_name
 			FROM users u
 			LEFT JOIN branches b ON u.branch_id = b.id
@@ -45,7 +45,7 @@ func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, spa
 
 	countQuery := `SELECT COUNT(*) FROM (
 		SELECT
-			u.id, u.username, u.name, u.email, u.branch_id, u.address,
+			u.id, u.username, u.name, u.email, u.branch_id, u.address, u.status,
 			b.name as branch_name
 		FROM users u
 		LEFT JOIN branches b ON u.branch_id = b.id
@@ -133,13 +133,14 @@ func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, spa
 	return users, total, nil
 }
 
-func (r *UserRepository) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDParams) (*dtos.UserDetailDTO, error) {
+func (r *UserRepository) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDParams, span opentracing.Span) (*dtos.UserDetailDTO, error) {
+	childSpan := opentracing.StartSpan("UserRepository-GetUserByID", opentracing.ChildOf(span.Context()))
 	var user dtos.UserDetailDTO
 
 	query := `SELECT 
 		u.branch_id, 
-			u.id, u.username, u.name, u.email, u.address, u.password 
-		branch_name
+			u.id, u.username, u.name, u.email, u.address, u.status, u.password,
+			b.name as branch_name
 	FROM users u 
 	LEFT JOIN branches b ON u.branch_id = b.id
 	WHERE u.id = $1`
@@ -154,19 +155,31 @@ func (r *UserRepository) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDPar
 
 	query += isDeletedQuery
 
-	// Channels for concurrent execution
-	userChan := make(chan error)
-	roleChan := make(chan error)
-	permissionChan := make(chan error)
+	var wg sync.WaitGroup
+	var userErr, roleErr, permissionErr error
 
 	// Goroutine for user query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
+		userSpan := opentracing.StartSpan("UserQuery", opentracing.ChildOf(childSpan.Context()))
+
 		err := r.sqlDB.GetContext(ctx.Context(), &user, query, args...)
-		userChan <- err
+		// userErr <- err
+		if err != nil {
+			userSpan.LogKV("query", query)
+			utils.LogErrors(userSpan, err)
+			userErr = err
+		}
+
 	}()
 
 	// Goroutine for role query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		roleSpan := opentracing.StartSpan("RoleQuery", opentracing.ChildOf(childSpan.Context()))
 		var roleNames []string
 		roleQuery := `
             SELECT mv.name 
@@ -180,14 +193,19 @@ func (r *UserRepository) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDPar
             AND p.mv1_id = $1
         `
 		err := r.sqlDB.SelectContext(ctx.Context(), &roleNames, roleQuery, params.ID)
-		if err == nil {
-			user.Roles = roleNames
+		if err != nil {
+			roleSpan.LogKV("query", roleQuery)
+			utils.LogErrors(roleSpan, err)
+			roleErr = err
 		}
-		roleChan <- err
+		user.Roles = roleNames
 	}()
 
 	// Goroutine for permission query
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		permissionSpan := opentracing.StartSpan("PermissionQuery", opentracing.ChildOf(childSpan.Context()))
 		var permissionNames []string
 		permissionQuery := `
             SELECT mv.name 
@@ -206,26 +224,29 @@ func (r *UserRepository) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDPar
             )
         `
 		err := r.sqlDB.SelectContext(ctx.Context(), &permissionNames, permissionQuery, params.ID)
-		if err == nil {
-			user.Permissions = permissionNames
+		if err != nil {
+			permissionSpan.LogKV("query", permissionQuery)
+			utils.LogErrors(permissionSpan, err)
+			permissionErr = err
 		}
-		permissionChan <- err
+		user.Permissions = permissionNames
 	}()
 
-	// Wait for all goroutines to finish
-	userErr := <-userChan
-	roleErr := <-roleChan
-	permissionErr := <-permissionChan
+	// Wait for both goroutines to finish
+	wg.Wait()
 
 	if userErr != nil {
+		defer childSpan.Finish()
 		return nil, userErr
 	}
 
 	if roleErr != nil {
+		defer childSpan.Finish()
 		return nil, roleErr
 	}
 
 	if permissionErr != nil {
+		defer childSpan.Finish()
 		return nil, permissionErr
 	}
 

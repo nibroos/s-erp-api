@@ -52,6 +52,7 @@ type UserListDTO struct {
 	Username   *string `json:"username" db:"username"`
 	Name       string  `json:"name" db:"name"`
 	Email      string  `json:"email" db:"email"`
+	Status     *int    `json:"status" db:"status"`
 	Address    *string `json:"address" db:"address"`
 	BranchID   *uint   `json:"branch_id" db:"branch_id"`
 	BranchName *string `json:"branch_name" db:"branch_name"`
@@ -65,6 +66,7 @@ type UserDetailDTO struct {
 	Username    *string  `json:"username"`
 	Email       string   `json:"email"`
 	Address     *string  `json:"address"`
+	Status      *int     `json:"status"`
 	Password    *string  `json:"password"`
 	Roles       []string `json:"roles"`
 	Permissions []string `json:"permissions"`
