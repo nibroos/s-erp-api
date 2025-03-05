@@ -18,4 +18,7 @@ const (
 	VatID          = 12
 	Pph23ID        = 13
 	OrderTypeID    = 28
+	ShippingTermID = 25
+	PaymentTermID  = 26
+	PurchaseTypeID = 27
 )
