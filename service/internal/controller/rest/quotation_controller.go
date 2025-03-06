@@ -58,6 +58,41 @@ func (c *QuotationController) GetQuotations(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, quotations, paginationMeta, "Master quotation fetched successfully", http.StatusOK, nil, nil)
 }
 
+func (c *QuotationController) GetQuotationByID(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("QuotationController-GetQuotationByID", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.GetQuotationByIDRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusBadRequest, err.Error(), nil)
+	}
+
+	if req.ID == 0 {
+		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusBadRequest, "ID is required", nil)
+	}
+
+	params := &dtos.GetQuotationParams{ID: req.ID}
+	quotation, err := c.service.GetQuotationByID(ctx, params, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
+	}
+
+	quotationArray := []interface{}{quotation}
+
+	filters := ctx.Locals("filters").(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+
+	return utils.GetResponse(ctx, quotationArray, paginationMeta, "Master quotation fetched successfully", http.StatusOK, nil, nil)
+}
+
 func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("QuotationController-CreateQuotation", opentracing.ChildOf(apiSpan.Context()))
@@ -137,25 +172,28 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Details", http.StatusInternalServerError)
 	}
 
-	// // get created quoDts
-	// createQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, createdQuotation.ID, parentSpan)
-	// if err != nil {
-	// 	utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
-	// }
+	createdQuotationIDs := make([]uint, 0)
+	createdQuotationIDs = append(createdQuotationIDs, createdQuotation.ID)
 
-	// // bulk create boms
-	// quoDtBoms, err := c.service.MapCreateQuoDtBoms(ctx, req, createdQuotation, userID, parentSpan)
-	// if err != nil {
-	// 	utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
-	// }
+	// get created quoDts
+	createdQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, createdQuotationIDs, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
+	}
 
-	// // if quoDtBoms is not empty
-	// if len(quoDtBoms) > 0 {
-	// 	err = c.service.CreateQuoDtBoms(ctx, quoDtBoms, createdQuotation.ID, tx, parentSpan)
-	// 	if err != nil {
-	// 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
-	// 	}
-	// }
+	// bulk create boms
+	quoDtBoms, err := c.service.MapCreateQuoDtBoms(ctx, req, createdQuoDts, userID, parentSpan)
+	if err != nil {
+		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
+	}
+
+	// if quoDtBoms is not empty
+	if len(quoDtBoms) > 0 {
+		err = c.service.CreateQuoDtBoms(ctx, quoDtBoms, tx, parentSpan)
+		if err != nil {
+			utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
+		}
+	}
 
 	tx.Commit()
 
@@ -165,58 +203,10 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
 	}
 
-	createdQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, createdQuotation.ID, parentSpan)
-	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
-	}
-
-	getQuotation.QuoDts = createdQuoDts
-
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
 	return utils.GetResponse(ctx, []interface{}{getQuotation}, paginationMeta, "Master quotation created successfully", http.StatusCreated, nil, nil)
-}
-func (c *QuotationController) GetQuotationByID(ctx *fiber.Ctx) error {
-	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("QuotationController-GetQuotationByID", opentracing.ChildOf(apiSpan.Context()))
-	defer func() {
-		// If no error, delete span
-		if utils.FilterOtel(ctx) {
-			defer apiSpan.Finish()
-			defer parentSpan.Finish()
-		}
-	}()
-
-	var req dtos.GetQuotationByIDRequest
-
-	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusBadRequest, err.Error(), nil)
-	}
-
-	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusBadRequest, "ID is required", nil)
-	}
-
-	params := &dtos.GetQuotationParams{ID: req.ID}
-	quotation, err := c.service.GetQuotationByID(ctx, params, parentSpan)
-	if err != nil {
-		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
-	}
-
-	quoDts, err := c.service.GetQuoDtsByQuotationID(ctx, req.ID, parentSpan)
-	if err != nil {
-		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
-	}
-
-	quotation.QuoDts = quoDts
-
-	quotationArray := []interface{}{quotation}
-
-	filters := ctx.Locals("filters").(map[string]string)
-	paginationMeta := utils.CreatePaginationMeta(filters, 1)
-
-	return utils.GetResponse(ctx, quotationArray, paginationMeta, "Master quotation fetched successfully", http.StatusOK, nil, nil)
 }
 
 // update quotation
@@ -251,6 +241,8 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
+	branchID := claims["bid"].(*uint)
+
 	quotation := models.Quotation{
 		ID:            req.ID,
 		CustomerID:    req.CustomerID,
@@ -275,6 +267,7 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 		GrandTotal:    req.GrandTotal,
 		DueAt:         req.DueAt,
 		ExpiredAt:     req.ExpiredAt,
+		BranchID:      branchID,
 		UpdatedByID:   &userID,
 	}
 
@@ -285,9 +278,6 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		if err.Error() == "quotation name already exists" {
-			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Master quotation already exists", "status": http.StatusConflict})
-		}
 		return utils.GetResponse(ctx, nil, nil, "Failed to update Master quotation", http.StatusInternalServerError, err.Error(), nil)
 	}
 
@@ -300,16 +290,18 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 			ID:          quoDt.ID,
 			QuotationID: &updatedQuotation.ID,
 			RefID:       quoDt.RefID,
+			ItemID:      quoDt.ItemID,
 			ItemUnitID:  quoDt.ItemUnitID,
 			VatID:       quoDt.VatID,
-			// QuoDtRefID: quoDt.QuoDtRefID,
 			RefType:     quoDt.RefType,
+			ItemType:    quoDt.ItemType,
 			RefJSON:     &refJSON,
 			Remark:      quoDt.Remark,
 			VatPerc:     quoDt.VatPerc,
 			QtySO:       quoDt.QtySO,
 			Qty:         quoDt.Qty,
 			PriceSell:   quoDt.PriceSell,
+			PriceBuy:    quoDt.PriceBuy,
 			Subtotal:    quoDt.Subtotal,
 			DiscAm:      quoDt.DiscAm,
 			DiscPerc:    quoDt.DiscPerc,
@@ -324,6 +316,21 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 		return utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update Master quotation", http.StatusInternalServerError)
 	}
 
+	updatedQuotationIDs := make([]uint, 0)
+	updatedQuotationIDs = append(updatedQuotationIDs, updatedQuotation.ID)
+
+	// get updated quoDts
+	updatedQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, updatedQuotationIDs, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
+	}
+
+	// Bulk/Create Update Batch QuoDtBoms
+	err = c.service.BulkCreateUpdateQuoDtBoms(ctx, updatedQuoDts, updatedQuotation.ID, tx, parentSpan)
+	if err != nil {
+		return utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update Master quotation", http.StatusInternalServerError)
+	}
+
 	tx.Commit()
 
 	params := &dtos.GetQuotationParams{ID: updatedQuotation.ID}
@@ -332,18 +339,6 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusNotFound, err.Error(), nil)
 	}
-
-	quotationIDs := make([]uint, 0)
-	for _, quotation := range getQuotation.QuoDts {
-		quotationIDs = append(quotationIDs, uint(quotation.ID))
-	}
-
-	createdQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, getQuotation.ID, parentSpan)
-	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
-	}
-
-	getQuotation.QuoDts = createdQuoDts
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)

@@ -2,6 +2,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS quo_dt_boms (
   id SERIAL PRIMARY KEY,
+  quotation_id INT REFERENCES quotations(id) ON DELETE RESTRICT,
   quo_dt_id INT REFERENCES quo_dts(id) ON DELETE RESTRICT,
   product_id INT REFERENCES products(id) ON DELETE RESTRICT,
   item_id INT REFERENCES products(id) ON DELETE RESTRICT,
@@ -19,6 +20,8 @@ CREATE TABLE IF NOT EXISTS quo_dt_boms (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
+
+CREATE INDEX idx_quo_dt_boms_quotation_id ON quo_dt_boms(quotation_id);
 
 CREATE INDEX idx_quo_dt_boms_quo_dt_id ON quo_dt_boms(quo_dt_id);
 

@@ -438,7 +438,7 @@ func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, 
 	}
 
 	// if err := r.utilRepo.BulkUpdate(tx, "quoDts", "id", data, childSpan); err != nil {
-	if err := r.utilRepo.Upsert(tx, "quoDts", "id", data, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "quo_dts", "id", data, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -501,4 +501,61 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, quotationI
 	}
 
 	return quoDts, nil
+}
+
+func (r *QuotationRepository) CreateQuoDtBoms(tx *gorm.DB, quoDtBoms []*models.QuoDtBom, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtBomRepository-CreateQuoDtBoms", opentracing.ChildOf(span.Context()))
+
+	result := tx.CreateInBatches(quoDtBoms, len(quoDtBoms))
+
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return result.Error
+	}
+
+	return nil
+}
+
+func (r *QuotationRepository) DeleteQuoDtBomsWhereNotIn(tx *gorm.DB, quotationID uint, quoDtIDs []uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Where("quotation_id = ? AND id NOT IN ?", quotationID, quoDtIDs).Delete(&models.QuoDt{}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+// bulk/batch update quoDts
+func (r *QuotationRepository) UpdateQuoDtBoms(tx *gorm.DB, quoDtBoms []*models.QuoDtBom, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtRepository-UpdateQuoDtBoms", opentracing.ChildOf(span.Context()))
+
+	data := make([]map[string]interface{}, 0)
+	for _, quoDtBom := range quoDtBoms {
+		data = append(data, map[string]interface{}{
+			"id":           quoDtBom.ID,
+			"quotation_id": quoDtBom.QuotationID,
+			"quo_dt_id":    quoDtBom.QuoDtID,
+			"product_id":   quoDtBom.ProductID,
+			"item_id":      quoDtBom.ItemID,
+			"item_unit_id": quoDtBom.ItemUnitID,
+			// "ref_json":      quoDtBom.RefJSON,
+			"remark":        quoDtBom.Remark,
+			"qty":           quoDtBom.Qty,
+			"price_sell":    quoDtBom.PriceSell,
+			"price_buy":     quoDtBom.PriceBuy,
+			"subtotal":      quoDtBom.Subtotal,
+			"updated_by_id": quoDtBom.UpdatedByID,
+			"updated_at":    time.Now(),
+		})
+	}
+
+	// if err := r.utilRepo.BulkUpdate(tx, "quoDtBoms", "id", data, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", data, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
 }

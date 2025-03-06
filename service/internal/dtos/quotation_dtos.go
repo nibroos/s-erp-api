@@ -1,5 +1,7 @@
 package dtos
 
+import "time"
+
 type GetQuotationsRequest struct {
 	Global         *string `json:"global"`
 	Title          *string `json:"title"`
@@ -87,7 +89,7 @@ type UpdateQuoDtsRequest struct {
 	ItemUnitID  *uint                     `json:"item_unit_id"`
 	VatID       *uint                     `json:"vat_id"`
 	RefID       *uint                     `json:"ref_id"`
-	ItemID      *uint                     `json:"item_id"`
+	ItemID      uint                      `json:"item_id"`
 	RefType     *string                   `json:"ref_type"`
 	ItemType    *string                   `json:"item_type"`
 	Remark      *string                   `json:"remark"`
@@ -104,16 +106,18 @@ type UpdateQuoDtsRequest struct {
 }
 
 type UpdateQuoDtsBomsRequest struct {
-	ID         *uint    `json:"id"`
-	ProductID  uint     `json:"product_id"`
-	ItemID     uint     `json:"item_id"`
-	ItemUnitID *uint    `json:"item_unit_id"`
-	RefType    *string  `json:"ref_type"`
-	Remark     *string  `json:"remark"`
-	Qty        *float64 `json:"qty"`
-	PriceSell  *float64 `json:"price_sell"`
-	PriceBuy   *float64 `json:"price_buy"`
-	Subtotal   *float64 `json:"subtotal"`
+	ID          *uint    `json:"id"`
+	QuotationID *uint    `json:"quotation_id"`
+	QuoDtID     *uint    `json:"quo_dt_id"`
+	ProductID   uint     `json:"product_id"`
+	ItemID      uint     `json:"item_id"`
+	ItemUnitID  *uint    `json:"item_unit_id"`
+	RefType     *string  `json:"ref_type"`
+	Remark      *string  `json:"remark"`
+	Qty         *float64 `json:"qty"`
+	PriceSell   *float64 `json:"price_sell"`
+	PriceBuy    *float64 `json:"price_buy"`
+	Subtotal    *float64 `json:"subtotal"`
 }
 
 type UpdateQuotationRequest struct {
@@ -240,57 +244,61 @@ type QuotationDetailDTO struct {
 }
 
 type QuotationQuoDtListDTO struct {
-	ID               *uint   `json:"id" db:"id"`
-	QuotationID      *uint   `json:"quotation_id" db:"quotation_id"`
-	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
-	VatID            *uint   `json:"vat_id" db:"vat_id"`
-	RefID            *uint   `json:"ref_id" db:"ref_id"`
-	ItemID           *uint   `json:"item_id" db:"item_id"`
-	ItemSubGroupID   *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
-	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
-	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
-	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
-	ItemName         *string `json:"item_name" db:"item_name"`
-	UnitName         *string `json:"unit_name" db:"unit_name"`
-	RefJSON          *string `json:"ref_json" db:"ref_json"`
-	RefType          *string `json:"ref_type" db:"ref_type"`
-	ItemType         *string `json:"item_type" db:"item_type"`
-	Remark           *string `json:"remark" db:"remark"`
-	VatPerc          *string `json:"vat_perc" db:"vat_perc"`
-	QtySO            *string `json:"qty_so" db:"qty_so"`
-	Qty              *string `json:"qty" db:"qty"`
-	PriceSell        *string `json:"price_sell" db:"price_sell"`
-	Subtotal         *string `json:"subtotal" db:"subtotal"`
-	DiscAm           *string `json:"disc_am" db:"disc_am"`
-	DiscPerc         *string `json:"disc_perc" db:"disc_perc"`
-	TotalAm          *string `json:"total_am" db:"total_am"`
-	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt        *string `json:"created_at" db:"created_at"`
-	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
-	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
+	ID               *uint     `json:"id" db:"id"`
+	QuotationID      *uint     `json:"quotation_id" db:"quotation_id"`
+	ItemUnitID       *uint     `json:"item_unit_id" db:"item_unit_id"`
+	VatID            *uint     `json:"vat_id" db:"vat_id"`
+	RefID            *uint     `json:"ref_id" db:"ref_id"`
+	ItemID           *uint     `json:"item_id" db:"item_id"`
+	ItemSubGroupID   *uint     `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID      *uint     `json:"item_group_id" db:"item_group_id"`
+	ItemSubGroupName *string   `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string   `json:"item_group_name" db:"item_group_name"`
+	ItemName         *string   `json:"item_name" db:"item_name"`
+	UnitName         *string   `json:"unit_name" db:"unit_name"`
+	RefJSON          *string   `json:"ref_json" db:"ref_json"`
+	RefType          *string   `json:"ref_type" db:"ref_type"`
+	ItemType         *string   `json:"item_type" db:"item_type"`
+	Remark           *string   `json:"remark" db:"remark"`
+	VatPerc          *string   `json:"vat_perc" db:"vat_perc"`
+	QtySO            *string   `json:"qty_so" db:"qty_so"`
+	Qty              *string   `json:"qty" db:"qty"`
+	PriceSell        *string   `json:"price_sell" db:"price_sell"`
+	Subtotal         *string   `json:"subtotal" db:"subtotal"`
+	DiscAm           *string   `json:"disc_am" db:"disc_am"`
+	DiscPerc         *string   `json:"disc_perc" db:"disc_perc"`
+	TotalAm          *string   `json:"total_am" db:"total_am"`
+	CreatedByName    *string   `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string   `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        time.Time `json:"created_at" db:"created_at"`
+	CreatedByID      *uint     `json:"created_by_id" db:"created_by_id"`
+	UpdatedAt        *string   `json:"updated_at" db:"updated_at"`
+	DeleteAt         *string   `json:"deleted_at" db:"deleted_at"`
 
 	QuoDtsBoms []QuotationQuoDtBomListDTO `json:"quo_dts_boms"`
 }
 
 type QuotationQuoDtBomListDTO struct {
-	ID               *uint   `json:"id" db:"id"`
-	QuoDtID          *uint   `json:"quo_dt_id" db:"quo_dt_id"`
-	ProductID        *uint   `json:"product_id" db:"product_id"`
-	ItemID           *uint   `json:"item_id" db:"item_id"`
-	ItemSubGroupID   *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
-	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
-	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
-	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
-	ItemName         *string `json:"item_name" db:"item_name"`
-	UnitName         *string `json:"unit_name" db:"unit_name"`
-	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
-	RefJSON          *string `json:"ref_json" db:"ref_json"`
-	Remark           *string `json:"remark" db:"remark"`
-	Qty              *string `json:"qty" db:"qty"`
-	PriceSell        *string `json:"price_sell" db:"price_sell"`
-	PriceBuy         *string `json:"price_buy" db:"price_buy"`
-	Subtotal         *string `json:"subtotal" db:"subtotal"`
+	ID               *uint     `json:"id" db:"id"`
+	QuotationID      *uint     `json:"quotation_id" db:"quotation_id"`
+	QuoDtID          *uint     `json:"quo_dt_id" db:"quo_dt_id"`
+	ProductID        *uint     `json:"product_id" db:"product_id"`
+	ItemID           *uint     `json:"item_id" db:"item_id"`
+	ItemSubGroupID   *uint     `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID      *uint     `json:"item_group_id" db:"item_group_id"`
+	ItemSubGroupName *string   `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string   `json:"item_group_name" db:"item_group_name"`
+	ItemName         *string   `json:"item_name" db:"item_name"`
+	UnitName         *string   `json:"unit_name" db:"unit_name"`
+	ItemUnitID       *uint     `json:"item_unit_id" db:"item_unit_id"`
+	RefJSON          *string   `json:"ref_json" db:"ref_json"`
+	Remark           *string   `json:"remark" db:"remark"`
+	Qty              *float64  `json:"qty" db:"qty"`
+	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
+	PriceBuy         *float64  `json:"price_buy" db:"price_buy"`
+	Subtotal         *float64  `json:"subtotal" db:"subtotal"`
+	CreatedAt        time.Time `json:"created_at" db:"created_at"`
+	CreatedByID      *uint     `json:"created_by_id" db:"created_by_id"`
 }
 
 type GetQuotationsResult struct {
