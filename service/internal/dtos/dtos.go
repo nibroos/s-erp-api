@@ -952,6 +952,7 @@ type GetCurrenciesRequest struct {
 
 type CreateCurrencyRequest struct {
 	Name        string  `json:"name"`
+	Num         float64 `json:"num"`
 	Description *string `json:"description"`
 	Remark      *string `json:"remark"`
 	Status      int8    `json:"status"`
@@ -960,6 +961,7 @@ type CreateCurrencyRequest struct {
 type UpdateCurrencyRequest struct {
 	ID          uint    `json:"id"`
 	Name        string  `json:"name"`
+	Num         float64 `json:"num"`
 	Description *string `json:"description"`
 	Remark      *string `json:"remark"`
 	Status      int8    `json:"status"`
