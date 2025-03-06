@@ -248,10 +248,10 @@ func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, boms []*models
 	return nil
 }
 
-func (s *QuotationService) GetQuoDtsByQuotationID(ctx *fiber.Ctx, quotationID uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
+func (s *QuotationService) GetQuoDtsByQuotationID(ctx *fiber.Ctx, quotationIDs []uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
 	childSpan := opentracing.StartSpan("QuotationService-GetQuoDtsByQuotationID", opentracing.ChildOf(span.Context()))
 
-	boms, err := s.repo.GetQuoDtsByQuotationID(ctx, quotationID, childSpan)
+	boms, err := s.repo.GetQuoDtsByQuotationIDs(ctx, quotationIDs, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -262,75 +262,56 @@ func (s *QuotationService) GetQuoDtsByQuotationID(ctx *fiber.Ctx, quotationID ui
 func (s *QuotationService) MapCreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuotation *models.Quotation, userID uint, span opentracing.Span) ([]*models.QuoDt, error) {
 	// childSpan := opentracing.StartSpan("QuotationService-MapQuoDtsToQuotation", opentracing.ChildOf(span.Context()))
 
-	quoDts := []*models.QuoDt{}
+	quoDtsModel := []*models.QuoDt{}
+
 	for _, quoDt := range req.QuoDts {
-		if *quoDt.RefType == "item" {
-			quoDt := &models.QuoDt{
-				QuotationID:       &createdQuotation.ID,
-				RefID:             quoDt.RefID,
-				ItemUnitID:        quoDt.ItemUnitID,
-				VatID:             quoDt.VatID,
-				ProductID:         quoDt.ProductID,
-				ProductItemUnitID: quoDt.ProductItemUnitID,
-				// QuoDtRefID: quoDt.QuoDtRefID,
-				RefType: quoDt.RefType,
-				// RefJSON: 	quoDt.RefJSON,
-				Remark:      quoDt.Remark,
-				VatPerc:     quoDt.VatPerc,
-				QtySO:       quoDt.QtySO,
-				Qty:         quoDt.Qty,
-				PriceSell:   quoDt.PriceSell,
-				Subtotal:    quoDt.Subtotal,
-				DiscAm:      quoDt.DiscAm,
-				DiscPerc:    quoDt.DiscPerc,
-				TotalAm:     quoDt.TotalAm,
-				PQtySO:      quoDt.PQtySO,
-				PQty:        quoDt.PQty,
-				PPriceSell:  quoDt.PPriceSell,
-				PSubtotal:   quoDt.PSubtotal,
-				PDiscAm:     quoDt.PDiscAm,
-				PDiscPerc:   quoDt.PDiscPerc,
-				PTotalAm:    quoDt.PTotalAm,
-				CreatedByID: &userID,
-			}
-			quoDts = append(quoDts, quoDt)
+		quoDtModel := &models.QuoDt{
+			QuotationID: &createdQuotation.ID,
+			RefID:       quoDt.RefID,
+			ItemUnitID:  quoDt.ItemUnitID,
+			VatID:       quoDt.VatID,
+			RefType:     quoDt.RefType,
+			// RefJSON: 	quoDt.RefJSON,
+			Remark:      quoDt.Remark,
+			VatPerc:     quoDt.VatPerc,
+			QtySO:       quoDt.QtySO,
+			Qty:         quoDt.Qty,
+			PriceSell:   quoDt.PriceSell,
+			PriceBuy:    quoDt.PriceBuy,
+			Subtotal:    quoDt.Subtotal,
+			DiscAm:      quoDt.DiscAm,
+			DiscPerc:    quoDt.DiscPerc,
+			TotalAm:     quoDt.TotalAm,
+			CreatedByID: &userID,
 		}
+		quoDtsModel = append(quoDtsModel, quoDtModel)
 
-		if *quoDt.RefType == "bom" {
-
-			for _, bom := range quoDt.Boms {
-				quoDt := &models.QuoDt{
-					QuotationID:       &createdQuotation.ID,
-					RefID:             bom.RefID,
-					ItemUnitID:        bom.ItemUnitID,
-					VatID:             quoDt.VatID,
-					ProductID:         quoDt.ProductID,
-					ProductItemUnitID: bom.ProductItemUnitID,
-					// QuoDtRefID: quoDt.QuoDtRefID,
-					RefType: bom.RefType,
-					// RefJSON: 	quoDt.RefJSON,
-					Remark:      quoDt.Remark,
-					VatPerc:     quoDt.VatPerc,
-					QtySO:       quoDt.QtySO,
-					Qty:         quoDt.Qty,
-					PriceSell:   quoDt.PriceSell,
-					Subtotal:    quoDt.Subtotal,
-					DiscAm:      quoDt.DiscAm,
-					DiscPerc:    quoDt.DiscPerc,
-					TotalAm:     quoDt.TotalAm,
-					PQtySO:      quoDt.PQtySO,
-					PQty:        quoDt.PQty,
-					PPriceSell:  quoDt.PPriceSell,
-					PSubtotal:   quoDt.PSubtotal,
-					PDiscAm:     quoDt.PDiscAm,
-					PDiscPerc:   quoDt.PDiscPerc,
-					PTotalAm:    quoDt.PTotalAm,
-					CreatedByID: &userID,
-				}
-				quoDts = append(quoDts, quoDt)
-			}
-		}
 	}
 
-	return quoDts, nil
+	return quoDtsModel, nil
+}
+
+func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuoDt *models.QuoDt, userID uint, span opentracing.Span) ([]*models.QuoDtBom, error) {
+	// childSpan := opentracing.StartSpan("QuotationService-MapQuoDtsToQuotation", opentracing.ChildOf(span.Context()))
+
+	quoDtBomsModel := []*models.QuoDtBom{}
+
+	for _, quoDt := range req.QuoDts {
+		for _, quoDtBom := range quoDt.QuoDtsBoms {
+			quoDtModel := &models.QuoDtBom{
+				QuoDtID:     *createdQuoDt.ID,
+				ItemUnitID:  quoDtBom.ItemUnitID,
+				Remark:      quoDtBom.Remark,
+				Qty:         quoDtBom.Qty,
+				PriceSell:   quoDtBom.PriceSell,
+				PriceBuy:    quoDtBom.PriceBuy,
+				Subtotal:    quoDtBom.Subtotal,
+				CreatedByID: &userID,
+			}
+			quoDtBomsModel = append(quoDtBomsModel, quoDtModel)
+		}
+
+	}
+
+	return quoDtBomsModel, nil
 }

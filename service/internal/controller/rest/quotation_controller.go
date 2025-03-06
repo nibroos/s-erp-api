@@ -137,6 +137,26 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Details", http.StatusInternalServerError)
 	}
 
+	// // get created quoDts
+	// createQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, createdQuotation.ID, parentSpan)
+	// if err != nil {
+	// 	utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
+	// }
+
+	// // bulk create boms
+	// quoDtBoms, err := c.service.MapCreateQuoDtBoms(ctx, req, createdQuotation, userID, parentSpan)
+	// if err != nil {
+	// 	utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
+	// }
+
+	// // if quoDtBoms is not empty
+	// if len(quoDtBoms) > 0 {
+	// 	err = c.service.CreateQuoDtBoms(ctx, quoDtBoms, createdQuotation.ID, tx, parentSpan)
+	// 	if err != nil {
+	// 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
+	// 	}
+	// }
+
 	tx.Commit()
 
 	params := &dtos.GetQuotationParams{ID: createdQuotation.ID}
@@ -271,20 +291,20 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update Master quotation", http.StatusInternalServerError, err.Error(), nil)
 	}
 
+	refJSON := "{}"
+
 	// Bulk/Create Update Batch QuoDts
 	quoDts := make([]*models.QuoDt, 0)
 	for _, quoDt := range req.QuoDts {
 		quoDt := &models.QuoDt{
-			ID:                quoDt.ID,
-			QuotationID:       &updatedQuotation.ID,
-			RefID:             quoDt.RefID,
-			ItemUnitID:        quoDt.ItemUnitID,
-			VatID:             quoDt.VatID,
-			ProductID:         quoDt.ProductID,
-			ProductItemUnitID: quoDt.ProductItemUnitID,
+			ID:          quoDt.ID,
+			QuotationID: &updatedQuotation.ID,
+			RefID:       quoDt.RefID,
+			ItemUnitID:  quoDt.ItemUnitID,
+			VatID:       quoDt.VatID,
 			// QuoDtRefID: quoDt.QuoDtRefID,
-			RefType: quoDt.RefType,
-			// RefJSON: 	quoDt.RefJSON,
+			RefType:     quoDt.RefType,
+			RefJSON:     &refJSON,
 			Remark:      quoDt.Remark,
 			VatPerc:     quoDt.VatPerc,
 			QtySO:       quoDt.QtySO,
@@ -294,13 +314,6 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 			DiscAm:      quoDt.DiscAm,
 			DiscPerc:    quoDt.DiscPerc,
 			TotalAm:     quoDt.TotalAm,
-			PQtySO:      quoDt.PQtySO,
-			PQty:        quoDt.PQty,
-			PPriceSell:  quoDt.PPriceSell,
-			PSubtotal:   quoDt.PSubtotal,
-			PDiscAm:     quoDt.PDiscAm,
-			PDiscPerc:   quoDt.PDiscPerc,
-			PTotalAm:    quoDt.PTotalAm,
 			UpdatedByID: &userID,
 		}
 		quoDts = append(quoDts, quoDt)
@@ -318,6 +331,11 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusNotFound, err.Error(), nil)
+	}
+
+	quotationIDs := make([]uint, 0)
+	for _, quotation := range getQuotation.QuoDts {
+		quotationIDs = append(quotationIDs, uint(quotation.ID))
 	}
 
 	createdQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, getQuotation.ID, parentSpan)

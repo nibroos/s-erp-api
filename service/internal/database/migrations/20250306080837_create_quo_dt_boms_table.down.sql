@@ -1,0 +1,5 @@
+BEGIN;
+
+DROP TABLE IF EXISTS quo_dt_boms;
+
+COMMIT;

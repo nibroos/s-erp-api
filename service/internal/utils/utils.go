@@ -735,3 +735,11 @@ func GetClaims(ctx *fiber.Ctx, parentSpan opentracing.Span) jwt.MapClaims {
 
 	return claims
 }
+
+func JoinUintsToString(ints []uint, sep string) string {
+	var strInts []string
+	for _, i := range ints {
+		strInts = append(strInts, strconv.Itoa(int(i)))
+	}
+	return strings.Join(strInts, sep)
+}
