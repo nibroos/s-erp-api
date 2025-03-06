@@ -2221,3 +2221,91 @@ type GetPurchaseTypesResult struct {
 	Total         int
 	Err           error
 }
+
+type GetIOTypesRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`
+	Page           string `json:"page" default:"1"`
+	OrderColumn    string `json:"order_column" default:"id"`
+	OrderDirection string `json:"order_direction" default:"asc"`
+}
+
+type CreateIOTypeRequest struct {
+	Name        string  `json:"name"`
+	GroupID     uint    `json:"group_id"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+	Code        string  `json:"code"`
+	Type        string  `json:"type"`
+}
+
+type UpdateIOTypeRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	GroupID     uint    `json:"group_id"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+	Code        string  `json:"code"`
+	Type        string  `json:"type"`
+}
+
+type GetIOTypeByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetIOTypeParams struct {
+	ID          uint
+	IsDeleted   *int
+	DeletedByID *uint
+}
+
+func NewGetIOTypeParams(id uint) *GetIOTypeParams {
+	defaultIsDeleted := 0
+	return &GetIOTypeParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteIOTypeRequest struct {
+	ID uint `json:"id"`
+}
+
+type IOTypeListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	Code          string  `json:"code" db:"code"`
+	Type          string  `json:"type" db:"type"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type IOTypeDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	Code          string  `json:"code" db:"code"`
+	Type          string  `json:"type" db:"type"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type GetIOTypesResult struct {
+	IOTypes []IOTypeListDTO
+	Total   int
+	Err     error
+}
