@@ -35,9 +35,20 @@ func (r *BranchStoreRequest) Validate(req *dtos.CreateBranchRequest, ctx *fiber.
 	customFieldNames := map[string]string{}
 
 	var requestBody map[string]interface{}
+
 	if err := ctx.BodyParser(&requestBody); err != nil {
-		return map[string][]string{"error": {"Invalid request body"}}, false
+		form, err := ctx.MultipartForm()
+		if err != nil {
+			return map[string][]string{"error": {"Invalid request body or form-data"}}, false
+		}
+		requestBody = make(map[string]interface{})
+		for key, values := range form.Value {
+			if len(values) > 0 {
+				requestBody[key] = values[0]
+			}
+		}
 	}
+
 	request := validators.NewRequest(rules, requestBody, customFieldNames)
 	errors, valid := request.Validate()
 

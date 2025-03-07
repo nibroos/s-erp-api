@@ -84,9 +84,10 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 
 	query := `SELECT *
     FROM ( 
-        SELECT DISTINCT ON (m.id)
+        SELECT
 					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
 					` + cdSelect + `
+					pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
 
 					m.id as product_id,
 					u.name as unit_name,
@@ -97,6 +98,8 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 					uu.name as updated_by_name
 
         FROM products m
+				LEFT JOIN boms bo ON m.id = bo.product_id
+				LEFT JOIN products pi ON bo.product_item_id = pi.id
 				LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
@@ -111,6 +114,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
         SELECT DISTINCT ON (m.id) 
 					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
 					` + cdSelect + `
+					pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
 
 					m.id as product_id,
 					u.name as unit_name,
@@ -121,6 +125,8 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 					uu.name as updated_by_name
 
         FROM products m
+				LEFT JOIN boms bo ON m.id = bo.product_id
+				LEFT JOIN products pi ON bo.product_item_id = pi.id
 				LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
@@ -136,7 +142,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	i := 1
 	for key, value := range filters {
 		switch key {
-		case "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark":
+		case "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -175,10 +181,12 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	}
 
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR factory_code ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR factory_code ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 8
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR factory_code ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR item_name ILIKE $%d OR item_code ILIKE $%d OR item_factory_code ILIKE $%d OR item_sku ILIKE $%d OR item_barcode ILIKE $%d OR item_specification ILIKE $%d OR item_description ILIKE $%d OR item_remark ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11, i+12, i+13, i+14, i+15)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR factory_code ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR item_name ILIKE $%d OR item_code ILIKE $%d OR item_factory_code ILIKE $%d OR item_sku ILIKE $%d OR item_barcode ILIKE $%d OR item_specification ILIKE $%d OR item_description ILIKE $%d OR item_remark ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11, i+12, i+13, i+14, i+15)
+		for j := 0; j < 16; j++ {
+			args = append(args, "%"+value+"%")
+		}
+		i += 16
 	}
 
 	countArgs := append([]interface{}{}, args...)
@@ -474,7 +482,6 @@ func (r *ProductRepository) GetBomsByProductID(ctx *fiber.Ctx, productID uint, s
 
 	query := `SELECT b.id, b.product_id, b.product_item_id, b.item_unit_id, b.qty, b.remark, b.created_at, b.updated_at, b.deleted_at,
 		b.id as bom_id,
-		pi.name as product_item_name, 
 		u.name as item_unit_name,
 
 		isg.id as item_sub_group_id,
@@ -551,4 +558,139 @@ func (r *ProductRepository) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, tx *go
 	}
 
 	return &msItem, nil
+}
+
+// GetBomsByProductIDs(ctx, productIDs, childSpan)
+func (r *ProductRepository) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[string]string, productIDs []uint, span opentracing.Span) ([]dtos.ProductBomListDTO, error) {
+	childSpan := opentracing.StartSpan("ProductRepository-GetBomsByProductIDs", opentracing.ChildOf(span.Context()))
+
+	boms := []dtos.ProductBomListDTO{}
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	// select column
+	cdSelect := `p.name, p.specification, p.description, p.tpb_code,`
+	if branchID != nil && !isAdmin {
+
+		cdSelect = `
+		COALESCE(bi.name, m.name) as name,
+		COALESCE(bi.name, m.name) as name,
+		COALESCE(bi.factory_code, m.factory_code) as factory_code,
+		COALESCE(bi.sku, m.sku) as sku,
+		COALESCE(bi.barcode, m.barcode) as barcode,
+		COALESCE(bi.specification, m.specification) as specification,
+		COALESCE(bi.description, m.description) as description,
+		COALESCE(bi.tpb_code, m.tpb_code) as tpb_code,
+
+		bi.id as branch_item_id,
+		`
+	} else {
+		cdSelect = `
+			p.name, p.factory_code, p.sku, p.barcode, p.specification, p.description, p.tpb_code,
+		`
+	}
+
+	query := `SELECT * 
+	FROM (
+			SELECT DISTINCT ON (b.id)
+			b.id, b.product_id, b.product_item_id, b.item_unit_id, b.qty, b.remark as remark, b.created_at, b.updated_at, b.deleted_at,
+			b.id as bom_id,
+
+			-- products "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark":
+			-- p.name as name, p.code as code, p.factory_code as factory_code, p.sku as sku, p.barcode as barcode, p.specification as specification, p.description as description, p.tpb_code as tpb_code,
+			` + cdSelect + `
+			p.code, 
+			pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
+
+			u.name as item_unit_name,
+
+			isg.id as item_sub_group_id,
+			ig.id as item_group_id,
+			isg.name as item_sub_group_name,
+			ig.name as item_group_name,
+			br.name as branch_name,
+
+			cu.name as created_by_name,
+			uu.name as updated_by_name
+
+		FROM boms b
+		LEFT JOIN products p ON b.product_id = p.id
+		LEFT JOIN products pi ON b.product_item_id = pi.id
+		LEFT JOIN item_units iu ON b.item_unit_id = iu.id
+
+		LEFT JOIN item_units p_item_unit ON p.item_unit_id = p_item_unit.id
+		LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
+		LEFT JOIN branches br ON bi.branch_id = b.id
+
+		LEFT JOIN mix_values u ON iu.unit_id = u.id
+		LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
+		LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+		LEFT JOIN users cu ON b.created_by_id = cu.id
+		LEFT JOIN users uu ON b.updated_by_id = uu.id
+		WHERE b.deleted_at IS NULL
+	) AS alias WHERE 1=1`
+
+	var args []interface{}
+
+	if len(productIDs) > 0 {
+		query += " AND product_id IN (" + utils.JoinUintsToString(productIDs, ",") + ")"
+	}
+
+	i := 1
+	for key, value := range filters {
+		switch key {
+		case "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	filterKey := map[string]string{
+		"unit_id": "unit_id",
+		"status":  "status",
+	}
+
+	for key, _ := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			query += fmt.Sprintf(" AND %s = $%d", value, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	if value, ok := filters["global"]; ok && value != "" {
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR factory_code ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR item_name ILIKE $%d OR item_code ILIKE $%d OR item_factory_code ILIKE $%d OR item_sku ILIKE $%d OR item_barcode ILIKE $%d OR item_specification ILIKE $%d OR item_description ILIKE $%d OR item_remark ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11, i+12, i+13, i+14, i+15)
+		for j := 0; j < 16; j++ {
+			args = append(args, "%"+value+"%")
+		}
+		i += 16
+	}
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	if err := r.sqlDB.SelectContext(ctx.Context(), &boms, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return boms, nil
 }

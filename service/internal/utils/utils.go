@@ -27,10 +27,11 @@ import (
 )
 
 type Meta struct {
-	Total       int `json:"total"`
-	PerPage     int `json:"per_page"`
-	CurrentPage int `json:"current_page"`
-	LastPage    int `json:"last_page"`
+	Total       int  `json:"total"`
+	PerPage     int  `json:"per_page"`
+	CurrentPage int  `json:"current_page"`
+	LastPage    int  `json:"last_page"`
+	NextPageUrl *int `json:"next_page_url"`
 }
 
 type Response struct {
@@ -283,12 +284,20 @@ func CreatePaginationMeta(filters map[string]string, total int) *Meta {
 	currentPage := GetIntOrDefault(filters["page"], 1)
 	perPage := GetIntOrDefault(filters["per_page"], 10)
 	lastPage := (total + perPage - 1) / perPage
+	// nextPageUrl = if currentPage - lastPage nextpage url null else 1
+	var nextPageUrl *int
+
+	if currentPage < lastPage {
+		nextPage := currentPage + 1
+		nextPageUrl = &nextPage
+	}
 
 	return &Meta{
 		Total:       total,
 		PerPage:     perPage,
 		CurrentPage: currentPage,
 		LastPage:    lastPage,
+		NextPageUrl: nextPageUrl,
 	}
 }
 
@@ -725,4 +734,12 @@ func GetClaims(ctx *fiber.Ctx, parentSpan opentracing.Span) jwt.MapClaims {
 	}
 
 	return claims
+}
+
+func JoinUintsToString(ints []uint, sep string) string {
+	var strInts []string
+	for _, i := range ints {
+		strInts = append(strInts, strconv.Itoa(int(i)))
+	}
+	return strings.Join(strInts, sep)
 }

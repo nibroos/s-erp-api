@@ -303,3 +303,15 @@ func (s *ProductService) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, tx *gorm.
 	}
 	return msItem, nil
 }
+
+// GetBomsByProductIDs(ctx, productIDs, parentSpan)
+func (s *ProductService) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[string]string, productIDs []uint, span opentracing.Span) ([]dtos.ProductBomListDTO, error) {
+	childSpan := opentracing.StartSpan("ProductService-GetBomsByProductIDs", opentracing.ChildOf(span.Context()))
+
+	boms, err := s.repo.GetBomsByProductIDs(ctx, filters, productIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return boms, nil
+}

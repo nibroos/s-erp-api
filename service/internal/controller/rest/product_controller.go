@@ -53,6 +53,23 @@ func (c *ProductController) GetProducts(ctx *fiber.Ctx) error {
 		productIDs = append(productIDs, uint(product.ID))
 	}
 
+	// get all boms
+	boms, err := c.service.GetBomsByProductIDs(ctx, filters, productIDs, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
+	}
+
+	// map bom to product
+	for i, product := range products {
+		productBoms := make([]dtos.ProductBomListDTO, 0)
+		for _, bom := range boms {
+			if bom.ProductID == uint(product.ID) {
+				productBoms = append(productBoms, bom)
+			}
+		}
+		products[i].Boms = productBoms
+	}
+
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
 	return utils.GetResponse(ctx, products, paginationMeta, "Master product fetched successfully", http.StatusOK, nil, nil)

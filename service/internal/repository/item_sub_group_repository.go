@@ -193,7 +193,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx *fiber.Ctx, params *dto
 	var itemSubGroup dtos.ItemSubGroupDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
-	m.parent_id,
+	m.parent_id, m.parent_id as item_group_id,
 	p.name as group_name,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
