@@ -223,6 +223,18 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		}
 	}
 
+	filterIDsKey := map[string]string{
+		"item_sub_group_ids": "item_sub_group_id",
+		"item_group_ids":     "item_group_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			query += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+			countQuery += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+		}
+	}
+
 	countArgs := append([]interface{}{}, args...)
 
 	var wg sync.WaitGroup
