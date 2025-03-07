@@ -378,6 +378,23 @@ func (c *QuotationController) DeleteQuotation(ctx *fiber.Ctx) error {
 
 	// Transaction handling
 	tx := c.repo.BeginTransaction()
+
+	// DELETE quoDtBoms by Quotation ID
+	err = c.service.DeleteQuoDtBomsByQuotationID(ctx, params, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Master quotation", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	// DELETE quoDts by Quotation ID
+	err = c.service.DeleteQuoDtsByQuotationID(ctx, params, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Master quotation", http.StatusInternalServerError, err.Error(), nil)
+	}
+
 	err = c.service.DeleteQuotation(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()

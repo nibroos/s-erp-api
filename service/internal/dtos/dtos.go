@@ -1923,6 +1923,18 @@ type ProductListDTO struct {
 	CreatedAt        *string `json:"created_at" db:"created_at"`
 	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
 	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
+
+	ItemName          *string `json:"item_name" db:"item_name"`
+	ItemCode          *string `json:"item_code" db:"item_code"`
+	ItemFactoryCode   *string `json:"item_factory_code" db:"item_factory_code"`
+	ItemSku           *string `json:"item_sku" db:"item_sku"`
+	ItemBarcode       *string `json:"item_barcode" db:"item_barcode"`
+	ItemSpecification *string `json:"item_specification" db:"item_specification"`
+	ItemDescription   *string `json:"item_description" db:"item_description"`
+	ItemRemark        *string `json:"item_remark" db:"item_remark"`
+	ItemTpbCode       *string `json:"item_tpb_code" db:"item_tpb_code"`
+
+	Boms []ProductBomListDTO `json:"boms"`
 }
 
 type ProductBomListDTO struct {
@@ -1935,15 +1947,35 @@ type ProductBomListDTO struct {
 	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
 	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
 	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
+	BranchName       *string `json:"branch_name" db:"branch_name"`
 	Qty              float64 `json:"qty" db:"qty"`
 	Remark           *string `json:"remark" db:"remark"`
-	ProductItemName  *string `json:"product_item_name" db:"product_item_name"`
 	ItemUnitName     *string `json:"item_unit_name" db:"item_unit_name"`
 	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt        *string `json:"created_at" db:"created_at"`
 	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
 	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
+
+	ItemName          *string `json:"item_name" db:"item_name"`
+	ItemCode          *string `json:"item_code" db:"item_code"`
+	ItemFactoryCode   *string `json:"item_factory_code" db:"item_factory_code"`
+	ItemSku           *string `json:"item_sku" db:"item_sku"`
+	ItemBarcode       *string `json:"item_barcode" db:"item_barcode"`
+	ItemSpecification *string `json:"item_specification" db:"item_specification"`
+	ItemDescription   *string `json:"item_description" db:"item_description"`
+	ItemRemark        *string `json:"item_remark" db:"item_remark"`
+	ItemTpbCode       *string `json:"item_tpb_code" db:"item_tpb_code"`
+
+	// pi.name as name, pi.code as code, pi.factory_code as factory_code, pi.sku as sku, pi.barcode as barcode, pi.specification as specification, pi.description as description, pi.remark as remark, pi.tpb_code as tpb_code,
+	Name          *string `json:"name" db:"name"`
+	Code          *string `json:"code" db:"code"`
+	FactoryCode   *string `json:"factory_code" db:"factory_code"`
+	Sku           *string `json:"sku" db:"sku"`
+	Barcode       *string `json:"barcode" db:"barcode"`
+	Specification *string `json:"specification" db:"specification"`
+	Description   *string `json:"description" db:"description"`
+	TpbCode       *string `json:"tpb_code" db:"tpb_code"`
 }
 
 type ProductDetailDTO struct {

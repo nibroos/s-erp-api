@@ -559,3 +559,25 @@ func (r *QuotationRepository) UpdateQuoDtBoms(tx *gorm.DB, quoDtBoms []*models.Q
 
 	return nil
 }
+
+func (r *QuotationRepository) DeleteQuoDtBomsByQuotationID(tx *gorm.DB, params *dtos.GetQuotationParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Where("quotation_id = ?", params.ID).Delete(&models.QuoDtBom{}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *QuotationRepository) DeleteQuoDtsByQuotationID(tx *gorm.DB, params *dtos.GetQuotationParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Where("quotation_id = ?", params.ID).Delete(&models.QuoDt{}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}

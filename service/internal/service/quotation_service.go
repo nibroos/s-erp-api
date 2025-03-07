@@ -402,3 +402,27 @@ func (s *QuotationService) BulkCreateUpdateQuoDtBoms(ctx *fiber.Ctx, quoDts []dt
 
 	return nil
 }
+
+func (s *QuotationService) DeleteQuoDtBomsByQuotationID(ctx *fiber.Ctx, params *dtos.GetQuotationParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuotationService-DeleteQuoDtBomsByQuotationID", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.DeleteQuoDtBomsByQuotationID(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
+	return nil
+}
+
+func (s *QuotationService) DeleteQuoDtsByQuotationID(ctx *fiber.Ctx, params *dtos.GetQuotationParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuotationService-DeleteQuoDtsByQuotationID", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.DeleteQuoDtsByQuotationID(tx, params, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
+	return nil
+}
