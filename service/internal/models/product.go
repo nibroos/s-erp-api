@@ -12,6 +12,7 @@ type Product struct {
 	Code           *string        `json:"code" gorm:"column:code"`
 	FactoryCode    *string        `json:"factory_code" gorm:"column:factory_code"`
 	Name           string         `json:"name" gorm:"column:name"`
+	ProdType       *string        `json:"prod_type" gorm:"column:prod_type"`
 	Sku            *string        `json:"sku" gorm:"column:sku"`
 	Barcode        *string        `json:"barcode" gorm:"column:barcode"`
 	Specification  *string        `json:"specification" gorm:"column:specification"`

@@ -1905,6 +1905,7 @@ type ProductListDTO struct {
 	Code             *string `json:"code" db:"code"`
 	FactoryCode      *string `json:"factory_code" db:"factory_code"`
 	Name             string  `json:"name" db:"name"`
+	ProdType         *string `json:"prod_type" db:"prod_type"`
 	Sku              *string `json:"sku" db:"sku"`
 	Barcode          *string `json:"barcode" db:"barcode"`
 	Specification    *string `json:"specification" db:"specification"`
@@ -1994,6 +1995,7 @@ type ProductDetailDTO struct {
 	Code             *string             `json:"code" db:"code"`
 	FactoryCode      *string             `json:"factory_code" db:"factory_code"`
 	Name             string              `json:"name" db:"name"`
+	ProdType         *string             `json:"prod_type" db:"prod_type"`
 	Sku              *string             `json:"sku" db:"sku"`
 	Barcode          *string             `json:"barcode" db:"barcode"`
 	Specification    *string             `json:"specification" db:"specification"`
