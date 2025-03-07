@@ -91,6 +91,7 @@ func (c *CurrencyController) CreateCurrency(ctx *fiber.Ctx) error {
 	currency := models.MixValue{
 		Name:        req.Name,
 		GroupID:     utils.CurrencyID,
+		Num:         req.Num,
 		Description: req.Description,
 		Remark:      req.Remark,
 		OrderItem:   nil,
@@ -197,6 +198,7 @@ func (c *CurrencyController) UpdateCurrency(ctx *fiber.Ctx) error {
 		ID:          req.ID,
 		GroupID:     utils.CurrencyID,
 		Name:        req.Name,
+		Num:         req.Num,
 		Description: req.Description,
 		Remark:      req.Remark,
 		Status:      req.Status,

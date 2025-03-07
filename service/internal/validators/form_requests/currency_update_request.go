@@ -22,6 +22,7 @@ func NewCurrencyUpdateRequest() *CurrencyUpdateRequest {
 func (r *CurrencyUpdateRequest) Validate(req *dtos.UpdateCurrencyRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
 		"name":        []string{"required", fmt.Sprintf("unique_ig:mix_values,name,%d", req.ID)},
+		"num":         []string{},
 		"description": []string{},
 		"remarks":     []string{},
 		"status":      []string{},

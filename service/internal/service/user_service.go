@@ -70,7 +70,8 @@ func (s *UserService) CreateUser(ctx *fiber.Ctx, tx *gorm.DB, user *models.User,
 
 func (s *UserService) GetUserByID(ctx *fiber.Ctx, params *dtos.GetUserByIDParams, span opentracing.Span) (*dtos.UserDetailDTO, error) {
 	childSpan := opentracing.StartSpan("UserService-GetUserByID", opentracing.ChildOf(span.Context()))
-	user, err := s.repo.GetUserByID(ctx, params)
+
+	user, err := s.repo.GetUserByID(ctx, params, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err

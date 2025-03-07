@@ -421,9 +421,6 @@ func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, 
 			"ref_id":       quoDt.RefID,
 			"vat_id":       quoDt.VatID,
 			"item_unit_id": quoDt.ItemUnitID,
-			"product_id":   quoDt.ProductID,
-			// "product_item_unit_id": quoDt.ProductItemUnitID,
-			// "quo_dt_ref_id": quoDt.QuoDtRefID,
 			// "ref_json":      quoDt.RefJSON,
 			"ref_type":      quoDt.RefType,
 			"remark":        quoDt.Remark,
@@ -435,20 +432,13 @@ func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, 
 			"disc_am":       quoDt.DiscAm,
 			"disc_perc":     quoDt.DiscPerc,
 			"total_am":      quoDt.TotalAm,
-			"p_qty_so":      quoDt.PQtySO,
-			"p_qty":         quoDt.PQty,
-			"p_price_sell":  quoDt.PPriceSell,
-			"p_subtotal":    quoDt.PSubtotal,
-			"p_disc_am":     quoDt.PDiscAm,
-			"p_disc_perc":   quoDt.PDiscPerc,
-			"p_total_am":    quoDt.PTotalAm,
 			"updated_by_id": quoDt.UpdatedByID,
 			"updated_at":    time.Now(),
 		})
 	}
 
 	// if err := r.utilRepo.BulkUpdate(tx, "quoDts", "id", data, childSpan); err != nil {
-	if err := r.utilRepo.Upsert(tx, "quoDts", "id", data, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "quo_dts", "id", data, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -467,38 +457,127 @@ func (r *QuotationRepository) DeleteQuoDtsWhereNotIn(tx *gorm.DB, quotationID ui
 	return nil
 }
 
-func (r *QuotationRepository) GetQuoDtsByQuotationID(ctx *fiber.Ctx, quotationID uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
+// func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, quotationIDs uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
+func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, quotationIDs []uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
 	childSpan := opentracing.StartSpan("QuotationRepository-GetQuoDtsByQuotationID", opentracing.ChildOf(span.Context()))
 
 	quoDts := []dtos.QuotationQuoDtListDTO{}
 
 	query := `SELECT qd.id, qd.quotation_id, 
-		qd.id as quo_dt_id, qd.ref_id, qd.item_unit_id, qd.vat_id, qd.product_id, qd.ref_json, qd.ref_type, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.subtotal, qd.disc_am, qd.disc_perc, qd.total_am, qd.vat_perc, qd.p_qty_so, qd.p_qty, qd.p_price_sell, qd.p_subtotal, qd.p_disc_am, qd.p_disc_perc, qd.p_total_am,
+		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal, qd.disc_am, qd.disc_perc, qd.total_am, qd.vat_perc,
 		qd.created_at, qd.updated_at, qd.deleted_at,
 
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
 		isg.name as item_sub_group_name,
 		ig.name as item_group_name,
+		u.name as unit_name,
+		pi.name as item_name,
 
 		cu.name as created_by_name,
 		uu.name as updated_by_name
 
 	FROM quo_dts qd
 	LEFT JOIN quotations p ON qd.quotation_id = p.id
-	LEFT JOIN products pi ON qd.ref_id = pi.id
+	LEFT JOIN products pi ON qd.item_id = pi.id
 	LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
 	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 	LEFT JOIN users cu ON qd.created_by_id = cu.id
 	LEFT JOIN users uu ON qd.updated_by_id = uu.id
-	WHERE qd.quotation_id = $1 AND qd.deleted_at IS NULL`
+	WHERE qd.deleted_at IS NULL`
 
-	if err := r.sqlDB.SelectContext(ctx.Context(), &quoDts, query, quotationID); err != nil {
+	var args []interface{}
+	// i := 1
+
+	if len(quotationIDs) > 0 {
+		query += " AND qd.quotation_id IN (" + utils.JoinUintsToString(quotationIDs, ",") + ")"
+	}
+
+	if err := r.sqlDB.SelectContext(ctx.Context(), &quoDts, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
 	return quoDts, nil
+}
+
+func (r *QuotationRepository) CreateQuoDtBoms(tx *gorm.DB, quoDtBoms []*models.QuoDtBom, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtBomRepository-CreateQuoDtBoms", opentracing.ChildOf(span.Context()))
+
+	result := tx.CreateInBatches(quoDtBoms, len(quoDtBoms))
+
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return result.Error
+	}
+
+	return nil
+}
+
+func (r *QuotationRepository) DeleteQuoDtBomsWhereNotIn(tx *gorm.DB, quotationID uint, quoDtIDs []uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Where("quotation_id = ? AND id NOT IN ?", quotationID, quoDtIDs).Delete(&models.QuoDt{}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+// bulk/batch update quoDts
+func (r *QuotationRepository) UpdateQuoDtBoms(tx *gorm.DB, quoDtBoms []*models.QuoDtBom, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtRepository-UpdateQuoDtBoms", opentracing.ChildOf(span.Context()))
+
+	data := make([]map[string]interface{}, 0)
+	for _, quoDtBom := range quoDtBoms {
+		data = append(data, map[string]interface{}{
+			"id":           quoDtBom.ID,
+			"quotation_id": quoDtBom.QuotationID,
+			"quo_dt_id":    quoDtBom.QuoDtID,
+			"product_id":   quoDtBom.ProductID,
+			"item_id":      quoDtBom.ItemID,
+			"item_unit_id": quoDtBom.ItemUnitID,
+			// "ref_json":      quoDtBom.RefJSON,
+			"remark":        quoDtBom.Remark,
+			"qty":           quoDtBom.Qty,
+			"price_sell":    quoDtBom.PriceSell,
+			"price_buy":     quoDtBom.PriceBuy,
+			"subtotal":      quoDtBom.Subtotal,
+			"updated_by_id": quoDtBom.UpdatedByID,
+			"updated_at":    time.Now(),
+		})
+	}
+
+	// if err := r.utilRepo.BulkUpdate(tx, "quoDtBoms", "id", data, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", data, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *QuotationRepository) DeleteQuoDtBomsByQuotationID(tx *gorm.DB, params *dtos.GetQuotationParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Where("quotation_id = ?", params.ID).Delete(&models.QuoDtBom{}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *QuotationRepository) DeleteQuoDtsByQuotationID(tx *gorm.DB, params *dtos.GetQuotationParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Where("quotation_id = ?", params.ID).Delete(&models.QuoDt{}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
 }
