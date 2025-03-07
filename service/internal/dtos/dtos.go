@@ -1988,3 +1988,241 @@ type GetProductsResult struct {
 	Total    int
 	Err      error
 }
+
+type GetShippingTermsRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`
+	Page           string `json:"page" default:"1"`
+	OrderColumn    string `json:"order_column" default:"id"`
+	OrderDirection string `json:"order_direction" default:"asc"`
+}
+
+type CreateShippingTermRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type UpdateShippingTermRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type GetShippingTermByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetShippingTermParams struct {
+	ID          uint
+	IsDeleted   *int
+	DeletedByID *uint
+}
+
+func NewGetShippingTermParams(id uint) *GetShippingTermParams {
+	defaultIsDeleted := 0
+	return &GetShippingTermParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteShippingTermRequest struct {
+	ID uint `json:"id"`
+}
+
+type ShippingTermListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type ShippingTermDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type GetShippingTermsResult struct {
+	ShippingTerms []ShippingTermListDTO
+	Total         int
+	Err           error
+}
+
+type GetPaymentTermsRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`
+	Page           string `json:"page" default:"1"`
+	OrderColumn    string `json:"order_column" default:"id"`
+	OrderDirection string `json:"order_direction" default:"asc"`
+}
+
+type CreatePaymentTermRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type UpdatePaymentTermRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type GetPaymentTermByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetPaymentTermParams struct {
+	ID          uint
+	IsDeleted   *int
+	DeletedByID *uint
+}
+
+func NewGetPaymentTermParams(id uint) *GetPaymentTermParams {
+	defaultIsDeleted := 0
+	return &GetPaymentTermParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeletePaymentTermRequest struct {
+	ID uint `json:"id"`
+}
+
+type PaymentTermListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type PaymentTermDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type GetPaymentTermsResult struct {
+	PaymentTerms []PaymentTermListDTO
+	Total        int
+	Err          error
+}
+
+type GetPurchaseTypesRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`
+	Page           string `json:"page" default:"1"`
+	OrderColumn    string `json:"order_column" default:"id"`
+	OrderDirection string `json:"order_direction" default:"asc"`
+}
+
+type CreatePurchaseTypeRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+	Code        *string `json:"code"`
+}
+
+type UpdatePurchaseTypeRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+	Code        *string `json:"code"`
+}
+
+type GetPurchaseTypeByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetPurchaseTypeParams struct {
+	ID          uint
+	IsDeleted   *int
+	DeletedByID *uint
+}
+
+func NewGetPurchaseTypeParams(id uint) *GetPurchaseTypeParams {
+	defaultIsDeleted := 0
+	return &GetPurchaseTypeParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeletePurchaseTypeRequest struct {
+	ID uint `json:"id"`
+}
+
+type PurchaseTypeListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	Code          *string `json:"code" db:"code"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type PurchaseTypeDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	Code          *string `json:"code" db:"code"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type GetPurchaseTypesResult struct {
+	PurchaseTypes []PurchaseTypeListDTO
+	Total         int
+	Err           error
+}

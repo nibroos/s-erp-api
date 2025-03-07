@@ -181,12 +181,11 @@ func (s *ProductService) CsvGetProducts(ctx *fiber.Ctx, filters map[string]strin
 	csv += "Master Product\n"
 	csv += "\n"
 
-	csv += "ID,Branch,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
+	csv += "ID,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
 	// Build CSV rows
 	for _, product := range products {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
 			product.ID,
-			*product.BranchName,
 			utils.GetPtrVal(product.Code),
 			utils.GetPtrVal(product.FactoryCode),
 			product.Name,

@@ -90,7 +90,6 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 
 					m.id as product_id,
 					u.name as unit_name,
-					b.name as branch_name,
 					isg.name as item_sub_group_name,
 					ig.name as item_group_name,
 
@@ -115,7 +114,6 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 
 					m.id as product_id,
 					u.name as unit_name,
-					bi.name as branch_name,
 					isg.name as item_sub_group_name,
 					ig.name as item_group_name,
 
