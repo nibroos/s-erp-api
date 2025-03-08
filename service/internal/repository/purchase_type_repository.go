@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -77,10 +78,17 @@ func (r *PurchaseTypeRepository) GetPurchaseTypes(ctx *fiber.Ctx, filters map[st
 	}
 
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR code ILIKE $%d)", i, i+1, i+2, i+3)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR code ILIKE $%d)", i, i+1, i+2, i+3)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 4
+		searchFields := []string{"name", "description", "remark", "code"}
+		searchConditions := make([]string, len(searchFields))
+
+		for idx, field := range searchFields {
+			searchConditions[idx] = fmt.Sprintf("%s ILIKE $%d", field, i+idx)
+			args = append(args, "%"+value+"%")
+		}
+
+		query += fmt.Sprintf(" AND (%s)", strings.Join(searchConditions, " OR "))
+		countQuery += fmt.Sprintf(" AND (%s)", strings.Join(searchConditions, " OR "))
+		i += len(searchFields)
 	}
 
 	countArgs := append([]interface{}{}, args...)
