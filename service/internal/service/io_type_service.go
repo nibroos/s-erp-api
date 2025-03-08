@@ -114,7 +114,7 @@ func (s *IOTypeService) ExcelGetIOTypes(ctx *fiber.Ctx, filters map[string]strin
 		return nil, err
 	}
 
-	file.SetSheetRow("IOTypes", "A1", &[]string{"ID", "Name", "Code", "Type", "Description", "Created At", "Updated At"})
+	file.SetSheetRow("IOTypes", "A1", &[]string{"ID", "Name", "Code", "Type", "IO Type", "Description", "Created At", "Updated At"})
 
 	for i, term := range ioTypes {
 		row := []interface{}{
@@ -122,6 +122,7 @@ func (s *IOTypeService) ExcelGetIOTypes(ctx *fiber.Ctx, filters map[string]strin
 			term.Name,
 			term.Code,
 			term.Type,
+			term.IOType,
 			term.Description,
 			term.CreatedAt,
 			term.UpdatedAt,
@@ -167,13 +168,14 @@ func (s *IOTypeService) CsvGetIOTypes(ctx *fiber.Ctx, filters map[string]string,
 	csv += "IO Types\n"
 	csv += "\n"
 
-	csv += "ID,Name,Code,Type,Description,Remark,Created At,Updated At\n"
+	csv += "ID,Name,Code,Type,IO Type,Description,Remark,Created At,Updated At\n"
 	for _, term := range ioTypes {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s\n",
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s\n",
 			term.ID,
 			term.Name,
 			term.Code,
 			term.Type,
+			term.IOType,
 			utils.GetPtrVal(term.Description),
 			utils.GetPtrVal(term.Remark),
 			utils.GetPtrVal(term.CreatedAt),

@@ -119,8 +119,9 @@ func (c *IOTypeController) CreateIOType(ctx *fiber.Ctx) error {
 	userID := uint(claims["user_id"].(float64))
 
 	optionsJSON := map[string]interface{}{
-		"code": req.Code,
-		"type": req.Type,
+		"code":    req.Code,
+		"type":    req.Type,
+		"io_type": req.IOType,
 	}
 	optionsJSONStr, err := json.Marshal(optionsJSON)
 	if err != nil {
@@ -193,8 +194,9 @@ func (c *IOTypeController) UpdateIOType(ctx *fiber.Ctx) error {
 	userID := uint(claims["user_id"].(float64))
 
 	optionsJSON := map[string]interface{}{
-		"code": req.Code,
-		"type": req.Type,
+		"code":    req.Code,
+		"type":    req.Type,
+		"io_type": req.IOType,
 	}
 	optionsJSONStr, err := json.Marshal(optionsJSON)
 	if err != nil {

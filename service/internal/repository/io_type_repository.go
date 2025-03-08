@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,7 +41,8 @@ func (r *IOTypeRepository) GetIOTypes(ctx *fiber.Ctx, filters map[string]string,
         cu.name as created_by_name,
         uu.name as updated_by_name,
         m.options_json->>'code' as code,
-        m.options_json->>'type' as type
+        m.options_json->>'type' as type,
+		m.options_json->>'io_type' as io_type
 
         FROM mix_values m
         LEFT JOIN groups g ON m.group_id = g.id
@@ -54,7 +56,8 @@ func (r *IOTypeRepository) GetIOTypes(ctx *fiber.Ctx, filters map[string]string,
         cu.name as created_by_name,
         uu.name as updated_by_name,
         m.options_json->>'code' as code,
-        m.options_json->>'type' as type
+        m.options_json->>'type' as type,
+		m.options_json->>'io_type' as io_type
 
         FROM mix_values m
         LEFT JOIN users cu ON m.created_by_id = cu.id
@@ -68,7 +71,7 @@ func (r *IOTypeRepository) GetIOTypes(ctx *fiber.Ctx, filters map[string]string,
 	i := 1
 	for key, value := range filters {
 		switch key {
-		case "name", "description", "remark", "code", "type":
+		case "name", "description", "remark", "code", "type", "io_type":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -79,10 +82,17 @@ func (r *IOTypeRepository) GetIOTypes(ctx *fiber.Ctx, filters map[string]string,
 	}
 
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR code ILIKE $%d OR type ILIKE $%d)", i, i+1, i+2, i+3, i+4)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR code ILIKE $%d OR type ILIKE $%d)", i, i+1, i+2, i+3, i+4)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 5
+		searchFields := []string{"name", "description", "remark", "code", "type", "io_type"}
+		searchConditions := make([]string, len(searchFields))
+
+		for idx, field := range searchFields {
+			searchConditions[idx] = fmt.Sprintf("%s ILIKE $%d", field, i+idx)
+			args = append(args, "%"+value+"%")
+		}
+
+		query += fmt.Sprintf(" AND (%s)", strings.Join(searchConditions, " OR "))
+		countQuery += fmt.Sprintf(" AND (%s)", strings.Join(searchConditions, " OR "))
+		i += len(searchFields)
 	}
 
 	countArgs := append([]interface{}{}, args...)
@@ -159,7 +169,8 @@ func (r *IOTypeRepository) GetIOTypeByID(ctx *fiber.Ctx, params *dtos.GetIOTypeP
     cu.name as created_by_name,
     uu.name as updated_by_name,
     m.options_json->>'code' as code,
-    m.options_json->>'type' as type
+    m.options_json->>'type' as type,
+	m.options_json->>'io_type' as io_type
 
     FROM mix_values m
     LEFT JOIN users cu ON m.created_by_id = cu.id

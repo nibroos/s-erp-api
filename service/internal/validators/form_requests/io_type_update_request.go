@@ -24,6 +24,7 @@ func (r *IOTypeUpdateRequest) Validate(req *dtos.UpdateIOTypeRequest, ctx *fiber
 		"code":        []string{"required"},
 		"type":        []string{"required"},
 		"group_id":    []string{"required"},
+		"io_type":     []string{"required"},
 	}
 
 	customFieldNames := map[string]string{}
