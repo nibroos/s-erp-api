@@ -91,6 +91,9 @@ func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, spa
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (username ILIKE $%d OR name ILIKE $%d OR email ILIKE $%d)", i, i+1, i+2)
 		countQuery += fmt.Sprintf(" AND (username ILIKE $%d OR name ILIKE $%d OR email ILIKE $%d)", i, i+1, i+2)

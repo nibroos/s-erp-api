@@ -109,6 +109,13 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
+
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
 		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)

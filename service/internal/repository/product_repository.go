@@ -107,6 +107,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	queryGlobal := ""
 
 	i := 1
+
 	if value, ok := filters["global"]; ok && value != "" {
 
 		queryGlobal = " AND ("
@@ -190,6 +191,11 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 				i++
 			}
 		}
+	}
+
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		countQuery += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
 	}
 
 	if !isAdmin && branchID != nil {
@@ -698,6 +704,9 @@ func (r *ProductRepository) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[stri
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR factory_code ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR item_name ILIKE $%d OR item_code ILIKE $%d OR item_factory_code ILIKE $%d OR item_sku ILIKE $%d OR item_barcode ILIKE $%d OR item_specification ILIKE $%d OR item_description ILIKE $%d OR item_remark ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11, i+12, i+13, i+14, i+15)
 		for j := 0; j < 16; j++ {

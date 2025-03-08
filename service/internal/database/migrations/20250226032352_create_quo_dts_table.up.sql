@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   deleted_at timestamp with time zone
 );
 
-COMMENT ON COLUMN quo_dts.ref_type IS 'master';
+COMMENT ON COLUMN quo_dts.ref_type IS 'products';
 
 COMMENT ON COLUMN quo_dts.item_type IS 'item, product';
 
