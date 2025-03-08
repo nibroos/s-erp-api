@@ -2276,6 +2276,7 @@ type CreateIOTypeRequest struct {
 	Status      int8    `json:"status"`
 	Code        string  `json:"code"`
 	Type        string  `json:"type"`
+	IOType      string  `json:"io_type"`
 }
 
 type UpdateIOTypeRequest struct {
@@ -2287,6 +2288,7 @@ type UpdateIOTypeRequest struct {
 	Status      int8    `json:"status"`
 	Code        string  `json:"code"`
 	Type        string  `json:"type"`
+	IOType      string  `json:"io_type"`
 }
 
 type GetIOTypeByIDRequest struct {
@@ -2319,6 +2321,7 @@ type IOTypeListDTO struct {
 	Status        int8    `json:"status" db:"status"`
 	Code          string  `json:"code" db:"code"`
 	Type          string  `json:"type" db:"type"`
+	IOType        string  `json:"io_type" db:"io_type"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt     *string `json:"created_at" db:"created_at"`
@@ -2334,6 +2337,7 @@ type IOTypeDetailDTO struct {
 	Status        int8    `json:"status" db:"status"`
 	Code          string  `json:"code" db:"code"`
 	Type          string  `json:"type" db:"type"`
+	IOType        string  `json:"io_type" db:"io_type"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt     *string `json:"created_at" db:"created_at"`
