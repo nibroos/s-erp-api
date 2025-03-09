@@ -50,7 +50,9 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 		"pi.name",
 		"it.name",
 		"qd.remark",
+		"qd.gen_code",
 		"qdb.remark",
+		"qdb.gen_code",
 	}
 
 	var args []interface{}
@@ -157,7 +159,9 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 					pph.name as pph23_name,
 
 					qd.remark as quo_dt_remark,
+					qd.gen_code as quo_dt_gen_code,
 					qdb.remark as quo_dt_bom_remark,
+					qdb.gen_code as quo_dt_bom_gen_code,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -444,6 +448,7 @@ func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, 
 			"item_unit_id": quoDt.ItemUnitID,
 			// "ref_json":      quoDt.RefJSON,
 			"ref_type":      quoDt.RefType,
+			"gen_code":      quoDt.GenCode,
 			"remark":        quoDt.Remark,
 			"vat_perc":      quoDt.VatPerc,
 			"qty_so":        quoDt.QtySO,
@@ -485,7 +490,7 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, quotationI
 	quoDts := []dtos.QuotationQuoDtListDTO{}
 
 	query := `SELECT qd.id, qd.quotation_id, 
-		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal, qd.disc_am, qd.disc_perc, qd.total_am, qd.vat_perc,
+		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal, qd.disc_am, qd.disc_perc, qd.total_am, qd.vat_perc,
 		qd.created_at, qd.updated_at, qd.deleted_at,
 
 		isg.id as item_sub_group_id,
@@ -562,6 +567,7 @@ func (r *QuotationRepository) UpdateQuoDtBoms(tx *gorm.DB, quoDtBoms []*models.Q
 			"item_id":      quoDtBom.ItemID,
 			"item_unit_id": quoDtBom.ItemUnitID,
 			// "ref_json":      quoDtBom.RefJSON,
+			"gen_code":      quoDtBom.GenCode,
 			"remark":        quoDtBom.Remark,
 			"qty":           quoDtBom.Qty,
 			"price_sell":    quoDtBom.PriceSell,

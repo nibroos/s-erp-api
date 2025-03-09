@@ -15,6 +15,7 @@ type QuoDtBom struct {
 	ItemID      uint           `json:"item_id" gorm:"column:item_id"`
 	ItemUnitID  *uint          `json:"item_unit_id" gorm:"column:item_unit_id"`
 	RefJSON     *string        `json:"ref_json" gorm:"column:ref_json"`
+	GenCode     *string        `json:"gen_code" gorm:"column:gen_code"`
 	Remark      *string        `json:"remark" gorm:"column:remark"`
 	Qty         *float64       `json:"qty" gorm:"column:qty"`
 	PriceSell   *float64       `json:"price_sell" gorm:"column:price_sell"`

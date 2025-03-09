@@ -32,6 +32,7 @@ type CreateQuoDtsRequest struct {
 	ItemID     *uint                     `json:"item_id"`
 	RefType    *string                   `json:"ref_type"`
 	ItemType   *string                   `json:"item_type"`
+	GenCode    *string                   `json:"gen_code"`
 	Remark     *string                   `json:"remark"`
 	VatPerc    *float64                  `json:"vat_perc"`
 	QtySO      *float64                  `json:"qty_so"`
@@ -49,6 +50,7 @@ type CreateQuoDtsBomsRequest struct {
 	ItemID     uint     `json:"item_id"`
 	ItemUnitID *uint    `json:"item_unit_id"`
 	RefType    *string  `json:"ref_type"`
+	GenCode    *string  `json:"gen_code"`
 	Remark     *string  `json:"remark"`
 	Qty        *float64 `json:"qty"`
 	PriceSell  *float64 `json:"price_sell"`
@@ -92,6 +94,7 @@ type UpdateQuoDtsRequest struct {
 	ItemID      uint                      `json:"item_id"`
 	RefType     *string                   `json:"ref_type"`
 	ItemType    *string                   `json:"item_type"`
+	GenCode     *string                   `json:"gen_code"`
 	Remark      *string                   `json:"remark"`
 	VatPerc     *float64                  `json:"vat_perc"`
 	QtySO       *float64                  `json:"qty_so"`
@@ -113,6 +116,7 @@ type UpdateQuoDtsBomsRequest struct {
 	ItemID      uint     `json:"item_id"`
 	ItemUnitID  *uint    `json:"item_unit_id"`
 	RefType     *string  `json:"ref_type"`
+	GenCode     *string  `json:"gen_code"`
 	Remark      *string  `json:"remark"`
 	Qty         *float64 `json:"qty"`
 	PriceSell   *float64 `json:"price_sell"`
@@ -274,6 +278,7 @@ type QuotationQuoDtListDTO struct {
 	RefJSON          *string   `json:"ref_json" db:"ref_json"`
 	RefType          *string   `json:"ref_type" db:"ref_type"`
 	ItemType         *string   `json:"item_type" db:"item_type"`
+	GenCode          *string   `json:"gen_code" db:"gen_code"`
 	Remark           *string   `json:"remark" db:"remark"`
 	VatPerc          *string   `json:"vat_perc" db:"vat_perc"`
 	QtySO            *string   `json:"qty_so" db:"qty_so"`
@@ -307,6 +312,7 @@ type QuotationQuoDtBomListDTO struct {
 	UnitName         *string   `json:"unit_name" db:"unit_name"`
 	ItemUnitID       *uint     `json:"item_unit_id" db:"item_unit_id"`
 	RefJSON          *string   `json:"ref_json" db:"ref_json"`
+	GenCode          *string   `json:"gen_code" db:"gen_code"`
 	Remark           *string   `json:"remark" db:"remark"`
 	Qty              *float64  `json:"qty" db:"qty"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`

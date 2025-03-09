@@ -29,6 +29,7 @@ func (r *QuotationStoreRequest) Validate(req *dtos.CreateQuotationRequest, ctx *
 		"quo_dts.*.product_item_id": []string{"exists:products,id"},
 		"quo_dts.*.item_unit_id":    []string{"exists:item_units,id"},
 		"quo_dts.*.qty":             []string{"numeric"},
+		"quo_dts.*.gen_code":        []string{},
 		"quo_dts.*.remark":          []string{},
 	}
 

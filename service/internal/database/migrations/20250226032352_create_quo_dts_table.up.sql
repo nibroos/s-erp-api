@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   ref_type TEXT,
   item_type TEXT,
   item_json JSONB,
+  gen_code TEXT,
   remark TEXT,
   vat_perc DECIMAL(20, 5),
   qty_so DECIMAL(20, 5),

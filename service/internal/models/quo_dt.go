@@ -16,6 +16,7 @@ type QuoDt struct {
 	RefType     *string        `json:"ref_type" gorm:"column:ref_type"`
 	ItemType    *string        `json:"item_type" gorm:"column:item_type"`
 	ItemJSON    *string        `json:"item_json" gorm:"column:item_json"`
+	GenCode     *string        `json:"gen_code" gorm:"column:gen_code"`
 	Remark      *string        `json:"remark" gorm:"column:remark"`
 	VatPerc     *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	QtySO       *float64       `json:"qty_so" gorm:"column:qty_so"`
