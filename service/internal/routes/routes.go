@@ -115,6 +115,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	purchaseTypes := version.Group("/purchase-types")
 	SetupPurchaseTypeRoutes(purchaseTypes, gormDB, sqlDB, utilRepo, tracer)
 
+	ioTypes := version.Group("/io-types")
+	SetupIOTypeRoutes(ioTypes, gormDB, sqlDB, utilRepo, tracer)
+
 	// Scheduler route
 	// cron := cron.New()
 	// schedulerController := rest.NewSchedulerController(cron, gormDB, sqlDB)

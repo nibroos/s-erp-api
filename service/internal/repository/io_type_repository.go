@@ -15,49 +15,55 @@ import (
 	"gorm.io/gorm"
 )
 
-type ShippingTermRepository struct {
+type IOTypeRepository struct {
 	db     *gorm.DB
 	sqlDB  *sqlx.DB
 	tracer opentracing.Tracer
 }
 
-func NewShippingTermRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *ShippingTermRepository {
-	return &ShippingTermRepository{
+func NewIOTypeRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *IOTypeRepository {
+	return &IOTypeRepository{
 		db:     db,
 		sqlDB:  sqlDB,
 		tracer: tracer,
 	}
 }
 
-func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ShippingTermListDTO, int, error) {
-	childSpan := opentracing.StartSpan("ShippingTermRepository-GetShippingTerms", opentracing.ChildOf(span.Context()))
+func (r *IOTypeRepository) GetIOTypes(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.IOTypeListDTO, int, error) {
+	childSpan := opentracing.StartSpan("IOTypeRepository-GetIOTypes", opentracing.ChildOf(span.Context()))
 
-	shippingTerms := []dtos.ShippingTermListDTO{}
+	ioTypes := []dtos.IOTypeListDTO{}
 	var total int
 
 	query := `SELECT *
     FROM ( 
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
-        uu.name as updated_by_name
+        uu.name as updated_by_name,
+        m.options_json->>'code' as code,
+        m.options_json->>'type' as type,
+		m.options_json->>'io_type' as io_type
 
         FROM mix_values m
         LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-        WHERE g.name = 'shipping_terms'
+        WHERE g.name IN ('ingoing_types', 'outgoing_types')
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
-        uu.name as updated_by_name
+        uu.name as updated_by_name,
+        m.options_json->>'code' as code,
+        m.options_json->>'type' as type,
+		m.options_json->>'io_type' as io_type
 
         FROM mix_values m
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
         LEFT JOIN groups g ON m.group_id = g.id
-        WHERE g.name = 'shipping_terms'
+        WHERE g.name IN ('ingoing_types', 'outgoing_types')
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -65,7 +71,7 @@ func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[st
 	i := 1
 	for key, value := range filters {
 		switch key {
-		case "name", "description", "remark":
+		case "name", "description", "remark", "code", "type", "io_type":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -76,7 +82,7 @@ func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[st
 	}
 
 	if value, ok := filters["global"]; ok && value != "" {
-		searchFields := []string{"name", "description", "remark"}
+		searchFields := []string{"name", "description", "remark", "code", "type", "io_type"}
 		searchConditions := make([]string, len(searchFields))
 
 		for idx, field := range searchFields {
@@ -130,7 +136,7 @@ func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[st
 		defer wg.Done()
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx.Context(), &shippingTerms, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &ioTypes, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -152,22 +158,25 @@ func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[st
 		return nil, 0, selectErr
 	}
 
-	return shippingTerms, total, nil
+	return ioTypes, total, nil
 }
 
-func (r *ShippingTermRepository) GetShippingTermByID(ctx *fiber.Ctx, params *dtos.GetShippingTermParams, span opentracing.Span) (*dtos.ShippingTermDetailDTO, error) {
-	childSpan := opentracing.StartSpan("ShippingTermRepository-GetShippingTermByID", opentracing.ChildOf(span.Context()))
-	var term dtos.ShippingTermDetailDTO
+func (r *IOTypeRepository) GetIOTypeByID(ctx *fiber.Ctx, params *dtos.GetIOTypeParams, span opentracing.Span) (*dtos.IOTypeDetailDTO, error) {
+	childSpan := opentracing.StartSpan("IOTypeRepository-GetIOTypeByID", opentracing.ChildOf(span.Context()))
+	var term dtos.IOTypeDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
     cu.name as created_by_name,
-    uu.name as updated_by_name
+    uu.name as updated_by_name,
+    m.options_json->>'code' as code,
+    m.options_json->>'type' as type,
+	m.options_json->>'io_type' as io_type
 
     FROM mix_values m
     LEFT JOIN users cu ON m.created_by_id = cu.id
     LEFT JOIN users uu ON m.updated_by_id = uu.id
     LEFT JOIN groups g ON m.group_id = g.id
-    WHERE g.name = 'shipping_terms'`
+    WHERE g.name IN ('ingoing_types', 'outgoing_types')`
 
 	var args []interface{}
 
@@ -191,12 +200,12 @@ func (r *ShippingTermRepository) GetShippingTermByID(ctx *fiber.Ctx, params *dto
 	return &term, nil
 }
 
-func (r *ShippingTermRepository) BeginTransaction() *gorm.DB {
+func (r *IOTypeRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *ShippingTermRepository) CreateShippingTerm(tx *gorm.DB, term *models.MixValue, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("ShippingTermRepository-CreateShippingTerm", opentracing.ChildOf(span.Context()))
+func (r *IOTypeRepository) CreateIOType(tx *gorm.DB, term *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("IOTypeRepository-CreateIOType", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(term).Error; err != nil {
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
@@ -205,8 +214,8 @@ func (r *ShippingTermRepository) CreateShippingTerm(tx *gorm.DB, term *models.Mi
 	return nil
 }
 
-func (r *ShippingTermRepository) UpdateShippingTerm(tx *gorm.DB, term *models.MixValue, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("ShippingTermRepository-UpdateShippingTerm", opentracing.ChildOf(span.Context()))
+func (r *IOTypeRepository) UpdateIOType(tx *gorm.DB, term *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("IOTypeRepository-UpdateIOType", opentracing.ChildOf(span.Context()))
 
 	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(term).Error; err != nil {
 		defer childSpan.Finish()
@@ -216,8 +225,8 @@ func (r *ShippingTermRepository) UpdateShippingTerm(tx *gorm.DB, term *models.Mi
 	return nil
 }
 
-func (r *ShippingTermRepository) DeleteShippingTerm(tx *gorm.DB, params *dtos.GetShippingTermParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("ShippingTermRepository-DeleteShippingTerm", opentracing.ChildOf(span.Context()))
+func (r *IOTypeRepository) DeleteIOType(tx *gorm.DB, params *dtos.GetIOTypeParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("IOTypeRepository-DeleteIOType", opentracing.ChildOf(span.Context()))
 
 	if err := tx.Model(&models.MixValue{}).Where("id = ?", params.ID).Updates(map[string]interface{}{
 		"deleted_at":    time.Now(),
@@ -230,8 +239,8 @@ func (r *ShippingTermRepository) DeleteShippingTerm(tx *gorm.DB, params *dtos.Ge
 	return nil
 }
 
-func (r *ShippingTermRepository) RestoreShippingTerm(tx *gorm.DB, params *dtos.GetShippingTermParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("ShippingTermRepository-RestoreShippingTerm", opentracing.ChildOf(span.Context()))
+func (r *IOTypeRepository) RestoreIOType(tx *gorm.DB, params *dtos.GetIOTypeParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("IOTypeRepository-RestoreIOType", opentracing.ChildOf(span.Context()))
 
 	var term models.MixValue
 	if err := tx.Unscoped().Model(&term).Where("id = ?", params.ID).Updates(map[string]interface{}{
