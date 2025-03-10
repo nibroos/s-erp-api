@@ -22,10 +22,10 @@ VALUES
       LIMIT
         1
     ), 
-    'LOCAL', 
-    'Local Purchase', 
+    'Production', 
+    'Production materials', 
     1, 
-    '{"code": "LCL"}',
+    '{"code": "0x9d"}',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
@@ -40,10 +40,10 @@ VALUES
       LIMIT
         1
     ), 
-    'IMPORT', 
-    'Import Purchase', 
+    'Office', 
+    'General office supplies', 
     1,
-    '{"code": "IMP"}',
+    '{"code": "0x92"}',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   );

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,10 +79,17 @@ func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[st
 		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
 	}
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 3
+		searchFields := []string{"name", "description", "remark"}
+		searchConditions := make([]string, len(searchFields))
+
+		for idx, field := range searchFields {
+			searchConditions[idx] = fmt.Sprintf("%s ILIKE $%d", field, i+idx)
+			args = append(args, "%"+value+"%")
+		}
+
+		query += fmt.Sprintf(" AND (%s)", strings.Join(searchConditions, " OR "))
+		countQuery += fmt.Sprintf(" AND (%s)", strings.Join(searchConditions, " OR "))
+		i += len(searchFields)
 	}
 
 	countArgs := append([]interface{}{}, args...)
