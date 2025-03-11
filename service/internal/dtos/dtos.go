@@ -1937,6 +1937,8 @@ type ProductListDTO struct {
 	ItemRemark        *string `json:"item_remark" db:"item_remark"`
 	ItemTpbCode       *string `json:"item_tpb_code" db:"item_tpb_code"`
 
+	RefType *string `json:"ref_type" db:"ref_type"`
+
 	Boms []ProductBomListDTO `json:"boms"`
 }
 

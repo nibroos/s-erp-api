@@ -135,6 +135,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 					u.name as unit_name,
 					isg.name as item_sub_group_name,
 					ig.name as item_group_name,
+					'products' as ref_type,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -164,6 +165,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 					u.name as unit_name,
 					isg.name as item_sub_group_name,
 					ig.name as item_group_name,
+					'products' as ref_type,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -268,9 +270,22 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
-	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "updated_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	// another order col & dir
+	orderColumns := map[string]string{
+		"updated_at": "desc",
+		"created_at": "desc",
+		"name":       "asc",
+	}
+
+	for key, value := range orderColumns {
+		if filters[key] != "" {
+			query += fmt.Sprintf(", %s %s", key, value)
+		}
+	}
 
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
 	currentPage := utils.GetIntOrDefault(filters["page"], 1)
