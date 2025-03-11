@@ -60,7 +60,7 @@ VALUES
       FROM
         mix_values
       WHERE
-        name = 'Packaging'
+        name = 'Peralatan Kantor'
       LIMIT
         1
     ), NULL,
@@ -168,8 +168,7 @@ VALUES
         mix_values
         JOIN groups ON mix_values.group_id = groups.id
       WHERE
-        groups.name = 'units'
-        AND mix_values.name = 'PIECE'
+        mix_values.name = 'Produk'
       LIMIT
         1
     ), 14, 'CD001', 'DVR 8CH + HDD 4TB', 'product', 'Spec DVR 8CH + HDD 4TB', 'Desc DVR 8CH + HDD 4TB', 'TP0012', 1, 1, 1, 1, CURRENT_TIMESTAMP
@@ -182,8 +181,7 @@ VALUES
         mix_values
         JOIN groups ON mix_values.group_id = groups.id
       WHERE
-        groups.name = 'units'
-        AND mix_values.name = 'PIECE'
+        mix_values.name = 'Produk'
       LIMIT
         1
     ), 15, 'CPC002', 'PC Server A', 'product', 'Specification PC Server A', 'Description PC Server A', 'TP0013', 1, 1, 1, 1, CURRENT_TIMESTAMP
@@ -196,8 +194,7 @@ VALUES
         mix_values
         JOIN groups ON mix_values.group_id = groups.id
       WHERE
-        groups.name = 'units'
-        AND mix_values.name = 'PIECE'
+        mix_values.name = 'Produk'
       LIMIT
         1
     ), 16, 'CP003', 'Product C', 'single', 'Product C Specification', 'Product C Description', 'TP0014', 1, 1, 1, 1, CURRENT_TIMESTAMP

@@ -92,6 +92,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		"m.specification",
 		"m.description",
 		"m.remark",
+		"m.tpb_code",
 		"pi.name",
 		"pi.code",
 		"pi.factory_code",
@@ -183,7 +184,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 
 	for key, value := range filters {
 		switch key {
-		case "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
+		case "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "tpb_code", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)

@@ -267,22 +267,30 @@ func (s *QuotationService) MapCreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotat
 	for _, quoDt := range req.QuoDts {
 		quoDtModel := &models.QuoDt{
 			QuotationID: &createdQuotation.ID,
-			RefID:       quoDt.RefID,
 			ItemUnitID:  quoDt.ItemUnitID,
 			VatID:       quoDt.VatID,
+			RefID:       quoDt.RefID,
+			ItemID:      quoDt.ItemID,
 			RefType:     quoDt.RefType,
+			ItemType:    quoDt.ItemType,
 			// RefJSON: 	quoDt.RefJSON,
-			Remark:      quoDt.Remark,
-			VatPerc:     quoDt.VatPerc,
-			QtySO:       quoDt.QtySO,
-			Qty:         quoDt.Qty,
-			PriceSell:   quoDt.PriceSell,
-			PriceBuy:    quoDt.PriceBuy,
-			Subtotal:    quoDt.Subtotal,
-			DiscAm:      quoDt.DiscAm,
-			DiscPerc:    quoDt.DiscPerc,
-			TotalAm:     quoDt.TotalAm,
-			CreatedByID: &userID,
+			Remark:       quoDt.Remark,
+			VatPerc:      quoDt.VatPerc,
+			VatPercAm:    quoDt.VatPercAm,
+			QtySO:        quoDt.QtySO,
+			Qty:          quoDt.Qty,
+			PriceSell:    quoDt.PriceSell,
+			PriceBuy:     quoDt.PriceBuy,
+			SubtotalSell: quoDt.SubtotalSell,
+			SubtotalBuy:  quoDt.SubtotalBuy,
+			DiscAm:       quoDt.DiscAm,
+			DiscPerc:     quoDt.DiscPerc,
+			DiscPercNum:  quoDt.DiscPercNum,
+			DiscPercAm:   quoDt.DiscPercAm,
+			DiscFinal:    quoDt.DiscFinal,
+			DiscType:     quoDt.DiscType,
+			TotalAm:      quoDt.TotalAm,
+			CreatedByID:  &userID,
 		}
 		quoDtsModel = append(quoDtsModel, quoDtModel)
 
@@ -301,16 +309,17 @@ func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, req dtos.CreateQuo
 			for _, createdQuoDt := range createdQuoDts {
 				if &reqQuoDtBom.ProductID == createdQuoDt.ItemID {
 					quoDtModel := &models.QuoDtBom{
-						QuoDtID:     *createdQuoDt.ID,
-						ProductID:   reqQuoDtBom.ProductID,
-						ItemID:      reqQuoDtBom.ItemID,
-						ItemUnitID:  reqQuoDtBom.ItemUnitID,
-						Remark:      reqQuoDtBom.Remark,
-						Qty:         reqQuoDtBom.Qty,
-						PriceSell:   reqQuoDtBom.PriceSell,
-						PriceBuy:    reqQuoDtBom.PriceBuy,
-						Subtotal:    reqQuoDtBom.Subtotal,
-						CreatedByID: &userID,
+						QuoDtID:      *createdQuoDt.ID,
+						ProductID:    reqQuoDtBom.ProductID,
+						ItemID:       reqQuoDtBom.ItemID,
+						ItemUnitID:   reqQuoDtBom.ItemUnitID,
+						Remark:       reqQuoDtBom.Remark,
+						Qty:          reqQuoDtBom.Qty,
+						PriceSell:    reqQuoDtBom.PriceSell,
+						PriceBuy:     reqQuoDtBom.PriceBuy,
+						SubtotalSell: reqQuoDtBom.SubtotalSell,
+						SubtotalBuy:  reqQuoDtBom.SubtotalBuy,
+						CreatedByID:  &userID,
 					}
 					quoDtBomsModel = append(quoDtBomsModel, quoDtModel)
 				}
@@ -351,15 +360,16 @@ func (s *QuotationService) BulkCreateUpdateQuoDtBoms(ctx *fiber.Ctx, quoDts []dt
 	for _, quoDt := range quoDts {
 		for _, quoDtBom := range quoDt.QuoDtsBoms {
 			newQuoDtBom := &models.QuoDtBom{
-				QuoDtID:    *quoDt.ID,
-				ProductID:  *quoDtBom.ProductID,
-				ItemID:     *quoDtBom.ItemID,
-				ItemUnitID: quoDtBom.ItemUnitID,
-				Remark:     quoDtBom.Remark,
-				Qty:        quoDtBom.Qty,
-				PriceSell:  quoDtBom.PriceSell,
-				PriceBuy:   quoDtBom.PriceBuy,
-				Subtotal:   quoDtBom.Subtotal,
+				QuoDtID:      *quoDt.ID,
+				ProductID:    *quoDtBom.ProductID,
+				ItemID:       *quoDtBom.ItemID,
+				ItemUnitID:   quoDtBom.ItemUnitID,
+				Remark:       quoDtBom.Remark,
+				Qty:          quoDtBom.Qty,
+				PriceSell:    quoDtBom.PriceSell,
+				PriceBuy:     quoDtBom.PriceBuy,
+				SubtotalSell: quoDtBom.SubtotalSell,
+				SubtotalBuy:  quoDtBom.SubtotalBuy,
 			}
 
 			if quoDtBom.ID == nil {
