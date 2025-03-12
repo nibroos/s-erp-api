@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -79,11 +80,26 @@ func (c *QuotationController) GetQuotationByID(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
+	tx := c.repo.BeginTransaction()
+
 	params := &dtos.GetQuotationParams{ID: req.ID}
-	quotation, err := c.service.GetQuotationByID(ctx, params, parentSpan)
+	quotation, err := c.service.GetQuotationByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
 	}
+
+	createdQuotationIDs := make([]uint, 0)
+	createdQuotationIDs = append(createdQuotationIDs, quotation.ID)
+
+	// get created quoDts
+	quoDts, err := c.service.GetQuoDtsByQuotationID(ctx, tx, createdQuotationIDs, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
+	}
+
+	tx.Commit()
+
+	quotation.QuoDts = quoDts
 
 	quotationArray := []interface{}{quotation}
 
@@ -154,7 +170,7 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 	tx := c.repo.BeginTransaction()
 
 	// create header quotation
-	createdQuotation, err := c.service.CreateQuotation(ctx, &quotation, tx, parentSpan)
+	createdQuotation, tx, err := c.service.CreateQuotation(ctx, &quotation, tx, parentSpan)
 
 	if err != nil {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create quotation", http.StatusInternalServerError)
@@ -166,7 +182,7 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Details", http.StatusInternalServerError)
 	}
 
-	err = c.service.CreateQuoDts(ctx, quoDts, createdQuotation.ID, tx, parentSpan)
+	tx, err = c.service.CreateQuoDts(ctx, quoDts, createdQuotation.ID, tx, parentSpan)
 
 	if err != nil {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Details", http.StatusInternalServerError)
@@ -175,11 +191,15 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 	createdQuotationIDs := make([]uint, 0)
 	createdQuotationIDs = append(createdQuotationIDs, createdQuotation.ID)
 
+	log.Println("createdQuotationIDs", createdQuotationIDs, "createdQuotation", createdQuotation.ID)
+
 	// get created quoDts
-	createdQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, createdQuotationIDs, parentSpan)
+	createdQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, tx, createdQuotationIDs, parentSpan)
 	if err != nil {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
 	}
+
+	log.Println("createdQuoDts", createdQuoDts)
 
 	// bulk create boms
 	quoDtBoms, err := c.service.MapCreateQuoDtBoms(ctx, req, createdQuoDts, userID, parentSpan)
@@ -189,16 +209,18 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 
 	// if quoDtBoms is not empty
 	if len(quoDtBoms) > 0 {
-		err = c.service.CreateQuoDtBoms(ctx, quoDtBoms, tx, parentSpan)
+		tx, err = c.service.CreateQuoDtBoms(ctx, quoDtBoms, tx, parentSpan)
 		if err != nil {
 			utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
 		}
 	}
 
+	log.Println("Quotation created successfully quodtbom", quoDtBoms)
+
 	tx.Commit()
 
 	params := &dtos.GetQuotationParams{ID: createdQuotation.ID}
-	getQuotation, err := c.service.GetQuotationByID(ctx, params, parentSpan)
+	getQuotation, err := c.service.GetQuotationByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
 	}
@@ -317,7 +339,7 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 		quoDts = append(quoDts, quoDt)
 	}
 
-	err = c.service.BulkCreateUpdateQuoDts(ctx, quoDts, updatedQuotation.ID, tx, parentSpan)
+	tx, err = c.service.BulkCreateUpdateQuoDts(ctx, quoDts, updatedQuotation.ID, tx, parentSpan)
 	if err != nil {
 		return utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update Master quotation", http.StatusInternalServerError)
 	}
@@ -326,7 +348,7 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	updatedQuotationIDs = append(updatedQuotationIDs, updatedQuotation.ID)
 
 	// get updated quoDts
-	updatedQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, updatedQuotationIDs, parentSpan)
+	updatedQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, tx, updatedQuotationIDs, parentSpan)
 	if err != nil {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
 	}
@@ -340,7 +362,7 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	tx.Commit()
 
 	params := &dtos.GetQuotationParams{ID: updatedQuotation.ID}
-	getQuotation, err := c.service.GetQuotationByID(ctx, params, parentSpan)
+	getQuotation, err := c.service.GetQuotationByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusNotFound, err.Error(), nil)
@@ -374,16 +396,16 @@ func (c *QuotationController) DeleteQuotation(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
+	// Transaction handling
+	tx := c.repo.BeginTransaction()
+
 	params := &dtos.GetQuotationParams{ID: req.ID}
 	// GET quotation by ID
-	_, err := c.service.GetQuotationByID(ctx, params, parentSpan)
+	_, err := c.service.GetQuotationByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusNotFound, err.Error(), nil)
 	}
-
-	// Transaction handling
-	tx := c.repo.BeginTransaction()
 
 	// DELETE quoDtBoms by Quotation ID
 	err = c.service.DeleteQuoDtBomsByQuotationID(ctx, params, tx, parentSpan)
@@ -441,7 +463,7 @@ func (c *QuotationController) RestoreQuotation(ctx *fiber.Ctx) error {
 	isDeleted := 1
 	params := &dtos.GetQuotationParams{ID: req.ID, IsDeleted: &isDeleted}
 	// GET quotation by ID
-	_, err := c.service.GetQuotationByID(ctx, params, parentSpan)
+	_, err := c.service.GetQuotationByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Master quotation not found", http.StatusNotFound, err.Error(), nil)

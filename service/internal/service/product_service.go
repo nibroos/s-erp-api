@@ -132,8 +132,8 @@ func (s *ProductService) ExcelGetProducts(ctx *fiber.Ctx, filters map[string]str
 			utils.GetPtrVal(product.Specification),
 			utils.GetPtrVal(product.Description),
 			utils.GetPtrVal(product.Remark),
-			utils.GetPtrVal(product.PriceSell),
-			utils.GetPtrVal(product.PriceBuy),
+			utils.GetFloatPtrVal(product.PriceSell),
+			utils.GetFloatPtrVal(product.PriceBuy),
 		}
 		file.SetSheetRow("Products", fmt.Sprintf("A%d", i+2), &row)
 	}
@@ -195,8 +195,8 @@ func (s *ProductService) CsvGetProducts(ctx *fiber.Ctx, filters map[string]strin
 			utils.GetPtrVal(product.Specification),
 			utils.GetPtrVal(product.Description),
 			utils.GetPtrVal(product.Remark),
-			utils.GetPtrVal(product.PriceSell),
-			utils.GetPtrVal(product.PriceBuy),
+			utils.GetFloatPtrVal(product.PriceSell),
+			utils.GetFloatPtrVal(product.PriceBuy),
 		)
 	}
 

@@ -1647,6 +1647,7 @@ type BranchItemListDTO struct {
 	Description   *string  `json:"description" gorm:"column:description"`
 	TpbCode       *string  `json:"tpb_code" gorm:"column:tpb_code"`
 	MinimumStock  *float64 `json:"minimum_stock" gorm:"column:minimum_stock"`
+	QtyStock      *float64 `json:"qty_stock" db:"qty_stock"`
 	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
 	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
 	Status        int8     `json:"status" db:"status"`
@@ -1892,40 +1893,42 @@ type DeleteProductRequest struct {
 }
 
 type ProductListDTO struct {
-	ID               int     `json:"id" db:"id"`
-	ProductID        *uint   `json:"product_id" db:"product_id"`
-	ItemSubGroupID   uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
-	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
-	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
-	ItemUnitUnitID   *uint   `json:"item_unit_unit_id" db:"item_unit_unit_id"`
-	BranchID         *uint   `json:"branch_id" db:"branch_id"`
-	BranchItemID     *uint   `json:"branch_item_id" db:"branch_item_id"`
-	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
-	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
-	UnitName         *string `json:"unit_name" db:"unit_name"`
-	BranchName       *string `json:"branch_name" db:"branch_name"`
-	Code             *string `json:"code" db:"code"`
-	FactoryCode      *string `json:"factory_code" db:"factory_code"`
-	Name             string  `json:"name" db:"name"`
-	ProdType         *string `json:"prod_type" db:"prod_type"`
-	Sku              *string `json:"sku" db:"sku"`
-	Barcode          *string `json:"barcode" db:"barcode"`
-	Specification    *string `json:"specification" db:"specification"`
-	Description      *string `json:"description" db:"description"`
-	TpbCode          *string `json:"tpb_code" db:"tpb_code"`
-	MinimumStock     *string `json:"minimum_stock" db:"minimum_stock"`
-	IsAllBranch      *int    `json:"is_all_branch" db:"is_all_branch"`
-	Remark           *string `json:"remark" db:"remark"`
-	PriceSell        *string `json:"price_sell" db:"price_sell"`
-	PriceBuy         *string `json:"price_buy" db:"price_buy"`
-	Margin           *string `json:"margin" db:"margin"`
-	ExpiredAt        *string `json:"expired_at" db:"expired_at"`
-	Status           int8    `json:"status" db:"status"`
-	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt        *string `json:"created_at" db:"created_at"`
-	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
-	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
+	ID               int      `json:"id" db:"id"`
+	ProductID        *uint    `json:"product_id" db:"product_id"`
+	RefID            *uint    `json:"ref_id" db:"ref_id"`
+	ItemSubGroupID   uint     `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID      *uint    `json:"item_group_id" db:"item_group_id"`
+	ItemUnitID       *uint    `json:"item_unit_id" db:"item_unit_id"`
+	ItemUnitUnitID   *uint    `json:"item_unit_unit_id" db:"item_unit_unit_id"`
+	BranchID         *uint    `json:"branch_id" db:"branch_id"`
+	BranchItemID     *uint    `json:"branch_item_id" db:"branch_item_id"`
+	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string  `json:"item_group_name" db:"item_group_name"`
+	UnitName         *string  `json:"unit_name" db:"unit_name"`
+	BranchName       *string  `json:"branch_name" db:"branch_name"`
+	Code             *string  `json:"code" db:"code"`
+	FactoryCode      *string  `json:"factory_code" db:"factory_code"`
+	Name             string   `json:"name" db:"name"`
+	ProdType         *string  `json:"prod_type" db:"prod_type"`
+	Sku              *string  `json:"sku" db:"sku"`
+	Barcode          *string  `json:"barcode" db:"barcode"`
+	Specification    *string  `json:"specification" db:"specification"`
+	Description      *string  `json:"description" db:"description"`
+	TpbCode          *string  `json:"tpb_code" db:"tpb_code"`
+	MinimumStock     *string  `json:"minimum_stock" db:"minimum_stock"`
+	IsAllBranch      *int     `json:"is_all_branch" db:"is_all_branch"`
+	Remark           *string  `json:"remark" db:"remark"`
+	QtyStock         *float64 `json:"qty_stock" db:"qty_stock"`
+	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy         *float64 `json:"price_buy" db:"price_buy"`
+	Margin           *float64 `json:"margin" db:"margin"`
+	ExpiredAt        *string  `json:"expired_at" db:"expired_at"`
+	Status           int8     `json:"status" db:"status"`
+	CreatedByName    *string  `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string  `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt        *string  `json:"created_at" db:"created_at"`
+	UpdatedAt        *string  `json:"updated_at" db:"updated_at"`
+	DeleteAt         *string  `json:"deleted_at" db:"deleted_at"`
 
 	ItemName          *string `json:"item_name" db:"item_name"`
 	ItemCode          *string `json:"item_code" db:"item_code"`
@@ -2005,12 +2008,12 @@ type ProductDetailDTO struct {
 	Specification    *string             `json:"specification" db:"specification"`
 	Description      *string             `json:"description" db:"description"`
 	TpbCode          *string             `json:"tpb_code" db:"tpb_code"`
-	MinimumStock     *string             `json:"minimum_stock" db:"minimum_stock"`
+	MinimumStock     *float64            `json:"minimum_stock" db:"minimum_stock"`
 	IsAllBranch      *int                `json:"is_all_branch" db:"is_all_branch"`
 	Remark           *string             `json:"remark" db:"remark"`
-	PriceSell        *string             `json:"price_sell" db:"price_sell"`
-	PriceBuy         *string             `json:"price_buy" db:"price_buy"`
-	Margin           *string             `json:"margin" db:"margin"`
+	PriceSell        *float64            `json:"price_sell" db:"price_sell"`
+	PriceBuy         *float64            `json:"price_buy" db:"price_buy"`
+	Margin           *float64            `json:"margin" db:"margin"`
 	ExpiredAt        *string             `json:"expired_at" db:"expired_at"`
 	Status           int8                `json:"status" db:"status"`
 	CreatedByName    *string             `json:"created_by_name" db:"created_by_name"`

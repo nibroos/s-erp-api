@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -280,7 +281,7 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 	return products, total, nil
 }
 
-func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQuotationParams, span opentracing.Span) (*dtos.QuotationDetailDTO, error) {
+func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQuotationParams, tx *gorm.DB, span opentracing.Span) (*dtos.QuotationDetailDTO, error) {
 	childSpan := opentracing.StartSpan("QuotationRepository-GetQuotationByID", opentracing.ChildOf(span.Context()))
 	var quotation dtos.QuotationDetailDTO
 
@@ -289,62 +290,32 @@ func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQ
 
 	isAdmin := utils.IsAdmin(ctx)
 
-	// select column
-	cdSelect := `m.name, m.specification, m.description, m.tpb_code, iu.price_sell, iu.price_buy, m.minimum_stock,`
-	if branchID != nil && !isAdmin {
-
-		cdSelect = `
-		COALESCE(bi.name, m.name) as name,
-		COALESCE(bi.factory_code, m.factory_code) as factory_code,
-		COALESCE(bi.sku, m.sku) as sku,
-		COALESCE(bi.barcode, m.barcode) as barcode,
-		COALESCE(bi.specification, m.specification) as specification,
-		COALESCE(bi.description, m.description) as description,
-		COALESCE(bi.remark, m.remark) as remark,
-		COALESCE(bi.tpb_code, m.tpb_code) as tpb_code,
-		COALESCE(bi.minimum_stock, m.minimum_stock) as minimum_stock,
-		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
-		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
-		COALESCE(bi.margin, iu.margin) as margin,
-		COALESCE(bi.status, m.status) as status,
-		COALESCE(bi.expired_at, m.expired_at) as expired_at,
-		COALESCE(bi.created_at, m.created_at) as created_at,
-		COALESCE(bi.updated_at, m.updated_at) as updated_at,
-		COALESCE(bi.deleted_at, m.deleted_at) as deleted_at,
-
-		bi.id as branch_item_id,
-		`
-	} else {
-		cdSelect = `
-			m.name, m.factory_code, m.sku, m.barcode, m.specification, m.description, m.remark, m.tpb_code, m.minimum_stock, iu.price_sell, iu.price_buy, iu.margin, m.status, m.expired_at, m.created_at, m.updated_at, m.deleted_at,
-		`
-	}
-
-	query := `SELECT *
+	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (m.id)
-					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
-					` + cdSelect + `
-
-					m.id as quotation_id,
-					u.name as unit_name,
-					b.name as branch_name,
-					isg.name as item_sub_group_name,
-					ig.name as item_group_name,
+        SELECT DISTINCT ON (q.id)
+					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.quo_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.vat_perc, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.due_at, q.expired_at, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
+					-- q.quotation_id,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM quotations m
-				LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
-				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
-				LEFT JOIN mix_values u ON iu.unit_id = u.id
-				LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
-				LEFT JOIN branches b ON bi.branch_id = b.id
-        LEFT JOIN users cu ON m.created_by_id = cu.id
-        LEFT JOIN users uu ON m.updated_by_id = uu.id
-    ) AS alias WHERE 1=1`
+        FROM quotations q
+				LEFT JOIN quo_dts qd ON qd.quotation_id = q.id
+				LEFT JOIN products pi ON qd.item_id = pi.id
+				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
+				LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
+				LEFT JOIN products it ON qdb.item_id = it.id
+
+				LEFT JOIN mix_values cur ON q.currency_id = cur.id
+				LEFT JOIN mix_values vat ON q.vat_id = vat.id
+				LEFT JOIN mix_values pph ON q.pph23_id = pph.id
+
+        LEFT JOIN users cu ON q.created_by_id = cu.id
+        LEFT JOIN users uu ON q.updated_by_id = uu.id
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	query := `SELECT *
+		` + baseQuery
 
 	var args []interface{}
 
@@ -353,12 +324,38 @@ func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQ
 	args = append(args, params.ID)
 	i++
 
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	// if isAdmin && filters["branch_id"] != "" {
+	// 	query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+	// 	args = append(args, filters["branch_id"])
+	// 	i++
+	// }
+
 	isDeletedQuery := ` AND deleted_at IS NULL`
 	if params.IsDeleted != nil && *params.IsDeleted == 1 {
 		isDeletedQuery = " AND deleted_at IS NOT NULL"
 	}
 
 	query += isDeletedQuery
+
+	// sqlConn, err := tx.DB()
+	// if err != nil {
+	// 	utils.LogErrors(childSpan, err)
+	// 	return nil, err
+	// }
+
+	// // Use sqlx with the extracted SQL connection
+	// sqlxDB := sqlx.NewDb(sqlConn, "postgres")
+
+	// if err := sqlxDB.GetContext(ctx.Context(), &quotation, query, args...); err != nil {
+	// 	utils.LogErrors(childSpan, err)
+	// 	return nil, err
+	// }
 
 	if err := r.sqlDB.Get(&quotation, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
@@ -378,13 +375,13 @@ func (r *QuotationRepository) Rollback() *gorm.DB {
 	return r.db.Rollback()
 }
 
-func (r *QuotationRepository) CreateQuotation(tx *gorm.DB, quotation *models.Quotation, span opentracing.Span) error {
+func (r *QuotationRepository) CreateQuotation(tx *gorm.DB, quotation *models.Quotation, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationRepository-CreateQuotation", opentracing.ChildOf(span.Context()))
 	if err := tx.Create(quotation).Error; err != nil {
 		utils.LogErrors(childSpan, err)
-		return err
+		return nil, err
 	}
-	return nil
+	return tx, nil
 }
 
 func (r *QuotationRepository) UpdateQuotation(tx *gorm.DB, quotation *models.Quotation, span opentracing.Span) error {
@@ -421,21 +418,22 @@ func (s *QuotationRepository) RestoreQuotation(tx *gorm.DB, params *dtos.GetQuot
 	return nil
 }
 
-func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, quotationID uint, span opentracing.Span) error {
+func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, quotationID uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuoDtRepository-CreateQuoDts", opentracing.ChildOf(span.Context()))
 
 	result := tx.CreateInBatches(quoDts, len(quoDts))
 
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
-		return result.Error
+		// return result.Error
+		return nil, result.Error
 	}
 
-	return nil
+	return result, nil
 }
 
 // bulk/batch update quoDts
-func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, span opentracing.Span) error {
+func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuoDtRepository-UpdateQuoDts", opentracing.ChildOf(span.Context()))
 
 	data := make([]map[string]interface{}, 0)
@@ -475,25 +473,25 @@ func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, 
 	// if err := r.utilRepo.BulkUpdate(tx, "quoDts", "id", data, childSpan); err != nil {
 	if err := r.utilRepo.Upsert(tx, "quo_dts", "id", data, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
-		return err
+		return nil, err
 	}
 
-	return nil
+	return tx, nil
 }
 
-func (r *QuotationRepository) DeleteQuoDtsWhereNotIn(tx *gorm.DB, quotationID uint, quoDtIDs []uint, span opentracing.Span) error {
+func (r *QuotationRepository) DeleteQuoDtsWhereNotIn(tx *gorm.DB, quotationID uint, quoDtIDs []uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
 
 	if err := tx.Where("quotation_id = ? AND id NOT IN ?", quotationID, quoDtIDs).Delete(&models.QuoDt{}).Error; err != nil {
 		utils.LogErrors(childSpan, err)
-		return err
+		return nil, err
 	}
 
-	return nil
+	return tx, nil
 }
 
 // func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, quotationIDs uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
-func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, quotationIDs []uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
+func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.DB, quotationIDs []uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
 	childSpan := opentracing.StartSpan("QuotationRepository-GetQuoDtsByQuotationID", opentracing.ChildOf(span.Context()))
 
 	quoDts := []dtos.QuotationQuoDtListDTO{}
@@ -530,10 +528,53 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, quotationI
 		query += " AND qd.quotation_id IN (" + utils.JoinUintsToString(quotationIDs, ",") + ")"
 	}
 
-	if err := r.sqlDB.SelectContext(ctx.Context(), &quoDts, query, args...); err != nil {
+	// sqlConn, err := tx.DB()
+	// if err != nil {
+	// 	utils.LogErrors(childSpan, err)
+	// 	return nil, err
+	// }
+
+	// // Use sqlx with the extracted SQL connection
+	// sqlxDB := sqlx.NewDb(sqlConn, "postgres")
+
+	// if err := sqlxDB.SelectContext(ctx.Context(), &quoDts, query, args...); err != nil {
+	// 	utils.LogErrors(childSpan, err)
+	// 	return nil, err
+	// }
+
+	// log.Println("GetQuoDtsByQuotationIDs-result", quoDts)
+
+	// return quoDts, nil
+
+	// if len(quotationIDs) > 0 {
+	// 	query += " AND qd.quotation_id IN (" + utils.JoinUintsToString(quotationIDs, ",") + ")"
+	// }
+
+	// if err := tx.Raw(query).Find(&quoDts).Error; err != nil {
+	// 	utils.LogErrors(childSpan, err)
+	// 	return nil, err
+	// }
+
+	// log.Println("GetQuoDtsByQuotationIDs-result", quoDts)
+
+	// return quoDts, nil
+
+	// Extract the underlying SQL connection from the GORM transaction
+	sqlConn, err := tx.DB()
+	if err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
+
+	// Use sqlx with the extracted SQL connection
+	sqlxDB := sqlx.NewDb(sqlConn, "postgres")
+
+	if err := sqlxDB.SelectContext(ctx.Context(), &quoDts, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	log.Println("GetQuoDtsByQuotationIDs-result", quoDts)
 
 	return quoDts, nil
 }

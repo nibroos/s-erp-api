@@ -10,7 +10,7 @@ type QuoDt struct {
 	QuotationID  *uint          `json:"quotation_id" gorm:"column:quotation_id"`
 	ItemUnitID   *uint          `json:"item_unit_id" gorm:"column:item_unit_id"`
 	VatID        *uint          `json:"vat_id" gorm:"column:vat_id"`
-	RefID        *uint          `json:"product_item_id" gorm:"column:product_item_id"`
+	RefID        *uint          `json:"ref_id" gorm:"column:ref_id"`
 	ItemID       uint           `json:"item_id" gorm:"column:item_id"`
 	RefType      *string        `json:"ref_type" gorm:"column:ref_type"`
 	ItemType     *string        `json:"item_type" gorm:"column:item_type"`

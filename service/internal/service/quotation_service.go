@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -39,22 +40,22 @@ func (s *QuotationService) GetQuotations(ctx *fiber.Ctx, filters map[string]stri
 	return quotations, total, nil
 }
 
-func (s *QuotationService) CreateQuotation(ctx *fiber.Ctx, quotation *models.Quotation, tx *gorm.DB, span opentracing.Span) (*models.Quotation, error) {
+func (s *QuotationService) CreateQuotation(ctx *fiber.Ctx, quotation *models.Quotation, tx *gorm.DB, span opentracing.Span) (*models.Quotation, *gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuotation", opentracing.ChildOf(span.Context()))
 
-	if err := s.repo.CreateQuotation(tx, quotation, childSpan); err != nil {
+	if tx, err := s.repo.CreateQuotation(tx, quotation, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
-		return nil, err
+		return nil, tx, err
 	}
 
-	return quotation, nil
+	return quotation, tx, nil
 }
 
-func (s *QuotationService) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQuotationParams, span opentracing.Span) (*dtos.QuotationDetailDTO, error) {
+func (s *QuotationService) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQuotationParams, tx *gorm.DB, span opentracing.Span) (*dtos.QuotationDetailDTO, error) {
 	childSpan := opentracing.StartSpan("QuotationService-GetQuotationByID", opentracing.ChildOf(span.Context()))
 
-	quotation, err := s.repo.GetQuotationByID(ctx, params, childSpan)
+	quotation, err := s.repo.GetQuotationByID(ctx, params, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -183,20 +184,20 @@ func (s *QuotationService) CsvGetQuotations(ctx *fiber.Ctx, filters map[string]s
 }
 
 // quotation *models.Quotation
-func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, boms []*models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) error {
+func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, boms []*models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuoDts", opentracing.ChildOf(span.Context()))
 
-	if err := s.repo.CreateQuoDts(tx, boms, quotationID, childSpan); err != nil {
+	if tx, err := s.repo.CreateQuoDts(tx, boms, quotationID, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
-		return err
+		return nil, err
 	}
 
-	return nil
+	return tx, nil
 }
 
 // bulk create/update boms for a quotation
-func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []*models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) error {
+func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []*models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-BulkCreateUpdateQuoDts", opentracing.ChildOf(span.Context()))
 
 	// filter without ID to bulk create
@@ -222,36 +223,36 @@ func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []*mode
 
 	// delete quoDts that are not in the list
 	if len(quoDtIDs) > 0 {
-		if err := s.repo.DeleteQuoDtsWhereNotIn(tx, quotationID, quoDtIDs, childSpan); err != nil {
+		if tx, err := s.repo.DeleteQuoDtsWhereNotIn(tx, quotationID, quoDtIDs, childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
-			return err
+			return nil, err
 		}
 	}
 
 	if len(bulkCreateQuoDts) > 0 {
-		if err := s.repo.CreateQuoDts(tx, bulkCreateQuoDts, quotationID, childSpan); err != nil {
+		if tx, err := s.repo.CreateQuoDts(tx, bulkCreateQuoDts, quotationID, childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
-			return err
+			return nil, err
 		}
 	}
 
 	if len(bulkUpdateQuoDts) > 0 {
-		if err := s.repo.UpdateQuoDts(tx, bulkUpdateQuoDts, childSpan); err != nil {
+		if tx, err := s.repo.UpdateQuoDts(tx, bulkUpdateQuoDts, childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return tx, nil
 }
 
-func (s *QuotationService) GetQuoDtsByQuotationID(ctx *fiber.Ctx, quotationIDs []uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
+func (s *QuotationService) GetQuoDtsByQuotationID(ctx *fiber.Ctx, tx *gorm.DB, quotationIDs []uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
 	childSpan := opentracing.StartSpan("QuotationService-GetQuoDtsByQuotationID", opentracing.ChildOf(span.Context()))
 
-	boms, err := s.repo.GetQuoDtsByQuotationIDs(ctx, quotationIDs, childSpan)
+	boms, err := s.repo.GetQuoDtsByQuotationIDs(ctx, tx, quotationIDs, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -304,14 +305,21 @@ func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, req dtos.CreateQuo
 
 	quoDtBomsModel := []*models.QuoDtBom{}
 
+	log.Println("MapCreateQuoDtBoms-createdQuoDts", createdQuoDts)
+
 	for _, reqQuoDt := range req.QuoDts {
+		log.Println("reqQuoDt", reqQuoDt)
 		for _, reqQuoDtBom := range reqQuoDt.QuoDtsBoms {
+			log.Println("reqQuoDt.QuoDtsBoms", reqQuoDtBom)
 			for _, createdQuoDt := range createdQuoDts {
+				log.Println("reqQuoDtBom.ProductID", reqQuoDtBom.ProductID)
+				log.Println("createdQuoDt.ItemID", createdQuoDt.ItemID)
+				log.Println("createdQuoDt", createdQuoDt)
 				if &reqQuoDtBom.ProductID == createdQuoDt.ItemID {
 					quoDtModel := &models.QuoDtBom{
 						QuoDtID:      *createdQuoDt.ID,
 						ProductID:    reqQuoDtBom.ProductID,
-						ItemID:       reqQuoDtBom.ItemID,
+						ItemID:       reqQuoDtBom.ProductItemID,
 						ItemUnitID:   reqQuoDtBom.ItemUnitID,
 						Remark:       reqQuoDtBom.Remark,
 						Qty:          reqQuoDtBom.Qty,
@@ -331,16 +339,16 @@ func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, req dtos.CreateQuo
 	return quoDtBomsModel, nil
 }
 
-func (s *QuotationService) CreateQuoDtBoms(ctx *fiber.Ctx, quoDtBoms []*models.QuoDtBom, tx *gorm.DB, span opentracing.Span) error {
+func (s *QuotationService) CreateQuoDtBoms(ctx *fiber.Ctx, quoDtBoms []*models.QuoDtBom, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuoDtBoms", opentracing.ChildOf(span.Context()))
 
 	if err := s.repo.CreateQuoDtBoms(tx, quoDtBoms, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
-		return err
+		return nil, err
 	}
 
-	return nil
+	return tx, nil
 }
 
 // bulk create/update boms for a quotation

@@ -64,6 +64,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		COALESCE(bi.description, m.description) as description,
 		COALESCE(bi.remark, m.remark) as remark,
 		COALESCE(bi.tpb_code, m.tpb_code) as tpb_code,
+		COALESCE(bi.qty_stock, m.qty_stock) as qty_stock,
 		COALESCE(bi.minimum_stock, m.minimum_stock) as minimum_stock,
 		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
 		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
@@ -131,6 +132,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 					pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
 
 					m.id as product_id,
+					m.id as ref_id,
 					m.prod_type,
 					u.name as unit_name,
 					isg.name as item_sub_group_name,
@@ -161,6 +163,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 					pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
 
 					m.id as product_id,
+					m.id as ref_id,
 					m.prod_type,
 					u.name as unit_name,
 					isg.name as item_sub_group_name,
@@ -352,6 +355,7 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
 		COALESCE(bi.remark, m.remark) as remark,
 		COALESCE(bi.tpb_code, m.tpb_code) as tpb_code,
 		COALESCE(bi.minimum_stock, m.minimum_stock) as minimum_stock,
+		COALESCE(bi.qty_stock, iu.qty_stock) as qty_stock,
 		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
 		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
 		COALESCE(bi.margin, iu.margin) as margin,

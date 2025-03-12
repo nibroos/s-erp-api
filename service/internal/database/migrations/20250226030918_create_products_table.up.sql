@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS products (
   remark TEXT,
   tpb_code TEXT,
   minimum_stock DECIMAL(20, 5),
+  qty_stock DECIMAL(20, 5) DEFAULT 0,
   is_all_branch INT,
   status INT,
   expired_at timestamp with time zone,
