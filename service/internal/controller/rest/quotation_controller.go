@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -182,7 +183,10 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Details", http.StatusInternalServerError)
 	}
 
-	tx, err = c.service.CreateQuoDts(ctx, quoDts, createdQuotation.ID, tx, parentSpan)
+	tx, quoDts, err = c.service.CreateQuoDts(ctx, quoDts, createdQuotation.ID, tx, parentSpan)
+
+	log.Println("QuoDts", quoDts)
+	fmt.Printf("QuoDtsreal: %+v\n", quoDts)
 
 	if err != nil {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Details", http.StatusInternalServerError)
@@ -309,7 +313,7 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	quoDts := make([]*models.QuoDt, 0)
 	for _, quoDt := range req.QuoDts {
 		quoDt := &models.QuoDt{
-			ID:           quoDt.ID,
+			ID:           *quoDt.ID,
 			QuotationID:  &updatedQuotation.ID,
 			RefID:        quoDt.RefID,
 			ItemID:       quoDt.ItemID,

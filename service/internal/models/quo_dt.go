@@ -6,7 +6,7 @@ import (
 
 type QuoDt struct {
 	gorm.Model
-	ID           *uint          `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
+	ID           uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	QuotationID  *uint          `json:"quotation_id" gorm:"column:quotation_id"`
 	ItemUnitID   *uint          `json:"item_unit_id" gorm:"column:item_unit_id"`
 	VatID        *uint          `json:"vat_id" gorm:"column:vat_id"`

@@ -184,16 +184,20 @@ func (s *QuotationService) CsvGetQuotations(ctx *fiber.Ctx, filters map[string]s
 }
 
 // quotation *models.Quotation
-func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, boms []*models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, boms []*models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, []*models.QuoDt, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuoDts", opentracing.ChildOf(span.Context()))
 
-	if tx, err := s.repo.CreateQuoDts(tx, boms, quotationID, childSpan); err != nil {
+	quoDtsModel := []*models.QuoDt{}
+	var err error
+
+	tx, quoDtsModel, err = s.repo.CreateQuoDts(tx, boms, quotationID, childSpan)
+	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
-		return nil, err
+		return nil, quoDtsModel, err
 	}
 
-	return tx, nil
+	return tx, quoDtsModel, nil
 }
 
 // bulk create/update boms for a quotation
@@ -211,13 +215,13 @@ func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []*mode
 	userID := uint(claims["user_id"].(float64))
 
 	for _, quoDt := range quoDts {
-		if quoDt.ID == nil {
+		if quoDt.ID == 0 {
 			quoDt.CreatedByID = &userID
 			quoDt.CreatedAt = time.Now()
 			bulkCreateQuoDts = append(bulkCreateQuoDts, quoDt)
 		} else {
 			bulkUpdateQuoDts = append(bulkUpdateQuoDts, quoDt)
-			quoDtIDs = append(quoDtIDs, *quoDt.ID)
+			quoDtIDs = append(quoDtIDs, quoDt.ID)
 		}
 	}
 
@@ -231,7 +235,7 @@ func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []*mode
 	}
 
 	if len(bulkCreateQuoDts) > 0 {
-		if tx, err := s.repo.CreateQuoDts(tx, bulkCreateQuoDts, quotationID, childSpan); err != nil {
+		if tx, _, err := s.repo.CreateQuoDts(tx, bulkCreateQuoDts, quotationID, childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
 			return nil, err

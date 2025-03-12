@@ -418,18 +418,115 @@ func (s *QuotationRepository) RestoreQuotation(tx *gorm.DB, params *dtos.GetQuot
 	return nil
 }
 
-func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, quotationID uint, span opentracing.Span) (*gorm.DB, error) {
+func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, quotationID uint, span opentracing.Span) (*gorm.DB, []*models.QuoDt, error) {
 	childSpan := opentracing.StartSpan("QuoDtRepository-CreateQuoDts", opentracing.ChildOf(span.Context()))
 
-	result := tx.CreateInBatches(quoDts, len(quoDts))
+	// result := tx.CreateInBatches(quoDts, len(quoDts))
 
+	// if result.Error != nil {
+	// 	utils.LogErrors(childSpan, result.Error)
+	// 	// return result.Error
+	// 	return nil, result.Error
+	// }
+	// result := tx.Create(&quoDts)
+	// if result.Error != nil {
+	// 	utils.LogErrors(childSpan, result.Error)
+	// 	tx.Rollback()
+	// 	log.Fatalf("Failed to insert users: %v", result.Error)
+	// }
+
+	// // // check quodts inserted
+	// // test, err := tx.Where("quotation_id = ?", quotationID).Find(&quoDts).Rows()
+	// // if err != nil {
+	// // 	utils.LogErrors(childSpan, err)
+	// // 	return nil, err
+	// // }
+	// // log.Println("CreateQuoDts-testa", test.Scan(&quoDts))
+
+	// // check quodts inserted
+	// rows, err := tx.Table("quo_dts").Where("quotation_id = ? AND id > 0", quotationID).Find(&quoDts).Rows()
+	// if err != nil {
+	// 	utils.LogErrors(childSpan, err)
+	// 	return nil, nil, err
+	// }
+
+	// defer rows.Close()
+
+	// var quoDtss []*models.QuoDt
+	// for rows.Next() {
+	// 	var quoDt models.QuoDt
+	// 	err := tx.ScanRows(rows, &quoDt)
+	// 	if err != nil {
+	// 		utils.LogErrors(childSpan, err)
+	// 		return nil, nil, err
+	// 	}
+	// 	quoDtss = append(quoDtss, &quoDt)
+	// }
+	// log.Println("CreateQuoDts-testadtss", quoDtss)
+	// // Print each element in the slice
+	// for i, quoDt := range quoDtss {
+	// 	fmt.Printf("CreateQuoDts-testadtss real value %d: %+v\n", i, *quoDt)
+	// }
+
+	// // get quodts by raw sql
+	// quoDtsRaw := []models.QuoDt{}
+	// if err := tx.Raw("SELECT * FROM quo_dts WHERE quotation_id = ?", quotationID).Scan(&quoDtsRaw).Error; err != nil {
+	// 	utils.LogErrors(childSpan, err)
+	// 	return nil, nil, err
+	// }
+
+	// // Print each element in the slice
+	// for i, quoDt := range quoDtsRaw {
+	// 	fmt.Printf("CreateQuoDts-testadtss raw value %d: %+v\n", i, quoDt)
+	// }
+
+	// return result, quoDts, nil
+	result := tx.Create(&quoDts)
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
-		// return result.Error
-		return nil, result.Error
+		tx.Rollback()
+		log.Fatalf("Failed to insert quoDts: %v", result.Error)
 	}
 
-	return result, nil
+	// Check if the IDs are populated
+	for _, quoDt := range quoDts {
+		if quoDt.ID == 0 {
+			log.Fatalf("Failed to retrieve ID for quoDt: %+v", quoDt)
+		}
+	}
+
+	// Log the inserted quoDts
+	log.Println("CreateQuoDts-inserted", quoDts)
+	for i, quoDt := range quoDts {
+		fmt.Printf("CreateQuoDts-inserted real value %d: %+v\n", i, *quoDt)
+	}
+
+	// Retrieve the inserted quoDts from the database to ensure they are correctly inserted
+	var quoDtss []*models.QuoDt
+	rows, err := tx.Table("quo_dts").Where("quotation_id = ? AND id > 0", quotationID).Find(&quoDts).Rows()
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var quoDt models.QuoDt
+		err := tx.ScanRows(rows, &quoDt)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			return nil, nil, err
+		}
+		quoDtss = append(quoDtss, &quoDt)
+	}
+
+	// Log the retrieved quoDts
+	log.Println("CreateQuoDts-retrieved", quoDtss)
+	for i, quoDt := range quoDtss {
+		fmt.Printf("CreateQuoDts-retrieved real value %d: %+v\n", i, *quoDt)
+	}
+
+	return result, quoDts, nil
 }
 
 // bulk/batch update quoDts
@@ -524,9 +621,9 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 	var args []interface{}
 	// i := 1
 
-	if len(quotationIDs) > 0 {
-		query += " AND qd.quotation_id IN (" + utils.JoinUintsToString(quotationIDs, ",") + ")"
-	}
+	// if len(quotationIDs) > 0 {
+	// 	query += " AND qd.quotation_id IN (" + utils.JoinUintsToString(quotationIDs, ",") + ")"
+	// }
 
 	// sqlConn, err := tx.DB()
 	// if err != nil {
@@ -559,6 +656,7 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 
 	// return quoDts, nil
 
+	log.Println("GetQuoDtsByQuotationIDs-query", query)
 	// Extract the underlying SQL connection from the GORM transaction
 	sqlConn, err := tx.DB()
 	if err != nil {
