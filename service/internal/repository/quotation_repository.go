@@ -418,7 +418,7 @@ func (s *QuotationRepository) RestoreQuotation(tx *gorm.DB, params *dtos.GetQuot
 	return nil
 }
 
-func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, quotationID uint, span opentracing.Span) (*gorm.DB, []*models.QuoDt, error) {
+func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []models.QuoDt, quotationID uint, span opentracing.Span) (*gorm.DB, []models.QuoDt, error) {
 	childSpan := opentracing.StartSpan("QuoDtRepository-CreateQuoDts", opentracing.ChildOf(span.Context()))
 
 	// result := tx.CreateInBatches(quoDts, len(quoDts))
@@ -452,7 +452,7 @@ func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, 
 
 	// defer rows.Close()
 
-	// var quoDtss []*models.QuoDt
+	// var quoDtss []models.QuoDt
 	// for rows.Next() {
 	// 	var quoDt models.QuoDt
 	// 	err := tx.ScanRows(rows, &quoDt)
@@ -498,11 +498,11 @@ func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, 
 	// Log the inserted quoDts
 	log.Println("CreateQuoDts-inserted", quoDts)
 	for i, quoDt := range quoDts {
-		fmt.Printf("CreateQuoDts-inserted real value %d: %+v\n", i, *quoDt)
+		fmt.Printf("CreateQuoDts-inserted real value %d: %+v\n", i, quoDt)
 	}
 
 	// Retrieve the inserted quoDts from the database to ensure they are correctly inserted
-	var quoDtss []*models.QuoDt
+	var quoDtss []models.QuoDt
 	rows, err := tx.Table("quo_dts").Where("quotation_id = ? AND id > 0", quotationID).Find(&quoDts).Rows()
 	if err != nil {
 		utils.LogErrors(childSpan, err)
@@ -517,20 +517,20 @@ func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, 
 			utils.LogErrors(childSpan, err)
 			return nil, nil, err
 		}
-		quoDtss = append(quoDtss, &quoDt)
+		quoDtss = append(quoDtss, quoDt)
 	}
 
 	// Log the retrieved quoDts
 	log.Println("CreateQuoDts-retrieved", quoDtss)
 	for i, quoDt := range quoDtss {
-		fmt.Printf("CreateQuoDts-retrieved real value %d: %+v\n", i, *quoDt)
+		fmt.Printf("CreateQuoDts-retrieved real value %d: %+v\n", i, quoDt)
 	}
 
 	return result, quoDts, nil
 }
 
 // bulk/batch update quoDts
-func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []*models.QuoDt, span opentracing.Span) (*gorm.DB, error) {
+func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []models.QuoDt, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuoDtRepository-UpdateQuoDts", opentracing.ChildOf(span.Context()))
 
 	data := make([]map[string]interface{}, 0)
@@ -593,7 +593,7 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 
 	quoDts := []dtos.QuotationQuoDtListDTO{}
 
-	query := `SELECT qd.id, qd.quotation_id, 
+	query := `SELECT qd.id, qd.quotation_id, qd.product_uuid
 		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id, qd.created_at, qd.updated_at, qd.deleted_at,
 		qd.created_at, qd.updated_at, qd.deleted_at,
 
@@ -621,9 +621,9 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 	var args []interface{}
 	// i := 1
 
-	// if len(quotationIDs) > 0 {
-	// 	query += " AND qd.quotation_id IN (" + utils.JoinUintsToString(quotationIDs, ",") + ")"
-	// }
+	if len(quotationIDs) > 0 {
+		query += " AND qd.quotation_id IN (" + utils.JoinUintsToString(quotationIDs, ",") + ")"
+	}
 
 	// sqlConn, err := tx.DB()
 	// if err != nil {
@@ -677,10 +677,17 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 	return quoDts, nil
 }
 
-func (r *QuotationRepository) CreateQuoDtBoms(tx *gorm.DB, quoDtBoms []*models.QuoDtBom, span opentracing.Span) error {
+func (r *QuotationRepository) CreateQuoDtBoms(tx *gorm.DB, quoDtBoms []models.QuoDtBom, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("QuoDtBomRepository-CreateQuoDtBoms", opentracing.ChildOf(span.Context()))
 
-	result := tx.CreateInBatches(quoDtBoms, len(quoDtBoms))
+	log.Println("QuoDtBomRepository-CreateQuoDtBoms", quoDtBoms)
+
+	log.Println("quolen", len(quoDtBoms))
+
+	// result := tx.CreateInBatches(quoDtBoms, len(quoDtBoms))
+	result := tx.Create(&quoDtBoms)
+
+	log.Println("QuoDtBomRepository-CreateQuoDtBoms-result", result)
 
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
@@ -702,7 +709,7 @@ func (r *QuotationRepository) DeleteQuoDtBomsWhereNotIn(tx *gorm.DB, quotationID
 }
 
 // bulk/batch update quoDts
-func (r *QuotationRepository) UpdateQuoDtBoms(tx *gorm.DB, quoDtBoms []*models.QuoDtBom, span opentracing.Span) error {
+func (r *QuotationRepository) UpdateQuoDtBoms(tx *gorm.DB, quoDtBoms []models.QuoDtBom, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("QuoDtRepository-UpdateQuoDtBoms", opentracing.ChildOf(span.Context()))
 
 	data := make([]map[string]interface{}, 0)

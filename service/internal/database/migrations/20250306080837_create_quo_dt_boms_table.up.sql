@@ -2,12 +2,13 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS quo_dt_boms (
   id SERIAL PRIMARY KEY,
+  product_uuid TEXT,
   quotation_id INT REFERENCES quotations(id) ON DELETE RESTRICT,
   quo_dt_id INT REFERENCES quo_dts(id) ON DELETE RESTRICT,
   product_id INT REFERENCES products(id) ON DELETE RESTRICT,
   item_id INT REFERENCES products(id) ON DELETE RESTRICT,
   item_unit_id INT REFERENCES item_units(id) ON DELETE RESTRICT,
-  ref_json JSONB,
+  item_json JSONB,
   gen_code TEXT,
   remark TEXT,
   qty DECIMAL(20, 5),

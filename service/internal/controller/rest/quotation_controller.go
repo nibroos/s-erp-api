@@ -197,16 +197,16 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 
 	log.Println("createdQuotationIDs", createdQuotationIDs, "createdQuotation", createdQuotation.ID)
 
-	// get created quoDts
-	createdQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, tx, createdQuotationIDs, parentSpan)
-	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
-	}
+	// // get created quoDts
+	// createdQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, tx, createdQuotationIDs, parentSpan)
+	// if err != nil {
+	// 	utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
+	// }
 
-	log.Println("createdQuoDts", createdQuoDts)
+	// log.Println("createdQuoDts", createdQuoDts)
 
 	// bulk create boms
-	quoDtBoms, err := c.service.MapCreateQuoDtBoms(ctx, req, createdQuoDts, userID, parentSpan)
+	quoDtBoms, err := c.service.MapCreateQuoDtBoms(ctx, req, quoDts, userID, parentSpan)
 	if err != nil {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
 	}
@@ -310,9 +310,9 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	refJSON := "{}"
 
 	// Bulk/Create Update Batch QuoDts
-	quoDts := make([]*models.QuoDt, 0)
+	quoDts := make([]models.QuoDt, 0)
 	for _, quoDt := range req.QuoDts {
-		quoDt := &models.QuoDt{
+		quoDt := models.QuoDt{
 			ID:           *quoDt.ID,
 			QuotationID:  &updatedQuotation.ID,
 			RefID:        quoDt.RefID,

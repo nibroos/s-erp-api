@@ -184,10 +184,10 @@ func (s *QuotationService) CsvGetQuotations(ctx *fiber.Ctx, filters map[string]s
 }
 
 // quotation *models.Quotation
-func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, boms []*models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, []*models.QuoDt, error) {
+func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, boms []models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, []models.QuoDt, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuoDts", opentracing.ChildOf(span.Context()))
 
-	quoDtsModel := []*models.QuoDt{}
+	quoDtsModel := []models.QuoDt{}
 	var err error
 
 	tx, quoDtsModel, err = s.repo.CreateQuoDts(tx, boms, quotationID, childSpan)
@@ -201,13 +201,13 @@ func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, boms []*models.QuoDt, qu
 }
 
 // bulk create/update boms for a quotation
-func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []*models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-BulkCreateUpdateQuoDts", opentracing.ChildOf(span.Context()))
 
 	// filter without ID to bulk create
-	bulkCreateQuoDts := []*models.QuoDt{}
+	bulkCreateQuoDts := []models.QuoDt{}
 	// filter with ID to bulk update
-	bulkUpdateQuoDts := []*models.QuoDt{}
+	bulkUpdateQuoDts := []models.QuoDt{}
 	// get all ids
 	quoDtIDs := []uint{}
 
@@ -264,13 +264,14 @@ func (s *QuotationService) GetQuoDtsByQuotationID(ctx *fiber.Ctx, tx *gorm.DB, q
 	return boms, nil
 }
 
-func (s *QuotationService) MapCreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuotation *models.Quotation, userID uint, span opentracing.Span) ([]*models.QuoDt, error) {
+func (s *QuotationService) MapCreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuotation *models.Quotation, userID uint, span opentracing.Span) ([]models.QuoDt, error) {
 	// childSpan := opentracing.StartSpan("QuotationService-MapQuoDtsToQuotation", opentracing.ChildOf(span.Context()))
 
-	quoDtsModel := []*models.QuoDt{}
+	quoDtsModel := []models.QuoDt{}
 
 	for _, quoDt := range req.QuoDts {
-		quoDtModel := &models.QuoDt{
+		quoDtModel := models.QuoDt{
+			ProductUuid: quoDt.ProductUuid,
 			QuotationID: &createdQuotation.ID,
 			ItemUnitID:  quoDt.ItemUnitID,
 			VatID:       quoDt.VatID,
@@ -304,10 +305,53 @@ func (s *QuotationService) MapCreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotat
 	return quoDtsModel, nil
 }
 
-func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuoDts []dtos.QuotationQuoDtListDTO, userID uint, span opentracing.Span) ([]*models.QuoDtBom, error) {
-	// childSpan := opentracing.StartSpan("QuotationService-MapQuoDtsToQuotation", opentracing.ChildOf(span.Context()))
+// func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuoDts []models.QuoDt, userID uint, span opentracing.Span) ([]models.QuoDtBom, error) {
+// 	// childSpan := opentracing.StartSpan("QuotationService-MapQuoDtsToQuotation", opentracing.ChildOf(span.Context()))
 
-	quoDtBomsModel := []*models.QuoDtBom{}
+// 	quoDtBomsModel := []models.QuoDtBom{}
+
+// 	log.Println("MapCreateQuoDtBoms-createdQuoDts", createdQuoDts)
+
+// 	for _, reqQuoDt := range req.QuoDts {
+// 		log.Println("reqQuoDt", reqQuoDt)
+// 		for _, reqQuoDtBom := range reqQuoDt.QuoDtsBoms {
+// 			log.Println("reqQuoDt.QuoDtsBoms", reqQuoDtBom)
+// 			for _, createdQuoDt := range createdQuoDts {
+// 				log.Println("reqQuoDtBom.ProductID", reqQuoDtBom.ProductID)
+// 				log.Println("createdQuoDt.ItemID", createdQuoDt.ItemID)
+// 				log.Println("createdQuoDt", createdQuoDt)
+// 				if reqQuoDtBom.ProductUuid != nil && createdQuoDt.ProductUuid != nil {
+// 					log.Println("reqQuoDtBom.ProductUuid-createdQuoDt.ProductUuid", *reqQuoDtBom.ProductUuid, *createdQuoDt.ProductUuid)
+// 					if *reqQuoDtBom.ProductUuid == *createdQuoDt.ProductUuid {
+// 						log.Println("reqQuoDtBom.ProductUuid == createdQuoDt.ProductUuid")
+// 						quoDtModel := models.QuoDtBom{
+// 							QuotationID:  *createdQuoDt.QuotationID,
+// 							ProductUuid:  reqQuoDtBom.ProductUuid,
+// 							QuoDtID:      createdQuoDt.ID,
+// 							ProductID:    reqQuoDtBom.ProductID,
+// 							ItemID:       reqQuoDtBom.ProductItemID,
+// 							ItemUnitID:   reqQuoDtBom.ItemUnitID,
+// 							Remark:       reqQuoDtBom.Remark,
+// 							Qty:          reqQuoDtBom.Qty,
+// 							PriceSell:    reqQuoDtBom.PriceSell,
+// 							PriceBuy:     reqQuoDtBom.PriceBuy,
+// 							SubtotalSell: reqQuoDtBom.SubtotalSell,
+// 							SubtotalBuy:  reqQuoDtBom.SubtotalBuy,
+// 							CreatedByID:  &userID,
+// 						}
+// 						quoDtBomsModel = append(quoDtBomsModel, quoDtModel)
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+
+// 	log.Println("MapCreateQuoDtBoms-quoDtBomsModel", quoDtBomsModel)
+
+//		return quoDtBomsModel, nil
+//	}
+func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuoDts []models.QuoDt, userID uint, span opentracing.Span) ([]models.QuoDtBom, error) {
+	quoDtBomsModel := []models.QuoDtBom{}
 
 	log.Println("MapCreateQuoDtBoms-createdQuoDts", createdQuoDts)
 
@@ -319,31 +363,43 @@ func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, req dtos.CreateQuo
 				log.Println("reqQuoDtBom.ProductID", reqQuoDtBom.ProductID)
 				log.Println("createdQuoDt.ItemID", createdQuoDt.ItemID)
 				log.Println("createdQuoDt", createdQuoDt)
-				if &reqQuoDtBom.ProductID == createdQuoDt.ItemID {
-					quoDtModel := &models.QuoDtBom{
-						QuoDtID:      *createdQuoDt.ID,
-						ProductID:    reqQuoDtBom.ProductID,
-						ItemID:       reqQuoDtBom.ProductItemID,
-						ItemUnitID:   reqQuoDtBom.ItemUnitID,
-						Remark:       reqQuoDtBom.Remark,
-						Qty:          reqQuoDtBom.Qty,
-						PriceSell:    reqQuoDtBom.PriceSell,
-						PriceBuy:     reqQuoDtBom.PriceBuy,
-						SubtotalSell: reqQuoDtBom.SubtotalSell,
-						SubtotalBuy:  reqQuoDtBom.SubtotalBuy,
-						CreatedByID:  &userID,
+				log.Println("createdQuoDt.ID", createdQuoDt.ID)
+
+				// Ensure that ProductUuid is not nil before dereferencing
+				if reqQuoDtBom.ProductUuid != nil && createdQuoDt.ProductUuid != nil {
+					log.Println("reqQuoDtBom.ProductUuid-createdQuoDt.ProductUuid", *reqQuoDtBom.ProductUuid, *createdQuoDt.ProductUuid)
+					if *reqQuoDtBom.ProductUuid == *createdQuoDt.ProductUuid {
+						log.Println("reqQuoDtBom.ProductUuid == createdQuoDt.ProductUuid")
+						quoDtModel := models.QuoDtBom{
+							ItemJSON:     "{}",
+							QuotationID:  createdQuoDt.QuotationID,
+							ProductUuid:  reqQuoDtBom.ProductUuid,
+							QuoDtID:      createdQuoDt.ID,
+							ProductID:    reqQuoDtBom.ProductID,
+							ItemID:       reqQuoDtBom.ProductItemID,
+							ItemUnitID:   reqQuoDtBom.ItemUnitID,
+							Remark:       reqQuoDtBom.Remark,
+							Qty:          reqQuoDtBom.Qty,
+							PriceSell:    reqQuoDtBom.PriceSell,
+							PriceBuy:     reqQuoDtBom.PriceBuy,
+							SubtotalSell: reqQuoDtBom.SubtotalSell,
+							SubtotalBuy:  reqQuoDtBom.SubtotalBuy,
+							CreatedByID:  &userID,
+						}
+						quoDtBomsModel = append(quoDtBomsModel, quoDtModel)
+						log.Println("abc", quoDtBomsModel)
 					}
-					quoDtBomsModel = append(quoDtBomsModel, quoDtModel)
 				}
 			}
 		}
-
 	}
+
+	log.Println("MapCreateQuoDtBoms-quoDtBomsModel", quoDtBomsModel)
 
 	return quoDtBomsModel, nil
 }
 
-func (s *QuotationService) CreateQuoDtBoms(ctx *fiber.Ctx, quoDtBoms []*models.QuoDtBom, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *QuotationService) CreateQuoDtBoms(ctx *fiber.Ctx, quoDtBoms []models.QuoDtBom, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuoDtBoms", opentracing.ChildOf(span.Context()))
 
 	if err := s.repo.CreateQuoDtBoms(tx, quoDtBoms, childSpan); err != nil {
@@ -360,9 +416,9 @@ func (s *QuotationService) BulkCreateUpdateQuoDtBoms(ctx *fiber.Ctx, quoDts []dt
 	childSpan := opentracing.StartSpan("QuotationService-BulkCreateUpdateQuoDtBoms", opentracing.ChildOf(span.Context()))
 
 	// filter without ID to bulk create
-	bulkCreateQuoDtBoms := []*models.QuoDtBom{}
+	bulkCreateQuoDtBoms := []models.QuoDtBom{}
 	// filter with ID to bulk update
-	bulkUpdateQuoDtBoms := []*models.QuoDtBom{}
+	bulkUpdateQuoDtBoms := []models.QuoDtBom{}
 	// get all ids
 	quoDtBomIDs := []uint{}
 
@@ -371,10 +427,10 @@ func (s *QuotationService) BulkCreateUpdateQuoDtBoms(ctx *fiber.Ctx, quoDts []dt
 
 	for _, quoDt := range quoDts {
 		for _, quoDtBom := range quoDt.QuoDtsBoms {
-			newQuoDtBom := &models.QuoDtBom{
+			newQuoDtBom := models.QuoDtBom{
 				QuoDtID:      *quoDt.ID,
-				ProductID:    *quoDtBom.ProductID,
-				ItemID:       *quoDtBom.ItemID,
+				ProductID:    quoDtBom.ProductID,
+				ItemID:       quoDtBom.ItemID,
 				ItemUnitID:   quoDtBom.ItemUnitID,
 				Remark:       quoDtBom.Remark,
 				Qty:          quoDtBom.Qty,

@@ -2,6 +2,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS quo_dts (
   id SERIAL PRIMARY KEY,
+  product_uuid TEXT,
   quotation_id INT REFERENCES quotations(id) ON DELETE RESTRICT,
   item_unit_id INT REFERENCES item_units(id) ON DELETE RESTRICT,
   vat_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
