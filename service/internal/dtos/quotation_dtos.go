@@ -82,6 +82,11 @@ type CreateQuotationRequest struct {
 	IsApproved    int8                  `json:"is_approved"`
 	ExchangeRate  *float64              `json:"exchange_rate"`
 	VatPerc       *float64              `json:"vat_perc"`
+	DiscAm        *float64              `json:"disc_am"`
+	DiscPerc      *float64              `json:"disc_perc"`
+	DiscPercAm    *float64              `json:"disc_perc_am"`
+	DiscFinal     *float64              `json:"disc_final"`
+	DiscType      *string               `json:"disc_type"`
 	Pph23Perc     *float64              `json:"pph23_perc"`
 	TotalQty      *float64              `json:"total_qty"`
 	Subtotal      *float64              `json:"subtotal"`
@@ -157,6 +162,12 @@ type UpdateQuotationRequest struct {
 	IsApproved    int8                  `json:"is_approved"`
 	ExchangeRate  *float64              `json:"exchange_rate"`
 	VatPerc       *float64              `json:"vat_perc"`
+	DiscAm        *float64              `json:"disc_am"`
+	DiscPerc      *float64              `json:"disc_perc"`
+	DiscPercNum   *float64              `json:"disc_perc_num"`
+	DiscPercAm    *float64              `json:"disc_perc_am"`
+	DiscFinal     *float64              `json:"disc_final"`
+	DiscType      *string               `json:"disc_type"`
 	Pph23Perc     *float64              `json:"pph23_perc"`
 	TotalQty      *float64              `json:"total_qty"`
 	Subtotal      *float64              `json:"subtotal"`
@@ -213,6 +224,11 @@ type QuotationListDTO struct {
 	IsApproved    int8     `json:"is_approved" db:"is_approved"`
 	ExchangeRate  *float64 `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
+	DiscAm        *float64 `json:"disc_am" db:"disc_am"`
+	DiscPerc      *float64 `json:"disc_perc" db:"disc_perc"`
+	DiscPercAm    *float64 `json:"disc_perc_am" db:"disc_perc_am"`
+	DiscFinal     *float64 `json:"disc_final" db:"disc_final"`
+	DiscType      *string  `json:"disc_type" db:"disc_type"`
 	Pph23Perc     *float64 `json:"pph23_perc" db:"pph23_perc"`
 	TotalQty      *float64 `json:"total_qty" db:"total_qty"`
 	Subtotal      *float64 `json:"subtotal" db:"subtotal"`

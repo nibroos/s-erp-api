@@ -147,7 +147,8 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (q.id)
-					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.quo_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.vat_perc, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.due_at, q.expired_at, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
+					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.quo_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.due_at, q.expired_at, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
+					q.vat_perc, q.vat_perc_am, q.disc_am, q.disc_perc, q.disc_perc_num, q.disc_perc_am, q.disc_final, q.disc_type,
 
 					pi.id as product_id,
 					it.id as item_id,
@@ -293,7 +294,8 @@ func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQ
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (q.id)
-					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.quo_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.vat_perc, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.due_at, q.expired_at, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
+					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.quo_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.due_at, q.expired_at, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
+					q.vat_perc, q.vat_perc_am, q.disc_am, q.disc_perc, q.disc_perc_num, q.disc_perc_am, q.disc_final, q.disc_type,
 					-- q.quotation_id,
 
 					cu.name as created_by_name,

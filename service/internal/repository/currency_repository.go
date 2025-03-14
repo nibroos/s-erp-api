@@ -37,6 +37,7 @@ func (r *CurrencyRepository) GetCurrencies(ctx *fiber.Ctx, filters map[string]st
 	query := `SELECT *
     FROM ( 
         SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				m.options_json->>'symbol' as symbol,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -49,6 +50,7 @@ func (r *CurrencyRepository) GetCurrencies(ctx *fiber.Ctx, filters map[string]st
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				m.options_json->>'symbol' as symbol,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -165,6 +167,7 @@ func (r *CurrencyRepository) GetCurrencyByID(ctx *fiber.Ctx, params *dtos.GetCur
 	var currency dtos.CurrencyDetailDTO
 
 	query := `SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	m.options_json->>'symbol' as symbol,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 

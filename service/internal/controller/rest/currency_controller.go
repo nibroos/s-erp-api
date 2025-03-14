@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -88,6 +89,15 @@ func (c *CurrencyController) CreateCurrency(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
+	optionsJSON := map[string]interface{}{
+		"symbol": req.Symbol,
+	}
+
+	optionsJSONStr, err := json.Marshal(optionsJSON)
+	if err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Failed to create IO type", http.StatusInternalServerError, err.Error(), nil)
+	}
+
 	currency := models.MixValue{
 		Name:        req.Name,
 		GroupID:     utils.CurrencyID,
@@ -97,7 +107,7 @@ func (c *CurrencyController) CreateCurrency(ctx *fiber.Ctx) error {
 		OrderItem:   nil,
 		Status:      req.Status,
 		CreatedByID: &userID,
-		OptionsJSON: "{}",
+		OptionsJSON: string(optionsJSONStr),
 	}
 
 	tx := c.repo.BeginTransaction()

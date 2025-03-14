@@ -917,6 +917,7 @@ type MixValueListDTO struct {
 	Name          string  `json:"name" db:"name"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
+	Symbol        *string `json:"symbol" db:"symbol"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
@@ -930,6 +931,7 @@ type MixValueDetailDTO struct {
 	Name          string  `json:"name" db:"name"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
+	Symbol        *string `json:"symbol" db:"symbol"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
@@ -957,6 +959,7 @@ type CreateCurrencyRequest struct {
 	Num         float64 `json:"num"`
 	Description *string `json:"description"`
 	Remark      *string `json:"remark"`
+	Symbol      *string `json:"symbol"`
 	Status      int8    `json:"status"`
 }
 
@@ -966,6 +969,7 @@ type UpdateCurrencyRequest struct {
 	Num         float64 `json:"num"`
 	Description *string `json:"description"`
 	Remark      *string `json:"remark"`
+	Symbol      *string `json:"symbol"`
 	Status      int8    `json:"status"`
 }
 
@@ -996,6 +1000,7 @@ type CurrencyListDTO struct {
 	Num           string  `json:"num" db:"num"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
+	Symbol        *string `json:"symbol" db:"symbol"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
@@ -1010,6 +1015,7 @@ type CurrencyDetailDTO struct {
 	Num           string  `json:"num" db:"num"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
+	Symbol        *string `json:"symbol" db:"symbol"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
