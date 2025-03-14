@@ -21,4 +21,5 @@ const (
 	ShippingTermID = 25
 	PaymentTermID  = 26
 	PurchaseTypeID = 27
+	WarehouseID    = 38
 )
