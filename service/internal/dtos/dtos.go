@@ -2432,3 +2432,30 @@ type GetWarehousesResult struct {
 	Total      int
 	Err        error
 }
+
+type UpdateAccountSettingRequest struct {
+	ID                   uint    `json:"id"`
+	Username             *string `json:"username"`
+	Name                 string  `json:"name"`
+	Email                string  `json:"email"`
+	Address              *string `json:"address"`
+	PhoneNumber          *string `json:"phone_number"`
+	ProfileImageURL      *string `json:"profile_image_url"`
+	Password             *string `json:"password"`
+	PasswordConfirmation *string `json:"password_confirmation"`
+}
+
+type AccountSettingDetailDTO struct {
+	ID              uint     `json:"id" db:"id"`
+	Username        *string  `json:"username" db:"username"`
+	Name            string   `json:"name" db:"name"`
+	Email           string   `json:"email" db:"email"`
+	Address         *string  `json:"address" db:"address"`
+	PhoneNumber     *string  `json:"phone_number" db:"phone_number"`
+	ProfileImageURL *string  `json:"profile_image_url" db:"profile_image_url"`
+	Password        *string  `json:"-" db:"password"`
+	Status          *int     `json:"status" db:"status"`
+	Roles           []string `json:"roles"`
+	CreatedAt       *string  `json:"created_at" db:"created_at"`
+	UpdatedAt       *string  `json:"updated_at" db:"updated_at"`
+}
