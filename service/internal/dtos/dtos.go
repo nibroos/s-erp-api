@@ -2351,6 +2351,88 @@ type GetIOTypesResult struct {
 	Err     error
 }
 
+type GetWarehousesRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	PerPage        string `json:"per_page" default:"10"`
+	Page           string `json:"page" default:"1"`
+	OrderColumn    string `json:"order_column" default:"id"`
+	OrderDirection string `json:"order_direction" default:"asc"`
+}
+
+type CreateWarehouseRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+	Code        *string `json:"code"`
+}
+
+type UpdateWarehouseRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+	Code        *string `json:"code"`
+}
+
+type GetWarehouseByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetWarehouseParams struct {
+	ID          uint
+	IsDeleted   *int
+	DeletedByID *uint
+}
+
+func NewGetWarehouseParams(id uint) *GetWarehouseParams {
+	defaultIsDeleted := 0
+	return &GetWarehouseParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteWarehouseRequest struct {
+	ID uint `json:"id"`
+}
+
+type WarehouseListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	Code          *string `json:"code" db:"code"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type WarehouseDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	Code          *string `json:"code" db:"code"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type GetWarehousesResult struct {
+	Warehouses []WarehouseListDTO
+	Total      int
+	Err        error
+}
+
 type UpdateAccountSettingRequest struct {
 	ID                   uint    `json:"id"`
 	Username             *string `json:"username"`
