@@ -1,21 +1,19 @@
 package models
 
 import (
-	"time"
-
 	"gorm.io/gorm"
 )
 
 type QuoDtBom struct {
 	gorm.Model
-	ID           uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
-	ProductUuid  *string        `json:"product_uuid" gorm:"column:product_uuid"`
+	ID           uint           `json:"id" gorm:"primaryKey;autoIncrement"`
+	ProductUuid  string         `json:"product_uuid" gorm:"column:product_uuid"`
 	QuotationID  *uint          `json:"quotation_id" gorm:"column:quotation_id"`
 	QuoDtID      uint           `json:"quo_dt_id" gorm:"column:quo_dt_id"`
 	ProductID    uint           `json:"product_id" gorm:"column:product_id"`
 	ItemID       uint           `json:"item_id" gorm:"column:item_id"`
 	ItemUnitID   *uint          `json:"item_unit_id" gorm:"column:item_unit_id"`
-	ItemJSON     string         `json:"item_json" gorm:"column:item_json"`
+	ItemJSON     *string        `json:"item_json" gorm:"column:item_json"`
 	GenCode      *string        `json:"gen_code" gorm:"column:gen_code"`
 	Remark       *string        `json:"remark" gorm:"column:remark"`
 	Qty          float64        `json:"qty" gorm:"column:qty"`
@@ -26,6 +24,5 @@ type QuoDtBom struct {
 	CreatedByID  *uint          `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID  *uint          `json:"updated_by_id" gorm:"column:updated_by_id"`
 	DeletedByID  *uint          `json:"deleted_by_id" gorm:"column:deleted_by_id"`
-	UpdatedAt    time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt    gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }

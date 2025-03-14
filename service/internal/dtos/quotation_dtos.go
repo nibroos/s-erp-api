@@ -53,7 +53,7 @@ type CreateQuoDtsRequest struct {
 	QuoDtsBoms   []CreateQuoDtsBomsRequest `json:"quo_dts_boms"`
 }
 type CreateQuoDtsBomsRequest struct {
-	ProductUuid   *string `json:"product_uuid"`
+	ProductUuid   string  `json:"product_uuid"`
 	ProductID     uint    `json:"product_id"`
 	ProductItemID uint    `json:"product_item_id"`
 	ItemUnitID    *uint   `json:"item_unit_id"`
