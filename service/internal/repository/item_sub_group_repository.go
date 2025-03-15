@@ -85,8 +85,6 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 		"parent_ids": "parent_id",
 	}
 
-	log.Println("filters1", filters)
-
 	for key, value := range arrayFilterKey {
 		log.Println("key", key, "value", value, "filterkey", filters[key])
 		if len(filters[key]) > 0 {

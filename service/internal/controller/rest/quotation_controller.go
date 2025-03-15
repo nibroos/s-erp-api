@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
@@ -92,19 +91,27 @@ func (c *QuotationController) GetQuotationByID(ctx *fiber.Ctx) error {
 	createdQuotationIDs := make([]uint, 0)
 	createdQuotationIDs = append(createdQuotationIDs, quotation.ID)
 
-	// get created quoDts
+	// get quoDts
 	quoDts, err := c.service.GetQuoDtsByQuotationID(ctx, tx, createdQuotationIDs, parentSpan)
 	if err != nil {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
 	}
 
-	tx.Commit()
+	filters := ctx.Locals("filters").(map[string]string)
+	// get quoDtBoms
+	quoDtBoms, err := c.service.GetQuoDtsBomByQuotations(ctx, filters, createdQuotationIDs, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
+	}
+
+	log.Println("abdc", quoDtBoms)
+
+	quoDts = c.service.MapQuoDtBomsToQuoDts(ctx, quoDtBoms, quoDts, parentSpan)
 
 	quotation.QuoDts = quoDts
 
 	quotationArray := []interface{}{quotation}
 
-	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
 	return utils.GetResponse(ctx, quotationArray, paginationMeta, "Master quotation fetched successfully", http.StatusOK, nil, nil)
@@ -185,9 +192,6 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 
 	tx, quoDts, err = c.service.CreateQuoDts(ctx, quoDts, createdQuotation.ID, tx, parentSpan)
 
-	log.Println("QuoDts", quoDts)
-	fmt.Printf("QuoDtsreal: %+v\n", quoDts)
-
 	if err != nil {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Details", http.StatusInternalServerError)
 	}
@@ -195,31 +199,20 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 	createdQuotationIDs := make([]uint, 0)
 	createdQuotationIDs = append(createdQuotationIDs, createdQuotation.ID)
 
-	log.Println("createdQuotationIDs", createdQuotationIDs, "createdQuotation", createdQuotation.ID)
-
-	// get created quoDts
-	createdQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, tx, createdQuotationIDs, parentSpan)
-	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
-	}
-
-	log.Println("createdQuoDts", createdQuoDts)
-
 	// bulk create boms
-	quoDtBoms, err := c.service.MapCreateQuoDtBoms(ctx, req, quoDts, userID, parentSpan)
+	quoDtBoms := c.service.MapCreateQuoDtBoms(ctx, tx, req, quoDts, userID, parentSpan)
 	if err != nil {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
 	}
 
-	// // if quoDtBoms is not empty
+	// if quoDtBoms is not empty
 	if len(quoDtBoms) > 0 {
-		tx, err = c.service.CreateQuoDtBoms(ctx, quoDtBoms, tx, parentSpan)
+		// tx, err = c.service.CreateQuoDtBoms(ctx, quoDtBoms, tx, parentSpan)
+		tx, err = c.service.CreateQuoDtBoms(ctx, quoDtBoms, createdQuotation.ID, tx, parentSpan)
 		if err != nil {
 			utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
 		}
 	}
-
-	// log.Println("Quotation created successfully quodtbom", quoDtBoms)
 
 	tx.Commit()
 
