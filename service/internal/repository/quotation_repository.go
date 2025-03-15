@@ -497,6 +497,7 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 		ig.name as item_group_name,
 		u.name as unit_name,
 		pi.name as item_name,
+		pi.code as item_code,
 
 		cu.name as created_by_name,
 		uu.name as updated_by_name

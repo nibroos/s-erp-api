@@ -318,6 +318,7 @@ type QuotationQuoDtListDTO struct {
 	ItemSubGroupName *string   `json:"item_sub_group_name" db:"item_sub_group_name"`
 	ItemGroupName    *string   `json:"item_group_name" db:"item_group_name"`
 	ItemName         *string   `json:"item_name" db:"item_name"`
+	ItemCode         *string   `json:"item_code" db:"item_code"`
 	UnitName         *string   `json:"unit_name" db:"unit_name"`
 	RefJSON          *string   `json:"ref_json" db:"ref_json"`
 	RefType          *string   `json:"ref_type" db:"ref_type"`

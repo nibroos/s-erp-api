@@ -64,21 +64,6 @@ VALUES
       WHERE
         name = 'order_types'
     ),
-    'Order',
-    'Order',
-    1,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    (
-      SELECT
-        id
-      FROM
-        groups
-      WHERE
-        name = 'order_types'
-    ),
     'Sewa',
     'Sewa',
     1,

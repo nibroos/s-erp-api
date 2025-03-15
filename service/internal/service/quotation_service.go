@@ -371,10 +371,9 @@ func (s *QuotationService) BulkCreateUpdateQuoDtBoms(ctx *fiber.Ctx, quoDts []dt
 	for _, quoDt := range quoDts {
 		for _, quoDtBom := range quoDt.QuoDtsBoms {
 			newQuoDtBom := map[string]interface{}{
-				"product_uuid": quoDtBom.ProductUuid,
-				"quotation_id": quotationID,
-				"quo_dt_id":    quoDt.ID,
-				// QuoDtID:      *quoDt.ID,
+				"product_uuid":  quoDtBom.ProductUuid,
+				"quotation_id":  quotationID,
+				"quo_dt_id":     quoDt.ID,
 				"product_id":    quoDtBom.ProductID,
 				"item_id":       quoDtBom.ItemID,
 				"item_unit_id":  quoDtBom.ItemUnitID,
