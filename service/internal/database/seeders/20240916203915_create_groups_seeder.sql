@@ -381,6 +381,16 @@ VALUES
     '{}',
     1,
     1
+  ),
+  (
+    38,
+    'warehouses',
+    'Warehouses',
+    'Warehouses table for storing user data',
+    1,
+    '{}',
+    1,
+    1
   );
 
 -- vats, pph23s, cap_types, cap_sizes, cap_categories, cap_colors, cap_statuses
