@@ -2,6 +2,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS quo_dts (
   id SERIAL PRIMARY KEY,
+  product_uuid TEXT,
   quotation_id INT REFERENCES quotations(id) ON DELETE RESTRICT,
   item_unit_id INT REFERENCES item_units(id) ON DELETE RESTRICT,
   vat_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
@@ -11,15 +12,22 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   ref_type TEXT,
   item_type TEXT,
   item_json JSONB,
+  gen_code TEXT,
   remark TEXT,
   vat_perc DECIMAL(20, 5),
+  vat_perc_am DECIMAL(20, 5),
   qty_so DECIMAL(20, 5),
   qty DECIMAL(20, 5),
   price_sell DECIMAL(20, 5),
   price_buy DECIMAL(20, 5),
-  subtotal DECIMAL(20, 5),
+  subtotal_sell DECIMAL(20, 5),
+  subtotal_buy DECIMAL(20, 5),
   disc_am DECIMAL(20, 5),
   disc_perc DECIMAL(20, 5),
+  disc_perc_num DECIMAL(20, 5),
+  disc_perc_am DECIMAL(20, 5),
+  disc_final DECIMAL(20, 5),
+  disc_type TEXT,
   total_am DECIMAL(20, 5),
   created_by_id INT,
   updated_by_id INT,
@@ -29,9 +37,11 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   deleted_at timestamp with time zone
 );
 
-COMMENT ON COLUMN quo_dts.ref_type IS 'master';
+COMMENT ON COLUMN quo_dts.ref_type IS 'products';
 
 COMMENT ON COLUMN quo_dts.item_type IS 'item, product';
+
+COMMENT ON COLUMN quo_dts.disc_type IS 'p = %, a = amount';
 
 CREATE INDEX idx_quo_dts_quotation_id ON quo_dts(quotation_id);
 

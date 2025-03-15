@@ -75,6 +75,9 @@ func (r *PaymentTermRepository) GetPaymentTerms(ctx *fiber.Ctx, filters map[stri
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		searchFields := []string{"name", "description", "remark"}
 		searchConditions := make([]string, len(searchFields))

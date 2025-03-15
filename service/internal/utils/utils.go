@@ -743,3 +743,16 @@ func JoinUintsToString(ints []uint, sep string) string {
 	}
 	return strings.Join(strInts, sep)
 }
+
+func SplitStringArrayOfInts(str []string) ([]int, error) {
+	var intIDs []int
+	for _, id := range str {
+		intID, err := strconv.Atoi(id)
+		if err != nil {
+			return nil, err
+		}
+		intIDs = append(intIDs, intID)
+	}
+
+	return intIDs, nil
+}

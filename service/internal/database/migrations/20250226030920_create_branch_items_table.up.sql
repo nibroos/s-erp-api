@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS branch_items (
   remark TEXT,
   tpb_code TEXT,
   minimum_stock DECIMAL(20, 5),
+  qty_stock DECIMAL(20, 5) DEFAULT 0,
   price_sell DECIMAL(20, 5),
   price_buy DECIMAL(20, 5),
   margin DECIMAL(20, 5),

@@ -34,16 +34,10 @@ func (r *CurrencyRepository) GetCurrencies(ctx *fiber.Ctx, filters map[string]st
 	currencies := []dtos.CurrencyListDTO{}
 	var total int
 
-	// Simulate an error for testing Jaeger tracing
-	if filters["simulate_error"] == "true" {
-		utils.LogErrors(childSpan, fmt.Errorf("simulated error"))
-
-		return nil, 0, fmt.Errorf("simulated error")
-	}
-
 	query := `SELECT *
     FROM ( 
         SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				m.options_json->>'symbol' as symbol,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -56,6 +50,7 @@ func (r *CurrencyRepository) GetCurrencies(ctx *fiber.Ctx, filters map[string]st
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				m.options_json->>'symbol' as symbol,
         cu.name as created_by_name,
         uu.name as updated_by_name
 
@@ -81,11 +76,18 @@ func (r *CurrencyRepository) GetCurrencies(ctx *fiber.Ctx, filters map[string]st
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
 		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
 		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
 		i += 3
+	}
+
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
 	}
 
 	countArgs := append([]interface{}{}, args...)
@@ -165,6 +167,7 @@ func (r *CurrencyRepository) GetCurrencyByID(ctx *fiber.Ctx, params *dtos.GetCur
 	var currency dtos.CurrencyDetailDTO
 
 	query := `SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	m.options_json->>'symbol' as symbol,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 

@@ -97,6 +97,9 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR address ILIKE $%d OR phone ILIKE $%d OR email ILIKE $%d OR pic ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5)
 		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR address ILIKE $%d OR phone ILIKE $%d OR email ILIKE $%d OR pic ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5)

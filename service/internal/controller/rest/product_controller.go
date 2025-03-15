@@ -107,12 +107,18 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
+	prodType := "single"
+	if len(req.Boms) > 0 {
+		prodType = "product"
+	}
+
 	product := models.Product{
 		ItemSubGroupID: req.ItemSubGroupID,
 		ItemUnitID:     &req.ItemUnitID,
 		Code:           req.Code,
 		FactoryCode:    req.FactoryCode,
 		Name:           req.Name,
+		ProdType:       &prodType,
 		Sku:            req.Sku,
 		Barcode:        req.Barcode,
 		Specification:  req.Specification,
@@ -292,6 +298,11 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
+	prodType := "single"
+	if len(req.Boms) > 0 {
+		prodType = "product"
+	}
+
 	product := models.Product{
 		ID:             req.ID,
 		ItemSubGroupID: req.ItemSubGroupID,
@@ -300,6 +311,7 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 		FactoryCode:    req.FactoryCode,
 		Name:           req.Name,
 		Sku:            req.Sku,
+		ProdType:       &prodType,
 		Barcode:        req.Barcode,
 		Specification:  req.Specification,
 		Description:    req.Description,

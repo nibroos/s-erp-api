@@ -2,9 +2,7 @@ package repository
 
 import (
 	"fmt"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
@@ -15,51 +13,50 @@ import (
 	"gorm.io/gorm"
 )
 
-type PurchaseTypeRepository struct {
+type RoleRepository struct {
 	db     *gorm.DB
 	sqlDB  *sqlx.DB
 	tracer opentracing.Tracer
 }
 
-func NewPurchaseTypeRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *PurchaseTypeRepository {
-	return &PurchaseTypeRepository{
+func NewRoleRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) *RoleRepository {
+	return &RoleRepository{
 		db:     db,
 		sqlDB:  sqlDB,
 		tracer: tracer,
 	}
 }
 
-func (r *PurchaseTypeRepository) GetPurchaseTypes(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.PurchaseTypeListDTO, int, error) {
-	childSpan := opentracing.StartSpan("PurchaseTypeRepository-GetPurchaseTypes", opentracing.ChildOf(span.Context()))
+func (r *RoleRepository) GetRoles(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RoleListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("RoleRepository-GetRoles", opentracing.ChildOf(span.Context()))
 
-	purchaseTypes := []dtos.PurchaseTypeListDTO{}
+	roles := []dtos.RoleListDTO{}
 	var total int
 
 	query := `SELECT *
     FROM ( 
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
-        uu.name as updated_by_name,
-        m.options_json->>'code' as code
+        uu.name as updated_by_name
 
         FROM mix_values m
-        LEFT JOIN groups g ON m.group_id = g.id
+                LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-        WHERE g.name = 'purchase_types'
+                WHERE g.name = 'roles'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
         cu.name as created_by_name,
-        uu.name as updated_by_name,
-        m.options_json->>'code' as code
+        uu.name as updated_by_name
 
         FROM mix_values m
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-        LEFT JOIN groups g ON m.group_id = g.id
-        WHERE g.name = 'purchase_types'
+                LEFT JOIN groups g ON m.group_id = g.id
+                WHERE g.name = 'roles'
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	var args []interface{}
@@ -67,7 +64,7 @@ func (r *PurchaseTypeRepository) GetPurchaseTypes(ctx *fiber.Ctx, filters map[st
 	i := 1
 	for key, value := range filters {
 		switch key {
-		case "name", "description", "remark", "code":
+		case "name", "description", "remark":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -81,17 +78,10 @@ func (r *PurchaseTypeRepository) GetPurchaseTypes(ctx *fiber.Ctx, filters map[st
 		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
 	}
 	if value, ok := filters["global"]; ok && value != "" {
-		searchFields := []string{"name", "description", "remark", "code"}
-		searchConditions := make([]string, len(searchFields))
-
-		for idx, field := range searchFields {
-			searchConditions[idx] = fmt.Sprintf("%s ILIKE $%d", field, i+idx)
-			args = append(args, "%"+value+"%")
-		}
-
-		query += fmt.Sprintf(" AND (%s)", strings.Join(searchConditions, " OR "))
-		countQuery += fmt.Sprintf(" AND (%s)", strings.Join(searchConditions, " OR "))
-		i += len(searchFields)
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
+		i += 3
 	}
 
 	countArgs := append([]interface{}{}, args...)
@@ -99,10 +89,12 @@ func (r *PurchaseTypeRepository) GetPurchaseTypes(ctx *fiber.Ctx, filters map[st
 	var wg sync.WaitGroup
 	var countErr, selectErr error
 
+	// Goroutine for count query
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		if filters["is_csv"] != "1" {
+			// Create a span for the count query
 			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
 
 			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
@@ -125,17 +117,20 @@ func (r *PurchaseTypeRepository) GetPurchaseTypes(ctx *fiber.Ctx, filters map[st
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
 	currentPage := utils.GetIntOrDefault(filters["page"], 1)
 
+	// if is_csv
 	if filters["is_csv"] != "1" {
 		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
 		args = append(args, perPage, (currentPage-1)*perPage)
 	}
 
+	// Goroutine for select query
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		// Create a span for the select query
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx.Context(), &purchaseTypes, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &roles, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -143,6 +138,7 @@ func (r *PurchaseTypeRepository) GetPurchaseTypes(ctx *fiber.Ctx, filters map[st
 		}
 	}()
 
+	// Wait for both goroutines to finish
 	wg.Wait()
 
 	if countErr != nil || selectErr != nil {
@@ -157,23 +153,22 @@ func (r *PurchaseTypeRepository) GetPurchaseTypes(ctx *fiber.Ctx, filters map[st
 		return nil, 0, selectErr
 	}
 
-	return purchaseTypes, total, nil
+	return roles, total, nil
 }
 
-func (r *PurchaseTypeRepository) GetPurchaseTypeByID(ctx *fiber.Ctx, params *dtos.GetPurchaseTypeParams, span opentracing.Span) (*dtos.PurchaseTypeDetailDTO, error) {
-	childSpan := opentracing.StartSpan("PurchaseTypeRepository-GetPurchaseTypeByID", opentracing.ChildOf(span.Context()))
-	var term dtos.PurchaseTypeDetailDTO
+func (r *RoleRepository) GetRoleByID(ctx *fiber.Ctx, params *dtos.GetRoleParams, span opentracing.Span) (*dtos.RoleDetailDTO, error) {
+	childSpan := opentracing.StartSpan("RoleRepository-GetRoleByID", opentracing.ChildOf(span.Context()))
+	var role dtos.RoleDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
-    cu.name as created_by_name,
-    uu.name as updated_by_name,
-    m.options_json->>'code' as code
+	cu.name as created_by_name,
+	uu.name as updated_by_name
 
-    FROM mix_values m
-    LEFT JOIN users cu ON m.created_by_id = cu.id
-    LEFT JOIN users uu ON m.updated_by_id = uu.id
-    LEFT JOIN groups g ON m.group_id = g.id
-    WHERE g.name = 'purchase_types'`
+	FROM mix_values m
+	LEFT JOIN users cu ON m.created_by_id = cu.id
+	LEFT JOIN users uu ON m.updated_by_id = uu.id
+	LEFT JOIN groups g ON m.group_id = g.id
+	WHERE g.name = 'roles'`
 
 	var args []interface{}
 
@@ -189,21 +184,22 @@ func (r *PurchaseTypeRepository) GetPurchaseTypeByID(ctx *fiber.Ctx, params *dto
 
 	query += isDeletedQuery
 
-	if err := r.sqlDB.Get(&term, query, args...); err != nil {
+	if err := r.sqlDB.Get(&role, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
-	return &term, nil
+	return &role, nil
 }
 
-func (r *PurchaseTypeRepository) BeginTransaction() *gorm.DB {
+// BeginTransaction starts a new transaction
+func (r *RoleRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *PurchaseTypeRepository) CreatePurchaseType(tx *gorm.DB, term *models.MixValue, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseTypeRepository-CreatePurchaseType", opentracing.ChildOf(span.Context()))
-	if err := tx.Create(term).Error; err != nil {
+func (r *RoleRepository) CreateRole(tx *gorm.DB, role *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("RoleRepository-CreateRole", opentracing.ChildOf(span.Context()))
+	if err := tx.Create(role).Error; err != nil {
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
@@ -211,10 +207,10 @@ func (r *PurchaseTypeRepository) CreatePurchaseType(tx *gorm.DB, term *models.Mi
 	return nil
 }
 
-func (r *PurchaseTypeRepository) UpdatePurchaseType(tx *gorm.DB, term *models.MixValue, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseTypeRepository-UpdatePurchaseType", opentracing.ChildOf(span.Context()))
+func (r *RoleRepository) UpdateRole(tx *gorm.DB, role *models.MixValue, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("RoleRepository-UpdateRole", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(term).Error; err != nil {
+	if err := tx.Select("*").Omit("created_at", "created_by_id").Updates(role).Error; err != nil {
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
@@ -222,13 +218,10 @@ func (r *PurchaseTypeRepository) UpdatePurchaseType(tx *gorm.DB, term *models.Mi
 	return nil
 }
 
-func (r *PurchaseTypeRepository) DeletePurchaseType(tx *gorm.DB, params *dtos.GetPurchaseTypeParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseTypeRepository-DeletePurchaseType", opentracing.ChildOf(span.Context()))
+func (r *RoleRepository) DeleteRole(tx *gorm.DB, params *dtos.GetRoleParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("RoleRepository-DeleteRole", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Model(&models.MixValue{}).Where("id = ?", params.ID).Updates(map[string]interface{}{
-		"deleted_at":    time.Now(),
-		"deleted_by_id": params.DeletedByID,
-	}).Error; err != nil {
+	if err := tx.Delete(&models.MixValue{}, params.ID).Error; err != nil {
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
@@ -236,14 +229,11 @@ func (r *PurchaseTypeRepository) DeletePurchaseType(tx *gorm.DB, params *dtos.Ge
 	return nil
 }
 
-func (r *PurchaseTypeRepository) RestorePurchaseType(tx *gorm.DB, params *dtos.GetPurchaseTypeParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseTypeRepository-RestorePurchaseType", opentracing.ChildOf(span.Context()))
+func (s *RoleRepository) RestoreRole(tx *gorm.DB, params *dtos.GetRoleParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("RoleRepository-RestoreRole", opentracing.ChildOf(span.Context()))
 
-	var term models.MixValue
-	if err := tx.Unscoped().Model(&term).Where("id = ?", params.ID).Updates(map[string]interface{}{
-		"deleted_at":    nil,
-		"deleted_by_id": nil,
-	}).Error; err != nil {
+	var role models.MixValue
+	if err := tx.Unscoped().Model(&role).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err

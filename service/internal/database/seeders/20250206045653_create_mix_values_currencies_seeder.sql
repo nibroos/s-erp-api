@@ -7,6 +7,7 @@ INSERT INTO
     description,
     num,
     status,
+    options_json,
     created_at,
     updated_at
   )
@@ -21,7 +22,7 @@ VALUES
         name = 'currencies'
       LIMIT
         1
-    ), 'IDR', 'Indonesian Rupiah', 1, 1, CURRENT_TIMESTAMP,
+    ), 'IDR', 'Indonesian Rupiah', 1, 1, '{"symbol": "Rp"}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -34,7 +35,7 @@ VALUES
         name = 'currencies'
       LIMIT
         1
-    ), 'USD', 'United States Dollar', 16580, 1, CURRENT_TIMESTAMP,
+    ), 'USD', 'United States Dollar', 16580, 1, '{"symbol": "$"}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -47,7 +48,7 @@ VALUES
         name = 'currencies'
       LIMIT
         1
-    ), 'EUR', 'Euro', 17157.4, 1, CURRENT_TIMESTAMP,
+    ), 'EUR', 'Euro', 17157.4, 1, '{"symbol": "€"}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
@@ -60,7 +61,7 @@ VALUES
         name = 'currencies'
       LIMIT
         1
-    ), 'SGD', 'Singapore Dollar', 12262.3, 1, CURRENT_TIMESTAMP,
+    ), 'SGD', 'Singapore Dollar', 12262.3, 1, '{"symbol": "S$"}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   );
 

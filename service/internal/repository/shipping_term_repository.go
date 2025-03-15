@@ -75,6 +75,9 @@ func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[st
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		searchFields := []string{"name", "description", "remark"}
 		searchConditions := make([]string, len(searchFields))

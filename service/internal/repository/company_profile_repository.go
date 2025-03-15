@@ -108,6 +108,9 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx *fiber.Ctx, filters ma
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (company_name ILIKE $%d OR company_description ILIKE $%d OR company_remark ILIKE $%d)", i, i+1, i+2)
 		countQuery += fmt.Sprintf(" AND (company_name ILIKE $%d OR company_description ILIKE $%d OR company_remark ILIKE $%d)", i, i+1, i+2)

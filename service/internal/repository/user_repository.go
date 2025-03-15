@@ -38,17 +38,31 @@ func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, spa
 		FROM (
 			SELECT
 				u.id, u.username, u.name, u.email, u.branch_id, u.address, u.status,
-				b.name as branch_name
+				b.name as branch_name,
+				p.mv2_id as role_id,
+				mv.name as role_name
 			FROM users u
 			LEFT JOIN branches b ON u.branch_id = b.id
+			LEFT JOIN pools p ON u.id = p.mv1_id
+			LEFT JOIN mix_values mv ON p.mv2_id = mv.id
+			LEFT JOIN groups g1 ON p.group1_id = g1.id
+			LEFT JOIN groups g2 ON p.group2_id = g2.id
+			WHERE g1.name = 'users' AND g2.name = 'roles'
 		) AS alias WHERE 1=1`
 
 	countQuery := `SELECT COUNT(*) FROM (
 		SELECT
 			u.id, u.username, u.name, u.email, u.branch_id, u.address, u.status,
-			b.name as branch_name
+			b.name as branch_name,
+			p.mv2_id as role_id,
+			mv.name as role_name
 		FROM users u
 		LEFT JOIN branches b ON u.branch_id = b.id
+		LEFT JOIN pools p ON u.id = p.mv1_id
+		LEFT JOIN mix_values mv ON p.mv2_id = mv.id
+		LEFT JOIN groups g1 ON p.group1_id = g1.id
+		LEFT JOIN groups g2 ON p.group2_id = g2.id
+		WHERE g1.name = 'users' AND g2.name = 'roles'
 	) AS alias WHERE 1=1`
 
 	var args []interface{}
@@ -66,6 +80,20 @@ func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, spa
 		}
 	}
 
+	filterIDsKey := map[string]string{
+		"role_ids": "role_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			query += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+			countQuery += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+		}
+	}
+
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (username ILIKE $%d OR name ILIKE $%d OR email ILIKE $%d)", i, i+1, i+2)
 		countQuery += fmt.Sprintf(" AND (username ILIKE $%d OR name ILIKE $%d OR email ILIKE $%d)", i, i+1, i+2)

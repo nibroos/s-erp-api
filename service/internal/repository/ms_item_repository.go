@@ -163,6 +163,9 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d OR description ILIKE $%d OR branch_item_name ILIKE $%d OR branch_item_specification ILIKE $%d OR branch_item_tpb_code ILIKE $%d OR branch_item_description ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7)
 		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR specification ILIKE $%d OR tpb_code ILIKE $%d OR description ILIKE $%d OR branch_item_name ILIKE $%d OR branch_item_specification ILIKE $%d OR branch_item_tpb_code ILIKE $%d OR branch_item_description ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7)

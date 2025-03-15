@@ -62,6 +62,9 @@ func (r *IdentifierRepository) ListIdentifiers(ctx *fiber.Ctx, filters map[strin
 		i++
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (ref_num ILIKE $%d OR user_name ILIKE $%d OR type_identifier_name ILIKE $%d)", i, i+1, i+2)
 		countQuery += fmt.Sprintf(" AND (ref_num ILIKE $%d OR user_name ILIKE $%d OR type_identifier_name ILIKE $%d)", i, i+1, i+2)

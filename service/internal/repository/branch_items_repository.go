@@ -95,6 +95,9 @@ func (r *BranchItemRepository) GetBranchItems(ctx *fiber.Ctx, filters map[string
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (code ILIKE $%d OR factory_code ILIKE $%d OR name ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8)
 		countQuery += fmt.Sprintf(" AND (code ILIKE $%d OR factory_code ILIKE $%d OR name ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR tpb_code ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8)

@@ -64,6 +64,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		COALESCE(bi.description, m.description) as description,
 		COALESCE(bi.remark, m.remark) as remark,
 		COALESCE(bi.tpb_code, m.tpb_code) as tpb_code,
+		COALESCE(bi.qty_stock, m.qty_stock) as qty_stock,
 		COALESCE(bi.minimum_stock, m.minimum_stock) as minimum_stock,
 		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
 		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
@@ -82,17 +83,61 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		`
 	}
 
+	// "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
+	filterDBColumnKey := []string{
+		"m.name",
+		"m.code",
+		"m.factory_code",
+		"m.sku",
+		"m.barcode",
+		"m.specification",
+		"m.description",
+		"m.remark",
+		"m.tpb_code",
+		"pi.name",
+		"pi.code",
+		"pi.factory_code",
+		"pi.sku",
+		"pi.barcode",
+		"pi.specification",
+		"pi.description",
+		"pi.remark",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
 	query := `SELECT *
     FROM ( 
-        SELECT
+        SELECT DISTINCT ON (m.id)
 					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
 					` + cdSelect + `
 					pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
 
 					m.id as product_id,
+					m.id as ref_id,
+					m.prod_type,
 					u.name as unit_name,
 					isg.name as item_sub_group_name,
 					ig.name as item_group_name,
+					'products' as ref_type,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -108,6 +153,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 				LEFT JOIN branches b ON bi.branch_id = b.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
+				WHERE 1=1` + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -117,9 +163,12 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 					pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
 
 					m.id as product_id,
+					m.id as ref_id,
+					m.prod_type,
 					u.name as unit_name,
 					isg.name as item_sub_group_name,
 					ig.name as item_group_name,
+					'products' as ref_type,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -135,14 +184,12 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 				LEFT JOIN branches b ON bi.branch_id = b.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
+				WHERE 1=1` + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
-	var args []interface{}
-
-	i := 1
 	for key, value := range filters {
 		switch key {
-		case "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
+		case "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "tpb_code", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -150,6 +197,11 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 				i++
 			}
 		}
+	}
+
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		countQuery += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
 	}
 
 	if !isAdmin && branchID != nil {
@@ -167,8 +219,11 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	}
 
 	filterKey := map[string]string{
-		"unit_id": "unit_id",
-		"status":  "status",
+		"unit_id":           "unit_id",
+		"status":            "status",
+		"prod_type":         "prod_type",
+		"item_sub_group_id": "item_sub_group_id",
+		"item_group_id":     "item_group_id",
 	}
 
 	for key, _ := range filterKey {
@@ -180,13 +235,16 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		}
 	}
 
-	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR factory_code ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR item_name ILIKE $%d OR item_code ILIKE $%d OR item_factory_code ILIKE $%d OR item_sku ILIKE $%d OR item_barcode ILIKE $%d OR item_specification ILIKE $%d OR item_description ILIKE $%d OR item_remark ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11, i+12, i+13, i+14, i+15)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR factory_code ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR item_name ILIKE $%d OR item_code ILIKE $%d OR item_factory_code ILIKE $%d OR item_sku ILIKE $%d OR item_barcode ILIKE $%d OR item_specification ILIKE $%d OR item_description ILIKE $%d OR item_remark ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11, i+12, i+13, i+14, i+15)
-		for j := 0; j < 16; j++ {
-			args = append(args, "%"+value+"%")
+	filterIDsKey := map[string]string{
+		"item_sub_group_ids": "item_sub_group_id",
+		"item_group_ids":     "item_group_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			query += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+			countQuery += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
 		}
-		i += 16
 	}
 
 	countArgs := append([]interface{}{}, args...)
@@ -215,9 +273,22 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
-	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "updated_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	// another order col & dir
+	orderColumns := map[string]string{
+		"updated_at": "desc",
+		"created_at": "desc",
+		"name":       "asc",
+	}
+
+	for key, value := range orderColumns {
+		if filters[key] != "" {
+			query += fmt.Sprintf(", %s %s", key, value)
+		}
+	}
 
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
 	currentPage := utils.GetIntOrDefault(filters["page"], 1)
@@ -284,6 +355,7 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
 		COALESCE(bi.remark, m.remark) as remark,
 		COALESCE(bi.tpb_code, m.tpb_code) as tpb_code,
 		COALESCE(bi.minimum_stock, m.minimum_stock) as minimum_stock,
+		COALESCE(bi.qty_stock, iu.qty_stock) as qty_stock,
 		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
 		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
 		COALESCE(bi.margin, iu.margin) as margin,
@@ -308,6 +380,7 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
 					` + cdSelect + `
 
 					m.id as product_id,
+					m.prod_type,
 					u.name as unit_name,
 					b.name as branch_name,
 					isg.name as item_sub_group_name,
@@ -326,28 +399,6 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
     ) AS alias WHERE 1=1`
-
-	// query := ` SELECT *
-	// FROM (
-
-	// 	SELECT DISTINCT ON (m.id)
-	// 		m.id, m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, iu.price_sell, iu.price_buy, iu.margin, m.expired_at, m.status, m.created_at, m.updated_at, m.deleted_at,
-
-	// 		m.id as product_id,
-	// 		m.name as product_name,
-	// 		u.name as unit_name,
-
-	// 		cu.name as created_by_name,
-	// 		uu.name as updated_by_name
-
-	// 	FROM products m
-	// 	LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
-	// 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	// 	LEFT JOIN item_units iu ON iu.id = m.item_unit_id
-	// 	LEFT JOIN mix_values u ON iu.unit_id = u.id
-	// 	LEFT JOIN users cu ON m.created_by_id = cu.id
-	// 	LEFT JOIN users uu ON m.updated_by_id = uu.id
-	// ) AS alias WHERE 1=1`
 
 	var args []interface{}
 
@@ -576,14 +627,13 @@ func (r *ProductRepository) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[stri
 	if branchID != nil && !isAdmin {
 
 		cdSelect = `
-		COALESCE(bi.name, m.name) as name,
-		COALESCE(bi.name, m.name) as name,
-		COALESCE(bi.factory_code, m.factory_code) as factory_code,
-		COALESCE(bi.sku, m.sku) as sku,
-		COALESCE(bi.barcode, m.barcode) as barcode,
-		COALESCE(bi.specification, m.specification) as specification,
-		COALESCE(bi.description, m.description) as description,
-		COALESCE(bi.tpb_code, m.tpb_code) as tpb_code,
+		COALESCE(bi.name, p.name) as name,
+		COALESCE(bi.factory_code, p.factory_code) as factory_code,
+		COALESCE(bi.sku, p.sku) as sku,
+		COALESCE(bi.barcode, p.barcode) as barcode,
+		COALESCE(bi.specification, p.specification) as specification,
+		COALESCE(bi.description, p.description) as description,
+		COALESCE(bi.tpb_code, p.tpb_code) as tpb_code,
 
 		bi.id as branch_item_id,
 		`
@@ -599,8 +649,6 @@ func (r *ProductRepository) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[stri
 			b.id, b.product_id, b.product_item_id, b.item_unit_id, b.qty, b.remark as remark, b.created_at, b.updated_at, b.deleted_at,
 			b.id as bom_id,
 
-			-- products "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark":
-			-- p.name as name, p.code as code, p.factory_code as factory_code, p.sku as sku, p.barcode as barcode, p.specification as specification, p.description as description, p.tpb_code as tpb_code,
 			` + cdSelect + `
 			p.code, 
 			pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
@@ -676,6 +724,9 @@ func (r *ProductRepository) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[stri
 		}
 	}
 
+	if filters["ids"] != "" {
+		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
 	if value, ok := filters["global"]; ok && value != "" {
 		query += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d OR factory_code ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR specification ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d OR item_name ILIKE $%d OR item_code ILIKE $%d OR item_factory_code ILIKE $%d OR item_sku ILIKE $%d OR item_barcode ILIKE $%d OR item_specification ILIKE $%d OR item_description ILIKE $%d OR item_remark ILIKE $%d)", i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9, i+10, i+11, i+12, i+13, i+14, i+15)
 		for j := 0; j < 16; j++ {

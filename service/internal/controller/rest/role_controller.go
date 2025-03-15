@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,19 +15,19 @@ import (
 	// "github.com/opentracing/opentracing-go/ext"
 )
 
-type CurrencyController struct {
-	service *service.CurrencyService
-	repo    *repository.CurrencyRepository
+type RoleController struct {
+	service *service.RoleService
+	repo    *repository.RoleRepository
 	tracer  opentracing.Tracer
 }
 
-func NewCurrencyController(service *service.CurrencyService, repo *repository.CurrencyRepository, tracer opentracing.Tracer) *CurrencyController {
-	return &CurrencyController{service: service, repo: repo, tracer: tracer}
+func NewRoleController(service *service.RoleService, repo *repository.RoleRepository, tracer opentracing.Tracer) *RoleController {
+	return &RoleController{service: service, repo: repo, tracer: tracer}
 }
 
-func (c *CurrencyController) GetCurrencies(ctx *fiber.Ctx) error {
+func (c *RoleController) GetRoles(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CurrencyController-GetCurrencies", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("RoleController-GetRoles", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -40,11 +39,11 @@ func (c *CurrencyController) GetCurrencies(ctx *fiber.Ctx) error {
 	filters, ok := ctx.Locals("filters").(map[string]string)
 
 	if !ok {
-		apiSpan.LogKV("response_body", string("CurrencyController-GetCurrencies: Invalid filters"))
+		apiSpan.LogKV("response_body", string("RoleController-GetRoles: Invalid filters"))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	currencies, total, err := c.service.GetCurrencies(ctx, filters, parentSpan)
+	roles, total, err := c.service.GetRoles(ctx, filters, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
@@ -53,12 +52,12 @@ func (c *CurrencyController) GetCurrencies(ctx *fiber.Ctx) error {
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
-	return utils.GetResponse(ctx, currencies, paginationMeta, "Currency fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, roles, paginationMeta, "Role fetched successfully", http.StatusOK, nil, nil)
 }
 
-func (c *CurrencyController) CreateCurrency(ctx *fiber.Ctx) error {
+func (c *RoleController) CreateRole(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CurrencyController-CreateCurrency", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("RoleController-CreateRole", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -67,7 +66,7 @@ func (c *CurrencyController) CreateCurrency(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.CreateCurrencyRequest
+	var req dtos.CreateRoleRequest
 
 	// Use the utility function to parse the request body
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
@@ -75,7 +74,7 @@ func (c *CurrencyController) CreateCurrency(ctx *fiber.Ctx) error {
 	}
 
 	// Validate the request
-	reqValidator, isValid := form_requests.NewCurrencyStoreRequest().Validate(&req, ctx)
+	reqValidator, isValid := form_requests.NewRoleStoreRequest().Validate(&req, ctx)
 	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
@@ -89,55 +88,45 @@ func (c *CurrencyController) CreateCurrency(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	optionsJSON := map[string]interface{}{
-		"symbol": req.Symbol,
-	}
-
-	optionsJSONStr, err := json.Marshal(optionsJSON)
-	if err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Failed to create IO type", http.StatusInternalServerError, err.Error(), nil)
-	}
-
-	currency := models.MixValue{
+	role := models.MixValue{
 		Name:        req.Name,
-		GroupID:     utils.CurrencyID,
-		Num:         req.Num,
+		GroupID:     utils.RoleID,
 		Description: req.Description,
 		Remark:      req.Remark,
 		OrderItem:   nil,
 		Status:      req.Status,
 		CreatedByID: &userID,
-		OptionsJSON: string(optionsJSONStr),
+		OptionsJSON: "{}",
 	}
 
 	tx := c.repo.BeginTransaction()
-	createdCurrency, err := c.service.CreateCurrency(ctx, &currency, tx, parentSpan)
+	createdRole, err := c.service.CreateRole(ctx, &role, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create currencies", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create item groups", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	params := &dtos.GetCurrencyParams{ID: createdCurrency.ID}
-	getCurrency, err := c.service.GetCurrencyByID(ctx, params, parentSpan)
+	params := &dtos.GetRoleParams{ID: createdRole.ID}
+	getRole, err := c.service.GetRoleByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getCurrency}, paginationMeta, "Currency created successfully", http.StatusCreated, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getRole}, paginationMeta, "Role created successfully", http.StatusCreated, nil, nil)
 }
-func (c *CurrencyController) GetCurrencyByID(ctx *fiber.Ctx) error {
+func (c *RoleController) GetRoleByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CurrencyController-GetCurrencyByID", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("RoleController-GetRoleByID", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -146,36 +135,36 @@ func (c *CurrencyController) GetCurrencyByID(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.GetCurrencyByIDRequest
+	var req dtos.GetRoleByIDRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	params := &dtos.GetCurrencyParams{ID: req.ID}
-	currency, err := c.service.GetCurrencyByID(ctx, params, parentSpan)
+	params := &dtos.GetRoleParams{ID: req.ID}
+	role, err := c.service.GetRoleByID(ctx, params, parentSpan)
 	if err != nil {
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	currencyArray := []interface{}{currency}
+	roleArray := []interface{}{role}
 
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, currencyArray, paginationMeta, "Currency fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, roleArray, paginationMeta, "Role fetched successfully", http.StatusOK, nil, nil)
 }
 
-// update currency
-func (c *CurrencyController) UpdateCurrency(ctx *fiber.Ctx) error {
+// update role
+func (c *RoleController) UpdateRole(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CurrencyController-UpdateCurrency", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("RoleController-UpdateRole", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -184,14 +173,14 @@ func (c *CurrencyController) UpdateCurrency(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.UpdateCurrencyRequest
+	var req dtos.UpdateRoleRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
 	}
 
 	// Validate the request
-	reqValidator, isValid := form_requests.NewCurrencyUpdateRequest().Validate(&req, ctx)
+	reqValidator, isValid := form_requests.NewRoleUpdateRequest().Validate(&req, ctx)
 	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
@@ -204,11 +193,10 @@ func (c *CurrencyController) UpdateCurrency(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	currency := models.MixValue{
+	role := models.MixValue{
 		ID:          req.ID,
-		GroupID:     utils.CurrencyID,
+		GroupID:     utils.RoleID,
 		Name:        req.Name,
-		Num:         req.Num,
 		Description: req.Description,
 		Remark:      req.Remark,
 		Status:      req.Status,
@@ -218,36 +206,36 @@ func (c *CurrencyController) UpdateCurrency(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	updatedCurrency, err := c.service.UpdateCurrency(ctx, &currency, tx, parentSpan)
+	updatedRole, err := c.service.UpdateRole(ctx, &role, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		if err.Error() == "currency name already exists" {
-			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Currency already exists", "status": http.StatusConflict})
+		if err.Error() == "role name already exists" {
+			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Role already exists", "status": http.StatusConflict})
 		}
-		return utils.GetResponse(ctx, nil, nil, "Failed to update Currency", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Role", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	params := &dtos.GetCurrencyParams{ID: updatedCurrency.ID}
-	getCurrency, err := c.service.GetCurrencyByID(ctx, params, parentSpan)
+	params := &dtos.GetRoleParams{ID: updatedRole.ID}
+	getRole, err := c.service.GetRoleByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getCurrency}, paginationMeta, "Currency updated successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getRole}, paginationMeta, "Role updated successfully", http.StatusOK, nil, nil)
 }
 
-// delete currency
-func (c *CurrencyController) DeleteCurrency(ctx *fiber.Ctx) error {
+// delete role
+func (c *RoleController) DeleteRole(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CurrencyController-DeleteCurrency", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("RoleController-DeleteRole", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -256,42 +244,42 @@ func (c *CurrencyController) DeleteCurrency(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.DeleteCurrencyRequest
+	var req dtos.DeleteRoleRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	params := &dtos.GetCurrencyParams{ID: req.ID}
-	// GET currency by ID
-	_, err := c.service.GetCurrencyByID(ctx, params, parentSpan)
+	params := &dtos.GetRoleParams{ID: req.ID}
+	// GET role by ID
+	_, err := c.service.GetRoleByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	// Transaction handling
 	tx := c.repo.BeginTransaction()
-	err = c.service.DeleteCurrency(ctx, params, tx, parentSpan)
+	err = c.service.DeleteRole(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete Currency", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Role", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Currency deleted successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Role deleted successfully", http.StatusOK, nil, nil)
 }
 
-// restore currency
-func (c *CurrencyController) RestoreCurrency(ctx *fiber.Ctx) error {
+// restore role
+func (c *RoleController) RestoreRole(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CurrencyController-RestoreCurrency", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("RoleController-RestoreRole", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -300,43 +288,43 @@ func (c *CurrencyController) RestoreCurrency(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.DeleteCurrencyRequest
+	var req dtos.DeleteRoleRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
 
 	isDeleted := 1
-	params := &dtos.GetCurrencyParams{ID: req.ID, IsDeleted: &isDeleted}
-	// GET currency by ID
-	_, err := c.service.GetCurrencyByID(ctx, params, parentSpan)
+	params := &dtos.GetRoleParams{ID: req.ID, IsDeleted: &isDeleted}
+	// GET role by ID
+	_, err := c.service.GetRoleByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Currency not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Role not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	err = c.service.RestoreCurrency(ctx, params, tx, parentSpan)
+	err = c.service.RestoreRole(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to restore Currency", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to restore Role", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "Currency restored successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Role restored successfully", http.StatusOK, nil, nil)
 }
 
-func (c *CurrencyController) ExcelGetCurrencies(ctx *fiber.Ctx) error {
+func (c *RoleController) ExcelGetRoles(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CurrencyController-ExcelGetCurrencies", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("RoleController-ExcelGetRoles", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -350,18 +338,18 @@ func (c *CurrencyController) ExcelGetCurrencies(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	currencies, err := c.service.ExcelGetCurrencies(ctx, filters, parentSpan)
+	roles, err := c.service.ExcelGetRoles(ctx, filters, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	return ctx.Send(currencies)
+	return ctx.Send(roles)
 }
 
-func (c *CurrencyController) CsvGetCurrencies(ctx *fiber.Ctx) error {
+func (c *RoleController) CsvGetRoles(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetCurrencies", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetRoles", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -375,11 +363,11 @@ func (c *CurrencyController) CsvGetCurrencies(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
-	currencies, err := c.service.CsvGetCurrencies(ctx, filters, parentSpan)
+	roles, err := c.service.CsvGetRoles(ctx, filters, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	return ctx.Send(currencies)
+	return ctx.Send(roles)
 }
