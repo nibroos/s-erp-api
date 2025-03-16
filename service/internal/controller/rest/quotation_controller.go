@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -92,7 +91,7 @@ func (c *QuotationController) GetQuotationByID(ctx *fiber.Ctx) error {
 	createdQuotationIDs = append(createdQuotationIDs, quotation.ID)
 
 	// get quoDts
-	quoDts, err := c.service.GetQuoDtsByQuotationID(ctx, tx, createdQuotationIDs, parentSpan)
+	quoDts, err := c.service.GetQuoDtsByQuotationIDs(ctx, tx, createdQuotationIDs, parentSpan)
 	if err != nil {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
 	}
@@ -104,9 +103,7 @@ func (c *QuotationController) GetQuotationByID(ctx *fiber.Ctx) error {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
 	}
 
-	log.Println("abdc", quoDtBoms)
-
-	quoDts = c.service.MapQuoDtBomsToQuoDts(ctx, quoDtBoms, quoDts, parentSpan)
+	quoDts = c.service.MapFilterQuoDtBomsToQuoDts(ctx, quoDtBoms, quoDts, parentSpan)
 
 	quotation.QuoDts = quoDts
 
@@ -260,7 +257,7 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	branchID := claims["bid"].(*uint)
+	// branchID := claims["bid"].(*uint)
 
 	quotation := models.Quotation{
 		ID:            req.ID,
@@ -286,8 +283,8 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 		GrandTotal:    req.GrandTotal,
 		DueAt:         req.DueAt,
 		ExpiredAt:     req.ExpiredAt,
-		BranchID:      branchID,
-		UpdatedByID:   &userID,
+		// BranchID:      branchID,
+		UpdatedByID: &userID,
 	}
 
 	tx := c.repo.BeginTransaction()
@@ -300,41 +297,8 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update Master quotation", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	refJSON := "{}"
-
 	// Bulk/Create Update Batch QuoDts
-	quoDts := make([]models.QuoDt, 0)
-	for _, quoDt := range req.QuoDts {
-		quoDt := models.QuoDt{
-			ID:           *quoDt.ID,
-			QuotationID:  &updatedQuotation.ID,
-			RefID:        quoDt.RefID,
-			ItemID:       quoDt.ItemID,
-			ItemUnitID:   quoDt.ItemUnitID,
-			VatID:        quoDt.VatID,
-			RefType:      quoDt.RefType,
-			ItemType:     quoDt.ItemType,
-			RefJSON:      &refJSON,
-			Remark:       quoDt.Remark,
-			VatPerc:      quoDt.VatPerc,
-			VatPercAm:    quoDt.VatPercAm,
-			QtySO:        quoDt.QtySO,
-			Qty:          quoDt.Qty,
-			PriceSell:    quoDt.PriceSell,
-			PriceBuy:     quoDt.PriceBuy,
-			SubtotalSell: quoDt.SubtotalSell,
-			SubtotalBuy:  quoDt.SubtotalBuy,
-			DiscAm:       quoDt.DiscAm,
-			DiscPerc:     quoDt.DiscPerc,
-			DiscPercNum:  quoDt.DiscPercNum,
-			DiscPercAm:   quoDt.DiscPercAm,
-			DiscFinal:    quoDt.DiscFinal,
-			DiscType:     quoDt.DiscType,
-			TotalAm:      quoDt.TotalAm,
-			UpdatedByID:  &userID,
-		}
-		quoDts = append(quoDts, quoDt)
-	}
+	quoDts, err := c.service.MapCreateUpdateQuoDts(ctx, req, updatedQuotation, userID, parentSpan)
 
 	tx, err = c.service.BulkCreateUpdateQuoDts(ctx, quoDts, updatedQuotation.ID, tx, parentSpan)
 	if err != nil {
@@ -345,13 +309,13 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	updatedQuotationIDs = append(updatedQuotationIDs, updatedQuotation.ID)
 
 	// get updated quoDts
-	updatedQuoDts, err := c.service.GetQuoDtsByQuotationID(ctx, tx, updatedQuotationIDs, parentSpan)
+	updatedQuoDts, err := c.service.GetUpdatedQuoDtsByQuotationIDs(ctx, tx, updatedQuotationIDs, parentSpan)
 	if err != nil {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master quotation", http.StatusInternalServerError)
 	}
 
 	// Bulk/Create Update Batch QuoDtBoms
-	err = c.service.BulkCreateUpdateQuoDtBoms(ctx, updatedQuoDts, updatedQuotation.ID, tx, parentSpan)
+	err = c.service.BulkCreateUpdateQuoDtBoms(ctx, updatedQuoDts, req, updatedQuotation.ID, tx, parentSpan)
 	if err != nil {
 		return utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update Master quotation", http.StatusInternalServerError)
 	}
