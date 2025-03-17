@@ -405,32 +405,33 @@ type QuotationQuoDtListUpdateDTO struct {
 }
 
 type QuotationQuoDtBomListDTO struct {
-	ID               *uint   `json:"id" db:"id"`
-	QuoDtBomID       *uint   `json:"quo_dt_bom_id" db:"quo_dt_bom_id"`
-	QuotationID      *uint   `json:"quotation_id" db:"quotation_id"`
-	QuoDtID          *uint   `json:"quo_dt_id" db:"quo_dt_id"`
-	ProductID        uint    `json:"product_id" db:"product_id"`
-	ProductUuid      string  `json:"product_uuid" db:"product_uuid"`
-	ItemID           uint    `json:"item_id" db:"item_id"`
-	ItemSubGroupID   *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
-	ItemGroupID      *uint   `json:"item_group_id" db:"item_group_id"`
-	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
-	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
-	ItemName         *string `json:"item_name" db:"item_name"`
-	ItemCode         *string `json:"item_code" db:"item_code"`
-	ItemBarcode      *string `json:"item_barcode" db:"item_barcode"`
-	ItemSku          *string `json:"item_sku" db:"item_sku"`
-	ItemFactoryCode  *string `json:"item_factory_code" db:"item_factory_code"`
-	UnitName         *string `json:"unit_name" db:"unit_name"`
-	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
-	RefJSON          *string `json:"ref_json" db:"ref_json"`
-	GenCode          *string `json:"gen_code" db:"gen_code"`
-	Remark           *string `json:"remark" db:"remark"`
-	Qty              float64 `json:"qty" db:"qty"`
-	PriceSell        float64 `json:"price_sell" db:"price_sell"`
-	PriceBuy         float64 `json:"price_buy" db:"price_buy"`
-	SubtotalSell     float64 `json:"subtotal_sell" db:"subtotal_sell"`
-	SubtotalBuy      float64 `json:"subtotal_buy" db:"subtotal_buy"`
+	ID                *uint   `json:"id" db:"id"`
+	QuoDtBomID        *uint   `json:"quo_dt_bom_id" db:"quo_dt_bom_id"`
+	QuotationID       *uint   `json:"quotation_id" db:"quotation_id"`
+	QuoDtID           *uint   `json:"quo_dt_id" db:"quo_dt_id"`
+	ProductID         uint    `json:"product_id" db:"product_id"`
+	ProductUuid       string  `json:"product_uuid" db:"product_uuid"`
+	ItemID            uint    `json:"item_id" db:"item_id"`
+	ItemSubGroupID    *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID       *uint   `json:"item_group_id" db:"item_group_id"`
+	ItemSubGroupName  *string `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName     *string `json:"item_group_name" db:"item_group_name"`
+	ItemName          *string `json:"item_name" db:"item_name"`
+	ItemCode          *string `json:"item_code" db:"item_code"`
+	ItemBarcode       *string `json:"item_barcode" db:"item_barcode"`
+	ItemSku           *string `json:"item_sku" db:"item_sku"`
+	ItemFactoryCode   *string `json:"item_factory_code" db:"item_factory_code"`
+	ItemSpecification *string `json:"item_specification" db:"item_specification"`
+	UnitName          *string `json:"unit_name" db:"unit_name"`
+	ItemUnitID        *uint   `json:"item_unit_id" db:"item_unit_id"`
+	RefJSON           *string `json:"ref_json" db:"ref_json"`
+	GenCode           *string `json:"gen_code" db:"gen_code"`
+	Remark            *string `json:"remark" db:"remark"`
+	Qty               float64 `json:"qty" db:"qty"`
+	PriceSell         float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy          float64 `json:"price_buy" db:"price_buy"`
+	SubtotalSell      float64 `json:"subtotal_sell" db:"subtotal_sell"`
+	SubtotalBuy       float64 `json:"subtotal_buy" db:"subtotal_buy"`
 
 	CreatedByID   *uint     `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID   *uint     `json:"updated_by_id" db:"updated_by_id"`

@@ -124,6 +124,40 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		queryGlobal += ")"
 	}
 
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"unit_id":           "iu.unit_id",
+		"status":            "m.status",
+		"prod_type":         "m.prod_type",
+		"item_sub_group_id": "m.item_sub_group_id",
+		"item_group_id":     "isg.item_group_id",
+	}
+
+	for key, _ := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", value, i)
+			// countQuery += fmt.Sprintf(" AND %s = $%d", value, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"item_sub_group_ids": "m.item_sub_group_id",
+		"item_group_ids":     "isg.item_group_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+		}
+	}
+
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
@@ -153,7 +187,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 				LEFT JOIN branches b ON bi.branch_id = b.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE 1=1` + queryGlobal + `
+				WHERE 1=1` + queryGlobal + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -184,7 +218,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 				LEFT JOIN branches b ON bi.branch_id = b.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE 1=1` + queryGlobal + `
+				WHERE 1=1` + queryGlobal + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	for key, value := range filters {
@@ -199,11 +233,6 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		}
 	}
 
-	if filters["ids"] != "" {
-		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
-		countQuery += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
-	}
-
 	if !isAdmin && branchID != nil {
 		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
 		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
@@ -216,35 +245,6 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
 		args = append(args, filters["branch_id"])
 		i++
-	}
-
-	filterKey := map[string]string{
-		"unit_id":           "unit_id",
-		"status":            "status",
-		"prod_type":         "prod_type",
-		"item_sub_group_id": "item_sub_group_id",
-		"item_group_id":     "item_group_id",
-	}
-
-	for key, _ := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			query += fmt.Sprintf(" AND %s = $%d", value, i)
-			countQuery += fmt.Sprintf(" AND %s = $%d", value, i)
-			args = append(args, value)
-			i++
-		}
-	}
-
-	filterIDsKey := map[string]string{
-		"item_sub_group_ids": "item_sub_group_id",
-		"item_group_ids":     "item_group_id",
-	}
-
-	for key, valueID := range filterIDsKey {
-		if value, ok := filters[key]; ok && value != "" {
-			query += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
-			countQuery += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
-		}
 	}
 
 	countArgs := append([]interface{}{}, args...)
