@@ -109,6 +109,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	quotations := version.Group("/quotations")
 	SetupQuotationRoutes(quotations, gormDB, sqlDB, utilRepo, tracer)
 
+	salesOrders := version.Group("/sales-orders")
+	SetupSalesOrderRoutes(salesOrders, gormDB, sqlDB, utilRepo, tracer)
+
 	shippingTerms := version.Group("/shipping-terms")
 	SetupShippingTermRoutes(shippingTerms, gormDB, sqlDB, utilRepo, tracer)
 
