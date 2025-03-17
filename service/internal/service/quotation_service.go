@@ -331,11 +331,12 @@ func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, req d
 					genCode := "-"
 					itemJson := "{}"
 					quoDtBomsModel = append(quoDtBomsModel, map[string]interface{}{
+						"id":            0,
 						"quotation_id":  createdQuoDt.QuotationID,
 						"product_uuid":  reqQuoDtBom.ProductUuid,
 						"quo_dt_id":     createdQuoDt.ID,
 						"product_id":    reqQuoDtBom.ProductID,
-						"item_id":       reqQuoDtBom.ProductItemID,
+						"item_id":       reqQuoDtBom.ItemID,
 						"item_unit_id":  reqQuoDtBom.ItemUnitID,
 						"remark":        reqQuoDtBom.Remark,
 						"qty":           reqQuoDtBom.Qty,

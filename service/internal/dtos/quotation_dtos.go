@@ -53,18 +53,18 @@ type CreateQuoDtsRequest struct {
 	QuoDtsBoms   []CreateQuoDtsBomsRequest `json:"quo_dts_boms"`
 }
 type CreateQuoDtsBomsRequest struct {
-	ProductUuid   string  `json:"product_uuid"`
-	ProductID     uint    `json:"product_id"`
-	ProductItemID uint    `json:"product_item_id"`
-	ItemUnitID    *uint   `json:"item_unit_id"`
-	RefType       *string `json:"ref_type"`
-	GenCode       *string `json:"gen_code"`
-	Remark        *string `json:"remark"`
-	Qty           float64 `json:"qty"`
-	PriceSell     float64 `json:"price_sell"`
-	PriceBuy      float64 `json:"price_buy"`
-	SubtotalSell  float64 `json:"subtotal_sell"`
-	SubtotalBuy   float64 `json:"subtotal_buy"`
+	ProductUuid  string  `json:"product_uuid"`
+	ProductID    uint    `json:"product_id"`
+	ItemID       uint    `json:"item_id"`
+	ItemUnitID   *uint   `json:"item_unit_id"`
+	RefType      *string `json:"ref_type"`
+	GenCode      *string `json:"gen_code"`
+	Remark       *string `json:"remark"`
+	Qty          float64 `json:"qty"`
+	PriceSell    float64 `json:"price_sell"`
+	PriceBuy     float64 `json:"price_buy"`
+	SubtotalSell float64 `json:"subtotal_sell"`
+	SubtotalBuy  float64 `json:"subtotal_buy"`
 }
 
 type CreateQuotationRequest struct {
@@ -256,6 +256,8 @@ type QuotationListDTO struct {
 	ItemID          *string `json:"item_id" db:"item_id"`
 	QuoDtVatID      *string `json:"quo_dt_vat_id" db:"quo_dt_vat_id"`
 	CurrencyName    *string `json:"currency_name" db:"currency_name"`
+	OrderTypeName   *string `json:"order_type_name" db:"order_type_name"`
+	CustomerName    *string `json:"customer_name" db:"customer_name"`
 	ProductName     *string `json:"product_name" db:"product_name"`
 	ItemName        *string `json:"item_name" db:"item_name"`
 	VatName         *string `json:"vat_name" db:"vat_name"`
@@ -416,6 +418,9 @@ type QuotationQuoDtBomListDTO struct {
 	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
 	ItemName         *string `json:"item_name" db:"item_name"`
 	ItemCode         *string `json:"item_code" db:"item_code"`
+	ItemBarcode      *string `json:"item_barcode" db:"item_barcode"`
+	ItemSku          *string `json:"item_sku" db:"item_sku"`
+	ItemFactoryCode  *string `json:"item_factory_code" db:"item_factory_code"`
 	UnitName         *string `json:"unit_name" db:"unit_name"`
 	ItemUnitID       *uint   `json:"item_unit_id" db:"item_unit_id"`
 	RefJSON          *string `json:"ref_json" db:"ref_json"`

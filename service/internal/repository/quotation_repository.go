@@ -162,6 +162,9 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 					vat.name as vat_name,
 					pph.name as pph23_name,
 
+					ot.name as order_type_name,
+					c.name as customer_name,
+
 					qd.remark as quo_dt_remark,
 					qd.gen_code as quo_dt_gen_code,
 					qdb.remark as quo_dt_bom_remark,
@@ -180,6 +183,8 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 				LEFT JOIN mix_values cur ON q.currency_id = cur.id
 				LEFT JOIN mix_values vat ON q.vat_id = vat.id
 				LEFT JOIN mix_values pph ON q.pph23_id = pph.id
+				LEFT JOIN mix_values ot ON q.order_type_id = ot.id
+				LEFT JOIN customers c ON q.customer_id = c.id
 
         LEFT JOIN users cu ON q.created_by_id = cu.id
         LEFT JOIN users uu ON q.updated_by_id = uu.id
@@ -861,7 +866,13 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 					qdb.id as quo_dt_bom_id,
 					it.name as item_name,
 					it.code as item_code,
+					it.barcode as item_barcode,
+					it.sku as item_sku,
+					it.factory_code as item_factory_code,
 					u.name as unit_name,
+
+					isg.name as item_sub_group_name,
+					ig.name as item_group_name,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -873,6 +884,8 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN products it ON qdb.item_id = it.id
+				LEFT JOIN mix_values isg ON it.item_sub_group_id = isg.id
+				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 
         LEFT JOIN users cu ON q.created_by_id = cu.id
         LEFT JOIN users uu ON q.updated_by_id = uu.id
