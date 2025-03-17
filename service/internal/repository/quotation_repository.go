@@ -16,6 +16,7 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type QuotationRepository struct {
@@ -380,7 +381,6 @@ func (r *QuotationRepository) CreateQuotation(tx *gorm.DB, quotation *models.Quo
 		return nil, err
 	}
 
-	tx.SavePoint("quotation")
 	return tx, nil
 }
 
@@ -870,6 +870,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 					it.sku as item_sku,
 					it.factory_code as item_factory_code,
 					it.specification as item_specification,
+					it.qty_stock as item_qty_stock,
 					u.name as unit_name,
 
 					isg.name as item_sub_group_name,
@@ -935,4 +936,44 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 	}
 
 	return quoDtBoms, nil
+}
+
+// Lock Quotation Header
+func (r *QuotationRepository) LockQuotationHeader(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdateQuotationRequest, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuotationRepository-LockQuotationHeader", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", []uint{req.ID}).Find(&models.Quotation{}).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return err
+	}
+
+	return nil
+}
+
+func (r *QuotationRepository) LockQuoDts(ctx *fiber.Ctx, tx *gorm.DB, quoDtIDs []*uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuotationRepository-LockQuoDts", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", quoDtIDs).Find(&models.QuoDt{}).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return err
+	}
+
+	return nil
+}
+
+func (r *QuotationRepository) LockQuoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, quoDtBomIDs []*uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("QuotationRepository-LockQuoDtBoms", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", quoDtBomIDs).Find(&models.QuoDtBom{}).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return err
+	}
+
+	return nil
 }

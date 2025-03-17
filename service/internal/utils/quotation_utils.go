@@ -84,3 +84,27 @@ func MapFilterUpdateQuoDtBomsToQuoDts(ctx *fiber.Ctx, quoDts []dtos.QuotationQuo
 
 	return bulkCreateQuoDtBoms, bulkUpdateQuoDtBoms, quoDtBomIDs, nil
 }
+
+func GetQuoIDs(req dtos.UpdateQuotationRequest) ([]*uint, []*uint, []*uint, []*uint) {
+	quoDtIDs := []*uint{}
+	quoDtBomIDs := []*uint{}
+	productIDs := []*uint{}
+	itemUnitIDs := []*uint{}
+
+	for _, reqQuoDt := range req.QuoDts {
+		if reqQuoDt.QuoDtID != nil && *reqQuoDt.QuoDtID > 0 {
+			quoDtIDs = append(quoDtIDs, reqQuoDt.QuoDtID)
+		}
+
+		for _, reqQuoDtBom := range reqQuoDt.QuoDtsBoms {
+			if reqQuoDtBom.QuoDtBomID != nil && *reqQuoDtBom.QuoDtBomID > 0 {
+				quoDtBomIDs = append(quoDtBomIDs, reqQuoDtBom.QuoDtBomID)
+				productIDs = append(productIDs, &reqQuoDtBom.ProductID)
+				productIDs = append(productIDs, reqQuoDtBom.ItemID)
+				itemUnitIDs = append(itemUnitIDs, reqQuoDtBom.ItemUnitID)
+			}
+		}
+	}
+
+	return quoDtIDs, quoDtBomIDs, productIDs, itemUnitIDs
+}

@@ -196,8 +196,6 @@ func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, boms []models.QuoDt, quo
 		return nil, quoDtsModel, err
 	}
 
-	tx.SavePoint("create_quo_dts")
-
 	return tx, quoDtsModel, nil
 }
 
@@ -250,8 +248,6 @@ func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []model
 			return nil, err
 		}
 	}
-
-	tx.SavePoint("bulk_create_update_quo_dts")
 
 	return tx, nil
 }
@@ -500,4 +496,53 @@ func (s *QuotationService) MapCreateUpdateQuoDts(ctx *fiber.Ctx, req dtos.Update
 	}
 
 	return quoDtsModel, nil
+}
+
+// Lock all quotation table update
+func (s *QuotationService) LockQuotationTable(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdateQuotationRequest, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("QuotationService-LockQuotationTable", opentracing.ChildOf(span.Context()))
+
+	if err := s.repo.LockQuotationHeader(ctx, tx, req, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	quoDtIDs, quoDtBomIDs, productIDs, itemUnitIDs := utils.GetQuoIDs(req)
+
+	if len(quoDtIDs) > 0 {
+		if err := s.repo.LockQuoDts(ctx, tx, quoDtIDs, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(quoDtBomIDs) > 0 {
+		if err := s.repo.LockQuoDtBoms(ctx, tx, quoDtBomIDs, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(productIDs) > 0 {
+		var err error
+		if tx, err = s.utilRepo.LockRowTable(ctx, tx, productIDs, "products", childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(itemUnitIDs) > 0 {
+		var err error
+		if tx, err = s.utilRepo.LockRowTable(ctx, tx, itemUnitIDs, "item_units", childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	return tx, nil
 }

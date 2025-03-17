@@ -422,6 +422,7 @@ type QuotationQuoDtBomListDTO struct {
 	ItemSku           *string `json:"item_sku" db:"item_sku"`
 	ItemFactoryCode   *string `json:"item_factory_code" db:"item_factory_code"`
 	ItemSpecification *string `json:"item_specification" db:"item_specification"`
+	ItemQtyStock      *string `json:"item_qty_stock" db:"item_qty_stock"`
 	UnitName          *string `json:"unit_name" db:"unit_name"`
 	ItemUnitID        *uint   `json:"item_unit_id" db:"item_unit_id"`
 	RefJSON           *string `json:"ref_json" db:"ref_json"`

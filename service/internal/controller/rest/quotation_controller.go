@@ -145,6 +145,7 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Unauthorized", http.StatusUnauthorized, err.Error(), nil)
 	}
 	userID := uint(claims["user_id"].(float64))
+	branchID := utils.GetDefaultBranchID(ctx)
 
 	quotation := models.Quotation{
 		CustomerID:    req.CustomerID,
@@ -169,6 +170,7 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 		GrandTotal:    req.GrandTotal,
 		DueAt:         req.DueAt,
 		ExpiredAt:     req.ExpiredAt,
+		BranchID:      &branchID,
 		CreatedByID:   &userID,
 	}
 
@@ -257,7 +259,7 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	// branchID := claims["bid"].(*uint)
+	branchID := utils.GetDefaultBranchID(ctx)
 
 	quotation := models.Quotation{
 		ID:            req.ID,
@@ -283,11 +285,17 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 		GrandTotal:    req.GrandTotal,
 		DueAt:         req.DueAt,
 		ExpiredAt:     req.ExpiredAt,
-		// BranchID:      branchID,
-		UpdatedByID: &userID,
+		BranchID:      &branchID,
+		UpdatedByID:   &userID,
 	}
 
 	tx := c.repo.BeginTransaction()
+
+	// Lock the rows for update
+	tx, err = c.service.LockQuotationTable(ctx, tx, req, parentSpan)
+	if err != nil {
+		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update Master quotation", http.StatusInternalServerError)
+	}
 
 	updatedQuotation, err := c.service.UpdateQuotation(ctx, &quotation, tx, parentSpan)
 
