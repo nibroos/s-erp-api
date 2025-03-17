@@ -113,17 +113,6 @@ func main() {
 		dbURL = config.GetDatabaseURL()
 	}
 
-	// Initialize the SQLx database connection
-	sqlDB, err := sqlx.Connect("postgres", dbURL)
-	if err != nil {
-		log.Fatalf("Failed to connect to the SQL database: %v", err)
-	}
-
-	// Configure SQLx connection pool
-	sqlDB.SetMaxOpenConns(100)          // Maximum number of open connections
-	sqlDB.SetMaxIdleConns(10)           // Maximum number of idle connections
-	sqlDB.SetConnMaxLifetime(time.Hour) // Maximum lifetime of a connection
-
 	// Initialize the Gorm database connection
 	gormDB, err := gorm.Open(postgres.Open(dbURL), &gorm.Config{})
 	if err != nil {
@@ -138,6 +127,21 @@ func main() {
 	sqlDBGorm.SetMaxOpenConns(100)          // Maximum number of open connections
 	sqlDBGorm.SetMaxIdleConns(10)           // Maximum number of idle connections
 	sqlDBGorm.SetConnMaxLifetime(time.Hour) // Maximum lifetime of a connection
+
+	// // Initialize the SQLx database connection
+	// sqlDB, err := sqlx.Connect("postgres", dbURL)
+
+	// Convert *sql.Tx to *sqlx.Tx using sqlx.NewTx
+	sqlDB := sqlx.NewDb(sqlDBGorm, "postgres")
+
+	if err != nil {
+		log.Fatalf("Failed to connect to the SQL database: %v", err)
+	}
+
+	// Configure SQLx connection pool
+	sqlDB.SetMaxOpenConns(100)          // Maximum number of open connections
+	sqlDB.SetMaxIdleConns(10)           // Maximum number of idle connections
+	sqlDB.SetConnMaxLifetime(time.Hour) // Maximum lifetime of a connection
 
 	// Initialize the Redis client
 	// if env == "test" {

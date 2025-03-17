@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
@@ -86,7 +85,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 	}
 
 	for key, value := range arrayFilterKey {
-		log.Println("key", key, "value", value, "filterkey", filters[key])
+		// log.Println("key", key, "value", value, "filterkey", filters[key])
 		if len(filters[key]) > 0 {
 			query += fmt.Sprintf(" AND %s IN (%s)", value, filters[key])
 			countQuery += fmt.Sprintf(" AND %s IN (%s)", value, filters[key])
