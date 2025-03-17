@@ -869,6 +869,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 					it.barcode as item_barcode,
 					it.sku as item_sku,
 					it.factory_code as item_factory_code,
+					it.specification as item_specification,
 					u.name as unit_name,
 
 					isg.name as item_sub_group_name,
