@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   vat_perc DECIMAL(20, 5),
   disc_am DECIMAL(20, 5),
   disc_perc DECIMAL(20, 5),
+  disc_perc_num DECIMAL(20, 5),
   disc_perc_am DECIMAL(20, 5),
   disc_final DECIMAL(20, 5),
   disc_type TEXT,

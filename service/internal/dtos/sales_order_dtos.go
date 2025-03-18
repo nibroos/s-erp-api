@@ -232,7 +232,6 @@ type SalesOrderListDTO struct {
 	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	Remark        *string  `json:"remark" db:"remark"`
 	Status        string   `json:"status" db:"status"`
-	IsApproved    int8     `json:"is_approved" db:"is_approved"`
 	ExchangeRate  *float64 `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
 	Pph23Perc     *float64 `json:"pph23_perc" db:"pph23_perc"`
@@ -243,12 +242,16 @@ type SalesOrderListDTO struct {
 	DiscType      *string  `json:"disc_type" db:"disc_type"`
 	TotalQty      *float64 `json:"total_qty" db:"total_qty"`
 	Subtotal      *float64 `json:"subtotal" db:"subtotal"`
+	QtyOut        *float64 `json:"qty_out" db:"qty_out"`
 	TotalDiscount *float64 `json:"total_discount" db:"total_discount"`
 	TotalPph23    *float64 `json:"total_pph23" db:"total_pph23"`
 	TotalVat      *float64 `json:"total_vat" db:"total_vat"`
 	GrandTotal    *float64 `json:"grand_total" db:"grand_total"`
+	SiTotalAm     *float64 `json:"si_total_am" db:"si_total_am"`
+	SaTotalAm     *float64 `json:"sa_total_am" db:"sa_total_am"`
 	OrderAt       *string  `json:"order_at" db:"order_at"`
 	ShippingAt    *string  `json:"shipping_at" db:"shipping_at"`
+	AgreeAt       *string  `json:"agree_at" db:"agree_at"`
 	DueAt         *string  `json:"due_at" db:"due_at"`
 	ExpiredAt     *string  `json:"expired_at" db:"expired_at"`
 	CreatedByID   *uint    `json:"crweated_by_id" db:"created_by_id"`
@@ -304,6 +307,7 @@ type SalesOrderDetailDTO struct {
 	DiscFinal     *float64 `json:"disc_final" db:"disc_final"`
 	DiscType      *string  `json:"disc_type" db:"disc_type"`
 	TotalQty      float64  `json:"total_qty" db:"total_qty"`
+	QtyOut        *float64 `json:"qty_out" db:"qty_out"`
 	Subtotal      float64  `json:"subtotal" db:"subtotal"`
 	TotalDiscount float64  `json:"total_discount" db:"total_discount"`
 	TotalPph23    float64  `json:"total_pph23" db:"total_pph23"`
@@ -311,6 +315,7 @@ type SalesOrderDetailDTO struct {
 	GrandTotal    float64  `json:"grand_total" db:"grand_total"`
 	OrderAt       *string  `json:"order_at" db:"order_at"`
 	ShippingAt    *string  `json:"shipping_at" db:"shipping_at"`
+	AgreeAt       *string  `json:"agree_at" db:"agree_at"`
 	DueAt         *string  `json:"due_at" db:"due_at"`
 	ExpiredAt     *string  `json:"expired_at" db:"expired_at"`
 
@@ -431,35 +436,35 @@ type SalesOrderSoDtListUpdateDTO struct {
 }
 
 type SalesOrderSoDtBomListDTO struct {
-	ID                *uint   `json:"id" db:"id"`
-	SoDtBomID         *uint   `json:"so_dt_bom_id" db:"so_dt_bom_id"`
-	SalesOrderID      *uint   `json:"sales_order_id" db:"sales_order_id"`
-	SoDtID            *uint   `json:"so_dt_id" db:"so_dt_id"`
-	ProductID         uint    `json:"product_id" db:"product_id"`
-	ProductUuid       string  `json:"product_uuid" db:"product_uuid"`
-	ItemID            uint    `json:"item_id" db:"item_id"`
-	ItemSubGroupID    *uint   `json:"item_sub_group_id" db:"item_sub_group_id"`
-	ItemGroupID       *uint   `json:"item_group_id" db:"item_group_id"`
-	ItemSubGroupName  *string `json:"item_sub_group_name" db:"item_sub_group_name"`
-	ItemGroupName     *string `json:"item_group_name" db:"item_group_name"`
-	ItemName          *string `json:"item_name" db:"item_name"`
-	ItemCode          *string `json:"item_code" db:"item_code"`
-	ItemBarcode       *string `json:"item_barcode" db:"item_barcode"`
-	ItemSku           *string `json:"item_sku" db:"item_sku"`
-	ItemFactoryCode   *string `json:"item_factory_code" db:"item_factory_code"`
-	ItemSpecification *string `json:"item_specification" db:"item_specification"`
-	ItemQtyStock      *string `json:"item_qty_stock" db:"item_qty_stock"`
-	UnitName          *string `json:"unit_name" db:"unit_name"`
-	ItemUnitID        *uint   `json:"item_unit_id" db:"item_unit_id"`
-	RefJSON           *string `json:"ref_json" db:"ref_json"`
-	GenCode           *string `json:"gen_code" db:"gen_code"`
-	Remark            *string `json:"remark" db:"remark"`
-	QtyOut            float64 `json:"qty_out" db:"qty_out"`
-	Qty               float64 `json:"qty" db:"qty"`
-	PriceSell         float64 `json:"price_sell" db:"price_sell"`
-	PriceBuy          float64 `json:"price_buy" db:"price_buy"`
-	SubtotalSell      float64 `json:"subtotal_sell" db:"subtotal_sell"`
-	SubtotalBuy       float64 `json:"subtotal_buy" db:"subtotal_buy"`
+	ID                *uint    `json:"id" db:"id"`
+	SoDtBomID         *uint    `json:"so_dt_bom_id" db:"so_dt_bom_id"`
+	SalesOrderID      *uint    `json:"sales_order_id" db:"sales_order_id"`
+	SoDtID            *uint    `json:"so_dt_id" db:"so_dt_id"`
+	ProductID         uint     `json:"product_id" db:"product_id"`
+	ProductUuid       string   `json:"product_uuid" db:"product_uuid"`
+	ItemID            uint     `json:"item_id" db:"item_id"`
+	ItemSubGroupID    *uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID       *uint    `json:"item_group_id" db:"item_group_id"`
+	ItemSubGroupName  *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName     *string  `json:"item_group_name" db:"item_group_name"`
+	ItemName          *string  `json:"item_name" db:"item_name"`
+	ItemCode          *string  `json:"item_code" db:"item_code"`
+	ItemBarcode       *string  `json:"item_barcode" db:"item_barcode"`
+	ItemSku           *string  `json:"item_sku" db:"item_sku"`
+	ItemFactoryCode   *string  `json:"item_factory_code" db:"item_factory_code"`
+	ItemSpecification *string  `json:"item_specification" db:"item_specification"`
+	ItemQtyStock      *string  `json:"item_qty_stock" db:"item_qty_stock"`
+	UnitName          *string  `json:"unit_name" db:"unit_name"`
+	ItemUnitID        *uint    `json:"item_unit_id" db:"item_unit_id"`
+	RefJSON           *string  `json:"ref_json" db:"ref_json"`
+	GenCode           *string  `json:"gen_code" db:"gen_code"`
+	Remark            *string  `json:"remark" db:"remark"`
+	QtyOut            *float64 `json:"qty_out" db:"qty_out"`
+	Qty               float64  `json:"qty" db:"qty"`
+	PriceSell         float64  `json:"price_sell" db:"price_sell"`
+	PriceBuy          float64  `json:"price_buy" db:"price_buy"`
+	SubtotalSell      float64  `json:"subtotal_sell" db:"subtotal_sell"`
+	SubtotalBuy       float64  `json:"subtotal_buy" db:"subtotal_buy"`
 
 	CreatedByID   *uint     `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID   *uint     `json:"updated_by_id" db:"updated_by_id"`

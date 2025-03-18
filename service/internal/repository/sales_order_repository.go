@@ -523,7 +523,7 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 	soDts := []dtos.SalesOrderSoDtListDTO{}
 
 	query := `SELECT sd.id, sd.sales_order_id, sd.product_uuid,
-		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_so, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.vat_perc, sd.vat_perc_am, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
+		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_out, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.vat_perc, sd.vat_perc_am, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
 		sd.created_at, sd.updated_at, sd.deleted_at,
 
 		sd.id as so_dt_id,
@@ -539,7 +539,7 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 		uu.name as updated_by_name
 
 	FROM so_dts sd
-	LEFT JOIN salesOrders p ON sd.sales_order_id = p.id
+	LEFT JOIN sales_orders p ON sd.sales_order_id = p.id
 	LEFT JOIN products pi ON sd.item_id = pi.id
 	LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
@@ -590,7 +590,7 @@ func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx
 	soDts := []dtos.SalesOrderSoDtListUpdateDTO{}
 
 	query := `SELECT sd.id, sd.sales_order_id, sd.product_uuid,
-		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_so, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.vat_perc, sd.vat_perc_am, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
+		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_out, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.vat_perc, sd.vat_perc_am, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
 		sd.created_at, sd.updated_at, sd.deleted_at,
 
 		sd.id as so_dt_id,
@@ -606,7 +606,7 @@ func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx
 		uu.name as updated_by_name
 
 	FROM so_dts sd
-	LEFT JOIN salesOrders p ON sd.sales_order_id = p.id
+	LEFT JOIN sales_orders p ON sd.sales_order_id = p.id
 	LEFT JOIN products pi ON sd.item_id = pi.id
 	LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
@@ -891,7 +891,7 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 
         FROM so_dt_boms sdb
 				LEFT JOIN so_dts sd ON sd.id = sdb.so_dt_id
-				LEFT JOIN sales_orders q ON so.id = sd.so
+				LEFT JOIN sales_orders so ON so.id = sd.sales_order_id
 				LEFT JOIN products pi ON sd.item_id = pi.id
 				LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
