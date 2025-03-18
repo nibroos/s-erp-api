@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   pph23_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
   branch_id INT REFERENCES branches(id) ON DELETE RESTRICT,
   po_buyer TEXT,
-  order_no TEXT,
+  sales_order_no TEXT,
   remark TEXT,
   ship_dest TEXT,
   status TEXT,

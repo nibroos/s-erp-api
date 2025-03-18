@@ -756,3 +756,19 @@ func SplitStringArrayOfInts(str []string) ([]int, error) {
 
 	return intIDs, nil
 }
+
+func GetDefaultBranchID(ctx *fiber.Ctx) uint {
+	claims := GetClaims(ctx, nil)
+	branchID := claims["bid"]
+
+	if branchID != nil {
+		return uint(branchID.(float64))
+	}
+
+	defaultBranchID := os.Getenv("DEFAULT_BRANCH_ID")
+	if defaultBranchID != "" {
+		branchID, _ = strconv.ParseFloat(defaultBranchID, 64)
+	}
+
+	return uint(branchID.(float64))
+}

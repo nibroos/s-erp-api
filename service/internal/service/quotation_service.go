@@ -39,16 +39,40 @@ func (s *QuotationService) GetQuotations(ctx *fiber.Ctx, filters map[string]stri
 	return quotations, total, nil
 }
 
-func (s *QuotationService) CreateQuotation(ctx *fiber.Ctx, quotation *models.Quotation, tx *gorm.DB, span opentracing.Span) (*models.Quotation, *gorm.DB, error) {
+func (s *QuotationService) CreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Quotation, *gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuotation", opentracing.ChildOf(span.Context()))
 
-	if tx, err := s.repo.CreateQuotation(tx, quotation, childSpan); err != nil {
+	quotation, err := s.MapCreateQuotation(ctx, req, userID, branchID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, tx, err
+	}
+
+	if tx, err := s.repo.CreateQuotation(tx, &quotation, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, tx, err
 	}
 
-	return quotation, tx, nil
+	// bulk create item quoDts ref ms items / product->boms
+	var quoDts []models.QuoDt
+	tx, quoDts, err = s.CreateQuoDts(ctx, req, userID, &quotation, tx, childSpan)
+
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, tx, err
+	}
+
+	// tx, err = s.CreateQuoDtBoms(ctx, quoDtBoms, tx, childSpan)
+	tx, err = s.CreateQuoDtBoms(ctx, quoDts, req, &quotation, userID, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, tx, err
+	}
+
+	return &quotation, tx, nil
 }
 
 func (s *QuotationService) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQuotationParams, tx *gorm.DB, span opentracing.Span) (*dtos.QuotationDetailDTO, error) {
@@ -62,16 +86,52 @@ func (s *QuotationService) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQuot
 	return quotation, nil
 }
 
-func (s *QuotationService) UpdateQuotation(ctx *fiber.Ctx, quotation *models.Quotation, tx *gorm.DB, span opentracing.Span) (*models.Quotation, error) {
+func (s *QuotationService) UpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Quotation, error) {
 	childSpan := opentracing.StartSpan("QuotationService-UpdateQuotation", opentracing.ChildOf(span.Context()))
 
-	if err := s.repo.UpdateQuotation(tx, quotation, childSpan); err != nil {
+	quotation, err := s.MapUpdateQuotation(ctx, req, userID, branchID, childSpan)
+	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
 
-	return quotation, nil
+	if err := s.repo.UpdateQuotation(tx, &quotation, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	// Bulk/Create Update Batch QuoDts
+	quoDts, err := s.MapCreateUpdateQuoDts(ctx, req, &quotation, userID, childSpan)
+
+	tx, err = s.BulkCreateUpdateQuoDts(ctx, req, &quotation, userID, quoDts, quotation.ID, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	updatedQuotationIDs := make([]uint, 0)
+	updatedQuotationIDs = append(updatedQuotationIDs, quotation.ID)
+
+	// get updated quoDts
+	updatedQuoDts, err := s.GetUpdatedQuoDtsByQuotationIDs(ctx, tx, updatedQuotationIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	// Bulk/Create Update Batch QuoDtBoms
+	err = s.BulkCreateUpdateQuoDtBoms(ctx, updatedQuoDts, req, quotation.ID, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	return &quotation, nil
 }
 
 func (s *QuotationService) DeleteQuotation(ctx *fiber.Ctx, params *dtos.GetQuotationParams, tx *gorm.DB, span opentracing.Span) error {
@@ -183,27 +243,39 @@ func (s *QuotationService) CsvGetQuotations(ctx *fiber.Ctx, filters map[string]s
 }
 
 // quotation *models.Quotation
-func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, boms []models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, []models.QuoDt, error) {
+func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, createdQuotation *models.Quotation, tx *gorm.DB, span opentracing.Span) (*gorm.DB, []models.QuoDt, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuoDts", opentracing.ChildOf(span.Context()))
 
-	quoDtsModel := []models.QuoDt{}
-	var err error
+	quoDts, err := s.MapCreateQuoDts(ctx, req, createdQuotation, userID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, quoDts, err
+	}
 
-	tx, quoDtsModel, err = s.repo.CreateQuoDts(tx, boms, quotationID, childSpan)
+	quoDtsModel := []models.QuoDt{}
+
+	tx, quoDtsModel, err = s.repo.CreateQuoDts(tx, quoDts, createdQuotation.ID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, quoDtsModel, err
 	}
 
-	tx.SavePoint("create_quo_dts")
-
 	return tx, quoDtsModel, nil
 }
 
 // bulk create/update boms for a quotation
-func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, updatedQuotation *models.Quotation, userID uint, quoDts []models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-BulkCreateUpdateQuoDts", opentracing.ChildOf(span.Context()))
+
+	// Bulk/Create Update Batch QuoDts
+	quoDts, err := s.MapCreateUpdateQuoDts(ctx, req, updatedQuotation, userID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 
 	// filter without ID to bulk create
 	bulkCreateQuoDts := []models.QuoDt{}
@@ -211,9 +283,6 @@ func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []model
 	bulkUpdateQuoDts := []models.QuoDt{}
 	// get all ids
 	quoDtIDs := []uint{}
-
-	claims := utils.GetClaims(ctx, childSpan)
-	userID := uint(claims["user_id"].(float64))
 
 	for _, quoDt := range quoDts {
 		if quoDt.ID == 0 {
@@ -251,8 +320,6 @@ func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, quoDts []model
 		}
 	}
 
-	tx.SavePoint("bulk_create_update_quo_dts")
-
 	return tx, nil
 }
 
@@ -279,88 +346,55 @@ func (s *QuotationService) GetUpdatedQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *go
 	return quoDts, nil
 }
 
+func (s *QuotationService) MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, span opentracing.Span) (models.Quotation, error) {
+	childSpan := opentracing.StartSpan("QuotationService-MapCreateQuotation", opentracing.ChildOf(span.Context()))
+
+	quotationsModel, err := utils.MapCreateQuotation(ctx, req, userID, branchID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return quotationsModel, err
+	}
+
+	return quotationsModel, nil
+}
+
+func (s *QuotationService) MapUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID uint, branchID uint, span opentracing.Span) (models.Quotation, error) {
+	childSpan := opentracing.StartSpan("QuotationService-MapUpdateQuotation", opentracing.ChildOf(span.Context()))
+
+	quotationsModel, err := utils.MapUpdateQuotation(ctx, req, userID, branchID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return quotationsModel, err
+	}
+
+	return quotationsModel, nil
+}
+
 func (s *QuotationService) MapCreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuotation *models.Quotation, userID uint, span opentracing.Span) ([]models.QuoDt, error) {
-	// childSpan := opentracing.StartSpan("QuotationService-MapQuoDtsToQuotation", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("QuotationService-MapCreateQuoDts", opentracing.ChildOf(span.Context()))
 
-	quoDtsModel := []models.QuoDt{}
-
-	for _, quoDt := range req.QuoDts {
-		quoDtModel := models.QuoDt{
-			ProductUuid: quoDt.ProductUuid,
-			QuotationID: &createdQuotation.ID,
-			ItemUnitID:  quoDt.ItemUnitID,
-			VatID:       quoDt.VatID,
-			RefID:       quoDt.RefID,
-			ItemID:      quoDt.ItemID,
-			RefType:     quoDt.RefType,
-			ItemType:    quoDt.ItemType,
-			// RefJSON: 	quoDt.RefJSON,
-			Remark:       quoDt.Remark,
-			VatPerc:      quoDt.VatPerc,
-			VatPercAm:    quoDt.VatPercAm,
-			QtySO:        quoDt.QtySO,
-			Qty:          quoDt.Qty,
-			PriceSell:    quoDt.PriceSell,
-			PriceBuy:     quoDt.PriceBuy,
-			SubtotalSell: quoDt.SubtotalSell,
-			SubtotalBuy:  quoDt.SubtotalBuy,
-			DiscAm:       quoDt.DiscAm,
-			DiscPerc:     quoDt.DiscPerc,
-			DiscPercNum:  quoDt.DiscPercNum,
-			DiscPercAm:   quoDt.DiscPercAm,
-			DiscFinal:    quoDt.DiscFinal,
-			DiscType:     quoDt.DiscType,
-			TotalAm:      quoDt.TotalAm,
-			CreatedByID:  &userID,
-		}
-		quoDtsModel = append(quoDtsModel, quoDtModel)
-
+	quoDtsModel, err := utils.MapCreateQuoDts(ctx, req, createdQuotation, userID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
 	}
 
 	return quoDtsModel, nil
 }
 
 func (s *QuotationService) MapCreateQuoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, req dtos.CreateQuotationRequest, createdQuoDts []models.QuoDt, userID uint, span opentracing.Span) []map[string]interface{} {
-	// var quoDtBomsModel []models.QuoDtBom
-	quoDtBomsModel := make([]map[string]interface{}, 0)
-
-	for _, reqQuoDt := range req.QuoDts {
-		for _, reqQuoDtBom := range reqQuoDt.QuoDtsBoms {
-			for _, createdQuoDt := range createdQuoDts {
-				if reqQuoDtBom.ProductUuid == createdQuoDt.ProductUuid {
-					genCode := "-"
-					itemJson := "{}"
-					quoDtBomsModel = append(quoDtBomsModel, map[string]interface{}{
-						"id":            0,
-						"quotation_id":  createdQuoDt.QuotationID,
-						"product_uuid":  reqQuoDtBom.ProductUuid,
-						"quo_dt_id":     createdQuoDt.ID,
-						"product_id":    reqQuoDtBom.ProductID,
-						"item_id":       reqQuoDtBom.ItemID,
-						"item_unit_id":  reqQuoDtBom.ItemUnitID,
-						"remark":        reqQuoDtBom.Remark,
-						"qty":           reqQuoDtBom.Qty,
-						"price_sell":    reqQuoDtBom.PriceSell,
-						"price_buy":     reqQuoDtBom.PriceBuy,
-						"subtotal_sell": reqQuoDtBom.SubtotalSell,
-						"subtotal_buy":  reqQuoDtBom.SubtotalBuy,
-						"gen_code":      &genCode,
-						"item_json":     &itemJson,
-						"created_by_id": userID,
-					})
-				}
-
-			}
-		}
-	}
+	quoDtBomsModel := utils.MapCreateQuoDtBoms(ctx, req, createdQuoDts, userID, span)
 
 	return quoDtBomsModel
 }
 
-func (s *QuotationService) CreateQuoDtBoms(ctx *fiber.Ctx, quoDtBoms []map[string]interface{}, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *QuotationService) CreateQuoDtBoms(ctx *fiber.Ctx, quoDts []models.QuoDt, req dtos.CreateQuotationRequest, createdQuotation *models.Quotation, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuoDtBoms", opentracing.ChildOf(span.Context()))
 
-	if tx, err := s.repo.CreateQuoDtBoms(tx, quoDtBoms, quotationID, childSpan); err != nil {
+	// bulk create boms
+	quoDtBoms := s.MapCreateQuoDtBoms(ctx, tx, req, quoDts, userID, childSpan)
+
+	if tx, err := s.repo.CreateQuoDtBoms(tx, quoDtBoms, createdQuotation.ID, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
@@ -451,53 +485,65 @@ func (s *QuotationService) MapFilterQuoDtBomsToQuoDts(ctx *fiber.Ctx, quoDtBoms 
 }
 
 func (s *QuotationService) MapCreateUpdateQuoDts(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, updatedQuotation *models.Quotation, userID uint, span opentracing.Span) ([]models.QuoDt, error) {
-	// childSpan := opentracing.StartSpan("QuotationService-MapQuoDtsToQuotation", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("QuotationService-MapCreateUpdateQuoDts", opentracing.ChildOf(span.Context()))
 
-	quoDtsModel := []models.QuoDt{}
+	quoDtsModel, err := utils.MapCreateUpdateQuoDts(ctx, req, updatedQuotation, userID, span)
 
-	// refJson := "{}"
-	// itemJson := "{}"
-
-	for _, reqQuoDt := range req.QuoDts {
-		quoDtID := uint(0)
-		if reqQuoDt.QuoDtID != nil {
-			quoDtID = *reqQuoDt.QuoDtID
-		}
-
-		quoDtModel := models.QuoDt{
-			ID:          quoDtID,
-			ProductUuid: reqQuoDt.ProductUuid,
-			QuotationID: &updatedQuotation.ID,
-			ItemUnitID:  reqQuoDt.ItemUnitID,
-			VatID:       reqQuoDt.VatID,
-			RefID:       reqQuoDt.RefID,
-			ItemID:      reqQuoDt.ItemID,
-			RefType:     reqQuoDt.RefType,
-			ItemType:    reqQuoDt.ItemType,
-			// RefJSON: 	refJson,
-			// ItemJSON: 	 itemJson,
-			GenCode:      reqQuoDt.GenCode,
-			Remark:       reqQuoDt.Remark,
-			VatPerc:      reqQuoDt.VatPerc,
-			VatPercAm:    reqQuoDt.VatPercAm,
-			QtySO:        reqQuoDt.QtySO,
-			Qty:          reqQuoDt.Qty,
-			PriceSell:    reqQuoDt.PriceSell,
-			PriceBuy:     reqQuoDt.PriceBuy,
-			SubtotalSell: reqQuoDt.SubtotalSell,
-			SubtotalBuy:  reqQuoDt.SubtotalBuy,
-			DiscAm:       reqQuoDt.DiscAm,
-			DiscPerc:     reqQuoDt.DiscPerc,
-			DiscPercNum:  reqQuoDt.DiscPercNum,
-			DiscPercAm:   reqQuoDt.DiscPercAm,
-			DiscFinal:    reqQuoDt.DiscFinal,
-			DiscType:     reqQuoDt.DiscType,
-			TotalAm:      reqQuoDt.TotalAm,
-			CreatedByID:  &userID,
-		}
-		quoDtsModel = append(quoDtsModel, quoDtModel)
-
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
 	}
 
 	return quoDtsModel, nil
+}
+
+// Lock all quotation table update
+func (s *QuotationService) LockQuotationTable(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdateQuotationRequest, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("QuotationService-LockQuotationTable", opentracing.ChildOf(span.Context()))
+
+	if req.ID > 0 {
+		if err := s.repo.LockQuotationHeader(ctx, tx, req, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	quoDtIDs, quoDtBomIDs, productIDs, itemUnitIDs := utils.GetQuoIDs(req)
+
+	if len(quoDtIDs) > 0 {
+		if err := s.repo.LockQuoDts(ctx, tx, quoDtIDs, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(quoDtBomIDs) > 0 {
+		if err := s.repo.LockQuoDtBoms(ctx, tx, quoDtBomIDs, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(productIDs) > 0 {
+		var err error
+		if tx, err = s.utilRepo.LockRowTable(ctx, tx, productIDs, "products", childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(itemUnitIDs) > 0 {
+		var err error
+		if tx, err = s.utilRepo.LockRowTable(ctx, tx, itemUnitIDs, "item_units", childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	return tx, nil
 }
