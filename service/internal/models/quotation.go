@@ -23,6 +23,12 @@ type Quotation struct {
 	VatPerc       *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	Pph23Perc     *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`
 	TotalQty      *float64       `json:"total_qty" gorm:"column:total_qty"`
+	DiscAm        *float64       `json:"disc_am" gorm:"column:disc_am"`
+	DiscPerc      *float64       `json:"disc_perc" gorm:"column:disc_perc"`
+	DiscPercNum   *float64       `json:"disc_perc_num" gorm:"column:disc_perc_num"`
+	DiscPercAm    *float64       `json:"disc_perc_am" gorm:"column:disc_perc_am"`
+	DiscFinal     *float64       `json:"disc_final" gorm:"column:disc_final"`
+	DiscType      *string        `json:"disc_type" gorm:"column:disc_type"`
 	Subtotal      *float64       `json:"subtotal" gorm:"column:subtotal"`
 	TotalDiscount *float64       `json:"total_discount" gorm:"column:total_discount"`
 	TotalPph23    *float64       `json:"total_pph23" gorm:"column:total_pph23"`

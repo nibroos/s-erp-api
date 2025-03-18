@@ -48,13 +48,13 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	var total int
 
 	filterDBColumnKey := []string{
-		"q.quo_no", "q.title", "q.remark",
+		"so.po_buyer_no", "so.sales_order_no", "so.remark", "so.ship_dest",
 		"pi.name",
 		"it.name",
-		"qd.remark",
-		"qd.gen_code",
-		"qdb.remark",
-		"qdb.gen_code",
+		"sd.remark",
+		"sd.gen_code",
+		"sdb.remark",
+		"sdb.gen_code",
 	}
 
 	var args []interface{}
@@ -83,16 +83,16 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	}
 
 	filterKey := map[string]string{
-		"status":        "q.status",
-		"customer_id":   "q.customer_id",
-		"order_type_id": "q.order_type_id",
-		"currency_id":   "q.currency_id",
-		"vat_id":        "q.vat_id",
-		"payment_id":    "q.payment_id",
-		"pph23_id":      "q.pph23_id",
-		"expired_at":    "q.expired_at",
-		"due_at":        "q.due_at",
-		"is_approve":    "q.is_approve",
+		"status":        "so.status",
+		"customer_id":   "so.customer_id",
+		"order_type_id": "so.order_type_id",
+		"currency_id":   "so.currency_id",
+		"vat_id":        "so.vat_id",
+		"payment_id":    "so.payment_id",
+		"pph23_id":      "so.pph23_id",
+		"expired_at":    "so.expired_at",
+		"due_at":        "so.due_at",
+		"is_approve":    "so.is_approve",
 	}
 
 	for key, _ := range filterKey {
@@ -104,11 +104,11 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	}
 
 	filterIDsKey := map[string]string{
-		"customer_ids":   "q.customer_id",
-		"order_type_ids": "q.order_type_id",
-		"currency_ids":   "q.currency_id",
-		"payment_ids":    "q.payment_id",
-		"pph23_ids":      "q.pph23_id",
+		"customer_ids":   "so.customer_id",
+		"order_type_ids": "so.order_type_id",
+		"currency_ids":   "so.currency_id",
+		"payment_ids":    "so.payment_id",
+		"pph23_ids":      "so.pph23_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -128,7 +128,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -147,15 +147,20 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (q.id)
-					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.quo_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
-					TO_CHAR(q.due_at, 'YYYY-MM-DD') as due_at,
-					TO_CHAR(q.expired_at, 'YYYY-MM-DD') as expired_at,
-					q.vat_perc, q.disc_am, q.disc_perc, q.disc_perc_am, q.disc_final, q.disc_type,
+        SELECT DISTINCT ON (so.id)
+					so.id, so.customer_id, so.order_type_id, so.currency_id, so.vat_id, so.payment_id, so.pph23_id, so.branch_id,
+					so.po_buyer_no, so.sales_order_no, so.ship_dest, so.remark, 
+					so.status, so.exchange_rate, so.pph23_perc, so.total_qty, so.subtotal, so.total_discount, so.total_pph23, so.total_vat, so.grand_total, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
+					TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
+					TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
+					TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
+					TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
+					TO_CHAR(so.expired_at, 'YYYY-MM-DD') as expired_at,
+					so.vat_perc, so.disc_am, so.disc_perc, so.disc_perc_am, so.disc_final, so.disc_type, so.qty_out, so.si_total_am, so.sa_total_am,
 
 					pi.id as product_id,
 					it.id as item_id,
-					qd.vat_id as quo_dt_vat_id,
+					sd.vat_id as so_dt_vat_id,
 
 					pi.name as product_name,
 					it.name as item_name,
@@ -166,29 +171,29 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 					ot.name as order_type_name,
 					c.name as customer_name,
 
-					qd.remark as quo_dt_remark,
-					qd.gen_code as quo_dt_gen_code,
-					qdb.remark as quo_dt_bom_remark,
-					qdb.gen_code as quo_dt_bom_gen_code,
+					sd.remark as so_dt_remark,
+					sd.gen_code as so_dt_gen_code,
+					sdb.remark as so_dt_bom_remark,
+					sdb.gen_code as so_dt_bom_gen_code,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
         FROM sales_orders so
-				LEFT JOIN quo_dts qd ON qd.sales_order_id = q.id
-				LEFT JOIN products pi ON qd.item_id = pi.id
-				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
-				LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
-				LEFT JOIN products it ON qdb.item_id = it.id
+				LEFT JOIN so_dts sd ON sd.sales_order_id = so.id
+				LEFT JOIN products pi ON sd.item_id = pi.id
+				LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
+				LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sd.id
+				LEFT JOIN products it ON sdb.item_id = it.id
 
-				LEFT JOIN mix_values cur ON q.currency_id = cur.id
-				LEFT JOIN mix_values vat ON q.vat_id = vat.id
-				LEFT JOIN mix_values pph ON q.pph23_id = pph.id
-				LEFT JOIN mix_values ot ON q.order_type_id = ot.id
-				LEFT JOIN customers c ON q.customer_id = c.id
+				LEFT JOIN mix_values cur ON so.currency_id = cur.id
+				LEFT JOIN mix_values vat ON so.vat_id = vat.id
+				LEFT JOIN mix_values pph ON so.pph23_id = pph.id
+				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+				LEFT JOIN customers c ON so.customer_id = c.id
 
-        LEFT JOIN users cu ON q.created_by_id = cu.id
-        LEFT JOIN users uu ON q.updated_by_id = uu.id
+        LEFT JOIN users cu ON so.created_by_id = cu.id
+        LEFT JOIN users uu ON so.updated_by_id = uu.id
 				WHERE 1=1` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
@@ -200,7 +205,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	for key, value := range filters {
 		switch key {
-		case "quo_no", "title", "remark":
+		case "po_buyer_no", "sales_order_no", "ship_dest", "remark":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -248,8 +253,8 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "quo_no")
-	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "order_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
@@ -301,29 +306,35 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (q.id)
-					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.quo_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
-					TO_CHAR(q.due_at, 'YYYY-MM-DD') as due_at,
-					TO_CHAR(q.expired_at, 'YYYY-MM-DD') as expired_at,
-					q.vat_perc, q.disc_am, q.disc_perc, q.disc_perc_am, q.disc_final, q.disc_type,
-					-- q.sales_order_id,
+			SELECT DISTINCT ON (so.id)
+				so.id, so.customer_id, so.order_type_id, so.currency_id, so.vat_id, so.payment_id, so.pph23_id, so.branch_id,
+				so.po_buyer_no, so.sales_order_no, so.ship_dest, so.remark, 
+				so.status, so.exchange_rate, so.pph23_perc, so.total_qty, so.subtotal, so.total_discount, so.total_pph23, so.total_vat, so.grand_total, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
+				TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
+				TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
+				TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
+				TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
+				TO_CHAR(so.expired_at, 'YYYY-MM-DD') as expired_at,
+				so.vat_perc, so.disc_am, so.disc_perc, so.disc_perc_am, so.disc_final, so.disc_type, so.qty_out, so.si_total_am, so.sa_total_am,
 
-					cu.name as created_by_name,
-					uu.name as updated_by_name
+				cu.name as created_by_name,
+				uu.name as updated_by_name
 
-        FROM sales_orders so
-				LEFT JOIN quo_dts qd ON qd.sales_order_id = q.id
-				LEFT JOIN products pi ON qd.item_id = pi.id
-				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
-				LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
-				LEFT JOIN products it ON qdb.item_id = it.id
+			FROM sales_orders so
+			LEFT JOIN so_dts sd ON sd.sales_order_id = so.id
+			LEFT JOIN products pi ON sd.item_id = pi.id
+			LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
+			LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sd.id
+			LEFT JOIN products it ON sdb.item_id = it.id
 
-				LEFT JOIN mix_values cur ON q.currency_id = cur.id
-				LEFT JOIN mix_values vat ON q.vat_id = vat.id
-				LEFT JOIN mix_values pph ON q.pph23_id = pph.id
+			LEFT JOIN mix_values cur ON so.currency_id = cur.id
+			LEFT JOIN mix_values vat ON so.vat_id = vat.id
+			LEFT JOIN mix_values pph ON so.pph23_id = pph.id
+			LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+			LEFT JOIN customers c ON so.customer_id = c.id
 
-        LEFT JOIN users cu ON q.created_by_id = cu.id
-        LEFT JOIN users uu ON q.updated_by_id = uu.id
+			LEFT JOIN users cu ON so.created_by_id = cu.id
+			LEFT JOIN users uu ON so.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
@@ -441,19 +452,18 @@ func (r *SalesOrderRepository) UpdateSoDts(tx *gorm.DB, soDts []models.SoDt, spa
 			"id":             soDt.ID,
 			"product_uuid":   soDt.ProductUuid,
 			"sales_order_id": soDt.SalesOrderID,
-			"ref_id":         soDt.RefID,
-			"vat_id":         soDt.VatID,
 			"item_unit_id":   soDt.ItemUnitID,
+			"vat_id":         soDt.VatID,
+			"ref_id":         soDt.RefID,
 			"item_id":        soDt.ItemID,
-			"ref_type":       soDt.RefType,
 			"item_type":      soDt.ItemType,
+			"ref_type":       soDt.RefType,
 			// "ref_json":      soDt.RefJSON,
 			// "item_json":     soDt.ItemJSON,
 			"gen_code":      soDt.GenCode,
 			"remark":        soDt.Remark,
 			"vat_perc":      soDt.VatPerc,
 			"vat_perc_am":   soDt.VatPercAm,
-			"qty_so":        soDt.QtySO,
 			"qty":           soDt.Qty,
 			"price_sell":    soDt.PriceSell,
 			"price_buy":     soDt.PriceBuy,
@@ -472,7 +482,7 @@ func (r *SalesOrderRepository) UpdateSoDts(tx *gorm.DB, soDts []models.SoDt, spa
 	}
 
 	// if err := r.utilRepo.BulkUpdate(tx, "soDts", "id", data, childSpan); err != nil {
-	if err := r.utilRepo.Upsert(tx, "quo_dts", "id", data, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "so_dts", "id", data, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
@@ -512,11 +522,11 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 
 	soDts := []dtos.SalesOrderSoDtListDTO{}
 
-	query := `SELECT qd.id, qd.sales_order_id, qd.product_uuid,
-		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id, qd.created_at, qd.updated_at, qd.deleted_at,
-		qd.created_at, qd.updated_at, qd.deleted_at,
+	query := `SELECT sd.id, sd.sales_order_id, sd.product_uuid,
+		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_so, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.vat_perc, sd.vat_perc_am, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
+		sd.created_at, sd.updated_at, sd.deleted_at,
 
-		qd.id as quo_dt_id,
+		sd.id as so_dt_id,
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
 		isg.name as item_sub_group_name,
@@ -528,22 +538,22 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 		cu.name as created_by_name,
 		uu.name as updated_by_name
 
-	FROM quo_dts qd
-	LEFT JOIN salesOrders p ON qd.sales_order_id = p.id
-	LEFT JOIN products pi ON qd.item_id = pi.id
-	LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
+	FROM so_dts sd
+	LEFT JOIN salesOrders p ON sd.sales_order_id = p.id
+	LEFT JOIN products pi ON sd.item_id = pi.id
+	LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
 	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN users cu ON qd.created_by_id = cu.id
-	LEFT JOIN users uu ON qd.updated_by_id = uu.id
-	WHERE qd.deleted_at IS NULL`
+	LEFT JOIN users cu ON sd.created_by_id = cu.id
+	LEFT JOIN users uu ON sd.updated_by_id = uu.id
+	WHERE sd.deleted_at IS NULL`
 
 	var args []interface{}
 	i := 1
 
 	if len(salesOrderIDs) > 0 {
-		query += " AND qd.sales_order_id = ANY($1)"
+		query += " AND sd.sales_order_id = ANY($1)"
 		args = append(args, pq.Array(salesOrderIDs))
 		i++
 
@@ -579,11 +589,11 @@ func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx
 
 	soDts := []dtos.SalesOrderSoDtListUpdateDTO{}
 
-	query := `SELECT qd.id, qd.sales_order_id, qd.product_uuid,
-		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id, qd.created_at, qd.updated_at, qd.deleted_at,
-		qd.created_at, qd.updated_at, qd.deleted_at,
+	query := `SELECT sd.id, sd.sales_order_id, sd.product_uuid,
+		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_so, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.vat_perc, sd.vat_perc_am, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
+		sd.created_at, sd.updated_at, sd.deleted_at,
 
-		qd.id as quo_dt_id,
+		sd.id as so_dt_id,
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
 		isg.name as item_sub_group_name,
@@ -595,22 +605,22 @@ func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx
 		cu.name as created_by_name,
 		uu.name as updated_by_name
 
-	FROM quo_dts qd
-	LEFT JOIN salesOrders p ON qd.sales_order_id = p.id
-	LEFT JOIN products pi ON qd.item_id = pi.id
-	LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
+	FROM so_dts sd
+	LEFT JOIN salesOrders p ON sd.sales_order_id = p.id
+	LEFT JOIN products pi ON sd.item_id = pi.id
+	LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
 	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN users cu ON qd.created_by_id = cu.id
-	LEFT JOIN users uu ON qd.updated_by_id = uu.id
-	WHERE qd.deleted_at IS NULL`
+	LEFT JOIN users cu ON sd.created_by_id = cu.id
+	LEFT JOIN users uu ON sd.updated_by_id = uu.id
+	WHERE sd.deleted_at IS NULL`
 
 	var args []interface{}
 	i := 1
 
 	if len(salesOrderIDs) > 0 {
-		query += " AND qd.sales_order_id = ANY($1)"
+		query += " AND sd.sales_order_id = ANY($1)"
 		args = append(args, pq.Array(salesOrderIDs))
 		i++
 
@@ -628,7 +638,7 @@ func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx
 func (r *SalesOrderRepository) CreateSoDtBoms(tx *gorm.DB, soDtBoms []map[string]interface{}, salesOrderID uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SoDtRepository-CreateSoDtBoms", opentracing.ChildOf(span.Context()))
 
-	err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", soDtBoms, span)
+	err := r.utilRepo.Upsert(tx, "so_dt_boms", "id", soDtBoms, span)
 	// err := tx.Create(&soDtBoms).Error
 	if err != nil {
 		tx.Rollback()
@@ -677,7 +687,7 @@ func (r *SalesOrderRepository) UpdateSoDtBoms(tx *gorm.DB, soDtBoms []map[string
 	// 	data = append(data, map[string]interface{}{
 	// 		"id":            soDtBom["id"],
 	// 		"sales_order_id":  soDtBom["sales_order_id"],
-	// 		"quo_dt_id":     soDtBom["quo_dt_id"],
+	// 		"so_dt_id":     soDtBom["so_dt_id"],
 	// 		"product_id":    soDtBom["product_id"],
 	// 		"item_id":       soDtBom["item_id"],
 	// 		"item_unit_id":  soDtBom["item_unit_id"],
@@ -697,7 +707,7 @@ func (r *SalesOrderRepository) UpdateSoDtBoms(tx *gorm.DB, soDtBoms []map[string
 	// log.Println("soDtBoms", soDtBoms)
 
 	// if err := r.utilRepo.BulkUpdate(tx, "soDtBoms", "id", data, childSpan); err != nil {
-	if err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", soDtBoms, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "so_dt_boms", "id", soDtBoms, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -738,13 +748,13 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	soDtBoms := []dtos.SalesOrderSoDtBomListDTO{}
 
 	filterDBColumnKey := []string{
-		"q.quo_no", "q.title", "q.remark",
+		"so.po_buyer_no", "so.sales_order_no", "so.remark",
 		"pi.name",
 		"it.name",
-		"qd.remark",
-		"qd.gen_code",
-		"qdb.remark",
-		"qdb.gen_code",
+		"sd.remark",
+		"sd.gen_code",
+		"sdb.remark",
+		"sdb.gen_code",
 	}
 
 	var args []interface{}
@@ -773,16 +783,16 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	}
 
 	filterKey := map[string]string{
-		"status":        "q.status",
-		"customer_id":   "q.customer_id",
-		"order_type_id": "q.order_type_id",
-		"currency_id":   "q.currency_id",
-		"vat_id":        "q.vat_id",
-		"payment_id":    "q.payment_id",
-		"pph23_id":      "q.pph23_id",
-		"expired_at":    "q.expired_at",
-		"due_at":        "q.due_at",
-		"is_approve":    "q.is_approve",
+		"status":        "so.status",
+		"customer_id":   "so.customer_id",
+		"order_type_id": "so.order_type_id",
+		"currency_id":   "so.currency_id",
+		"vat_id":        "so.vat_id",
+		"payment_id":    "so.payment_id",
+		"pph23_id":      "so.pph23_id",
+		"expired_at":    "so.expired_at",
+		"due_at":        "so.due_at",
+		"is_approve":    "so.is_approve",
 	}
 
 	for key, _ := range filterKey {
@@ -794,13 +804,13 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	}
 
 	filterIDsKey := map[string]string{
-		"customer_ids":        "q.customer_id",
-		"order_type_ids":      "q.order_type_id",
-		"currency_ids":        "q.currency_id",
-		"payment_ids":         "q.payment_id",
-		"pph23_ids":           "q.pph23_id",
-		"quo_dt_ref_ids":      "qd.ref_id",
-		"quo_dt_bom_item_ids": "qdb.item_id",
+		"customer_ids":       "so.customer_id",
+		"order_type_ids":     "so.order_type_id",
+		"currency_ids":       "so.currency_id",
+		"payment_ids":        "so.payment_id",
+		"pph23_ids":          "so.pph23_id",
+		"so_dt_ref_ids":      "sd.ref_id",
+		"so_dt_bom_item_ids": "sdb.item_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -820,7 +830,7 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -838,16 +848,16 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	}
 
 	if len(salesOrderIDs) > 0 {
-		condition += fmt.Sprintf(" AND qdb.sales_order_id = ANY($%d)", i)
-		// countQuery += fmt.Sprintf(" AND q.sales_order_id = ANY($%d)", i)
+		condition += fmt.Sprintf(" AND sdb.sales_order_id = ANY($%d)", i)
+		// countQuery += fmt.Sprintf(" AND so.sales_order_id = ANY($%d)", i)
 		args = append(args, pq.Array(salesOrderIDs))
 		i++
 	}
 
 	filterKeyLike := map[string]string{
-		"quo_no": "q.quo_no",
-		"title":  "q.title",
-		"remark": "q.remark",
+		"po_buyer_no":    "so.po_buyer_no",
+		"sales_order_no": "so.sales_order_no",
+		"remark":         "so.remark",
 	}
 
 	for key, _ := range filterKeyLike {
@@ -861,9 +871,9 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (qdb.id)
-					qdb.id, qdb.product_uuid, qdb.sales_order_id, qdb.quo_dt_id, qdb.product_id, qdb.item_id, qdb.item_unit_id, qdb.gen_code, qdb.remark, qdb.qty, qdb.price_sell, qdb.price_buy, qdb.subtotal_sell, qdb.subtotal_buy, qdb.created_by_id, qdb.updated_by_id, qdb.deleted_by_id, qdb.created_at, qdb.updated_at, qdb.deleted_at,
-					qdb.id as quo_dt_bom_id,
+        SELECT DISTINCT ON (sdb.id)
+					sdb.id, sdb.product_uuid, sdb.sales_order_id, sdb.so_dt_id, sdb.product_id, sdb.item_id, sdb.item_unit_id, sdb.gen_code, sdb.remark, sdb.qty, sdb.price_sell, sdb.price_buy, sdb.subtotal_sell, sdb.subtotal_buy, sdb.created_by_id, sdb.updated_by_id, sdb.deleted_by_id, sdb.created_at, sdb.updated_at, sdb.deleted_at,
+					sdb.id as so_dt_bom_id,
 					it.name as item_name,
 					it.code as item_code,
 					it.barcode as item_barcode,
@@ -879,18 +889,18 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM quo_dt_boms qdb
-				LEFT JOIN quo_dts qd ON qd.id = qdb.quo_dt_id
-				LEFT JOIN sales_orders q ON q.id = qd.so
-				LEFT JOIN products pi ON qd.item_id = pi.id
-				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
+        FROM so_dt_boms sdb
+				LEFT JOIN so_dts sd ON sd.id = sdb.so_dt_id
+				LEFT JOIN sales_orders q ON so.id = sd.so
+				LEFT JOIN products pi ON sd.item_id = pi.id
+				LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
-				LEFT JOIN products it ON qdb.item_id = it.id
+				LEFT JOIN products it ON sdb.item_id = it.id
 				LEFT JOIN mix_values isg ON it.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 
-        LEFT JOIN users cu ON q.created_by_id = cu.id
-        LEFT JOIN users uu ON q.updated_by_id = uu.id
+        LEFT JOIN users cu ON so.created_by_id = cu.id
+        LEFT JOIN users uu ON so.updated_by_id = uu.id
 				WHERE 1=1` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
@@ -914,7 +924,7 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 		i++
 	}
 
-	// orderColumn := utils.GetStringOrDefault(filters["order_column"], "quo_no")
+	// orderColumn := utils.GetStringOrDefault(filters["order_column"], "po_buyer_no")
 	// orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
 	// query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 

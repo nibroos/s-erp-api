@@ -89,7 +89,7 @@ func (s *SalesOrderService) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.GetSa
 func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.SalesOrder, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-UpdateSalesOrder", opentracing.ChildOf(span.Context()))
 
-	quotation, err := s.MapUpdateSalesOrder(ctx, req, userID, branchID, childSpan)
+	quotation, err := utils.MapUpdateSalesOrder(ctx, req, userID, branchID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -103,7 +103,7 @@ func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSale
 	}
 
 	// Bulk/Create Update Batch SoDts
-	soDts, err := s.MapCreateUpdateSoDts(ctx, req, &quotation, userID, childSpan)
+	soDts, err := s.MapUpdateSoDts(ctx, req, &quotation, userID, childSpan)
 
 	tx, err = s.BulkCreateUpdateSoDts(ctx, req, &quotation, userID, soDts, quotation.ID, tx, childSpan)
 	if err != nil {
@@ -270,7 +270,7 @@ func (s *SalesOrderService) BulkCreateUpdateSoDts(ctx *fiber.Ctx, req dtos.Updat
 	childSpan := opentracing.StartSpan("SalesOrderService-BulkCreateUpdateSoDts", opentracing.ChildOf(span.Context()))
 
 	// Bulk/Create Update Batch SoDts
-	soDts, err := s.MapCreateUpdateSoDts(ctx, req, updatedSalesOrder, userID, childSpan)
+	soDts, err := s.MapUpdateSoDts(ctx, req, updatedSalesOrder, userID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -358,18 +358,6 @@ func (s *SalesOrderService) MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateS
 	return quotationsModel, nil
 }
 
-func (s *SalesOrderService) MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userID uint, branchID uint, span opentracing.Span) (models.SalesOrder, error) {
-	childSpan := opentracing.StartSpan("SalesOrderService-MapUpdateSalesOrder", opentracing.ChildOf(span.Context()))
-
-	quotationsModel, err := utils.MapUpdateSalesOrder(ctx, req, userID, branchID, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		return quotationsModel, err
-	}
-
-	return quotationsModel, nil
-}
-
 func (s *SalesOrderService) MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-MapCreateSoDts", opentracing.ChildOf(span.Context()))
 
@@ -404,8 +392,6 @@ func (s *SalesOrderService) CreateSoDtBoms(ctx *fiber.Ctx, soDts []models.SoDt, 
 }
 
 // bulk create/update boms for a quotation
-// func (s *SalesOrderService) BulkCreateUpdateSoDtBoms(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtListDTO, req dtos.UpdateSalesOrderRequest, quotationID uint, tx *gorm.DB, span opentracing.Span) error {
-// func (s *SalesOrderService) BulkCreateUpdateSoDtBoms(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, quotationID uint, tx *gorm.DB, span opentracing.Span) error {
 func (s *SalesOrderService) BulkCreateUpdateSoDtBoms(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtListUpdateDTO, req dtos.UpdateSalesOrderRequest, quotationID uint, tx *gorm.DB, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("SalesOrderService-BulkCreateUpdateSoDtBoms", opentracing.ChildOf(span.Context()))
 
@@ -484,10 +470,10 @@ func (s *SalesOrderService) MapFilterSoDtBomsToSoDts(ctx *fiber.Ctx, soDtBoms []
 	return utils.MapFilterSoDtBomsToSoDts(soDtBoms, soDts)
 }
 
-func (s *SalesOrderService) MapCreateUpdateSoDts(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, updatedSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, error) {
-	childSpan := opentracing.StartSpan("SalesOrderService-MapCreateUpdateSoDts", opentracing.ChildOf(span.Context()))
+func (s *SalesOrderService) MapUpdateSoDts(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, updatedSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-MapUpdateSoDts", opentracing.ChildOf(span.Context()))
 
-	soDtsModel, err := utils.MapCreateUpdateSoDts(ctx, req, updatedSalesOrder, userID, span)
+	soDtsModel, err := utils.MapUpdateSoDts(ctx, req, updatedSalesOrder, userID, span)
 
 	if err != nil {
 		defer childSpan.Finish()
