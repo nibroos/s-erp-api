@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
+	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
 )
@@ -210,4 +211,22 @@ func (r *UtilRepository) handleUpdates(tx *gorm.DB, table string, idColumn strin
 
 	result := tx.Exec(query, valueArgs...)
 	return result.Error
+}
+
+// s.utilRepo.LockProducts(ctx, tx, productIDs, childSpan); err != nil {
+func (r *UtilRepository) LockRowTable(ctx *fiber.Ctx, tx *gorm.DB, ids []*uint, tableName string, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("LockRowTable", opentracing.ChildOf(span.Context()))
+	if len(ids) == 0 {
+		return tx, nil
+	}
+
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id IN (?) FOR UPDATE", tableName)
+	result := tx.Exec(query, ids)
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		childSpan.LogKV("error", result.Error.Error())
+		return tx, result.Error
+	}
+
+	return tx, nil
 }

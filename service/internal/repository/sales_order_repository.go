@@ -19,15 +19,15 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type QuotationRepository struct {
+type SalesOrderRepository struct {
 	db       *gorm.DB
 	sqlDB    *sqlx.DB
 	utilRepo *UtilRepository
 	tracer   opentracing.Tracer
 }
 
-func NewQuotationRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tracer opentracing.Tracer) *QuotationRepository {
-	return &QuotationRepository{
+func NewSalesOrderRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tracer opentracing.Tracer) *SalesOrderRepository {
+	return &SalesOrderRepository{
 		db:       db,
 		sqlDB:    sqlDB,
 		tracer:   tracer,
@@ -35,15 +35,15 @@ func NewQuotationRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepositor
 	}
 }
 
-func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.QuotationListDTO, int, error) {
-	childSpan := opentracing.StartSpan("QuotationRepository-GetQuotations", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSalesOrders", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
 
 	isAdmin := utils.IsAdmin(ctx)
 
-	products := []dtos.QuotationListDTO{}
+	products := []dtos.SalesOrderListDTO{}
 
 	var total int
 
@@ -174,8 +174,8 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM quotations q
-				LEFT JOIN quo_dts qd ON qd.quotation_id = q.id
+        FROM sales_orders so
+				LEFT JOIN quo_dts qd ON qd.sales_order_id = q.id
 				LEFT JOIN products pi ON qd.item_id = pi.id
 				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 				LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
@@ -290,9 +290,9 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 	return products, total, nil
 }
 
-func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQuotationParams, tx *gorm.DB, span opentracing.Span) (*dtos.QuotationDetailDTO, error) {
-	childSpan := opentracing.StartSpan("QuotationRepository-GetQuotationByID", opentracing.ChildOf(span.Context()))
-	var quotation dtos.QuotationDetailDTO
+func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.SalesOrderDetailDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSalesOrderByID", opentracing.ChildOf(span.Context()))
+	var salesOrder dtos.SalesOrderDetailDTO
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
@@ -306,13 +306,13 @@ func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQ
 					TO_CHAR(q.due_at, 'YYYY-MM-DD') as due_at,
 					TO_CHAR(q.expired_at, 'YYYY-MM-DD') as expired_at,
 					q.vat_perc, q.disc_am, q.disc_perc, q.disc_perc_am, q.disc_final, q.disc_type,
-					-- q.quotation_id,
+					-- q.sales_order_id,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM quotations q
-				LEFT JOIN quo_dts qd ON qd.quotation_id = q.id
+        FROM sales_orders so
+				LEFT JOIN quo_dts qd ON qd.sales_order_id = q.id
 				LEFT JOIN products pi ON qd.item_id = pi.id
 				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 				LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
@@ -355,28 +355,28 @@ func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQ
 
 	query += isDeletedQuery
 
-	if err := r.sqlDB.Get(&quotation, query, args...); err != nil {
+	if err := r.sqlDB.Get(&salesOrder, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
 		childSpan.LogKV("query", query)
 		return nil, err
 	}
 
-	return &quotation, nil
+	return &salesOrder, nil
 }
 
 // BeginTransaction starts a new transaction
-func (r *QuotationRepository) BeginTransaction() *gorm.DB {
+func (r *SalesOrderRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
 // Rollback all changes in the transaction
-func (r *QuotationRepository) Rollback() *gorm.DB {
+func (r *SalesOrderRepository) Rollback() *gorm.DB {
 	return r.db.Rollback()
 }
 
-func (r *QuotationRepository) CreateQuotation(tx *gorm.DB, quotation *models.Quotation, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("QuotationRepository-CreateQuotation", opentracing.ChildOf(span.Context()))
-	if err := tx.Create(quotation).Error; err != nil {
+func (r *SalesOrderRepository) CreateSalesOrder(tx *gorm.DB, salesOrder *models.SalesOrder, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateSalesOrder", opentracing.ChildOf(span.Context()))
+	if err := tx.Create(salesOrder).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
@@ -384,22 +384,22 @@ func (r *QuotationRepository) CreateQuotation(tx *gorm.DB, quotation *models.Quo
 	return tx, nil
 }
 
-func (r *QuotationRepository) UpdateQuotation(tx *gorm.DB, quotation *models.Quotation, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuotationRepository-UpdateQuotation", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) UpdateSalesOrder(tx *gorm.DB, salesOrder *models.SalesOrder, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-UpdateSalesOrder", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Where("id = ?", quotation.ID).Select("*").Omit(
+	if err := tx.Where("id = ?", salesOrder.ID).Select("*").Omit(
 		"created_at", "created_by_id", "branch_id",
-	).Updates(quotation).Error; err != nil {
+	).Updates(salesOrder).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *QuotationRepository) DeleteQuotation(tx *gorm.DB, params *dtos.GetQuotationParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuotationRepository-DeleteQuotation", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) DeleteSalesOrder(tx *gorm.DB, params *dtos.GetSalesOrderParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-DeleteSalesOrder", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Delete(&models.Quotation{}, params.ID).Error; err != nil {
+	if err := tx.Delete(&models.SalesOrder{}, params.ID).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -407,71 +407,71 @@ func (r *QuotationRepository) DeleteQuotation(tx *gorm.DB, params *dtos.GetQuota
 
 }
 
-func (s *QuotationRepository) RestoreQuotation(tx *gorm.DB, params *dtos.GetQuotationParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuotationRepository-RestoreQuotation", opentracing.ChildOf(span.Context()))
+func (s *SalesOrderRepository) RestoreSalesOrder(tx *gorm.DB, params *dtos.GetSalesOrderParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-RestoreSalesOrder", opentracing.ChildOf(span.Context()))
 
-	var quotation models.Quotation
-	if err := tx.Unscoped().Model(&quotation).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+	var salesOrder models.SalesOrder
+	if err := tx.Unscoped().Model(&salesOrder).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *QuotationRepository) CreateQuoDts(tx *gorm.DB, quoDts []models.QuoDt, quotationID uint, span opentracing.Span) (*gorm.DB, []models.QuoDt, error) {
-	childSpan := opentracing.StartSpan("QuoDtRepository-CreateQuoDts", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) CreateSoDts(tx *gorm.DB, soDts []models.SoDt, salesOrderID uint, span opentracing.Span) (*gorm.DB, []models.SoDt, error) {
+	childSpan := opentracing.StartSpan("SoDtRepository-CreateSoDts", opentracing.ChildOf(span.Context()))
 
-	tx = tx.Create(&quoDts)
+	tx = tx.Create(&soDts)
 	if tx.Error != nil {
 		utils.LogErrors(childSpan, tx.Error)
 		tx.Rollback()
-		log.Fatalf("Failed to insert quoDts: %v", tx.Error)
+		log.Fatalf("Failed to insert soDts: %v", tx.Error)
 	}
 
-	return tx, quoDts, nil
+	return tx, soDts, nil
 }
 
-// bulk/batch update quoDts
-func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []models.QuoDt, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("QuoDtRepository-UpdateQuoDts", opentracing.ChildOf(span.Context()))
+// bulk/batch update soDts
+func (r *SalesOrderRepository) UpdateSoDts(tx *gorm.DB, soDts []models.SoDt, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SoDtRepository-UpdateSoDts", opentracing.ChildOf(span.Context()))
 
 	data := make([]map[string]interface{}, 0)
-	for _, quoDt := range quoDts {
+	for _, soDt := range soDts {
 		data = append(data, map[string]interface{}{
-			"id":           quoDt.ID,
-			"product_uuid": quoDt.ProductUuid,
-			"quotation_id": quoDt.QuotationID,
-			"ref_id":       quoDt.RefID,
-			"vat_id":       quoDt.VatID,
-			"item_unit_id": quoDt.ItemUnitID,
-			"item_id":      quoDt.ItemID,
-			"ref_type":     quoDt.RefType,
-			"item_type":    quoDt.ItemType,
-			// "ref_json":      quoDt.RefJSON,
-			// "item_json":     quoDt.ItemJSON,
-			"gen_code":      quoDt.GenCode,
-			"remark":        quoDt.Remark,
-			"vat_perc":      quoDt.VatPerc,
-			"vat_perc_am":   quoDt.VatPercAm,
-			"qty_so":        quoDt.QtySO,
-			"qty":           quoDt.Qty,
-			"price_sell":    quoDt.PriceSell,
-			"price_buy":     quoDt.PriceBuy,
-			"subtotal_sell": quoDt.SubtotalSell,
-			"subtotal_buy":  quoDt.SubtotalBuy,
-			"disc_am":       quoDt.DiscAm,
-			"disc_perc":     quoDt.DiscPerc,
-			"disc_perc_num": quoDt.DiscPercNum,
-			"disc_perc_am":  quoDt.DiscPercAm,
-			"disc_final":    quoDt.DiscFinal,
-			"disc_type":     quoDt.DiscType,
-			"total_am":      quoDt.TotalAm,
-			"updated_by_id": quoDt.UpdatedByID,
+			"id":             soDt.ID,
+			"product_uuid":   soDt.ProductUuid,
+			"sales_order_id": soDt.SalesOrderID,
+			"ref_id":         soDt.RefID,
+			"vat_id":         soDt.VatID,
+			"item_unit_id":   soDt.ItemUnitID,
+			"item_id":        soDt.ItemID,
+			"ref_type":       soDt.RefType,
+			"item_type":      soDt.ItemType,
+			// "ref_json":      soDt.RefJSON,
+			// "item_json":     soDt.ItemJSON,
+			"gen_code":      soDt.GenCode,
+			"remark":        soDt.Remark,
+			"vat_perc":      soDt.VatPerc,
+			"vat_perc_am":   soDt.VatPercAm,
+			"qty_so":        soDt.QtySO,
+			"qty":           soDt.Qty,
+			"price_sell":    soDt.PriceSell,
+			"price_buy":     soDt.PriceBuy,
+			"subtotal_sell": soDt.SubtotalSell,
+			"subtotal_buy":  soDt.SubtotalBuy,
+			"disc_am":       soDt.DiscAm,
+			"disc_perc":     soDt.DiscPerc,
+			"disc_perc_num": soDt.DiscPercNum,
+			"disc_perc_am":  soDt.DiscPercAm,
+			"disc_final":    soDt.DiscFinal,
+			"disc_type":     soDt.DiscType,
+			"total_am":      soDt.TotalAm,
+			"updated_by_id": soDt.UpdatedByID,
 			"updated_at":    time.Now(),
 		})
 	}
 
-	// if err := r.utilRepo.BulkUpdate(tx, "quoDts", "id", data, childSpan); err != nil {
+	// if err := r.utilRepo.BulkUpdate(tx, "soDts", "id", data, childSpan); err != nil {
 	if err := r.utilRepo.Upsert(tx, "quo_dts", "id", data, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
@@ -480,8 +480,8 @@ func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []models.QuoDt, s
 	return tx, nil
 }
 
-func (r *QuotationRepository) DeleteQuoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, quotationID uint, quoDtIDs []uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) DeleteSoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, salesOrderID uint, soDtIDs []uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SoDtRepository-DeleteSoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
 
 	claims := utils.GetClaims(ctx, childSpan)
 	userID := uint(claims["user_id"].(float64))
@@ -489,10 +489,10 @@ func (r *QuotationRepository) DeleteQuoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB
 	now := time.Now()
 	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
 
-	query := tx.Model(&models.QuoDt{}).Where("quotation_id = ? AND deleted_at IS NULL", quotationID)
+	query := tx.Model(&models.SoDt{}).Where("sales_order_id = ? AND deleted_at IS NULL", salesOrderID)
 
-	if len(quoDtIDs) > 0 {
-		query = query.Where("id NOT IN (?)", quoDtIDs)
+	if len(soDtIDs) > 0 {
+		query = query.Where("id NOT IN (?)", soDtIDs)
 	}
 
 	if err := query.Updates(map[string]interface{}{
@@ -506,13 +506,13 @@ func (r *QuotationRepository) DeleteQuoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB
 	return tx, nil
 }
 
-// func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, quotationIDs uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
-func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.DB, quotationIDs []uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
-	childSpan := opentracing.StartSpan("QuotationRepository-GetQuoDtsByQuotationIDs", opentracing.ChildOf(span.Context()))
+// func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, salesOrderIDs uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListDTO, error) {
+func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSoDtsBySalesOrderIDs", opentracing.ChildOf(span.Context()))
 
-	quoDts := []dtos.QuotationQuoDtListDTO{}
+	soDts := []dtos.SalesOrderSoDtListDTO{}
 
-	query := `SELECT qd.id, qd.quotation_id, qd.product_uuid,
+	query := `SELECT qd.id, qd.sales_order_id, qd.product_uuid,
 		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id, qd.created_at, qd.updated_at, qd.deleted_at,
 		qd.created_at, qd.updated_at, qd.deleted_at,
 
@@ -529,7 +529,7 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 		uu.name as updated_by_name
 
 	FROM quo_dts qd
-	LEFT JOIN quotations p ON qd.quotation_id = p.id
+	LEFT JOIN salesOrders p ON qd.sales_order_id = p.id
 	LEFT JOIN products pi ON qd.item_id = pi.id
 	LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
@@ -542,9 +542,9 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 	var args []interface{}
 	i := 1
 
-	if len(quotationIDs) > 0 {
-		query += " AND qd.quotation_id = ANY($1)"
-		args = append(args, pq.Array(quotationIDs))
+	if len(salesOrderIDs) > 0 {
+		query += " AND qd.sales_order_id = ANY($1)"
+		args = append(args, pq.Array(salesOrderIDs))
 		i++
 
 	}
@@ -560,26 +560,26 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 	// sqlxTx := sqlx.NewDb(sqlDB, "postgres")
 
 	// // Use sqlx transaction to execute the query
-	// if err := sqlxTx.SelectContext(ctx.Context(), &quoDts, query, args...); err != nil {
+	// if err := sqlxTx.SelectContext(ctx.Context(), &soDts, query, args...); err != nil {
 	// 	utils.LogErrors(childSpan, err)
 	// 	return nil, err
 	// }
 
-	if err := r.sqlDB.SelectContext(ctx.Context(), &quoDts, query, args...); err != nil {
+	if err := r.sqlDB.SelectContext(ctx.Context(), &soDts, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
-	return quoDts, nil
+	return soDts, nil
 }
 
-// func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, quotationIDs uint, span opentracing.Span) ([]dtos.QuotationQuoDtListDTO, error) {
-func (r *QuotationRepository) GetUpdatedQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.DB, quotationIDs []uint, span opentracing.Span) ([]dtos.QuotationQuoDtListUpdateDTO, error) {
-	childSpan := opentracing.StartSpan("QuotationRepository-GetQuoDtsByQuotationIDs", opentracing.ChildOf(span.Context()))
+// func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, salesOrderIDs uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListDTO, error) {
+func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListUpdateDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSoDtsBySalesOrderIDs", opentracing.ChildOf(span.Context()))
 
-	quoDts := []dtos.QuotationQuoDtListUpdateDTO{}
+	soDts := []dtos.SalesOrderSoDtListUpdateDTO{}
 
-	query := `SELECT qd.id, qd.quotation_id, qd.product_uuid,
+	query := `SELECT qd.id, qd.sales_order_id, qd.product_uuid,
 		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id, qd.created_at, qd.updated_at, qd.deleted_at,
 		qd.created_at, qd.updated_at, qd.deleted_at,
 
@@ -596,7 +596,7 @@ func (r *QuotationRepository) GetUpdatedQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx 
 		uu.name as updated_by_name
 
 	FROM quo_dts qd
-	LEFT JOIN quotations p ON qd.quotation_id = p.id
+	LEFT JOIN salesOrders p ON qd.sales_order_id = p.id
 	LEFT JOIN products pi ON qd.item_id = pi.id
 	LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
@@ -609,27 +609,27 @@ func (r *QuotationRepository) GetUpdatedQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx 
 	var args []interface{}
 	i := 1
 
-	if len(quotationIDs) > 0 {
-		query += " AND qd.quotation_id = ANY($1)"
-		args = append(args, pq.Array(quotationIDs))
+	if len(salesOrderIDs) > 0 {
+		query += " AND qd.sales_order_id = ANY($1)"
+		args = append(args, pq.Array(salesOrderIDs))
 		i++
 
 	}
 
 	// GORM Raw
-	if err := tx.Raw(query, args...).Scan(&quoDts).Error; err != nil {
+	if err := tx.Raw(query, args...).Scan(&soDts).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
-	return quoDts, nil
+	return soDts, nil
 }
 
-func (r *QuotationRepository) CreateQuoDtBoms(tx *gorm.DB, quoDtBoms []map[string]interface{}, quotationID uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("QuoDtRepository-CreateQuoDtBoms", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) CreateSoDtBoms(tx *gorm.DB, soDtBoms []map[string]interface{}, salesOrderID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SoDtRepository-CreateSoDtBoms", opentracing.ChildOf(span.Context()))
 
-	err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", quoDtBoms, span)
-	// err := tx.Create(&quoDtBoms).Error
+	err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", soDtBoms, span)
+	// err := tx.Create(&soDtBoms).Error
 	if err != nil {
 		tx.Rollback()
 		utils.LogErrors(childSpan, err)
@@ -639,8 +639,8 @@ func (r *QuotationRepository) CreateQuoDtBoms(tx *gorm.DB, quoDtBoms []map[strin
 	return tx, nil
 }
 
-func (r *QuotationRepository) DeleteQuoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, quotationID uint, quoDtBomIDs []uint, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtBomsWhereNotIn", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) DeleteSoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, salesOrderID uint, soDtBomIDs []uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SoDtRepository-DeleteSoDtBomsWhereNotIn", opentracing.ChildOf(span.Context()))
 
 	claims := utils.GetClaims(ctx, childSpan)
 	userID := uint(claims["user_id"].(float64))
@@ -648,10 +648,10 @@ func (r *QuotationRepository) DeleteQuoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *gorm
 	now := time.Now()
 	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
 
-	query := tx.Model(&models.QuoDtBom{}).Where("quotation_id = ? AND deleted_at IS NULL", quotationID)
+	query := tx.Model(&models.SoDtBom{}).Where("sales_order_id = ? AND deleted_at IS NULL", salesOrderID)
 
-	if len(quoDtBomIDs) > 0 {
-		query = query.Where("id NOT IN (?)", quoDtBomIDs)
+	if len(soDtBomIDs) > 0 {
+		query = query.Where("id NOT IN (?)", soDtBomIDs)
 	}
 
 	if err := query.Updates(map[string]interface{}{
@@ -665,39 +665,39 @@ func (r *QuotationRepository) DeleteQuoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *gorm
 	return nil
 }
 
-// bulk/batch update quoDts
-func (r *QuotationRepository) UpdateQuoDtBoms(tx *gorm.DB, quoDtBoms []map[string]interface{}, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuoDtRepository-UpdateQuoDtBoms", opentracing.ChildOf(span.Context()))
+// bulk/batch update soDts
+func (r *SalesOrderRepository) UpdateSoDtBoms(tx *gorm.DB, soDtBoms []map[string]interface{}, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SoDtRepository-UpdateSoDtBoms", opentracing.ChildOf(span.Context()))
 
 	// data := make([]map[string]interface{}, 0)
-	// for _, quoDtBom := range quoDtBoms {
+	// for _, soDtBom := range soDtBoms {
 	// 	itemJson := "{}"
 	// 	genCode := ""
 
 	// 	data = append(data, map[string]interface{}{
-	// 		"id":            quoDtBom["id"],
-	// 		"quotation_id":  quoDtBom["quotation_id"],
-	// 		"quo_dt_id":     quoDtBom["quo_dt_id"],
-	// 		"product_id":    quoDtBom["product_id"],
-	// 		"item_id":       quoDtBom["item_id"],
-	// 		"item_unit_id":  quoDtBom["item_unit_id"],
+	// 		"id":            soDtBom["id"],
+	// 		"sales_order_id":  soDtBom["sales_order_id"],
+	// 		"quo_dt_id":     soDtBom["quo_dt_id"],
+	// 		"product_id":    soDtBom["product_id"],
+	// 		"item_id":       soDtBom["item_id"],
+	// 		"item_unit_id":  soDtBom["item_unit_id"],
 	// 		"item_json":     itemJson,
 	// 		"gen_code":      genCode,
-	// 		"remark":        quoDtBom["remark"],
-	// 		"qty":           quoDtBom["qty"],
-	// 		"price_sell":    quoDtBom["price_sell"],
-	// 		"price_buy":     quoDtBom["price_buy"],
-	// 		"subtotal_sell": quoDtBom["subtotal_sell"],
-	// 		"subtotal_buy":  quoDtBom["subtotal_buy"],
-	// 		"updated_by_id": quoDtBom["updated_by_id"],
+	// 		"remark":        soDtBom["remark"],
+	// 		"qty":           soDtBom["qty"],
+	// 		"price_sell":    soDtBom["price_sell"],
+	// 		"price_buy":     soDtBom["price_buy"],
+	// 		"subtotal_sell": soDtBom["subtotal_sell"],
+	// 		"subtotal_buy":  soDtBom["subtotal_buy"],
+	// 		"updated_by_id": soDtBom["updated_by_id"],
 	// 		"updated_at":    time.Now(),
 	// 	})
 	// }
 
-	// log.Println("quoDtBoms", quoDtBoms)
+	// log.Println("soDtBoms", soDtBoms)
 
-	// if err := r.utilRepo.BulkUpdate(tx, "quoDtBoms", "id", data, childSpan); err != nil {
-	if err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", quoDtBoms, childSpan); err != nil {
+	// if err := r.utilRepo.BulkUpdate(tx, "soDtBoms", "id", data, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", soDtBoms, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -705,10 +705,10 @@ func (r *QuotationRepository) UpdateQuoDtBoms(tx *gorm.DB, quoDtBoms []map[strin
 	return nil
 }
 
-func (r *QuotationRepository) DeleteQuoDtBomsByQuotationID(tx *gorm.DB, params *dtos.GetQuotationParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtBomsByQuotationID", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) DeleteSoDtBomsBySalesOrderID(tx *gorm.DB, params *dtos.GetSalesOrderParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SoDtRepository-DeleteSoDtBomsBySalesOrderID", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Where("quotation_id = ?", params.ID).Delete(&models.QuoDtBom{}).Error; err != nil {
+	if err := tx.Where("sales_order_id = ?", params.ID).Delete(&models.SoDtBom{}).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -716,10 +716,10 @@ func (r *QuotationRepository) DeleteQuoDtBomsByQuotationID(tx *gorm.DB, params *
 	return nil
 }
 
-func (r *QuotationRepository) DeleteQuoDtsByQuotationID(tx *gorm.DB, params *dtos.GetQuotationParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuoDtRepository-DeleteQuoDtsByQuotationID", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) DeleteSoDtsBySalesOrderID(tx *gorm.DB, params *dtos.GetSalesOrderParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SoDtRepository-DeleteSoDtsBySalesOrderID", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Where("quotation_id = ?", params.ID).Delete(&models.QuoDt{}).Error; err != nil {
+	if err := tx.Where("sales_order_id = ?", params.ID).Delete(&models.SoDt{}).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -727,15 +727,15 @@ func (r *QuotationRepository) DeleteQuoDtsByQuotationID(tx *gorm.DB, params *dto
 	return nil
 }
 
-func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters map[string]string, quotationIDs []uint, span opentracing.Span) ([]dtos.QuotationQuoDtBomListDTO, error) {
-	childSpan := opentracing.StartSpan("QuotationRepository-GetQuoDtsBomByQuotations", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters map[string]string, salesOrderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtBomListDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSoDtsBomBySalesOrders", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
 
 	isAdmin := utils.IsAdmin(ctx)
 
-	quoDtBoms := []dtos.QuotationQuoDtBomListDTO{}
+	soDtBoms := []dtos.SalesOrderSoDtBomListDTO{}
 
 	filterDBColumnKey := []string{
 		"q.quo_no", "q.title", "q.remark",
@@ -837,10 +837,10 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 		}
 	}
 
-	if len(quotationIDs) > 0 {
-		condition += fmt.Sprintf(" AND qdb.quotation_id = ANY($%d)", i)
-		// countQuery += fmt.Sprintf(" AND q.quotation_id = ANY($%d)", i)
-		args = append(args, pq.Array(quotationIDs))
+	if len(salesOrderIDs) > 0 {
+		condition += fmt.Sprintf(" AND qdb.sales_order_id = ANY($%d)", i)
+		// countQuery += fmt.Sprintf(" AND q.sales_order_id = ANY($%d)", i)
+		args = append(args, pq.Array(salesOrderIDs))
 		i++
 	}
 
@@ -862,7 +862,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (qdb.id)
-					qdb.id, qdb.product_uuid, qdb.quotation_id, qdb.quo_dt_id, qdb.product_id, qdb.item_id, qdb.item_unit_id, qdb.gen_code, qdb.remark, qdb.qty, qdb.price_sell, qdb.price_buy, qdb.subtotal_sell, qdb.subtotal_buy, qdb.created_by_id, qdb.updated_by_id, qdb.deleted_by_id, qdb.created_at, qdb.updated_at, qdb.deleted_at,
+					qdb.id, qdb.product_uuid, qdb.sales_order_id, qdb.quo_dt_id, qdb.product_id, qdb.item_id, qdb.item_unit_id, qdb.gen_code, qdb.remark, qdb.qty, qdb.price_sell, qdb.price_buy, qdb.subtotal_sell, qdb.subtotal_buy, qdb.created_by_id, qdb.updated_by_id, qdb.deleted_by_id, qdb.created_at, qdb.updated_at, qdb.deleted_at,
 					qdb.id as quo_dt_bom_id,
 					it.name as item_name,
 					it.code as item_code,
@@ -881,7 +881,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 
         FROM quo_dt_boms qdb
 				LEFT JOIN quo_dts qd ON qd.id = qdb.quo_dt_id
-				LEFT JOIN quotations q ON q.id = qd.quotation_id
+				LEFT JOIN sales_orders q ON q.id = qd.so
 				LEFT JOIN products pi ON qd.item_id = pi.id
 				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
@@ -928,21 +928,21 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 
 	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-	err := r.sqlDB.SelectContext(ctx.Context(), &quoDtBoms, query, args...)
+	err := r.sqlDB.SelectContext(ctx.Context(), &soDtBoms, query, args...)
 	if err != nil {
 		selectSpan.LogKV("query", query)
 		utils.LogErrors(selectSpan, err)
 		return nil, err
 	}
 
-	return quoDtBoms, nil
+	return soDtBoms, nil
 }
 
-// Lock Quotation Header
-func (r *QuotationRepository) LockQuotationHeader(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdateQuotationRequest, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuotationRepository-LockQuotationHeader", opentracing.ChildOf(span.Context()))
+// Lock SalesOrder Header
+func (r *SalesOrderRepository) LockSalesOrderHeader(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdateSalesOrderRequest, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-LockSalesOrderHeader", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", []uint{req.ID}).Find(&models.Quotation{}).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", []uint{req.ID}).Find(&models.SalesOrder{}).Error; err != nil {
 		tx.Rollback()
 		utils.LogErrors(childSpan, err)
 
@@ -952,10 +952,10 @@ func (r *QuotationRepository) LockQuotationHeader(ctx *fiber.Ctx, tx *gorm.DB, r
 	return nil
 }
 
-func (r *QuotationRepository) LockQuoDts(ctx *fiber.Ctx, tx *gorm.DB, quoDtIDs []*uint, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuotationRepository-LockQuoDts", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) LockSoDts(ctx *fiber.Ctx, tx *gorm.DB, soDtIDs []*uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-LockSoDts", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", quoDtIDs).Find(&models.QuoDt{}).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", soDtIDs).Find(&models.SoDt{}).Error; err != nil {
 		tx.Rollback()
 		utils.LogErrors(childSpan, err)
 
@@ -965,10 +965,10 @@ func (r *QuotationRepository) LockQuoDts(ctx *fiber.Ctx, tx *gorm.DB, quoDtIDs [
 	return nil
 }
 
-func (r *QuotationRepository) LockQuoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, quoDtBomIDs []*uint, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("QuotationRepository-LockQuoDtBoms", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) LockSoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, soDtBomIDs []*uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-LockSoDtBoms", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", quoDtBomIDs).Find(&models.QuoDtBom{}).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", soDtBomIDs).Find(&models.SoDtBom{}).Error; err != nil {
 		tx.Rollback()
 		utils.LogErrors(childSpan, err)
 
