@@ -48,13 +48,13 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	var total int
 
 	filterDBColumnKey := []string{
-		"q.sales_order_no", "q.title", "q.remark",
+		"q.quo_no", "q.title", "q.remark",
 		"pi.name",
 		"it.name",
-		"sod.remark",
-		"sod.gen_code",
-		"sdb.remark",
-		"sdb.gen_code",
+		"qd.remark",
+		"qd.gen_code",
+		"qdb.remark",
+		"qdb.gen_code",
 	}
 
 	var args []interface{}
@@ -128,7 +128,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "sod.vat_id"},
+		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -148,14 +148,14 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (q.id)
-					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.sales_order_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
+					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.quo_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
 					TO_CHAR(q.due_at, 'YYYY-MM-DD') as due_at,
 					TO_CHAR(q.expired_at, 'YYYY-MM-DD') as expired_at,
 					q.vat_perc, q.disc_am, q.disc_perc, q.disc_perc_am, q.disc_final, q.disc_type,
 
 					pi.id as product_id,
 					it.id as item_id,
-					sod.vat_id as so_dt_vat_id,
+					qd.vat_id as quo_dt_vat_id,
 
 					pi.name as product_name,
 					it.name as item_name,
@@ -166,20 +166,20 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 					ot.name as order_type_name,
 					c.name as customer_name,
 
-					sod.remark as so_dt_remark,
-					sod.gen_code as so_dt_gen_code,
-					sdb.remark as so_dt_bom_remark,
-					sdb.gen_code as so_dt_bom_gen_code,
+					qd.remark as quo_dt_remark,
+					qd.gen_code as quo_dt_gen_code,
+					qdb.remark as quo_dt_bom_remark,
+					qdb.gen_code as quo_dt_bom_gen_code,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM sales_orders q
-				LEFT JOIN so_dts sod ON sod.sales_order_id = q.id
-				LEFT JOIN products pi ON sod.item_id = pi.id
-				LEFT JOIN item_units iu ON sod.item_unit_id = iu.id
-				LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sod.id
-				LEFT JOIN products it ON sdb.item_id = it.id
+        FROM sales_orders so
+				LEFT JOIN quo_dts qd ON qd.sales_order_id = q.id
+				LEFT JOIN products pi ON qd.item_id = pi.id
+				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
+				LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
+				LEFT JOIN products it ON qdb.item_id = it.id
 
 				LEFT JOIN mix_values cur ON q.currency_id = cur.id
 				LEFT JOIN mix_values vat ON q.vat_id = vat.id
@@ -200,7 +200,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	for key, value := range filters {
 		switch key {
-		case "sales_order_no", "title", "remark":
+		case "quo_no", "title", "remark":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -248,7 +248,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "sales_order_no")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "quo_no")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
@@ -292,7 +292,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.SalesOrderDetailDTO, error) {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSalesOrderByID", opentracing.ChildOf(span.Context()))
-	var sales_order dtos.SalesOrderDetailDTO
+	var salesOrder dtos.SalesOrderDetailDTO
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
@@ -302,7 +302,7 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (q.id)
-					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.sales_order_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
+					q.id, q.customer_id, q.order_type_id, q.currency_id, q.vat_id, q.payment_id, q.pph23_id, q.branch_id, q.quo_no, q.title, q.remark, q.status, q.is_approved, q.exchange_rate, q.pph23_perc, q.total_qty, q.subtotal, q.total_discount, q.total_pph23, q.total_vat, q.grand_total, q.created_by_id, q.updated_by_id, q.deleted_by_id, q.created_at, q.updated_at, q.deleted_at,
 					TO_CHAR(q.due_at, 'YYYY-MM-DD') as due_at,
 					TO_CHAR(q.expired_at, 'YYYY-MM-DD') as expired_at,
 					q.vat_perc, q.disc_am, q.disc_perc, q.disc_perc_am, q.disc_final, q.disc_type,
@@ -311,12 +311,12 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM sales_orders q
-				LEFT JOIN so_dts sod ON sod.sales_order_id = q.id
-				LEFT JOIN products pi ON sod.item_id = pi.id
-				LEFT JOIN item_units iu ON sod.item_unit_id = iu.id
-				LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sod.id
-				LEFT JOIN products it ON sdb.item_id = it.id
+        FROM sales_orders so
+				LEFT JOIN quo_dts qd ON qd.sales_order_id = q.id
+				LEFT JOIN products pi ON qd.item_id = pi.id
+				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
+				LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
+				LEFT JOIN products it ON qdb.item_id = it.id
 
 				LEFT JOIN mix_values cur ON q.currency_id = cur.id
 				LEFT JOIN mix_values vat ON q.vat_id = vat.id
@@ -355,13 +355,13 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 
 	query += isDeletedQuery
 
-	if err := r.sqlDB.Get(&sales_order, query, args...); err != nil {
+	if err := r.sqlDB.Get(&salesOrder, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
 		childSpan.LogKV("query", query)
 		return nil, err
 	}
 
-	return &sales_order, nil
+	return &salesOrder, nil
 }
 
 // BeginTransaction starts a new transaction
@@ -374,9 +374,9 @@ func (r *SalesOrderRepository) Rollback() *gorm.DB {
 	return r.db.Rollback()
 }
 
-func (r *SalesOrderRepository) CreateSalesOrder(tx *gorm.DB, sales_order *models.SalesOrder, span opentracing.Span) (*gorm.DB, error) {
+func (r *SalesOrderRepository) CreateSalesOrder(tx *gorm.DB, salesOrder *models.SalesOrder, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateSalesOrder", opentracing.ChildOf(span.Context()))
-	if err := tx.Create(sales_order).Error; err != nil {
+	if err := tx.Create(salesOrder).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
@@ -384,12 +384,12 @@ func (r *SalesOrderRepository) CreateSalesOrder(tx *gorm.DB, sales_order *models
 	return tx, nil
 }
 
-func (r *SalesOrderRepository) UpdateSalesOrder(tx *gorm.DB, sales_order *models.SalesOrder, span opentracing.Span) error {
+func (r *SalesOrderRepository) UpdateSalesOrder(tx *gorm.DB, salesOrder *models.SalesOrder, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-UpdateSalesOrder", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Select("*").Omit(
+	if err := tx.Where("id = ?", salesOrder.ID).Select("*").Omit(
 		"created_at", "created_by_id", "branch_id",
-	).Updates(sales_order).Error; err != nil {
+	).Updates(salesOrder).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -410,15 +410,15 @@ func (r *SalesOrderRepository) DeleteSalesOrder(tx *gorm.DB, params *dtos.GetSal
 func (s *SalesOrderRepository) RestoreSalesOrder(tx *gorm.DB, params *dtos.GetSalesOrderParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-RestoreSalesOrder", opentracing.ChildOf(span.Context()))
 
-	var sales_order models.SalesOrder
-	if err := tx.Unscoped().Model(&sales_order).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+	var salesOrder models.SalesOrder
+	if err := tx.Unscoped().Model(&salesOrder).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
 	return nil
 }
 
-func (r *SalesOrderRepository) CreateSoDts(tx *gorm.DB, soDts []models.SoDt, sales_orderID uint, span opentracing.Span) (*gorm.DB, []models.SoDt, error) {
+func (r *SalesOrderRepository) CreateSoDts(tx *gorm.DB, soDts []models.SoDt, salesOrderID uint, span opentracing.Span) (*gorm.DB, []models.SoDt, error) {
 	childSpan := opentracing.StartSpan("SoDtRepository-CreateSoDts", opentracing.ChildOf(span.Context()))
 
 	tx = tx.Create(&soDts)
@@ -472,7 +472,7 @@ func (r *SalesOrderRepository) UpdateSoDts(tx *gorm.DB, soDts []models.SoDt, spa
 	}
 
 	// if err := r.utilRepo.BulkUpdate(tx, "soDts", "id", data, childSpan); err != nil {
-	if err := r.utilRepo.Upsert(tx, "so_dts", "id", data, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "quo_dts", "id", data, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
@@ -480,7 +480,7 @@ func (r *SalesOrderRepository) UpdateSoDts(tx *gorm.DB, soDts []models.SoDt, spa
 	return tx, nil
 }
 
-func (r *SalesOrderRepository) DeleteSoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, sales_orderID uint, soDtIDs []uint, span opentracing.Span) (*gorm.DB, error) {
+func (r *SalesOrderRepository) DeleteSoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, salesOrderID uint, soDtIDs []uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SoDtRepository-DeleteSoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
 
 	claims := utils.GetClaims(ctx, childSpan)
@@ -489,7 +489,7 @@ func (r *SalesOrderRepository) DeleteSoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB
 	now := time.Now()
 	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
 
-	query := tx.Model(&models.SoDt{}).Where("sales_order_id = ? AND deleted_at IS NULL", sales_orderID)
+	query := tx.Model(&models.SoDt{}).Where("sales_order_id = ? AND deleted_at IS NULL", salesOrderID)
 
 	if len(soDtIDs) > 0 {
 		query = query.Where("id NOT IN (?)", soDtIDs)
@@ -506,17 +506,17 @@ func (r *SalesOrderRepository) DeleteSoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB
 	return tx, nil
 }
 
-// func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, sales_orderIDs uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListDTO, error) {
-func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.DB, sales_orderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListDTO, error) {
+// func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, salesOrderIDs uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListDTO, error) {
+func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListDTO, error) {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSoDtsBySalesOrderIDs", opentracing.ChildOf(span.Context()))
 
 	soDts := []dtos.SalesOrderSoDtListDTO{}
 
-	query := `SELECT sod.id, sod.sales_order_id, sod.product_uuid,
-		sod.item_unit_id, sod.vat_id, sod.ref_id, sod.item_id, sod.ref_type, sod.item_type, sod.gen_code, sod.remark, sod.vat_perc, sod.qty_so, sod.qty, sod.price_sell, sod.price_buy, sod.subtotal_sell, sod.subtotal_buy, sod.vat_perc, sod.vat_perc_am, sod.disc_am, sod.disc_perc, sod.disc_perc_num, sod.disc_perc_am, sod.disc_final, sod.disc_type, sod.total_am, sod.created_by_id, sod.updated_by_id, sod.deleted_by_id, sod.created_at, sod.updated_at, sod.deleted_at,
-		sod.created_at, sod.updated_at, sod.deleted_at,
+	query := `SELECT qd.id, qd.sales_order_id, qd.product_uuid,
+		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id, qd.created_at, qd.updated_at, qd.deleted_at,
+		qd.created_at, qd.updated_at, qd.deleted_at,
 
-		sod.id as so_dt_id,
+		qd.id as quo_dt_id,
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
 		isg.name as item_sub_group_name,
@@ -528,23 +528,23 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 		cu.name as created_by_name,
 		uu.name as updated_by_name
 
-	FROM so_dts sod
-	LEFT JOIN sales_orders p ON sod.sales_order_id = p.id
-	LEFT JOIN products pi ON sod.item_id = pi.id
-	LEFT JOIN item_units iu ON sod.item_unit_id = iu.id
+	FROM quo_dts qd
+	LEFT JOIN salesOrders p ON qd.sales_order_id = p.id
+	LEFT JOIN products pi ON qd.item_id = pi.id
+	LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
 	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN users cu ON sod.created_by_id = cu.id
-	LEFT JOIN users uu ON sod.updated_by_id = uu.id
-	WHERE sod.deleted_at IS NULL`
+	LEFT JOIN users cu ON qd.created_by_id = cu.id
+	LEFT JOIN users uu ON qd.updated_by_id = uu.id
+	WHERE qd.deleted_at IS NULL`
 
 	var args []interface{}
 	i := 1
 
-	if len(sales_orderIDs) > 0 {
-		query += " AND sod.sales_order_id = ANY($1)"
-		args = append(args, pq.Array(sales_orderIDs))
+	if len(salesOrderIDs) > 0 {
+		query += " AND qd.sales_order_id = ANY($1)"
+		args = append(args, pq.Array(salesOrderIDs))
 		i++
 
 	}
@@ -573,17 +573,17 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 	return soDts, nil
 }
 
-// func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, sales_orderIDs uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListDTO, error) {
-func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.DB, sales_orderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListUpdateDTO, error) {
+// func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, salesOrderIDs uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListDTO, error) {
+func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtListUpdateDTO, error) {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSoDtsBySalesOrderIDs", opentracing.ChildOf(span.Context()))
 
 	soDts := []dtos.SalesOrderSoDtListUpdateDTO{}
 
-	query := `SELECT sod.id, sod.sales_order_id, sod.product_uuid,
-		sod.item_unit_id, sod.vat_id, sod.ref_id, sod.item_id, sod.ref_type, sod.item_type, sod.gen_code, sod.remark, sod.vat_perc, sod.qty_so, sod.qty, sod.price_sell, sod.price_buy, sod.subtotal_sell, sod.subtotal_buy, sod.vat_perc, sod.vat_perc_am, sod.disc_am, sod.disc_perc, sod.disc_perc_num, sod.disc_perc_am, sod.disc_final, sod.disc_type, sod.total_am, sod.created_by_id, sod.updated_by_id, sod.deleted_by_id, sod.created_at, sod.updated_at, sod.deleted_at,
-		sod.created_at, sod.updated_at, sod.deleted_at,
+	query := `SELECT qd.id, qd.sales_order_id, qd.product_uuid,
+		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id, qd.created_at, qd.updated_at, qd.deleted_at,
+		qd.created_at, qd.updated_at, qd.deleted_at,
 
-		sod.id as so_dt_id,
+		qd.id as quo_dt_id,
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
 		isg.name as item_sub_group_name,
@@ -595,23 +595,23 @@ func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx
 		cu.name as created_by_name,
 		uu.name as updated_by_name
 
-	FROM so_dts sod
-	LEFT JOIN sales_orders p ON sod.sales_order_id = p.id
-	LEFT JOIN products pi ON sod.item_id = pi.id
-	LEFT JOIN item_units iu ON sod.item_unit_id = iu.id
+	FROM quo_dts qd
+	LEFT JOIN salesOrders p ON qd.sales_order_id = p.id
+	LEFT JOIN products pi ON qd.item_id = pi.id
+	LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
 	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN users cu ON sod.created_by_id = cu.id
-	LEFT JOIN users uu ON sod.updated_by_id = uu.id
-	WHERE sod.deleted_at IS NULL`
+	LEFT JOIN users cu ON qd.created_by_id = cu.id
+	LEFT JOIN users uu ON qd.updated_by_id = uu.id
+	WHERE qd.deleted_at IS NULL`
 
 	var args []interface{}
 	i := 1
 
-	if len(sales_orderIDs) > 0 {
-		query += " AND sod.sales_order_id = ANY($1)"
-		args = append(args, pq.Array(sales_orderIDs))
+	if len(salesOrderIDs) > 0 {
+		query += " AND qd.sales_order_id = ANY($1)"
+		args = append(args, pq.Array(salesOrderIDs))
 		i++
 
 	}
@@ -625,10 +625,10 @@ func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx
 	return soDts, nil
 }
 
-func (r *SalesOrderRepository) CreateSoDtBoms(tx *gorm.DB, soDtBoms []map[string]interface{}, sales_orderID uint, span opentracing.Span) (*gorm.DB, error) {
+func (r *SalesOrderRepository) CreateSoDtBoms(tx *gorm.DB, soDtBoms []map[string]interface{}, salesOrderID uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SoDtRepository-CreateSoDtBoms", opentracing.ChildOf(span.Context()))
 
-	err := r.utilRepo.Upsert(tx, "so_dt_boms", "id", soDtBoms, span)
+	err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", soDtBoms, span)
 	// err := tx.Create(&soDtBoms).Error
 	if err != nil {
 		tx.Rollback()
@@ -639,7 +639,7 @@ func (r *SalesOrderRepository) CreateSoDtBoms(tx *gorm.DB, soDtBoms []map[string
 	return tx, nil
 }
 
-func (r *SalesOrderRepository) DeleteSoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, sales_orderID uint, soDtBomIDs []uint, span opentracing.Span) error {
+func (r *SalesOrderRepository) DeleteSoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, salesOrderID uint, soDtBomIDs []uint, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("SoDtRepository-DeleteSoDtBomsWhereNotIn", opentracing.ChildOf(span.Context()))
 
 	claims := utils.GetClaims(ctx, childSpan)
@@ -648,7 +648,7 @@ func (r *SalesOrderRepository) DeleteSoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *gorm
 	now := time.Now()
 	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
 
-	query := tx.Model(&models.SoDtBom{}).Where("sales_order_id = ? AND deleted_at IS NULL", sales_orderID)
+	query := tx.Model(&models.SoDtBom{}).Where("sales_order_id = ? AND deleted_at IS NULL", salesOrderID)
 
 	if len(soDtBomIDs) > 0 {
 		query = query.Where("id NOT IN (?)", soDtBomIDs)
@@ -677,7 +677,7 @@ func (r *SalesOrderRepository) UpdateSoDtBoms(tx *gorm.DB, soDtBoms []map[string
 	// 	data = append(data, map[string]interface{}{
 	// 		"id":            soDtBom["id"],
 	// 		"sales_order_id":  soDtBom["sales_order_id"],
-	// 		"so_dt_id":     soDtBom["so_dt_id"],
+	// 		"quo_dt_id":     soDtBom["quo_dt_id"],
 	// 		"product_id":    soDtBom["product_id"],
 	// 		"item_id":       soDtBom["item_id"],
 	// 		"item_unit_id":  soDtBom["item_unit_id"],
@@ -697,7 +697,7 @@ func (r *SalesOrderRepository) UpdateSoDtBoms(tx *gorm.DB, soDtBoms []map[string
 	// log.Println("soDtBoms", soDtBoms)
 
 	// if err := r.utilRepo.BulkUpdate(tx, "soDtBoms", "id", data, childSpan); err != nil {
-	if err := r.utilRepo.Upsert(tx, "so_dt_boms", "id", soDtBoms, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "quo_dt_boms", "id", soDtBoms, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -727,7 +727,7 @@ func (r *SalesOrderRepository) DeleteSoDtsBySalesOrderID(tx *gorm.DB, params *dt
 	return nil
 }
 
-func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters map[string]string, sales_orderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtBomListDTO, error) {
+func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters map[string]string, salesOrderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtBomListDTO, error) {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSoDtsBomBySalesOrders", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
@@ -738,13 +738,13 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	soDtBoms := []dtos.SalesOrderSoDtBomListDTO{}
 
 	filterDBColumnKey := []string{
-		"q.sales_order_no", "q.title", "q.remark",
+		"q.quo_no", "q.title", "q.remark",
 		"pi.name",
 		"it.name",
-		"sod.remark",
-		"sod.gen_code",
-		"sdb.remark",
-		"sdb.gen_code",
+		"qd.remark",
+		"qd.gen_code",
+		"qdb.remark",
+		"qdb.gen_code",
 	}
 
 	var args []interface{}
@@ -794,13 +794,13 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	}
 
 	filterIDsKey := map[string]string{
-		"customer_ids":       "q.customer_id",
-		"order_type_ids":     "q.order_type_id",
-		"currency_ids":       "q.currency_id",
-		"payment_ids":        "q.payment_id",
-		"pph23_ids":          "q.pph23_id",
-		"so_dt_ref_ids":      "sod.ref_id",
-		"so_dt_bom_item_ids": "sdb.item_id",
+		"customer_ids":        "q.customer_id",
+		"order_type_ids":      "q.order_type_id",
+		"currency_ids":        "q.currency_id",
+		"payment_ids":         "q.payment_id",
+		"pph23_ids":           "q.pph23_id",
+		"quo_dt_ref_ids":      "qd.ref_id",
+		"quo_dt_bom_item_ids": "qdb.item_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -820,7 +820,7 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "sod.vat_id"},
+		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -837,17 +837,17 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 		}
 	}
 
-	if len(sales_orderIDs) > 0 {
-		condition += fmt.Sprintf(" AND sdb.sales_order_id = ANY($%d)", i)
+	if len(salesOrderIDs) > 0 {
+		condition += fmt.Sprintf(" AND qdb.sales_order_id = ANY($%d)", i)
 		// countQuery += fmt.Sprintf(" AND q.sales_order_id = ANY($%d)", i)
-		args = append(args, pq.Array(sales_orderIDs))
+		args = append(args, pq.Array(salesOrderIDs))
 		i++
 	}
 
 	filterKeyLike := map[string]string{
-		"sales_order_no": "q.sales_order_no",
-		"title":          "q.title",
-		"remark":         "q.remark",
+		"quo_no": "q.quo_no",
+		"title":  "q.title",
+		"remark": "q.remark",
 	}
 
 	for key, _ := range filterKeyLike {
@@ -861,9 +861,9 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (sdb.id)
-					sdb.id, sdb.product_uuid, sdb.sales_order_id, sdb.so_dt_id, sdb.product_id, sdb.item_id, sdb.item_unit_id, sdb.gen_code, sdb.remark, sdb.qty, sdb.price_sell, sdb.price_buy, sdb.subtotal_sell, sdb.subtotal_buy, sdb.created_by_id, sdb.updated_by_id, sdb.deleted_by_id, sdb.created_at, sdb.updated_at, sdb.deleted_at,
-					sdb.id as so_dt_bom_id,
+        SELECT DISTINCT ON (qdb.id)
+					qdb.id, qdb.product_uuid, qdb.sales_order_id, qdb.quo_dt_id, qdb.product_id, qdb.item_id, qdb.item_unit_id, qdb.gen_code, qdb.remark, qdb.qty, qdb.price_sell, qdb.price_buy, qdb.subtotal_sell, qdb.subtotal_buy, qdb.created_by_id, qdb.updated_by_id, qdb.deleted_by_id, qdb.created_at, qdb.updated_at, qdb.deleted_at,
+					qdb.id as quo_dt_bom_id,
 					it.name as item_name,
 					it.code as item_code,
 					it.barcode as item_barcode,
@@ -879,13 +879,13 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM so_dt_boms sdb
-				LEFT JOIN so_dts sod ON sod.id = sdb.so_dt_id
-				LEFT JOIN sales_orders q ON q.id = sod.sales_order_id
-				LEFT JOIN products pi ON sod.item_id = pi.id
-				LEFT JOIN item_units iu ON sod.item_unit_id = iu.id
+        FROM quo_dt_boms qdb
+				LEFT JOIN quo_dts qd ON qd.id = qdb.quo_dt_id
+				LEFT JOIN sales_orders q ON q.id = qd.so
+				LEFT JOIN products pi ON qd.item_id = pi.id
+				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
-				LEFT JOIN products it ON sdb.item_id = it.id
+				LEFT JOIN products it ON qdb.item_id = it.id
 				LEFT JOIN mix_values isg ON it.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 
@@ -914,7 +914,7 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 		i++
 	}
 
-	// orderColumn := utils.GetStringOrDefault(filters["order_column"], "sales_order_no")
+	// orderColumn := utils.GetStringOrDefault(filters["order_column"], "quo_no")
 	// orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
 	// query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 

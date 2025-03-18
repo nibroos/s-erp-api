@@ -387,7 +387,7 @@ func (r *QuotationRepository) CreateQuotation(tx *gorm.DB, quotation *models.Quo
 func (r *QuotationRepository) UpdateQuotation(tx *gorm.DB, quotation *models.Quotation, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("QuotationRepository-UpdateQuotation", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Select("*").Omit(
+	if err := tx.Where("id = ?", quotation.ID).Select("*").Omit(
 		"created_at", "created_by_id", "branch_id",
 	).Updates(quotation).Error; err != nil {
 		utils.LogErrors(childSpan, err)

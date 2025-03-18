@@ -5,7 +5,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
-	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
@@ -149,20 +148,6 @@ func (c *QuotationController) CreateQuotation(ctx *fiber.Ctx) error {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create quotation", http.StatusInternalServerError)
 	}
 
-	// bulk create item quoDts ref ms items / product->boms
-	var quoDts []models.QuoDt
-	tx, quoDts, err = c.service.CreateQuoDts(ctx, req, userID, createdQuotation, tx, parentSpan)
-
-	if err != nil {
-		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Details", http.StatusInternalServerError)
-	}
-
-	// tx, err = c.service.CreateQuoDtBoms(ctx, quoDtBoms, tx, parentSpan)
-	tx, err = c.service.CreateQuoDtBoms(ctx, quoDts, req, createdQuotation, userID, tx, parentSpan)
-	if err != nil {
-		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Quo Detail BOMs", http.StatusInternalServerError)
-	}
-
 	tx.Commit()
 
 	params := &dtos.GetQuotationParams{ID: createdQuotation.ID}
@@ -205,52 +190,23 @@ func (c *QuotationController) UpdateQuotation(ctx *fiber.Ctx) error {
 	// Extract user ID from JWT
 	claims := utils.GetClaims(ctx, parentSpan)
 	userID := uint(claims["user_id"].(float64))
-
 	branchID := utils.GetDefaultBranchID(ctx)
 
-	quotation, err := c.service.MapUpdateQuotation(ctx, req, userID, branchID, parentSpan)
+	tx := c.repo.BeginTransaction()
+
+	// Lock the rows for update
+	tx, err := c.service.LockQuotationTable(ctx, tx, req, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Failed to update quotation", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	tx := c.repo.BeginTransaction()
-
-	// Lock the rows for update
-	tx, err = c.service.LockQuotationTable(ctx, tx, req, parentSpan)
-	if err != nil {
-		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update quotation", http.StatusInternalServerError)
-	}
-
-	updatedQuotation, err := c.service.UpdateQuotation(ctx, &quotation, tx, parentSpan)
+	updatedQuotation, err := c.service.UpdateQuotation(ctx, req, userID, branchID, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Failed to update quotation", http.StatusInternalServerError, err.Error(), nil)
-	}
-
-	// Bulk/Create Update Batch QuoDts
-	quoDts, err := c.service.MapCreateUpdateQuoDts(ctx, req, updatedQuotation, userID, parentSpan)
-
-	tx, err = c.service.BulkCreateUpdateQuoDts(ctx, quoDts, updatedQuotation.ID, tx, parentSpan)
-	if err != nil {
-		return utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update quotation", http.StatusInternalServerError)
-	}
-
-	updatedQuotationIDs := make([]uint, 0)
-	updatedQuotationIDs = append(updatedQuotationIDs, updatedQuotation.ID)
-
-	// get updated quoDts
-	updatedQuoDts, err := c.service.GetUpdatedQuoDtsByQuotationIDs(ctx, tx, updatedQuotationIDs, parentSpan)
-	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch quotation", http.StatusInternalServerError)
-	}
-
-	// Bulk/Create Update Batch QuoDtBoms
-	err = c.service.BulkCreateUpdateQuoDtBoms(ctx, updatedQuoDts, req, updatedQuotation.ID, tx, parentSpan)
-	if err != nil {
-		return utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to update quotation", http.StatusInternalServerError)
 	}
 
 	tx.Commit()

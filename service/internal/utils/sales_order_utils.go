@@ -9,27 +9,27 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
-func MapFilterSoDtBomsToSoDts(soDtBoms []dtos.SalesOrderSoDtBomListDTO, soDts []dtos.SalesOrderSoDtListDTO) []dtos.SalesOrderSoDtListDTO {
+func MapFilterSoDtBomsToSoDts(quoDtBoms []dtos.SalesOrderSoDtBomListDTO, quoDts []dtos.SalesOrderSoDtListDTO) []dtos.SalesOrderSoDtListDTO {
 	combinedSoDts := []dtos.SalesOrderSoDtListDTO{}
 
-	for _, soDt := range soDts {
+	for _, quoDt := range quoDts {
 		newSoDtBoms := make([]dtos.SalesOrderSoDtBomListDTO, 0)
-		for _, soDtBom := range soDtBoms {
-			if *soDtBom.SoDtID == *soDt.ID {
-				soDtBoms = append(soDtBoms, soDtBom)
-				newSoDtBoms = append(newSoDtBoms, soDtBom)
+		for _, quoDtBom := range quoDtBoms {
+			if *quoDtBom.SoDtID == *quoDt.ID {
+				quoDtBoms = append(quoDtBoms, quoDtBom)
+				newSoDtBoms = append(newSoDtBoms, quoDtBom)
 			}
 		}
 
-		soDt.SoDtsBoms = newSoDtBoms
-		combinedSoDts = append(combinedSoDts, soDt)
+		quoDt.SoDtsBoms = newSoDtBoms
+		combinedSoDts = append(combinedSoDts, quoDt)
 	}
 
 	return combinedSoDts
 }
 
-// func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtListDTO, req dtos.UpdateSalesOrderRequest, salesOrderID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
-func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtListUpdateDTO, req dtos.UpdateSalesOrderRequest, salesOrderID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
+// func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, quoDts []dtos.SalesOrderSoDtListDTO, req dtos.UpdateSalesOrderRequest, quotationID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
+func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, quoDts []dtos.SalesOrderSoDtListUpdateDTO, req dtos.UpdateSalesOrderRequest, quotationID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
 	childSpan := span.Tracer().StartSpan("MapFilterUpdateSoDtBomsToSoDts", opentracing.ChildOf(span.Context()))
 
 	// filter without ID to bulk create
@@ -37,27 +37,27 @@ func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtL
 	// filter with ID to bulk update
 	bulkUpdateSoDtBoms := []map[string]interface{}{}
 	// get all ids
-	soDtBomIDs := []uint{}
+	quoDtBomIDs := []uint{}
 
 	claims := GetClaims(ctx, childSpan)
 	userID := uint(claims["user_id"].(float64))
 
 	for _, reqSoDt := range req.SoDts {
 		for _, reqSoDtBom := range reqSoDt.SoDtsBoms {
-			for _, soDt := range soDts {
-				if *reqSoDtBom.ProductUuid == *soDt.ProductUuid {
-					soDtBomID := uint(0)
+			for _, quoDt := range quoDts {
+				if *reqSoDtBom.ProductUuid == *quoDt.ProductUuid {
+					quoDtBomID := uint(0)
 					if reqSoDtBom.SoDtBomID != nil {
-						soDtBomID = *reqSoDtBom.SoDtBomID
+						quoDtBomID = *reqSoDtBom.SoDtBomID
 					}
 					newSoDtBom := map[string]interface{}{
-						"id":             soDtBomID,
-						"product_uuid":   reqSoDtBom.ProductUuid,
-						"sales_order_id": salesOrderID,
-						"quo_dt_id":      soDt.SoDtID,
-						"product_id":     reqSoDtBom.ProductID,
-						"item_id":        reqSoDtBom.ItemID,
-						"item_unit_id":   reqSoDtBom.ItemUnitID,
+						"id":           quoDtBomID,
+						"product_uuid": reqSoDtBom.ProductUuid,
+						"quotation_id": quotationID,
+						"quo_dt_id":    quoDt.SoDtID,
+						"product_id":   reqSoDtBom.ProductID,
+						"item_id":      reqSoDtBom.ItemID,
+						"item_unit_id": reqSoDtBom.ItemUnitID,
 						// "item_json":     reqSoDtBom.ItemJSON,
 						"gen_code":      reqSoDtBom.GenCode,
 						"remark":        reqSoDtBom.Remark,
@@ -76,30 +76,30 @@ func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtL
 						newSoDtBom["updated_by_id"] = userID
 						newSoDtBom["updated_at"] = time.Now()
 						bulkUpdateSoDtBoms = append(bulkUpdateSoDtBoms, newSoDtBom)
-						soDtBomIDs = append(soDtBomIDs, *reqSoDtBom.SoDtBomID)
+						quoDtBomIDs = append(quoDtBomIDs, *reqSoDtBom.SoDtBomID)
 					}
 				}
 			}
 		}
 	}
 
-	return bulkCreateSoDtBoms, bulkUpdateSoDtBoms, soDtBomIDs, nil
+	return bulkCreateSoDtBoms, bulkUpdateSoDtBoms, quoDtBomIDs, nil
 }
 
 func GetSoIDs(req dtos.UpdateSalesOrderRequest) ([]*uint, []*uint, []*uint, []*uint) {
-	soDtIDs := []*uint{}
-	soDtBomIDs := []*uint{}
+	quoDtIDs := []*uint{}
+	quoDtBomIDs := []*uint{}
 	productIDs := []*uint{}
 	itemUnitIDs := []*uint{}
 
 	for _, reqSoDt := range req.SoDts {
 		if reqSoDt.SoDtID != nil && *reqSoDt.SoDtID > 0 {
-			soDtIDs = append(soDtIDs, reqSoDt.SoDtID)
+			quoDtIDs = append(quoDtIDs, reqSoDt.SoDtID)
 		}
 
 		for _, reqSoDtBom := range reqSoDt.SoDtsBoms {
 			if reqSoDtBom.SoDtBomID != nil && *reqSoDtBom.SoDtBomID > 0 {
-				soDtBomIDs = append(soDtBomIDs, reqSoDtBom.SoDtBomID)
+				quoDtBomIDs = append(quoDtBomIDs, reqSoDtBom.SoDtBomID)
 				productIDs = append(productIDs, &reqSoDtBom.ProductID)
 				productIDs = append(productIDs, reqSoDtBom.ItemID)
 				itemUnitIDs = append(itemUnitIDs, reqSoDtBom.ItemUnitID)
@@ -107,52 +107,50 @@ func GetSoIDs(req dtos.UpdateSalesOrderRequest) ([]*uint, []*uint, []*uint, []*u
 		}
 	}
 
-	return soDtIDs, soDtBomIDs, productIDs, itemUnitIDs
+	return quoDtIDs, quoDtBomIDs, productIDs, itemUnitIDs
 }
 
 func MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, error) {
+	quoDtsModel := []models.SoDt{}
 
-	soDtsModel := []models.SoDt{}
-
-	for _, soDt := range req.SoDts {
-		soDtModel := models.SoDt{
-			ProductUuid:  soDt.ProductUuid,
+	for _, quoDt := range req.SoDts {
+		quoDtModel := models.SoDt{
+			ProductUuid:  quoDt.ProductUuid,
 			SalesOrderID: &createdSalesOrder.ID,
-			ItemUnitID:   soDt.ItemUnitID,
-			VatID:        soDt.VatID,
-			RefID:        soDt.RefID,
-			ItemID:       soDt.ItemID,
-			RefType:      soDt.RefType,
-			ItemType:     soDt.ItemType,
-			// RefJSON: 	soDt.RefJSON,
-			Remark:       soDt.Remark,
-			VatPerc:      soDt.VatPerc,
-			VatPercAm:    soDt.VatPercAm,
-			QtySO:        soDt.QtySO,
-			Qty:          soDt.Qty,
-			PriceSell:    soDt.PriceSell,
-			PriceBuy:     soDt.PriceBuy,
-			SubtotalSell: soDt.SubtotalSell,
-			SubtotalBuy:  soDt.SubtotalBuy,
-			DiscAm:       soDt.DiscAm,
-			DiscPerc:     soDt.DiscPerc,
-			DiscPercNum:  soDt.DiscPercNum,
-			DiscPercAm:   soDt.DiscPercAm,
-			DiscFinal:    soDt.DiscFinal,
-			DiscType:     soDt.DiscType,
-			TotalAm:      soDt.TotalAm,
+			ItemUnitID:   quoDt.ItemUnitID,
+			VatID:        quoDt.VatID,
+			RefID:        quoDt.RefID,
+			ItemID:       quoDt.ItemID,
+			RefType:      quoDt.RefType,
+			ItemType:     quoDt.ItemType,
+			// RefJSON: 	quoDt.RefJSON,
+			Remark:       quoDt.Remark,
+			VatPerc:      quoDt.VatPerc,
+			VatPercAm:    quoDt.VatPercAm,
+			QtySO:        quoDt.QtySO,
+			Qty:          quoDt.Qty,
+			PriceSell:    quoDt.PriceSell,
+			PriceBuy:     quoDt.PriceBuy,
+			SubtotalSell: quoDt.SubtotalSell,
+			SubtotalBuy:  quoDt.SubtotalBuy,
+			DiscAm:       quoDt.DiscAm,
+			DiscPerc:     quoDt.DiscPerc,
+			DiscPercNum:  quoDt.DiscPercNum,
+			DiscPercAm:   quoDt.DiscPercAm,
+			DiscFinal:    quoDt.DiscFinal,
+			DiscType:     quoDt.DiscType,
+			TotalAm:      quoDt.TotalAm,
 			CreatedByID:  &userID,
 		}
-		soDtsModel = append(soDtsModel, soDtModel)
+		quoDtsModel = append(quoDtsModel, quoDtModel)
 
 	}
 
-	return soDtsModel, nil
+	return quoDtsModel, nil
 }
 
 func MapCreateSoDtBoms(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSoDts []models.SoDt, userID uint, span opentracing.Span) []map[string]interface{} {
-
-	soDtBomsModel := make([]map[string]interface{}, 0)
+	quoDtBomsModel := make([]map[string]interface{}, 0)
 
 	for _, reqSoDt := range req.SoDts {
 		for _, reqSoDtBom := range reqSoDt.SoDtsBoms {
@@ -160,11 +158,11 @@ func MapCreateSoDtBoms(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, created
 				if reqSoDtBom.ProductUuid == createdSoDt.ProductUuid {
 					genCode := "-"
 					itemJson := "{}"
-					soDtBomsModel = append(soDtBomsModel, map[string]interface{}{
+					quoDtBomsModel = append(quoDtBomsModel, map[string]interface{}{
 						"id":            0,
-						"salesOrder_id": createdSoDt.SalesOrderID,
+						"quotation_id":  createdSoDt.SalesOrderID,
 						"product_uuid":  reqSoDtBom.ProductUuid,
-						"so_dt_id":      createdSoDt.ID,
+						"quo_dt_id":     createdSoDt.ID,
 						"product_id":    reqSoDtBom.ProductID,
 						"item_id":       reqSoDtBom.ItemID,
 						"item_unit_id":  reqSoDtBom.ItemUnitID,
@@ -184,24 +182,24 @@ func MapCreateSoDtBoms(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, created
 		}
 	}
 
-	return soDtBomsModel
+	return quoDtBomsModel
 }
 
 func MapCreateUpdateSoDts(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, updatedSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, error) {
 
-	soDtsModel := []models.SoDt{}
+	quoDtsModel := []models.SoDt{}
 
 	// refJson := "{}"
 	// itemJson := "{}"
 
 	for _, reqSoDt := range req.SoDts {
-		soDtID := uint(0)
+		quoDtID := uint(0)
 		if reqSoDt.SoDtID != nil {
-			soDtID = *reqSoDt.SoDtID
+			quoDtID = *reqSoDt.SoDtID
 		}
 
-		soDtModel := models.SoDt{
-			ID:           soDtID,
+		quoDtModel := models.SoDt{
+			ID:           quoDtID,
 			ProductUuid:  reqSoDt.ProductUuid,
 			SalesOrderID: &updatedSalesOrder.ID,
 			ItemUnitID:   reqSoDt.ItemUnitID,
@@ -231,9 +229,72 @@ func MapCreateUpdateSoDts(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, upda
 			TotalAm:      reqSoDt.TotalAm,
 			CreatedByID:  &userID,
 		}
-		soDtsModel = append(soDtsModel, soDtModel)
+		quoDtsModel = append(quoDtsModel, quoDtModel)
 
 	}
 
-	return soDtsModel, nil
+	return quoDtsModel, nil
+}
+
+func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userID uint, branchID uint, span opentracing.Span) (models.SalesOrder, error) {
+	quotation := models.SalesOrder{
+		CustomerID:    req.CustomerID,
+		OrderTypeID:   req.OrderTypeID,
+		CurrencyID:    req.CurrencyID,
+		VatID:         req.VatID,
+		PaymentID:     req.PaymentID,
+		Pph23ID:       req.Pph23ID,
+		QuoNo:         req.QuoNo,
+		Title:         req.Title,
+		Remark:        req.Remark,
+		Status:        req.Status,
+		IsApproved:    req.IsApproved,
+		ExchangeRate:  req.ExchangeRate,
+		VatPerc:       req.VatPerc,
+		Pph23Perc:     req.Pph23Perc,
+		TotalQty:      req.TotalQty,
+		Subtotal:      req.Subtotal,
+		TotalDiscount: req.TotalDiscount,
+		TotalPph23:    req.TotalPph23,
+		TotalVat:      req.TotalVat,
+		GrandTotal:    req.GrandTotal,
+		DueAt:         req.DueAt,
+		ExpiredAt:     req.ExpiredAt,
+		BranchID:      &branchID,
+		CreatedByID:   &userID,
+	}
+
+	return quotation, nil
+}
+
+func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userID uint, branchID uint, span opentracing.Span) (models.SalesOrder, error) {
+	quotation := models.SalesOrder{
+		ID:            req.ID,
+		CustomerID:    req.CustomerID,
+		OrderTypeID:   req.OrderTypeID,
+		CurrencyID:    req.CurrencyID,
+		VatID:         req.VatID,
+		PaymentID:     req.PaymentID,
+		Pph23ID:       req.Pph23ID,
+		QuoNo:         req.QuoNo,
+		Title:         req.Title,
+		Remark:        req.Remark,
+		Status:        req.Status,
+		IsApproved:    req.IsApproved,
+		ExchangeRate:  req.ExchangeRate,
+		VatPerc:       req.VatPerc,
+		Pph23Perc:     req.Pph23Perc,
+		TotalQty:      req.TotalQty,
+		Subtotal:      req.Subtotal,
+		TotalDiscount: req.TotalDiscount,
+		TotalPph23:    req.TotalPph23,
+		TotalVat:      req.TotalVat,
+		GrandTotal:    req.GrandTotal,
+		DueAt:         req.DueAt,
+		ExpiredAt:     req.ExpiredAt,
+		BranchID:      &branchID,
+		CreatedByID:   &userID,
+	}
+
+	return quotation, nil
 }

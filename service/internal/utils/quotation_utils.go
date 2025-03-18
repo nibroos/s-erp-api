@@ -269,6 +269,7 @@ func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID 
 
 func MapUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID uint, branchID uint, span opentracing.Span) (models.Quotation, error) {
 	quotation := models.Quotation{
+		ID:            req.ID,
 		CustomerID:    req.CustomerID,
 		OrderTypeID:   req.OrderTypeID,
 		CurrencyID:    req.CurrencyID,
