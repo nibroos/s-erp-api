@@ -533,3 +533,31 @@ func (s *SalesOrderService) LockSalesOrderTable(ctx *fiber.Ctx, tx *gorm.DB, req
 
 	return tx, nil
 }
+
+func (s *SalesOrderService) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefIndexQuoDtListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetRefIndexQuoDts", opentracing.ChildOf(span.Context()))
+
+	quoDts, total, err := s.repo.GetRefIndexQuoDts(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	quotationIDs := utils.GetQuoDtIDs(quoDts)
+
+	var quoDtBoms []dtos.QuotationQuoDtBomListDTO
+	if len(quotationIDs) > 0 {
+		quoDtBoms, err = s.repo.GetRefQuoDtsBomByQuoDtIDs(ctx, filters, quotationIDs, childSpan)
+
+		if err != nil {
+			defer childSpan.Finish()
+			return nil, 0, err
+		}
+	}
+
+	if len(quoDtBoms) > 0 {
+		quoDts = utils.MapRefQuoDtBomsToQuoDts(quoDtBoms, quoDts)
+	}
+
+	return quoDts, total, nil
+}

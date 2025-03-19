@@ -25,7 +25,6 @@ type Quotation struct {
 	TotalQty      *float64       `json:"total_qty" gorm:"column:total_qty"`
 	DiscAm        *float64       `json:"disc_am" gorm:"column:disc_am"`
 	DiscPerc      *float64       `json:"disc_perc" gorm:"column:disc_perc"`
-	DiscPercNum   *float64       `json:"disc_perc_num" gorm:"column:disc_perc_num"`
 	DiscPercAm    *float64       `json:"disc_perc_am" gorm:"column:disc_perc_am"`
 	DiscFinal     *float64       `json:"disc_final" gorm:"column:disc_final"`
 	DiscType      *string        `json:"disc_type" gorm:"column:disc_type"`

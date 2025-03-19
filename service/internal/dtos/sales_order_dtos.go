@@ -84,7 +84,6 @@ type CreateSalesOrderRequest struct {
 	DiscAm        *float64             `json:"disc_am"`
 	DiscPerc      *float64             `json:"disc_perc"`
 	DiscPercAm    *float64             `json:"disc_perc_am"`
-	DiscPercNum   *float64             `json:"disc_perc_num"`
 	DiscFinal     *float64             `json:"disc_final"`
 	DiscType      *string              `json:"disc_type"`
 	Pph23Perc     *float64             `json:"pph23_perc"`
@@ -171,7 +170,6 @@ type UpdateSalesOrderRequest struct {
 	DiscAm        *float64             `json:"disc_am"`
 	DiscPerc      *float64             `json:"disc_perc"`
 	DiscPercAm    *float64             `json:"disc_perc_am"`
-	DiscPercNum   *float64             `json:"disc_perc_num"`
 	DiscFinal     *float64             `json:"disc_final"`
 	DiscType      *string              `json:"disc_type"`
 	Pph23Perc     *float64             `json:"pph23_perc"`
@@ -480,4 +478,79 @@ type GetSalesOrdersResult struct {
 	SalesOrders []SalesOrderListDTO
 	Total       int
 	Err         error
+}
+
+type GetRefIndexQuoDtsRequest struct {
+	Global         *string `json:"global"`
+	Title          *string `json:"title"`
+	PoBuyerNo      *string `json:"po_buyer_no"`
+	SalesOrderNo   *string `json:"sales_order_no"`
+	Remark         *string `json:"remark"`
+	CustomerID     *int    `json:"customer_id"`
+	OrderTypeID    *int    `json:"order_type_id"`
+	CurrencyID     *int    `json:"currency_id"`
+	VatID          *int    `json:"vat_id"`
+	PaymentID      *int    `json:"payment_id"`
+	Pph23ID        *int    `json:"pph23_id"`
+	BranchID       *int    `json:"branch_id"`
+	Status         *string `json:"status"`
+	DateType       *string `json:"date_type"` // 1 = due_at, 2 = expired_at
+	StartDate      *string `json:"start_date"`
+	EndDate        *string `json:"end_date"`
+	PerPage        *string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           *string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    *string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection *string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type RefIndexQuoDtListDTO struct {
+	ID               *uint     `json:"id" db:"id"`
+	QuoDtID          *uint     `json:"quo_dt_id" db:"quo_dt_id"`
+	ProductUuid      *string   `json:"product_uuid" db:"product_uuid"`
+	QuotationID      *uint     `json:"quotation_id" db:"quotation_id"`
+	ItemUnitID       *uint     `json:"item_unit_id" db:"item_unit_id"`
+	VatID            *uint     `json:"vat_id" db:"vat_id"`
+	RefID            *uint     `json:"ref_id" db:"ref_id"`
+	ItemID           *uint     `json:"item_id" db:"item_id"`
+	ItemSubGroupID   *uint     `json:"item_sub_group_id" db:"item_sub_group_id"`
+	ItemGroupID      *uint     `json:"item_group_id" db:"item_group_id"`
+	ItemSubGroupName *string   `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string   `json:"item_group_name" db:"item_group_name"`
+	ItemName         *string   `json:"item_name" db:"item_name"`
+	ItemCode         *string   `json:"item_code" db:"item_code"`
+	UnitName         *string   `json:"unit_name" db:"unit_name"`
+	RefJSON          *string   `json:"ref_json" db:"ref_json"`
+	RefType          *string   `json:"ref_type" db:"ref_type"`
+	ItemType         *string   `json:"item_type" db:"item_type"`
+	GenCode          *string   `json:"gen_code" db:"gen_code"`
+	Remark           *string   `json:"remark" db:"remark"`
+	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
+	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
+	QtySO            *float64  `json:"qty_so" db:"qty_so"`
+	Qty              *float64  `json:"qty" db:"qty"`
+	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
+	PriceBuy         *float64  `json:"price_buy" db:"price_buy"`
+	SubtotalSell     *float64  `json:"subtotal_sell" db:"subtotal_sell"`
+	SubtotalBuy      *float64  `json:"subtotal_buy" db:"subtotal_buy"`
+	DiscAm           *float64  `json:"disc_am" db:"disc_am"`
+	DiscPerc         *float64  `json:"disc_perc" db:"disc_perc"`
+	DiscPercNum      *float64  `json:"disc_perc_num" db:"disc_perc_num"`
+	DiscPercAm       *float64  `json:"disc_perc_am" db:"disc_perc_am"`
+	DiscFinal        *float64  `json:"disc_final" db:"disc_final"`
+	DiscType         *string   `json:"disc_type" db:"disc_type"`
+	TotalAm          *float64  `json:"total_am" db:"total_am"`
+	CreatedByName    *string   `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName    *string   `json:"updated_by_name" db:"updated_by_name"`
+	CreatedByID      *uint     `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID      *uint     `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID      *uint     `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedAt        time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt        *string   `json:"updated_at" db:"updated_at"`
+	DeleteAt         *string   `json:"deleted_at" db:"deleted_at"`
+
+	QuoNo        *string `json:"quo_no" db:"quo_no"`
+	CustomerName *string `json:"customer_name" db:"customer_name"`
+	ItemSku      *string `json:"item_sku" db:"item_sku"`
+
+	QuoDtsBoms []QuotationQuoDtBomListDTO `json:"quo_dts_boms"`
 }

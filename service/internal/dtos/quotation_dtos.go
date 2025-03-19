@@ -84,7 +84,6 @@ type CreateQuotationRequest struct {
 	DiscAm        *float64              `json:"disc_am"`
 	DiscPerc      *float64              `json:"disc_perc"`
 	DiscPercAm    *float64              `json:"disc_perc_am"`
-	DiscPercNum   *float64              `json:"disc_perc_num"`
 	DiscFinal     *float64              `json:"disc_final"`
 	DiscType      *string               `json:"disc_type"`
 	Pph23Perc     *float64              `json:"pph23_perc"`
@@ -168,7 +167,6 @@ type UpdateQuotationRequest struct {
 	VatPerc       *float64              `json:"vat_perc"`
 	DiscAm        *float64              `json:"disc_am"`
 	DiscPerc      *float64              `json:"disc_perc"`
-	DiscPercNum   *float64              `json:"disc_perc_num"`
 	DiscPercAm    *float64              `json:"disc_perc_am"`
 	DiscFinal     *float64              `json:"disc_final"`
 	DiscType      *string               `json:"disc_type"`

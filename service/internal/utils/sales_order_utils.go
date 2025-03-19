@@ -260,7 +260,6 @@ func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userI
 		TotalQty:      req.TotalQty,
 		DiscAm:        req.DiscAm,
 		DiscPerc:      req.DiscPerc,
-		DiscPercNum:   req.DiscPercNum,
 		DiscPercAm:    req.DiscPercAm,
 		DiscFinal:     req.DiscFinal,
 		DiscType:      req.DiscType,
@@ -302,7 +301,6 @@ func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userI
 		TotalQty:      req.TotalQty,
 		DiscAm:        req.DiscAm,
 		DiscPerc:      req.DiscPerc,
-		DiscPercNum:   req.DiscPercNum,
 		DiscPercAm:    req.DiscPercAm,
 		DiscFinal:     req.DiscFinal,
 		DiscType:      req.DiscType,
@@ -321,4 +319,33 @@ func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userI
 	}
 
 	return salesOrder, nil
+}
+
+func GetQuoDtIDs(quoDts []dtos.RefIndexQuoDtListDTO) []uint {
+	quotationIDs := []uint{}
+
+	for _, quoDt := range quoDts {
+		quotationIDs = append(quotationIDs, *quoDt.QuotationID)
+	}
+
+	return quotationIDs
+}
+
+func MapRefQuoDtBomsToQuoDts(quoDtBoms []dtos.QuotationQuoDtBomListDTO, quoDts []dtos.RefIndexQuoDtListDTO) []dtos.RefIndexQuoDtListDTO {
+	combinedQuoDts := []dtos.RefIndexQuoDtListDTO{}
+
+	for _, quoDt := range quoDts {
+		newQuoDtBoms := make([]dtos.QuotationQuoDtBomListDTO, 0)
+		for _, quoDtBom := range quoDtBoms {
+			if *quoDtBom.QuoDtID == *quoDt.ID {
+				quoDtBoms = append(quoDtBoms, quoDtBom)
+				newQuoDtBoms = append(newQuoDtBoms, quoDtBom)
+			}
+		}
+
+		quoDt.QuoDtsBoms = newQuoDtBoms
+		combinedQuoDts = append(combinedQuoDts, quoDt)
+	}
+
+	return combinedQuoDts
 }
