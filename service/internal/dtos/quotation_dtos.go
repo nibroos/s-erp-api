@@ -57,7 +57,6 @@ type CreateQuoDtsBomsRequest struct {
 	ProductID    uint    `json:"product_id"`
 	ItemID       uint    `json:"item_id"`
 	ItemUnitID   *uint   `json:"item_unit_id"`
-	RefType      *string `json:"ref_type"`
 	GenCode      *string `json:"gen_code"`
 	Remark       *string `json:"remark"`
 	Qty          float64 `json:"qty"`
@@ -168,7 +167,6 @@ type UpdateQuotationRequest struct {
 	VatPerc       *float64              `json:"vat_perc"`
 	DiscAm        *float64              `json:"disc_am"`
 	DiscPerc      *float64              `json:"disc_perc"`
-	DiscPercNum   *float64              `json:"disc_perc_num"`
 	DiscPercAm    *float64              `json:"disc_perc_am"`
 	DiscFinal     *float64              `json:"disc_final"`
 	DiscType      *string               `json:"disc_type"`

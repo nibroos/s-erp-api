@@ -127,7 +127,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND m.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
