@@ -1105,7 +1105,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
     FROM ( 
         SELECT DISTINCT ON (qd.id)
 					qd.id, qd.quotation_id, qd.product_uuid,
-					qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id,
+					qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.item_unit_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id,
 					qd.created_at, qd.updated_at, qd.deleted_at,
 
 					q.quo_no,
