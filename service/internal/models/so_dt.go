@@ -11,6 +11,7 @@ type SoDt struct {
 	SalesOrderID *uint          `json:"sales_order_id" gorm:"column:sales_order_id"`
 	ItemUnitID   *uint          `json:"item_unit_id" gorm:"column:item_unit_id"`
 	VatID        *uint          `json:"vat_id" gorm:"column:vat_id"`
+	Pph23ID      *uint          `json:"pph23_id" gorm:"column:pph23_id"`
 	RefID        *uint          `json:"ref_id" gorm:"column:ref_id"`
 	ItemID       uint           `json:"item_id" gorm:"column:item_id"`
 	RefType      *string        `json:"ref_type" gorm:"column:ref_type"`
@@ -19,8 +20,12 @@ type SoDt struct {
 	ItemJSON     *string        `json:"item_json" gorm:"column:item_json"`
 	GenCode      *string        `json:"gen_code" gorm:"column:gen_code"`
 	Remark       *string        `json:"remark" gorm:"column:remark"`
+	IsLockVat    *int8          `json:"is_lock_vat" gorm:"column:is_lock_vat"`
 	VatPerc      *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	VatPercAm    *float64       `json:"vat_perc_am" gorm:"column:vat_perc_am"`
+	IsLockPph23  *int8          `json:"is_lock_pph23" gorm:"column:is_lock_pph23"`
+	Pph23Perc    *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`
+	Pph23PercAm  *float64       `json:"pph23_perc_am" gorm:"column:pph23_perc_am"`
 	QtyOut       *float64       `json:"qty_out" gorm:"column:qty_out"`
 	Qty          *float64       `json:"qty" gorm:"column:qty"`
 	PriceSell    *float64       `json:"price_sell" gorm:"column:price_sell"`

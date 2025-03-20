@@ -29,14 +29,19 @@ type CreateQuoDtsRequest struct {
 	ProductUuid  string                    `json:"product_uuid"`
 	ItemUnitID   *uint                     `json:"item_unit_id"`
 	VatID        *uint                     `json:"vat_id"`
+	Pph23ID      *uint                     `json:"pph23_id"`
 	RefID        *uint                     `json:"ref_id"`
 	ItemID       uint                      `json:"item_id"`
 	RefType      *string                   `json:"ref_type"`
 	ItemType     *string                   `json:"item_type"`
 	GenCode      *string                   `json:"gen_code"`
 	Remark       *string                   `json:"remark"`
+	IsLockVat    *int8                     `json:"is_lock_vat"`
 	VatPerc      *float64                  `json:"vat_perc"`
 	VatPercAm    *float64                  `json:"vat_perc_am"`
+	IsLockPph23  *int8                     `json:"is_lock_pph23"`
+	Pph23Perc    *float64                  `json:"pph23_perc"`
+	Pph23PercAm  *float64                  `json:"pph23_perc_am"`
 	QtySO        *float64                  `json:"qty_so"`
 	Qty          *float64                  `json:"qty"`
 	PriceSell    *float64                  `json:"price_sell"`
@@ -105,14 +110,19 @@ type UpdateQuoDtsRequest struct {
 	QuotationID  *uint                      `json:"quotation_id"`
 	ItemUnitID   *uint                      `json:"item_unit_id"`
 	VatID        *uint                      `json:"vat_id"`
+	Pph23ID      *uint                      `json:"pph23_id"`
 	RefID        *uint                      `json:"ref_id"`
 	ItemID       uint                       `json:"item_id"`
 	RefType      *string                    `json:"ref_type"`
 	ItemType     *string                    `json:"item_type"`
 	GenCode      *string                    `json:"gen_code"`
 	Remark       *string                    `json:"remark"`
+	IsLockVat    *int8                      `json:"is_lock_vat"`
 	VatPerc      *float64                   `json:"vat_perc"`
 	VatPercAm    *float64                   `json:"vat_perc_am"`
+	IsLockPph23  *int8                      `json:"is_lock_pph23"`
+	Pph23Perc    *float64                   `json:"pph23_perc"`
+	Pph23PercAm  *float64                   `json:"pph23_perc_am"`
 	QtySO        *float64                   `json:"qty_so"`
 	Qty          *float64                   `json:"qty"`
 	PriceSell    *float64                   `json:"price_sell"`
@@ -315,6 +325,7 @@ type QuotationQuoDtListDTO struct {
 	QuotationID      *uint     `json:"quotation_id" db:"quotation_id"`
 	ItemUnitID       *uint     `json:"item_unit_id" db:"item_unit_id"`
 	VatID            *uint     `json:"vat_id" db:"vat_id"`
+	Pph23ID          *uint     `json:"pph23_id"`
 	RefID            *uint     `json:"ref_id" db:"ref_id"`
 	ItemID           *uint     `json:"item_id" db:"item_id"`
 	ItemSubGroupID   *uint     `json:"item_sub_group_id" db:"item_sub_group_id"`
@@ -329,8 +340,12 @@ type QuotationQuoDtListDTO struct {
 	ItemType         *string   `json:"item_type" db:"item_type"`
 	GenCode          *string   `json:"gen_code" db:"gen_code"`
 	Remark           *string   `json:"remark" db:"remark"`
+	IsLockVat        *int8     `json:"is_lock_vat"`
 	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
+	IsLockPph23      *int8     `json:"is_lock_pph23"`
+	Pph23Perc        *float64  `json:"pph23_perc"`
+	Pph23PercAm      *float64  `json:"pph23_perc_am"`
 	QtySO            *float64  `json:"qty_so" db:"qty_so"`
 	Qty              *float64  `json:"qty" db:"qty"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`

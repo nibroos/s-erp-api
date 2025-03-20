@@ -990,7 +990,7 @@ func (r *SalesOrderRepository) LockSoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, soDtBom
 
 func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefIndexQuoDtListDTO, int, error) {
 
-	childSpan := opentracing.StartSpan("QuotationRepository-GetQuotations", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetRefIndexQuoDts", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
@@ -1109,6 +1109,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 					qd.created_at, qd.updated_at, qd.deleted_at,
 
 					q.quo_no,
+					q.due_at,
 
 					qd.id as quo_dt_id,
 					isg.id as item_sub_group_id,
