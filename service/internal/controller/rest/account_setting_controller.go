@@ -85,11 +85,24 @@ func (c *AccountSettingController) UpdateAccountSetting(ctx *fiber.Ctx) error {
 
 	imageSpan := opentracing.StartSpan("AccountSettingController-UpdateAccountSetting-ImageUpload", opentracing.ChildOf(parentSpan.Context()))
 	file, err := ctx.FormFile("profile_image")
-	if err == nil {
+	if err != nil {
+		if err.Error() != "there is no uploaded file associated with the given key" {
+			utils.LogErrors(parentSpan, err)
+			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"errors":  err.Error(),
+				"message": "Failed to process file upload",
+				"status":  http.StatusInternalServerError,
+			})
+		}
+	} else {
 		filePath, err := utils.HandleFileUpload(ctx, file, userID, imageSpan)
 		if err != nil {
 			utils.LogErrors(parentSpan, err)
-			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{"errors": err.Error(), "message": "Failed to upload file", "status": http.StatusInternalServerError})
+			return ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"errors":  err.Error(),
+				"message": "Failed to upload file",
+				"status":  http.StatusInternalServerError,
+			})
 		}
 		req.ProfileImageURL = &filePath
 	}
@@ -99,7 +112,7 @@ func (c *AccountSettingController) UpdateAccountSetting(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
-	existingUser, err := c.service.GetAccountSettingUser(ctx, &dtos.GetUserByIDParams{ID: userID}, parentSpan)
+	_, err = c.service.GetAccountSettingUser(ctx, &dtos.GetUserByIDParams{ID: userID}, parentSpan)
 	if err != nil {
 		return utils.GetResponse(ctx, nil, nil, "User not found", http.StatusNotFound, err.Error(), nil)
 	}
@@ -113,16 +126,22 @@ func (c *AccountSettingController) UpdateAccountSetting(ctx *fiber.Ctx) error {
 		PhoneNumber:     req.PhoneNumber,
 		ProfileImageURL: req.ProfileImageURL,
 		UpdatedByID:     userID,
-		Password:        *existingUser.Password,
+	}
+
+	fieldsToUpdate := []string{"name", "username", "email", "address", "phone_number", "updated_by_id"}
+
+	if req.ProfileImageURL != nil {
+		fieldsToUpdate = append(fieldsToUpdate, "profile_image_url")
 	}
 
 	if req.Password != nil && *req.Password != "" {
 		user.Password = *req.Password
+		fieldsToUpdate = append(fieldsToUpdate, "password")
 	}
 
 	tx := c.repo.BeginTransaction()
 
-	updatedUser, err := c.service.UpdateAccountSetting(ctx, tx, &user, parentSpan)
+	updatedUser, err := c.service.UpdateAccountSetting(ctx, tx, &user, fieldsToUpdate, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
