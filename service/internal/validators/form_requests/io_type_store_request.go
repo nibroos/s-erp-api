@@ -21,7 +21,6 @@ func (r *IOTypeStoreRequest) Validate(req *dtos.CreateIOTypeRequest, ctx *fiber.
 		"status":      []string{},
 		"code":        []string{"required"},
 		"type":        []string{"required"},
-		"group_id":    []string{"required"},
 		"io_type":     []string{"required"},
 	}
 
