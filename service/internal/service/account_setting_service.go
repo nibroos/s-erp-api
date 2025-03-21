@@ -31,11 +31,11 @@ func (s *AccountSettingService) GetAccountSettingUser(ctx *fiber.Ctx, params *dt
 	return user, nil
 }
 
-func (s *AccountSettingService) UpdateAccountSetting(ctx *fiber.Ctx, tx *gorm.DB, user *models.User, span opentracing.Span) (*models.User, error) {
+func (s *AccountSettingService) UpdateAccountSetting(ctx *fiber.Ctx, tx *gorm.DB, user *models.User, fieldsToUpdate []string, span opentracing.Span) (*models.User, error) {
 	childSpan := opentracing.StartSpan("AccountSettingService-UpdateAccountSetting", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	if user.Password != "" {
+	if utils.Contains(fieldsToUpdate, "password") && user.Password != "" {
 		hashedPassword, err := utils.HashPassword(user.Password, childSpan)
 		if err != nil {
 			return nil, err
@@ -43,7 +43,7 @@ func (s *AccountSettingService) UpdateAccountSetting(ctx *fiber.Ctx, tx *gorm.DB
 		user.Password = hashedPassword
 	}
 
-	if err := s.repo.UpdateAccountSetting(tx, user, childSpan); err != nil {
+	if err := s.repo.UpdateAccountSetting(tx, user, fieldsToUpdate, childSpan); err != nil {
 		return nil, err
 	}
 
