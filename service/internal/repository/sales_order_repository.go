@@ -526,6 +526,8 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_out, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.vat_perc, sd.vat_perc_am, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
 		sd.created_at, sd.updated_at, sd.deleted_at,
 
+		p.customer_id,
+
 		sd.id as so_dt_id,
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
@@ -1110,6 +1112,10 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 
 					q.quo_no,
 					q.due_at,
+					q.customer_id,
+					q.order_type_id,
+					q.currency_id,
+					q.exchange_rate,
 
 					qd.id as quo_dt_id,
 					isg.id as item_sub_group_id,

@@ -24,7 +24,7 @@ type QuoDt struct {
 	VatPerc      *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	VatPercAm    *float64       `json:"vat_perc_am" gorm:"column:vat_perc_am"`
 	IsLockPph23  *int8          `json:"is_lock_pph23" gorm:"column:is_lock_pph23"`
-	Pph23Percent *float64       `json:"pph23_percent" gorm:"column:pph23_percent"`
+	Pph23Perc    *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`
 	Pph23PercAm  *float64       `json:"pph23_perc_am" gorm:"column:pph23_perc_am"`
 	QtySO        *float64       `json:"qty_so" gorm:"column:qty_so"`
 	Qty          *float64       `json:"qty" gorm:"column:qty"`
@@ -37,6 +37,8 @@ type QuoDt struct {
 	DiscPercNum  *float64       `json:"disc_perc_num" gorm:"column:disc_perc_num"`
 	DiscPercAm   *float64       `json:"disc_perc_am" gorm:"column:disc_perc_am"`
 	DiscFinal    *float64       `json:"disc_final" gorm:"column:disc_final"`
+	HeadDiscAm   *float64       `json:"head_disc_am" gorm:"column:head_disc_am"`
+	HeadDiscPerc *float64       `json:"head_disc_perc" gorm:"column:head_disc_perc"`
 	DiscType     *string        `json:"disc_type" gorm:"column:disc_type"`
 	TotalAm      *float64       `json:"total_am" gorm:"column:total_am"`
 	CreatedByID  *uint          `json:"created_by_id" gorm:"column:created_by_id"`

@@ -38,6 +38,8 @@ type SoDt struct {
 	DiscPercAm   *float64       `json:"disc_perc_am" gorm:"column:disc_perc_am"`
 	DiscFinal    *float64       `json:"disc_final" gorm:"column:disc_final"`
 	DiscType     *string        `json:"disc_type" gorm:"column:disc_type"`
+	HeadDiscAm   *float64       `json:"head_disc_am" gorm:"column:head_disc_am"`
+	HeadDiscPerc *float64       `json:"head_disc_perc" gorm:"column:head_disc_perc"`
 	TotalAm      *float64       `json:"total_am" gorm:"column:total_am"`
 	SiTotalAm    *float64       `json:"si_total_am" gorm:"column:si_total_am"`
 	SaTotalAm    *float64       `json:"sa_total_am" gorm:"column:sa_total_am"`
