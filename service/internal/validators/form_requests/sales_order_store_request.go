@@ -20,19 +20,20 @@ func NewSalesOrderStoreRequest() *SalesOrderStoreRequest {
 func (r *SalesOrderStoreRequest) Validate(req *dtos.CreateSalesOrderRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 
 	rules := map[string][]string{
-		"customer_id":         []string{"required", "exists:customers,id"},
-		"order_type_id":       []string{"required", "exists:mix_values,id"},
-		"currency_id":         []string{"required", "exists:mix_values,id"},
-		"quo_no":              []string{"required"},
-		"title":               []string{"required"},
-		"status":              []string{"required"},
-		"expired_at":          []string{"date:yyyy-MM-dd"},
-		"so_dts":              []string{"array"},
-		"so_dts.*.product_id": []string{"required", "exists:products,id"},
-		"so_dts.*.item_id":    []string{"required", "exists:products,id"},
-		"so_dts.*.ref_id":     []string{"required"},
-		"so_dts.*.ref_type":   []string{"required"},
-		"so_dts.*.qty":        []string{"required", "numeric"},
+		"customer_id":       []string{"required", "exists:customers,id"},
+		"order_type_id":     []string{"required", "exists:mix_values,id"},
+		"currency_id":       []string{"required", "exists:mix_values,id"},
+		"po_buyer_no":       []string{"required"},
+		"status":            []string{"required"},
+		"shipping_at":       []string{"date:yyyy-MM-dd"},
+		"agree_at":          []string{"date:yyyy-MM-dd"},
+		"due_at":            []string{"date:yyyy-MM-dd"},
+		"expired_at":        []string{"date:yyyy-MM-dd"},
+		"so_dts":            []string{"array"},
+		"so_dts.*.item_id":  []string{"required", "exists:products,id"},
+		"so_dts.*.ref_id":   []string{"required"},
+		"so_dts.*.ref_type": []string{"required"},
+		"so_dts.*.qty":      []string{"required", "numeric"},
 	}
 
 	customFieldNames := map[string]string{}

@@ -20,7 +20,7 @@ func (r *AccountSettingUpdateRequest) Validate(req *dtos.UpdateAccountSettingReq
 		"name":         []string{"required", "min:3"},
 		"username":     []string{"required", fmt.Sprintf("unique_ig:users,username,%d", req.ID)},
 		"email":        []string{"required", "email", fmt.Sprintf("unique_ig:users,email,%d", req.ID)},
-		"phone_number": []string{"required"},
+		"phone_number": []string{},
 		"address":      []string{},
 	}
 

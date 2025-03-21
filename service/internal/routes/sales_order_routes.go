@@ -24,4 +24,5 @@ func SetupSalesOrderRoutes(salesOrders fiber.Router, gormDB *gorm.DB, sqlDB *sql
 	salesOrders.Post("/restore-sales-order", salesOrderController.RestoreSalesOrder)
 	salesOrders.Post("/excel-sales-order", salesOrderController.ExcelGetSalesOrders)
 	salesOrders.Post("/csv-sales-order", salesOrderController.CsvGetSalesOrders)
+	salesOrders.Post("/index-ref-quo-dt", salesOrderController.GetRefIndexQuoDts)
 }

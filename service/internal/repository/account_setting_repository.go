@@ -99,11 +99,11 @@ func (r *AccountSettingRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *AccountSettingRepository) UpdateAccountSetting(tx *gorm.DB, user *models.User, span opentracing.Span) error {
+func (r *AccountSettingRepository) UpdateAccountSetting(tx *gorm.DB, user *models.User, fieldsToUpdate []string, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("AccountSettingRepository-UpdateAccountSetting", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
 
-	if err := tx.Select("name", "username", "email", "address", "phone_number", "profile_image_url", "password", "updated_by_id").Updates(user).Error; err != nil {
-		defer childSpan.Finish()
+	if err := tx.Select(fieldsToUpdate).Updates(user).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
