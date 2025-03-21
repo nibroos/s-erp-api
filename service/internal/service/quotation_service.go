@@ -89,10 +89,9 @@ func (s *QuotationService) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQuot
 func (s *QuotationService) UpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Quotation, error) {
 	childSpan := opentracing.StartSpan("QuotationService-UpdateQuotation", opentracing.ChildOf(span.Context()))
 
-	quotation, err := s.MapUpdateQuotation(ctx, req, userID, branchID, childSpan)
+	quotation, err := utils.MapUpdateQuotation(ctx, req, userID, branchID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
-		tx.Rollback()
 		return nil, err
 	}
 
@@ -350,18 +349,6 @@ func (s *QuotationService) MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuo
 	childSpan := opentracing.StartSpan("QuotationService-MapCreateQuotation", opentracing.ChildOf(span.Context()))
 
 	quotationsModel, err := utils.MapCreateQuotation(ctx, req, userID, branchID, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		return quotationsModel, err
-	}
-
-	return quotationsModel, nil
-}
-
-func (s *QuotationService) MapUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID uint, branchID uint, span opentracing.Span) (models.Quotation, error) {
-	childSpan := opentracing.StartSpan("QuotationService-MapUpdateQuotation", opentracing.ChildOf(span.Context()))
-
-	quotationsModel, err := utils.MapUpdateQuotation(ctx, req, userID, branchID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return quotationsModel, err

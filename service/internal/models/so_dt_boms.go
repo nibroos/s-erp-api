@@ -8,7 +8,7 @@ type SoDtBom struct {
 	gorm.Model
 	ID           uint           `json:"id" gorm:"primaryKey;autoIncrement"`
 	ProductUuid  string         `json:"product_uuid" gorm:"column:product_uuid"`
-	SotationID   *uint          `json:"sales_order_id" gorm:"column:sales_order_id"`
+	SalesOrderID *uint          `json:"sales_order_id" gorm:"column:sales_order_id"`
 	SoDtID       uint           `json:"so_dt_id" gorm:"column:so_dt_id"`
 	ProductID    uint           `json:"product_id" gorm:"column:product_id"`
 	ItemID       uint           `json:"item_id" gorm:"column:item_id"`
@@ -17,6 +17,7 @@ type SoDtBom struct {
 	GenCode      *string        `json:"gen_code" gorm:"column:gen_code"`
 	Remark       *string        `json:"remark" gorm:"column:remark"`
 	Qty          float64        `json:"qty" gorm:"column:qty"`
+	QtyOut       *float64       `json:"qty_out" gorm:"column:qty_out"`
 	PriceSell    float64        `json:"price_sell" gorm:"column:price_sell"`
 	PriceBuy     float64        `json:"price_buy" gorm:"column:price_buy"`
 	SubtotalSell float64        `json:"subtotal_sell" gorm:"column:subtotal_sell"`
