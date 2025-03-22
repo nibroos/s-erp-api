@@ -15,10 +15,10 @@ CREATE TABLE IF NOT EXISTS so_dts (
   item_json JSONB,
   gen_code TEXT,
   remark TEXT,
-  is_lock_vat INT,
+  -- is_lock_vat INT,
   vat_perc DECIMAL(20, 5),
   vat_perc_am DECIMAL(20, 5),
-  is_lock_pph23 INT,
+  -- is_lock_pph23 INT,
   pph23_perc DECIMAL(20, 5),
   pph23_perc_am DECIMAL(20, 5),
   qty_out DECIMAL(20, 5),
@@ -33,9 +33,9 @@ CREATE TABLE IF NOT EXISTS so_dts (
   disc_perc_am DECIMAL(20, 5),
   disc_final DECIMAL(20, 5),
   disc_type TEXT,
-  head_disc_am DECIMAL(20, 5),
-  head_disc_perc_am DECIMAL(20, 5),
-  disc_end DECIMAL(20, 5),
+  -- head_disc_am DECIMAL(20, 5),
+  -- head_disc_perc_am DECIMAL(20, 5),
+  -- disc_end DECIMAL(20, 5),
   total_am DECIMAL(20, 5),
   si_total_am DECIMAL(20, 5),
   sa_total_am DECIMAL(20, 5),
@@ -60,5 +60,7 @@ CREATE INDEX idx_so_dts_item_unit_id ON so_dts(item_unit_id);
 CREATE INDEX idx_so_dts_ref_id ON so_dts(ref_id);
 
 CREATE INDEX idx_so_dts_vat_id ON so_dts(vat_id);
+
+CREATE INDEX idx_so_dts_pph23_id ON so_dts(pph23_id);
 
 COMMIT;

@@ -15,12 +15,14 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   item_json JSONB,
   gen_code TEXT,
   remark TEXT,
-  is_lock_vat INT,
+  -- is_lock_vat INT,
   vat_perc DECIMAL(20, 5),
   vat_perc_am DECIMAL(20, 5),
-  is_lock_pph23 INT,
+  -- is_lock_pph23 INT,
   pph23_perc DECIMAL(20, 5),
   pph23_perc_am DECIMAL(20, 5),
+  is_lock_markup INT,
+  is_lock_price_sell INT,
   qty_so DECIMAL(20, 5),
   qty DECIMAL(20, 5),
   price_sell DECIMAL(20, 5),
@@ -33,9 +35,9 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   disc_perc_am DECIMAL(20, 5),
   disc_final DECIMAL(20, 5),
   disc_type TEXT,
-  head_disc_am DECIMAL(20, 5),
-  head_disc_perc_am DECIMAL(20, 5),
-  disc_end DECIMAL(20, 5),
+  -- head_disc_am DECIMAL(20, 5),
+  -- head_disc_perc_am DECIMAL(20, 5),
+  -- disc_end DECIMAL(20, 5),
   total_am DECIMAL(20, 5),
   created_by_id INT,
   updated_by_id INT,
@@ -56,6 +58,8 @@ CREATE INDEX idx_quo_dts_quotation_id ON quo_dts(quotation_id);
 CREATE INDEX idx_quo_dts_item_unit_id ON quo_dts(item_unit_id);
 
 CREATE INDEX idx_quo_dts_vat_id ON quo_dts(vat_id);
+
+CREATE INDEX idx_quo_dts_pph23_id ON quo_dts(pph23_id);
 
 CREATE INDEX idx_quo_dts_ref_id ON quo_dts(ref_id);
 

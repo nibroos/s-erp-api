@@ -20,10 +20,8 @@ type SoDt struct {
 	ItemJSON     *string        `json:"item_json" gorm:"column:item_json"`
 	GenCode      *string        `json:"gen_code" gorm:"column:gen_code"`
 	Remark       *string        `json:"remark" gorm:"column:remark"`
-	IsLockVat    *int8          `json:"is_lock_vat" gorm:"column:is_lock_vat"`
 	VatPerc      *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	VatPercAm    *float64       `json:"vat_perc_am" gorm:"column:vat_perc_am"`
-	IsLockPph23  *int8          `json:"is_lock_pph23" gorm:"column:is_lock_pph23"`
 	Pph23Perc    *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`
 	Pph23PercAm  *float64       `json:"pph23_perc_am" gorm:"column:pph23_perc_am"`
 	QtyOut       *float64       `json:"qty_out" gorm:"column:qty_out"`
@@ -38,8 +36,6 @@ type SoDt struct {
 	DiscPercAm   *float64       `json:"disc_perc_am" gorm:"column:disc_perc_am"`
 	DiscFinal    *float64       `json:"disc_final" gorm:"column:disc_final"`
 	DiscType     *string        `json:"disc_type" gorm:"column:disc_type"`
-	HeadDiscAm   *float64       `json:"head_disc_am" gorm:"column:head_disc_am"`
-	HeadDiscPerc *float64       `json:"head_disc_perc" gorm:"column:head_disc_perc"`
 	TotalAm      *float64       `json:"total_am" gorm:"column:total_am"`
 	SiTotalAm    *float64       `json:"si_total_am" gorm:"column:si_total_am"`
 	SaTotalAm    *float64       `json:"sa_total_am" gorm:"column:sa_total_am"`

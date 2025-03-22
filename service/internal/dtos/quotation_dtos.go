@@ -26,39 +26,38 @@ type GetQuotationsRequest struct {
 }
 
 type CreateQuoDtsRequest struct {
-	ProductUuid  string                    `json:"product_uuid"`
-	ItemUnitID   *uint                     `json:"item_unit_id"`
-	VatID        *uint                     `json:"vat_id"`
-	Pph23ID      *uint                     `json:"pph23_id"`
-	RefID        *uint                     `json:"ref_id"`
-	ItemID       uint                      `json:"item_id"`
-	RefType      *string                   `json:"ref_type"`
-	ItemType     *string                   `json:"item_type"`
-	GenCode      *string                   `json:"gen_code"`
-	Remark       *string                   `json:"remark"`
-	IsLockVat    *int8                     `json:"is_lock_vat"`
-	VatPerc      *float64                  `json:"vat_perc"`
-	VatPercAm    *float64                  `json:"vat_perc_am"`
-	IsLockPph23  *int8                     `json:"is_lock_pph23"`
-	Pph23Perc    *float64                  `json:"pph23_perc"`
-	Pph23PercAm  *float64                  `json:"pph23_perc_am"`
-	QtySO        *float64                  `json:"qty_so"`
-	Qty          *float64                  `json:"qty"`
-	PriceSell    *float64                  `json:"price_sell"`
-	PriceBuy     *float64                  `json:"price_buy"`
-	SubtotalSell *float64                  `json:"subtotal_sell"`
-	SubtotalBuy  *float64                  `json:"subtotal_buy"`
-	DiscAm       *float64                  `json:"disc_am"`
-	DiscPerc     *float64                  `json:"disc_perc"`
-	DiscPercNum  *float64                  `json:"disc_perc_num"`
-	DiscPercAm   *float64                  `json:"disc_perc_am"`
-	DiscFinal    *float64                  `json:"disc_final"`
-	DiscType     *string                   `json:"disc_type"`
-	HeadDiscAm   *float64                  `json:"head_disc_am"`
-	HeadDiscPerc *float64                  `json:"head_disc_perc"`
-	DiscEnd      *float64                  `json:"disc_end"`
-	TotalAm      *float64                  `json:"total_am"`
-	QuoDtsBoms   []CreateQuoDtsBomsRequest `json:"quo_dts_boms"`
+	ProductUuid     string                    `json:"product_uuid"`
+	ItemUnitID      *uint                     `json:"item_unit_id"`
+	VatID           *uint                     `json:"vat_id"`
+	Pph23ID         *uint                     `json:"pph23_id"`
+	RefID           *uint                     `json:"ref_id"`
+	ItemID          uint                      `json:"item_id"`
+	RefType         *string                   `json:"ref_type"`
+	ItemType        *string                   `json:"item_type"`
+	GenCode         *string                   `json:"gen_code"`
+	Remark          *string                   `json:"remark"`
+	VatPerc         *float64                  `json:"vat_perc"`
+	VatPercAm       *float64                  `json:"vat_perc_am"`
+	Pph23Perc       *float64                  `json:"pph23_perc"`
+	Pph23PercAm     *float64                  `json:"pph23_perc_am"`
+	IsLockMarkup    *int8                     `json:"is_lock_markup"`
+	IsLockPriceSell *int8                     `json:"is_lock_price_sell"`
+	MarkupPerc      *float64                  `json:"markup_perc"`
+	MarkupPercAm    *float64                  `json:"markup_perc_am"`
+	QtySO           *float64                  `json:"qty_so"`
+	Qty             *float64                  `json:"qty"`
+	PriceSell       *float64                  `json:"price_sell"`
+	PriceBuy        *float64                  `json:"price_buy"`
+	SubtotalSell    *float64                  `json:"subtotal_sell"`
+	SubtotalBuy     *float64                  `json:"subtotal_buy"`
+	DiscAm          *float64                  `json:"disc_am"`
+	DiscPerc        *float64                  `json:"disc_perc"`
+	DiscPercNum     *float64                  `json:"disc_perc_num"`
+	DiscPercAm      *float64                  `json:"disc_perc_am"`
+	DiscFinal       *float64                  `json:"disc_final"`
+	DiscType        *string                   `json:"disc_type"`
+	TotalAm         *float64                  `json:"total_am"`
+	QuoDtsBoms      []CreateQuoDtsBomsRequest `json:"quo_dts_boms"`
 }
 type CreateQuoDtsBomsRequest struct {
 	ProductUuid  string  `json:"product_uuid"`
@@ -107,42 +106,41 @@ type CreateQuotationRequest struct {
 }
 
 type UpdateQuoDtsRequest struct {
-	ID           *uint                      `json:"id"`
-	QuoDtID      *uint                      `json:"quo_dt_id"`
-	ProductUuid  string                     `json:"product_uuid"`
-	QuotationID  *uint                      `json:"quotation_id"`
-	ItemUnitID   *uint                      `json:"item_unit_id"`
-	VatID        *uint                      `json:"vat_id"`
-	Pph23ID      *uint                      `json:"pph23_id"`
-	RefID        *uint                      `json:"ref_id"`
-	ItemID       uint                       `json:"item_id"`
-	RefType      *string                    `json:"ref_type"`
-	ItemType     *string                    `json:"item_type"`
-	GenCode      *string                    `json:"gen_code"`
-	Remark       *string                    `json:"remark"`
-	IsLockVat    *int8                      `json:"is_lock_vat"`
-	VatPerc      *float64                   `json:"vat_perc"`
-	VatPercAm    *float64                   `json:"vat_perc_am"`
-	IsLockPph23  *int8                      `json:"is_lock_pph23"`
-	Pph23Perc    *float64                   `json:"pph23_perc"`
-	Pph23PercAm  *float64                   `json:"pph23_perc_am"`
-	QtySO        *float64                   `json:"qty_so"`
-	Qty          *float64                   `json:"qty"`
-	PriceSell    *float64                   `json:"price_sell"`
-	PriceBuy     *float64                   `json:"price_buy"`
-	SubtotalSell *float64                   `json:"subtotal_sell"`
-	SubtotalBuy  *float64                   `json:"subtotal_buy"`
-	DiscAm       *float64                   `json:"disc_am"`
-	DiscPerc     *float64                   `json:"disc_perc"`
-	DiscPercNum  *float64                   `json:"disc_perc_num"`
-	DiscPercAm   *float64                   `json:"disc_perc_am"`
-	DiscFinal    *float64                   `json:"disc_final"`
-	DiscType     *string                    `json:"disc_type"`
-	HeadDiscAm   *float64                   `json:"head_disc_am"`
-	HeadDiscPerc *float64                   `json:"head_disc_perc"`
-	DiscEnd      *float64                   `json:"disc_end"`
-	TotalAm      *float64                   `json:"total_am"`
-	QuoDtsBoms   []*UpdateQuoDtsBomsRequest `json:"quo_dts_boms" gorm:"-"`
+	ID              *uint                      `json:"id"`
+	QuoDtID         *uint                      `json:"quo_dt_id"`
+	ProductUuid     string                     `json:"product_uuid"`
+	QuotationID     *uint                      `json:"quotation_id"`
+	ItemUnitID      *uint                      `json:"item_unit_id"`
+	VatID           *uint                      `json:"vat_id"`
+	Pph23ID         *uint                      `json:"pph23_id"`
+	RefID           *uint                      `json:"ref_id"`
+	ItemID          uint                       `json:"item_id"`
+	RefType         *string                    `json:"ref_type"`
+	ItemType        *string                    `json:"item_type"`
+	GenCode         *string                    `json:"gen_code"`
+	Remark          *string                    `json:"remark"`
+	VatPerc         *float64                   `json:"vat_perc"`
+	VatPercAm       *float64                   `json:"vat_perc_am"`
+	Pph23Perc       *float64                   `json:"pph23_perc"`
+	Pph23PercAm     *float64                   `json:"pph23_perc_am"`
+	IsLockMarkup    *int8                      `json:"is_lock_markup"`
+	IsLockPriceSell *int8                      `json:"is_lock_price_sell"`
+	MarkupPerc      *float64                   `json:"markup_perc"`
+	MarkupPercAm    *float64                   `json:"markup_perc_am"`
+	QtySO           *float64                   `json:"qty_so"`
+	Qty             *float64                   `json:"qty"`
+	PriceSell       *float64                   `json:"price_sell"`
+	PriceBuy        *float64                   `json:"price_buy"`
+	SubtotalSell    *float64                   `json:"subtotal_sell"`
+	SubtotalBuy     *float64                   `json:"subtotal_buy"`
+	DiscAm          *float64                   `json:"disc_am"`
+	DiscPerc        *float64                   `json:"disc_perc"`
+	DiscPercNum     *float64                   `json:"disc_perc_num"`
+	DiscPercAm      *float64                   `json:"disc_perc_am"`
+	DiscFinal       *float64                   `json:"disc_final"`
+	DiscType        *string                    `json:"disc_type"`
+	TotalAm         *float64                   `json:"total_am"`
+	QuoDtsBoms      []*UpdateQuoDtsBomsRequest `json:"quo_dts_boms" gorm:"-"`
 }
 
 type UpdateQuoDtsBomsRequest struct {
@@ -346,12 +344,12 @@ type QuotationQuoDtListDTO struct {
 	ItemType         *string   `json:"item_type" db:"item_type"`
 	GenCode          *string   `json:"gen_code" db:"gen_code"`
 	Remark           *string   `json:"remark" db:"remark"`
-	IsLockVat        *int8     `json:"is_lock_vat"`
 	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
-	IsLockPph23      *int8     `json:"is_lock_pph23"`
 	Pph23Perc        *float64  `json:"pph23_perc"`
 	Pph23PercAm      *float64  `json:"pph23_perc_am"`
+	IsLockMarkup     *int8     `json:"is_lock_markup"`
+	IsLockPriceSell  *int8     `json:"is_lock_price_sell"`
 	QtySO            *float64  `json:"qty_so" db:"qty_so"`
 	Qty              *float64  `json:"qty" db:"qty"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
@@ -364,9 +362,6 @@ type QuotationQuoDtListDTO struct {
 	DiscPercAm       *float64  `json:"disc_perc_am" db:"disc_perc_am"`
 	DiscFinal        *float64  `json:"disc_final" db:"disc_final"`
 	DiscType         *string   `json:"disc_type" db:"disc_type"`
-	HeadDiscAm       *float64  `json:"head_disc_am" db:"head_disc_am"`
-	HeadDiscPerc     *float64  `json:"head_disc_perc" db:"head_disc_perc"`
-	DiscEnd          *float64  `json:"disc_end" db:"disc_end"`
 	TotalAm          *float64  `json:"total_am" db:"total_am"`
 	CreatedByName    *string   `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string   `json:"updated_by_name" db:"updated_by_name"`
@@ -402,12 +397,12 @@ type QuotationQuoDtListUpdateDTO struct {
 	ItemType         *string   `json:"item_type" db:"item_type"`
 	GenCode          *string   `json:"gen_code" db:"gen_code"`
 	Remark           *string   `json:"remark" db:"remark"`
-	IsLockVat        *int8     `json:"is_lock_vat"`
 	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
-	IsLockPph23      *int8     `json:"is_lock_pph23"`
 	Pph23Perc        *float64  `json:"pph23_perc"`
 	Pph23PercAm      *float64  `json:"pph23_perc_am"`
+	IsLockMarkup     *int8     `json:"is_lock_markup"`
+	IsLockPriceSell  *int8     `json:"is_lock_price_sell"`
 	QtySO            *float64  `json:"qty_so" db:"qty_so"`
 	Qty              *float64  `json:"qty" db:"qty"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
@@ -420,9 +415,6 @@ type QuotationQuoDtListUpdateDTO struct {
 	DiscPercAm       *float64  `json:"disc_perc_am" db:"disc_perc_am"`
 	DiscFinal        *float64  `json:"disc_final" db:"disc_final"`
 	DiscType         *string   `json:"disc_type" db:"disc_type"`
-	HeadDiscAm       *float64  `json:"head_disc_am" db:"head_disc_am"`
-	HeadDiscPerc     *float64  `json:"head_disc_perc" db:"head_disc_perc"`
-	DiscEnd          *float64  `json:"disc_end" db:"disc_end"`
 	TotalAm          *float64  `json:"total_am" db:"total_am"`
 	CreatedByName    *string   `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string   `json:"updated_by_name" db:"updated_by_name"`

@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS products (
   minimum_stock DECIMAL(20, 5),
   qty_stock DECIMAL(20, 5) DEFAULT 0,
   is_all_branch INT,
+  is_vat INT,
+  is_pph23 INT,
   status INT,
   expired_at timestamp with time zone,
   created_by_id INT,
