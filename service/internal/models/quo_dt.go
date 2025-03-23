@@ -26,6 +26,8 @@ type QuoDt struct {
 	Pph23PercAm     *float64       `json:"pph23_perc_am" gorm:"column:pph23_perc_am"`
 	MarkupPerc      *float64       `json:"markup_perc" gorm:"column:markup_perc"`
 	MarkupPercAm    *float64       `json:"markup_perc_am" gorm:"column:markup_perc_am"`
+	IsVat           *int8          `json:"is_vat" gorm:"column:is_vat"`
+	IsPph23         *int8          `json:"is_pph23" gorm:"column:is_pph23"`
 	IsLockMarkup    *int8          `json:"is_lock_markup" gorm:"column:is_lock_markup"`
 	IsLockPriceSell *int8          `json:"is_lock_price_sell" gorm:"column:is_lock_price_sell"`
 	QtySO           *float64       `json:"qty_so" gorm:"column:qty_so"`

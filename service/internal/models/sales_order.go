@@ -22,12 +22,13 @@ type SalesOrder struct {
 	Status        string         `json:"status" gorm:"column:status"`
 	ExchangeRate  *float64       `json:"exchange_rate" gorm:"column:exchange_rate"`
 	VatPerc       *float64       `json:"vat_perc" gorm:"column:vat_perc"`
+	Pph23Perc     *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`
+	MarkupPerc    *float64       `json:"markup_perc" gorm:"column:markup_perc"`
 	DiscAm        *float64       `json:"disc_am" gorm:"column:disc_am"`
 	DiscPerc      *float64       `json:"disc_perc" gorm:"column:disc_perc"`
 	DiscPercAm    *float64       `json:"disc_perc_am" gorm:"column:disc_perc_am"`
 	DiscFinal     *float64       `json:"disc_final" gorm:"column:disc_final"`
 	DiscType      *string        `json:"disc_type" gorm:"column:disc_type"`
-	Pph23Perc     *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`
 	TotalQty      *float64       `json:"total_qty" gorm:"column:total_qty"`
 	Subtotal      *float64       `json:"subtotal" gorm:"column:subtotal"`
 	TotalDiscount *float64       `json:"total_discount" gorm:"column:total_discount"`

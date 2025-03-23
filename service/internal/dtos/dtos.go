@@ -1927,8 +1927,8 @@ type ProductListDTO struct {
 	TpbCode          *string  `json:"tpb_code" db:"tpb_code"`
 	MinimumStock     *string  `json:"minimum_stock" db:"minimum_stock"`
 	IsAllBranch      *int     `json:"is_all_branch" db:"is_all_branch"`
-	IsVat            *int     `json:"is_vat"`
-	IsPph23          *int     `json:"is_pph23"`
+	IsVat            *int     `json:"is_vat" db:"is_vat"`
+	IsPph23          *int     `json:"is_pph23" db:"is_pph23"`
 	Remark           *string  `json:"remark" db:"remark"`
 	QtyStock         *float64 `json:"qty_stock" db:"qty_stock"`
 	PriceSell        *float64 `json:"price_sell" db:"price_sell"`

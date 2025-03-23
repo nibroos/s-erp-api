@@ -519,8 +519,8 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 
 	query := `SELECT qd.id, qd.quotation_id, qd.product_uuid,
 		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.pph23_perc, qd.pph23_perc_am, qd.markup_perc, qd.markup_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id, qd.created_at, qd.updated_at, qd.deleted_at,
+		qd.is_vat, qd.is_pph23, qd.is_lock_markup, qd.is_lock_price_sell,
 		qd.created_at, qd.updated_at, qd.deleted_at,
-		qd.is_lock_markup, qd.is_lock_price_sell,
 
 		qd.id as quo_dt_id,
 		isg.id as item_sub_group_id,
@@ -587,6 +587,7 @@ func (r *QuotationRepository) GetUpdatedQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx 
 
 	query := `SELECT qd.id, qd.quotation_id, qd.product_uuid,
 		qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id, qd.created_at, qd.updated_at, qd.deleted_at,
+		qd.is_vat, qd.is_pph23, qd.is_lock_markup, qd.is_lock_price_sell,
 		qd.created_at, qd.updated_at, qd.deleted_at,
 
 		qd.id as quo_dt_id,

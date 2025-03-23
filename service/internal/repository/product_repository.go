@@ -167,6 +167,8 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 
 					m.id as product_id,
 					m.id as ref_id,
+					m.is_pph23,
+					m.is_vat,
 					m.prod_type,
 					u.name as unit_name,
 					isg.name as item_sub_group_name,

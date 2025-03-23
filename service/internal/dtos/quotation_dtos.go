@@ -36,8 +36,10 @@ type CreateQuoDtsRequest struct {
 	ItemType        *string                   `json:"item_type"`
 	GenCode         *string                   `json:"gen_code"`
 	Remark          *string                   `json:"remark"`
+	IsVat           *int8                     `json:"is_vat"`
 	VatPerc         *float64                  `json:"vat_perc"`
 	VatPercAm       *float64                  `json:"vat_perc_am"`
+	IsPph23         *int8                     `json:"is_pph23"`
 	Pph23Perc       *float64                  `json:"pph23_perc"`
 	Pph23PercAm     *float64                  `json:"pph23_perc_am"`
 	IsLockMarkup    *int8                     `json:"is_lock_markup"`
@@ -120,8 +122,10 @@ type UpdateQuoDtsRequest struct {
 	ItemType        *string                    `json:"item_type"`
 	GenCode         *string                    `json:"gen_code"`
 	Remark          *string                    `json:"remark"`
+	IsVat           *int8                      `json:"is_vat"`
 	VatPerc         *float64                   `json:"vat_perc"`
 	VatPercAm       *float64                   `json:"vat_perc_am"`
+	IsPph23         *int8                      `json:"is_pph23"`
 	Pph23Perc       *float64                   `json:"pph23_perc"`
 	Pph23PercAm     *float64                   `json:"pph23_perc_am"`
 	IsLockMarkup    *int8                      `json:"is_lock_markup"`
@@ -348,8 +352,10 @@ type QuotationQuoDtListDTO struct {
 	ItemType         *string   `json:"item_type" db:"item_type"`
 	GenCode          *string   `json:"gen_code" db:"gen_code"`
 	Remark           *string   `json:"remark" db:"remark"`
+	IsVat            *int8     `json:"is_vat" db:"is_vat"`
 	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
+	IsPph23          *int8     `json:"is_pph23" db:"is_pph23"`
 	Pph23Perc        *float64  `json:"pph23_perc" db:"pph23_perc"`
 	Pph23PercAm      *float64  `json:"pph23_perc_am" db:"pph23_perc_am"`
 	MarkupPerc       *float64  `json:"markup_perc" db:"markup_perc"`
@@ -403,8 +409,10 @@ type QuotationQuoDtListUpdateDTO struct {
 	ItemType         *string   `json:"item_type" db:"item_type"`
 	GenCode          *string   `json:"gen_code" db:"gen_code"`
 	Remark           *string   `json:"remark" db:"remark"`
+	IsVat            *int8     `json:"is_vat" db:"is_vat"`
 	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
+	IsPph23          *int8     `json:"is_pph23" db:"is_pph23"`
 	Pph23Perc        *float64  `json:"pph23_perc" db:"pph23_perc"`
 	Pph23PercAm      *float64  `json:"pph23_perc_am" db:"pph23_perc_am"`
 	MarkupPerc       *float64  `json:"markup_perc" db:"markup_perc"`
