@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   -- is_lock_pph23 INT,
   pph23_perc DECIMAL(20, 5),
   pph23_perc_am DECIMAL(20, 5),
+  markup_perc DECIMAL(20, 5),
+  markup_perc_am DECIMAL(20, 5),
   is_lock_markup INT,
   is_lock_price_sell INT,
   qty_so DECIMAL(20, 5),

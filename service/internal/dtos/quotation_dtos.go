@@ -87,13 +87,14 @@ type CreateQuotationRequest struct {
 	Status        string                `json:"status"`
 	IsApproved    int8                  `json:"is_approved"`
 	ExchangeRate  *float64              `json:"exchange_rate"`
-	VatPerc       *float64              `json:"vat_perc"`
 	DiscAm        *float64              `json:"disc_am"`
 	DiscPerc      *float64              `json:"disc_perc"`
 	DiscPercAm    *float64              `json:"disc_perc_am"`
 	DiscFinal     *float64              `json:"disc_final"`
 	DiscType      *string               `json:"disc_type"`
+	VatPerc       *float64              `json:"vat_perc"`
 	Pph23Perc     *float64              `json:"pph23_perc"`
+	MarkupPerc    *float64              `json:"markup_perc"`
 	TotalQty      *float64              `json:"total_qty"`
 	Subtotal      *float64              `json:"subtotal"`
 	TotalDiscount *float64              `json:"total_discount"`
@@ -178,13 +179,14 @@ type UpdateQuotationRequest struct {
 	Status        string                `json:"status"`
 	IsApproved    int8                  `json:"is_approved"`
 	ExchangeRate  *float64              `json:"exchange_rate"`
-	VatPerc       *float64              `json:"vat_perc"`
 	DiscAm        *float64              `json:"disc_am"`
 	DiscPerc      *float64              `json:"disc_perc"`
 	DiscPercAm    *float64              `json:"disc_perc_am"`
 	DiscFinal     *float64              `json:"disc_final"`
 	DiscType      *string               `json:"disc_type"`
+	VatPerc       *float64              `json:"vat_perc"`
 	Pph23Perc     *float64              `json:"pph23_perc"`
+	MarkupPerc    *float64              `json:"markup_perc"`
 	TotalQty      *float64              `json:"total_qty"`
 	Subtotal      *float64              `json:"subtotal"`
 	TotalDiscount *float64              `json:"total_discount"`
@@ -241,6 +243,7 @@ type QuotationListDTO struct {
 	ExchangeRate  *float64 `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
 	Pph23Perc     *float64 `json:"pph23_perc" db:"pph23_perc"`
+	MarkupPerc    *float64 `json:"markup_perc" db:"markup_perc"`
 	DiscAm        *float64 `json:"disc_am" db:"disc_am"`
 	DiscPerc      *float64 `json:"disc_perc" db:"disc_perc"`
 	DiscPercAm    *float64 `json:"disc_perc_am" db:"disc_perc_am"`
@@ -298,6 +301,7 @@ type QuotationDetailDTO struct {
 	ExchangeRate  float64                 `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64                `json:"vat_perc" db:"vat_perc"`
 	Pph23Perc     *float64                `json:"pph23_perc" db:"pph23_perc"`
+	MarkupPerc    *float64                `json:"markup_perc" db:"markup_perc"`
 	DiscAm        *float64                `json:"disc_am" db:"disc_am"`
 	DiscPerc      *float64                `json:"disc_perc" db:"disc_perc"`
 	DiscPercAm    *float64                `json:"disc_perc_am" db:"disc_perc_am"`
@@ -346,10 +350,12 @@ type QuotationQuoDtListDTO struct {
 	Remark           *string   `json:"remark" db:"remark"`
 	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
-	Pph23Perc        *float64  `json:"pph23_perc"`
-	Pph23PercAm      *float64  `json:"pph23_perc_am"`
-	IsLockMarkup     *int8     `json:"is_lock_markup"`
-	IsLockPriceSell  *int8     `json:"is_lock_price_sell"`
+	Pph23Perc        *float64  `json:"pph23_perc" db:"pph23_perc"`
+	Pph23PercAm      *float64  `json:"pph23_perc_am" db:"pph23_perc_am"`
+	MarkupPerc       *float64  `json:"markup_perc" db:"markup_perc"`
+	MarkupPercAm     *float64  `json:"markup_perc_am" db:"markup_perc_am"`
+	IsLockMarkup     *int8     `json:"is_lock_markup" db:"is_lock_markup"`
+	IsLockPriceSell  *int8     `json:"is_lock_price_sell" db:"is_lock_price_sell"`
 	QtySO            *float64  `json:"qty_so" db:"qty_so"`
 	Qty              *float64  `json:"qty" db:"qty"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
@@ -399,10 +405,12 @@ type QuotationQuoDtListUpdateDTO struct {
 	Remark           *string   `json:"remark" db:"remark"`
 	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
-	Pph23Perc        *float64  `json:"pph23_perc"`
-	Pph23PercAm      *float64  `json:"pph23_perc_am"`
-	IsLockMarkup     *int8     `json:"is_lock_markup"`
-	IsLockPriceSell  *int8     `json:"is_lock_price_sell"`
+	Pph23Perc        *float64  `json:"pph23_perc" db:"pph23_perc"`
+	Pph23PercAm      *float64  `json:"pph23_perc_am" db:"pph23_perc_am"`
+	MarkupPerc       *float64  `json:"markup_perc" db:"markup_perc"`
+	MarkupPercAm     *float64  `json:"markup_perc_am" db:"markup_perc_am"`
+	IsLockMarkup     *int8     `json:"is_lock_markup" db:"is_lock_markup"`
+	IsLockPriceSell  *int8     `json:"is_lock_price_sell" db:"is_lock_price_sell"`
 	QtySO            *float64  `json:"qty_so" db:"qty_so"`
 	Qty              *float64  `json:"qty" db:"qty"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`

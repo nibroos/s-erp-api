@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS quotations (
   exchange_rate DECIMAL(20, 5),
   vat_perc DECIMAL(20, 5),
   pph23_perc DECIMAL(20, 5),
+  markup_perc DECIMAL(20, 5),
   disc_am DECIMAL(20, 5),
   disc_perc DECIMAL(20, 5),
   disc_perc_am DECIMAL(20, 5),

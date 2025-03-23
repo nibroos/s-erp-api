@@ -1834,6 +1834,8 @@ type CreateProductRequest struct {
 	TpbCode        *string                    `json:"tpb_code"`
 	MinimumStock   *float64                   `json:"minimum_stock"`
 	IsAllBranch    *int                       `json:"is_all_branch"`
+	IsVat          *int                       `json:"is_vat"`
+	IsPph23        *int                       `json:"is_pph23"`
 	Status         int8                       `json:"status"`
 	ExpiredAt      *string                    `json:"expired_at"`
 	Units          []CreateMsItemUnitsRequest `json:"units"`
@@ -1866,6 +1868,8 @@ type UpdateProductRequest struct {
 	TpbCode        *string             `json:"tpb_code"`
 	MinimumStock   *float64            `json:"minimum_stock"`
 	IsAllBranch    *int                `json:"is_all_branch"`
+	IsVat          *int                `json:"is_vat"`
+	IsPph23        *int                `json:"is_pph23"`
 	Status         int8                `json:"status"`
 	ExpiredAt      *string             `json:"expired_at"`
 	Boms           []UpdateBomsRequest `json:"boms"`
@@ -1923,6 +1927,8 @@ type ProductListDTO struct {
 	TpbCode          *string  `json:"tpb_code" db:"tpb_code"`
 	MinimumStock     *string  `json:"minimum_stock" db:"minimum_stock"`
 	IsAllBranch      *int     `json:"is_all_branch" db:"is_all_branch"`
+	IsVat            *int     `json:"is_vat"`
+	IsPph23          *int     `json:"is_pph23"`
 	Remark           *string  `json:"remark" db:"remark"`
 	QtyStock         *float64 `json:"qty_stock" db:"qty_stock"`
 	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
@@ -1983,14 +1989,17 @@ type ProductBomListDTO struct {
 	ItemTpbCode       *string `json:"item_tpb_code" db:"item_tpb_code"`
 
 	// pi.name as name, pi.code as code, pi.factory_code as factory_code, pi.sku as sku, pi.barcode as barcode, pi.specification as specification, pi.description as description, pi.remark as remark, pi.tpb_code as tpb_code,
-	Name          *string `json:"name" db:"name"`
-	Code          *string `json:"code" db:"code"`
-	FactoryCode   *string `json:"factory_code" db:"factory_code"`
-	Sku           *string `json:"sku" db:"sku"`
-	Barcode       *string `json:"barcode" db:"barcode"`
-	Specification *string `json:"specification" db:"specification"`
-	Description   *string `json:"description" db:"description"`
-	TpbCode       *string `json:"tpb_code" db:"tpb_code"`
+	Name          *string  `json:"name" db:"name"`
+	Code          *string  `json:"code" db:"code"`
+	FactoryCode   *string  `json:"factory_code" db:"factory_code"`
+	Sku           *string  `json:"sku" db:"sku"`
+	Barcode       *string  `json:"barcode" db:"barcode"`
+	Specification *string  `json:"specification" db:"specification"`
+	Description   *string  `json:"description" db:"description"`
+	TpbCode       *string  `json:"tpb_code" db:"tpb_code"`
+	PriceBuy      *float64 `json:"price_buy" db:"price_buy"`
+	PriceSell     *float64 `json:"price_sell" db:"price_sell"`
+	Margin        *float64 `json:"margin" db:"margin"`
 }
 
 type ProductDetailDTO struct {

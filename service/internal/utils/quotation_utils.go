@@ -132,6 +132,8 @@ func MapCreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuo
 			IsLockPriceSell: quoDt.IsLockPriceSell,
 			Pph23Perc:       quoDt.Pph23Perc,
 			Pph23PercAm:     quoDt.Pph23PercAm,
+			MarkupPerc:      quoDt.MarkupPerc,
+			MarkupPercAm:    quoDt.MarkupPercAm,
 			Qty:             quoDt.Qty,
 			PriceSell:       quoDt.PriceSell,
 			PriceBuy:        quoDt.PriceBuy,
@@ -220,6 +222,8 @@ func MapCreateUpdateQuoDts(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, upda
 			VatPercAm:       reqQuoDt.VatPercAm,
 			Pph23Perc:       reqQuoDt.Pph23Perc,
 			Pph23PercAm:     reqQuoDt.Pph23PercAm,
+			MarkupPerc:      reqQuoDt.MarkupPerc,
+			MarkupPercAm:    reqQuoDt.MarkupPercAm,
 			IsLockMarkup:    reqQuoDt.IsLockMarkup,
 			IsLockPriceSell: reqQuoDt.IsLockPriceSell,
 			Qty:             reqQuoDt.Qty,
@@ -232,6 +236,7 @@ func MapCreateUpdateQuoDts(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, upda
 			DiscPercNum:     reqQuoDt.DiscPercNum,
 			DiscPercAm:      reqQuoDt.DiscPercAm,
 			DiscType:        reqQuoDt.DiscType,
+			DiscFinal:       reqQuoDt.DiscFinal,
 			TotalAm:         reqQuoDt.TotalAm,
 			CreatedByID:     &userID,
 		}
@@ -258,6 +263,7 @@ func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID 
 		ExchangeRate:  req.ExchangeRate,
 		VatPerc:       req.VatPerc,
 		Pph23Perc:     req.Pph23Perc,
+		MarkupPerc:    req.MarkupPerc,
 		TotalQty:      req.TotalQty,
 		DiscAm:        req.DiscAm,
 		DiscPerc:      req.DiscPerc,
@@ -295,6 +301,7 @@ func MapUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID 
 		ExchangeRate:  req.ExchangeRate,
 		VatPerc:       req.VatPerc,
 		Pph23Perc:     req.Pph23Perc,
+		MarkupPerc:    req.MarkupPerc,
 		TotalQty:      req.TotalQty,
 		DiscAm:        req.DiscAm,
 		DiscPerc:      req.DiscPerc,
@@ -309,7 +316,7 @@ func MapUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID 
 		DueAt:         req.DueAt,
 		ExpiredAt:     req.ExpiredAt,
 		BranchID:      &branchID,
-		CreatedByID:   &userID,
+		UpdatedByID:   &userID,
 	}
 
 	return quotation, nil

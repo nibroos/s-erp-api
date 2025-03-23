@@ -20,14 +20,14 @@ type QuoDt struct {
 	ItemJSON        *string        `json:"item_json" gorm:"column:item_json"`
 	GenCode         *string        `json:"gen_code" gorm:"column:gen_code"`
 	Remark          *string        `json:"remark" gorm:"column:remark"`
-	IsLockMarkup    *int8          `json:"is_lock_markup" gorm:"column:is_lock_markup"`
 	VatPerc         *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	VatPercAm       *float64       `json:"vat_perc_am" gorm:"column:vat_perc_am"`
-	IsLockPriceSell *int8          `json:"is_lock_price_sell" gorm:"column:is_lock_price_sell"`
 	Pph23Perc       *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`
 	Pph23PercAm     *float64       `json:"pph23_perc_am" gorm:"column:pph23_perc_am"`
 	MarkupPerc      *float64       `json:"markup_perc" gorm:"column:markup_perc"`
 	MarkupPercAm    *float64       `json:"markup_perc_am" gorm:"column:markup_perc_am"`
+	IsLockMarkup    *int8          `json:"is_lock_markup" gorm:"column:is_lock_markup"`
+	IsLockPriceSell *int8          `json:"is_lock_price_sell" gorm:"column:is_lock_price_sell"`
 	QtySO           *float64       `json:"qty_so" gorm:"column:qty_so"`
 	Qty             *float64       `json:"qty" gorm:"column:qty"`
 	PriceSell       *float64       `json:"price_sell" gorm:"column:price_sell"`
@@ -39,6 +39,7 @@ type QuoDt struct {
 	DiscPercNum     *float64       `json:"disc_perc_num" gorm:"column:disc_perc_num"`
 	DiscPercAm      *float64       `json:"disc_perc_am" gorm:"column:disc_perc_am"`
 	DiscType        *string        `json:"disc_type" gorm:"column:disc_type"`
+	DiscFinal       *float64       `json:"disc_final" gorm:"column:disc_final"`
 	TotalAm         *float64       `json:"total_am" gorm:"column:total_am"`
 	CreatedByID     *uint          `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID     *uint          `json:"updated_by_id" gorm:"column:updated_by_id"`
