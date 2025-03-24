@@ -167,6 +167,8 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 
 					m.id as product_id,
 					m.id as ref_id,
+					m.is_pph23,
+					m.is_vat,
 					m.prod_type,
 					u.name as unit_name,
 					isg.name as item_sub_group_name,
@@ -652,6 +654,8 @@ func (r *ProductRepository) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[stri
 			` + cdSelect + `
 			p.code, 
 			pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
+
+			iu.price_buy, iu.price_sell, iu.margin, 
 
 			u.name as item_unit_name,
 

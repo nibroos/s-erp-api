@@ -20,6 +20,8 @@ type Product struct {
 	TpbCode        *string        `json:"tpb_code" gorm:"column:tpb_code"`
 	MinimumStock   *float64       `json:"minimum_stock" gorm:"column:minimum_stock"`
 	IsAllBranch    *int           `json:"is_all_branch" gorm:"column:is_all_branch"`
+	IsVat          *int           `json:"is_vat" gorm:"column:is_vat"`
+	IsPph23        *int           `json:"is_pph23" gorm:"column:is_pph23"`
 	Remark         *string        `json:"remark" gorm:"column:remark"`
 	Status         int8           `json:"status" gorm:"column:status"`
 	ExpiredAt      *string        `json:"expired_at" gorm:"column:expired_at"`

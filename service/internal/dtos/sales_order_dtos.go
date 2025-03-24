@@ -26,30 +26,39 @@ type GetSalesOrdersRequest struct {
 }
 
 type CreateSoDtsRequest struct {
-	ProductUuid  string                   `json:"product_uuid"`
-	ItemUnitID   *uint                    `json:"item_unit_id"`
-	VatID        *uint                    `json:"vat_id"`
-	RefID        *uint                    `json:"ref_id"`
-	ItemID       uint                     `json:"item_id"`
-	RefType      *string                  `json:"ref_type"`
-	ItemType     *string                  `json:"item_type"`
-	GenCode      *string                  `json:"gen_code"`
-	Remark       *string                  `json:"remark"`
-	VatPerc      *float64                 `json:"vat_perc"`
-	VatPercAm    *float64                 `json:"vat_perc_am"`
-	Qty          *float64                 `json:"qty"`
-	PriceSell    *float64                 `json:"price_sell"`
-	PriceBuy     *float64                 `json:"price_buy"`
-	SubtotalSell *float64                 `json:"subtotal_sell"`
-	SubtotalBuy  *float64                 `json:"subtotal_buy"`
-	DiscAm       *float64                 `json:"disc_am"`
-	DiscPerc     *float64                 `json:"disc_perc"`
-	DiscPercNum  *float64                 `json:"disc_perc_num"`
-	DiscPercAm   *float64                 `json:"disc_perc_am"`
-	DiscFinal    *float64                 `json:"disc_final"`
-	DiscType     *string                  `json:"disc_type"`
-	TotalAm      *float64                 `json:"total_am"`
-	SoDtsBoms    []CreateSoDtsBomsRequest `json:"so_dts_boms"`
+	ProductUuid     string                   `json:"product_uuid"`
+	ItemUnitID      *uint                    `json:"item_unit_id"`
+	VatID           *uint                    `json:"vat_id"`
+	Pph23ID         *uint                    `json:"pph23_id"`
+	RefID           *uint                    `json:"ref_id"`
+	ItemID          uint                     `json:"item_id"`
+	RefType         *string                  `json:"ref_type"`
+	ItemType        *string                  `json:"item_type"`
+	GenCode         *string                  `json:"gen_code"`
+	Remark          *string                  `json:"remark"`
+	VatPerc         *float64                 `json:"vat_perc"`
+	VatPercAm       *float64                 `json:"vat_perc_am"`
+	Pph23Perc       *float64                 `json:"pph23_perc"`
+	Pph23PercAm     *float64                 `json:"pph23_perc_am"`
+	MarkupPerc      *float64                 `json:"markup_perc"`
+	MarkupPercAm    *float64                 `json:"markup_perc_am"`
+	IsVat           *int8                    `json:"is_vat"`
+	IsPph23         *int8                    `json:"is_pph23"`
+	IsLockMarkup    *int8                    `json:"is_lock_markup"`
+	IsLockPriceSell *int8                    `json:"is_lock_price_sell"`
+	Qty             *float64                 `json:"qty"`
+	PriceSell       *float64                 `json:"price_sell"`
+	PriceBuy        *float64                 `json:"price_buy"`
+	SubtotalSell    *float64                 `json:"subtotal_sell"`
+	SubtotalBuy     *float64                 `json:"subtotal_buy"`
+	DiscAm          *float64                 `json:"disc_am"`
+	DiscPerc        *float64                 `json:"disc_perc"`
+	DiscPercNum     *float64                 `json:"disc_perc_num"`
+	DiscPercAm      *float64                 `json:"disc_perc_am"`
+	DiscFinal       *float64                 `json:"disc_final"`
+	DiscType        *string                  `json:"disc_type"`
+	TotalAm         *float64                 `json:"total_am"`
+	SoDtsBoms       []CreateSoDtsBomsRequest `json:"so_dts_boms"`
 }
 type CreateSoDtsBomsRequest struct {
 	ProductUuid  string  `json:"product_uuid"`
@@ -81,12 +90,13 @@ type CreateSalesOrderRequest struct {
 	Status        string               `json:"status"`
 	ExchangeRate  *float64             `json:"exchange_rate"`
 	VatPerc       *float64             `json:"vat_perc"`
+	Pph23Perc     *float64             `json:"pph23_perc"`
+	MarkupPerc    *float64             `json:"markup_perc"`
 	DiscAm        *float64             `json:"disc_am"`
 	DiscPerc      *float64             `json:"disc_perc"`
 	DiscPercAm    *float64             `json:"disc_perc_am"`
 	DiscFinal     *float64             `json:"disc_final"`
 	DiscType      *string              `json:"disc_type"`
-	Pph23Perc     *float64             `json:"pph23_perc"`
 	TotalQty      *float64             `json:"total_qty"`
 	Subtotal      *float64             `json:"subtotal"`
 	TotalDiscount *float64             `json:"total_discount"`
@@ -102,33 +112,42 @@ type CreateSalesOrderRequest struct {
 }
 
 type UpdateSoDtsRequest struct {
-	ID           *uint                     `json:"id"`
-	SoDtID       *uint                     `json:"so_dt_id"`
-	ProductUuid  string                    `json:"product_uuid"`
-	SalesOrderID *uint                     `json:"sales_order_id"`
-	ItemUnitID   *uint                     `json:"item_unit_id"`
-	VatID        *uint                     `json:"vat_id"`
-	RefID        *uint                     `json:"ref_id"`
-	ItemID       uint                      `json:"item_id"`
-	RefType      *string                   `json:"ref_type"`
-	ItemType     *string                   `json:"item_type"`
-	GenCode      *string                   `json:"gen_code"`
-	Remark       *string                   `json:"remark"`
-	VatPerc      *float64                  `json:"vat_perc"`
-	VatPercAm    *float64                  `json:"vat_perc_am"`
-	Qty          *float64                  `json:"qty"`
-	PriceSell    *float64                  `json:"price_sell"`
-	PriceBuy     *float64                  `json:"price_buy"`
-	SubtotalSell *float64                  `json:"subtotal_sell"`
-	SubtotalBuy  *float64                  `json:"subtotal_buy"`
-	DiscAm       *float64                  `json:"disc_am"`
-	DiscPerc     *float64                  `json:"disc_perc"`
-	DiscPercNum  *float64                  `json:"disc_perc_num"`
-	DiscPercAm   *float64                  `json:"disc_perc_am"`
-	DiscFinal    *float64                  `json:"disc_final"`
-	DiscType     *string                   `json:"disc_type"`
-	TotalAm      *float64                  `json:"total_am"`
-	SoDtsBoms    []*UpdateSoDtsBomsRequest `json:"so_dts_boms" gorm:"-"`
+	ID              *uint                     `json:"id"`
+	SoDtID          *uint                     `json:"so_dt_id"`
+	ProductUuid     string                    `json:"product_uuid"`
+	SalesOrderID    *uint                     `json:"sales_order_id"`
+	ItemUnitID      *uint                     `json:"item_unit_id"`
+	VatID           *uint                     `json:"vat_id"`
+	Pph23ID         *uint                     `json:"pph23_id"`
+	RefID           *uint                     `json:"ref_id"`
+	ItemID          uint                      `json:"item_id"`
+	RefType         *string                   `json:"ref_type"`
+	ItemType        *string                   `json:"item_type"`
+	GenCode         *string                   `json:"gen_code"`
+	Remark          *string                   `json:"remark"`
+	VatPerc         *float64                  `json:"vat_perc"`
+	VatPercAm       *float64                  `json:"vat_perc_am"`
+	Pph23Perc       *float64                  `json:"pph23_perc"`
+	Pph23PercAm     *float64                  `json:"pph23_perc_am"`
+	MarkupPerc      *float64                  `json:"markup_perc"`
+	MarkupPercAm    *float64                  `json:"markup_perc_am"`
+	IsVat           *int8                     `json:"is_vat"`
+	IsPph23         *int8                     `json:"is_pph23"`
+	IsLockMarkup    *int8                     `json:"is_lock_markup"`
+	IsLockPriceSell *int8                     `json:"is_lock_price_sell"`
+	Qty             *float64                  `json:"qty"`
+	PriceSell       *float64                  `json:"price_sell"`
+	PriceBuy        *float64                  `json:"price_buy"`
+	SubtotalSell    *float64                  `json:"subtotal_sell"`
+	SubtotalBuy     *float64                  `json:"subtotal_buy"`
+	DiscAm          *float64                  `json:"disc_am"`
+	DiscPerc        *float64                  `json:"disc_perc"`
+	DiscPercNum     *float64                  `json:"disc_perc_num"`
+	DiscPercAm      *float64                  `json:"disc_perc_am"`
+	DiscFinal       *float64                  `json:"disc_final"`
+	DiscType        *string                   `json:"disc_type"`
+	TotalAm         *float64                  `json:"total_am"`
+	SoDtsBoms       []*UpdateSoDtsBomsRequest `json:"so_dts_boms" gorm:"-"`
 }
 
 type UpdateSoDtsBomsRequest struct {
@@ -167,12 +186,13 @@ type UpdateSalesOrderRequest struct {
 	Status        string               `json:"status"`
 	ExchangeRate  *float64             `json:"exchange_rate"`
 	VatPerc       *float64             `json:"vat_perc"`
+	Pph23Perc     *float64             `json:"pph23_perc"`
+	MarkupPerc    *float64             `json:"markup_perc"`
 	DiscAm        *float64             `json:"disc_am"`
 	DiscPerc      *float64             `json:"disc_perc"`
 	DiscPercAm    *float64             `json:"disc_perc_am"`
 	DiscFinal     *float64             `json:"disc_final"`
 	DiscType      *string              `json:"disc_type"`
-	Pph23Perc     *float64             `json:"pph23_perc"`
 	TotalQty      *float64             `json:"total_qty"`
 	Subtotal      *float64             `json:"subtotal"`
 	TotalDiscount *float64             `json:"total_discount"`
@@ -233,6 +253,7 @@ type SalesOrderListDTO struct {
 	ExchangeRate  *float64 `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
 	Pph23Perc     *float64 `json:"pph23_perc" db:"pph23_perc"`
+	MarkupPerc    *float64 `json:"markup_perc" db:"markup_perc"`
 	DiscAm        *float64 `json:"disc_am" db:"disc_am"`
 	DiscPerc      *float64 `json:"disc_perc" db:"disc_perc"`
 	DiscPercAm    *float64 `json:"disc_perc_am" db:"disc_perc_am"`
@@ -299,6 +320,7 @@ type SalesOrderDetailDTO struct {
 	ExchangeRate  float64  `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
 	Pph23Perc     *float64 `json:"pph23_perc" db:"pph23_perc"`
+	MarkupPerc    *float64 `json:"markup_perc" db:"markup_perc"`
 	DiscAm        *float64 `json:"disc_am" db:"disc_am"`
 	DiscPerc      *float64 `json:"disc_perc" db:"disc_perc"`
 	DiscPercAm    *float64 `json:"disc_perc_am" db:"disc_perc_am"`
@@ -335,9 +357,11 @@ type SalesOrderSoDtListDTO struct {
 	ID               *uint    `json:"id" db:"id"`
 	SoDtID           *uint    `json:"so_dt_id" db:"so_dt_id"`
 	ProductUuid      *string  `json:"product_uuid" db:"product_uuid"`
+	CustomerID       *uint    `json:"customer_id" db:"customer_id"`
 	SalesOrderID     *uint    `json:"sales_order_id" db:"sales_order_id"`
 	ItemUnitID       *uint    `json:"item_unit_id" db:"item_unit_id"`
 	VatID            *uint    `json:"vat_id" db:"vat_id"`
+	Pph23ID          *uint    `json:"pph23_id" db:"pph23_id"`
 	RefID            *uint    `json:"ref_id" db:"ref_id"`
 	ItemID           *uint    `json:"item_id" db:"item_id"`
 	ItemSubGroupID   *uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
@@ -354,6 +378,14 @@ type SalesOrderSoDtListDTO struct {
 	Remark           *string  `json:"remark" db:"remark"`
 	VatPerc          *float64 `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64 `json:"vat_perc_am" db:"vat_perc_am"`
+	Pph23Perc        *float64 `json:"pph23_perc" db:"pph23_perc"`
+	Pph23PercAm      *float64 `json:"pph23_perc_am" db:"pph23_perc_am"`
+	MarkupPerc       *float64 `json:"markup_perc" db:"markup_perc"`
+	MarkupPercAm     *float64 `json:"markup_perc_am" db:"markup_perc_am"`
+	IsVat            *int8    `json:"is_vat" db:"is_vat"`
+	IsPph23          *int8    `json:"is_pph23" db:"is_pph23"`
+	IsLockMarkup     *int8    `json:"is_lock_markup" db:"is_lock_markup"`
+	IsLockPriceSell  *int8    `json:"is_lock_price_sell" db:"is_lock_price_sell"`
 	QtyOut           *float64 `json:"qty_out" db:"qty_out"`
 	Qty              *float64 `json:"qty" db:"qty"`
 	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
@@ -390,6 +422,7 @@ type SalesOrderSoDtListUpdateDTO struct {
 	SalesOrderID     *uint    `json:"sales_order_id" db:"sales_order_id"`
 	ItemUnitID       *uint    `json:"item_unit_id" db:"item_unit_id"`
 	VatID            *uint    `json:"vat_id" db:"vat_id"`
+	Pph23ID          *uint    `json:"pph23_id" db:"pph23_id"`
 	RefID            *uint    `json:"ref_id" db:"ref_id"`
 	ItemID           *uint    `json:"item_id" db:"item_id"`
 	ItemSubGroupID   *uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
@@ -406,6 +439,14 @@ type SalesOrderSoDtListUpdateDTO struct {
 	Remark           *string  `json:"remark" db:"remark"`
 	VatPerc          *float64 `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64 `json:"vat_perc_am" db:"vat_perc_am"`
+	Pph23Perc        *float64 `json:"pph23_perc" db:"pph23_perc"`
+	Pph23PercAm      *float64 `json:"pph23_perc_am" db:"pph23_perc_am"`
+	MarkupPerc       *float64 `json:"markup_perc" db:"markup_perc"`
+	MarkupPercAm     *float64 `json:"markup_perc_am" db:"markup_perc_am"`
+	IsVat            *int8    `json:"is_vat" db:"is_vat"`
+	IsPph23          *int8    `json:"is_pph23" db:"is_pph23"`
+	IsLockMarkup     *int8    `json:"is_lock_markup" db:"is_lock_markup"`
+	IsLockPriceSell  *int8    `json:"is_lock_price_sell" db:"is_lock_price_sell"`
 	QtyOut           *float64 `json:"qty_out" db:"qty_out"`
 	Qty              *float64 `json:"qty" db:"qty"`
 	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
@@ -510,6 +551,7 @@ type RefIndexQuoDtListDTO struct {
 	QuotationID      *uint     `json:"quotation_id" db:"quotation_id"`
 	ItemUnitID       *uint     `json:"item_unit_id" db:"item_unit_id"`
 	VatID            *uint     `json:"vat_id" db:"vat_id"`
+	Pph23ID          *uint     `json:"pph23_id" db:"pph23_id"`
 	RefID            *uint     `json:"ref_id" db:"ref_id"`
 	ItemID           *uint     `json:"item_id" db:"item_id"`
 	ItemSubGroupID   *uint     `json:"item_sub_group_id" db:"item_sub_group_id"`
@@ -526,6 +568,14 @@ type RefIndexQuoDtListDTO struct {
 	Remark           *string   `json:"remark" db:"remark"`
 	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
+	Pph23Perc        *float64  `json:"pph23_perc" db:"pph23_perc"`
+	Pph23PercAm      *float64  `json:"pph23_perc_am" db:"pph23_perc_am"`
+	MarkupPerc       *float64  `json:"markup_perc" db:"markup_perc"`
+	MarkupPercAm     *float64  `json:"markup_perc_am" db:"markup_perc_am"`
+	IsVat            *int8     `json:"is_vat" db:"is_vat"`
+	IsPph23          *int8     `json:"is_pph23" db:"is_pph23"`
+	IsLockMarkup     *int8     `json:"is_lock_markup" db:"is_lock_markup"`
+	IsLockPriceSell  *int8     `json:"is_lock_price_sell" db:"is_lock_price_sell"`
 	QtySO            *float64  `json:"qty_so" db:"qty_so"`
 	Qty              *float64  `json:"qty" db:"qty"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
@@ -548,9 +598,22 @@ type RefIndexQuoDtListDTO struct {
 	UpdatedAt        *string   `json:"updated_at" db:"updated_at"`
 	DeleteAt         *string   `json:"deleted_at" db:"deleted_at"`
 
-	QuoNo        *string `json:"quo_no" db:"quo_no"`
-	CustomerName *string `json:"customer_name" db:"customer_name"`
-	ItemSku      *string `json:"item_sku" db:"item_sku"`
+	CustomerID     *uint    `json:"customer_id" db:"customer_id"`
+	OrderTypeID    *uint    `json:"order_type_id" db:"order_type_id"`
+	CurrencyID     *uint    `json:"currency_id" db:"currency_id"`
+	HeadVatID      *uint    `json:"head_vat_id" db:"head_vat_id"`
+	HeadPph23ID    *uint    `json:"head_pph23_id" db:"head_pph23_id"`
+	HeadVatPerc    *float64 `json:"head_vat_perc" db:"head_vat_perc"`
+	HeadPph23Perc  *float64 `json:"head_pph23_perc" db:"head_pph23_perc"`
+	HeadDiscAm     *float64 `json:"head_disc_am" db:"head_disc_am"`
+	HeadDiscPerc   *float64 `json:"head_disc_perc" db:"head_disc_perc"`
+	HeadMarkupPerc *float64 `json:"head_markup_perc" db:"head_markup_perc"`
+	HeadRemark     *string  `json:"head_remark" db:"head_remark"`
+	ExchangeRate   *float64 `json:"exchange_rate" db:"exchange_rate"`
+	QuoNo          *string  `json:"quo_no" db:"quo_no"`
+	CustomerName   *string  `json:"customer_name" db:"customer_name"`
+	ItemSku        *string  `json:"item_sku" db:"item_sku"`
+	DueAt          *string  `json:"due_at" db:"due_at"`
 
 	QuoDtsBoms []QuotationQuoDtBomListDTO `json:"quo_dts_boms"`
 }
