@@ -20,10 +20,9 @@ func (r *IOTypeUpdateRequest) Validate(req *dtos.UpdateIOTypeRequest, ctx *fiber
 		"name":        []string{"required", fmt.Sprintf("unique_ig:mix_values,name,%d", req.ID)},
 		"description": []string{},
 		"remarks":     []string{},
-		"status":      []string{"required"},
+		"status":      []string{},
 		"code":        []string{"required"},
 		"type":        []string{"required"},
-		"group_id":    []string{"required"},
 		"io_type":     []string{"required"},
 	}
 

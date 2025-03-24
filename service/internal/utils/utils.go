@@ -772,3 +772,12 @@ func GetDefaultBranchID(ctx *fiber.Ctx) uint {
 
 	return uint(branchID.(float64))
 }
+
+func Contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
