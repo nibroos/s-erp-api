@@ -150,7 +150,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
         SELECT DISTINCT ON (so.id)
 					so.id, so.customer_id, so.order_type_id, so.currency_id, so.vat_id, so.payment_id, so.pph23_id, so.branch_id,
 					so.po_buyer_no, so.sales_order_no, so.ship_dest, so.remark, 
-					so.status, so.exchange_rate, so.pph23_perc, so.total_qty, so.subtotal, so.total_discount, so.total_pph23, so.total_vat, so.grand_total, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
+					so.status, so.exchange_rate, so.pph23_perc, so.markup_perc, so.total_qty, so.subtotal, so.total_discount, so.total_pph23, so.total_vat, so.grand_total, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
 					TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
 					TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
 					TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
@@ -309,7 +309,7 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 			SELECT DISTINCT ON (so.id)
 				so.id, so.customer_id, so.order_type_id, so.currency_id, so.vat_id, so.payment_id, so.pph23_id, so.branch_id,
 				so.po_buyer_no, so.sales_order_no, so.ship_dest, so.remark, 
-				so.status, so.exchange_rate, so.pph23_perc, so.total_qty, so.subtotal, so.total_discount, so.total_pph23, so.total_vat, so.grand_total, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
+				so.status, so.exchange_rate, so.pph23_perc, so.markup_perc, so.total_qty, so.subtotal, so.total_discount, so.total_pph23, so.total_vat, so.grand_total, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
 				TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
 				TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
 				TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
@@ -460,24 +460,33 @@ func (r *SalesOrderRepository) UpdateSoDts(tx *gorm.DB, soDts []models.SoDt, spa
 			"ref_type":       soDt.RefType,
 			// "ref_json":      soDt.RefJSON,
 			// "item_json":     soDt.ItemJSON,
-			"gen_code":      soDt.GenCode,
-			"remark":        soDt.Remark,
-			"vat_perc":      soDt.VatPerc,
-			"vat_perc_am":   soDt.VatPercAm,
-			"qty":           soDt.Qty,
-			"price_sell":    soDt.PriceSell,
-			"price_buy":     soDt.PriceBuy,
-			"subtotal_sell": soDt.SubtotalSell,
-			"subtotal_buy":  soDt.SubtotalBuy,
-			"disc_am":       soDt.DiscAm,
-			"disc_perc":     soDt.DiscPerc,
-			"disc_perc_num": soDt.DiscPercNum,
-			"disc_perc_am":  soDt.DiscPercAm,
-			"disc_final":    soDt.DiscFinal,
-			"disc_type":     soDt.DiscType,
-			"total_am":      soDt.TotalAm,
-			"updated_by_id": soDt.UpdatedByID,
-			"updated_at":    time.Now(),
+			"gen_code":           soDt.GenCode,
+			"remark":             soDt.Remark,
+			"vat_perc":           soDt.VatPerc,
+			"vat_perc_am":        soDt.VatPercAm,
+			"pph23_perc":         soDt.Pph23Perc,
+			"pph23_perc_am":      soDt.Pph23PercAm,
+			"markup_perc":        soDt.MarkupPerc,
+			"markup_perc_am":     soDt.MarkupPercAm,
+			"is_vat":             soDt.IsVat,
+			"is_pph23":           soDt.IsPph23,
+			"is_lock_markup":     soDt.IsLockMarkup,
+			"is_lock_price_sell": soDt.IsLockPriceSell,
+			"qty_out":            soDt.QtyOut,
+			"qty":                soDt.Qty,
+			"price_sell":         soDt.PriceSell,
+			"price_buy":          soDt.PriceBuy,
+			"subtotal_sell":      soDt.SubtotalSell,
+			"subtotal_buy":       soDt.SubtotalBuy,
+			"disc_am":            soDt.DiscAm,
+			"disc_perc":          soDt.DiscPerc,
+			"disc_perc_num":      soDt.DiscPercNum,
+			"disc_perc_am":       soDt.DiscPercAm,
+			"disc_final":         soDt.DiscFinal,
+			"disc_type":          soDt.DiscType,
+			"total_am":           soDt.TotalAm,
+			"updated_by_id":      soDt.UpdatedByID,
+			"updated_at":         time.Now(),
 		})
 	}
 
@@ -523,8 +532,11 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 	soDts := []dtos.SalesOrderSoDtListDTO{}
 
 	query := `SELECT sd.id, sd.sales_order_id, sd.product_uuid,
-		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_out, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.vat_perc, sd.vat_perc_am, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
+		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_out, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
+		sd.vat_perc, sd.vat_perc_am, sd.pph23_perc, sd.pph23_perc_am, sd.markup_perc, sd.markup_perc_am, sd.is_vat, sd.is_pph23, sd.is_lock_price_sell, sd.is_lock_markup,
 		sd.created_at, sd.updated_at, sd.deleted_at,
+
+		p.customer_id,
 
 		sd.id as so_dt_id,
 		isg.id as item_sub_group_id,
@@ -590,7 +602,8 @@ func (r *SalesOrderRepository) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx
 	soDts := []dtos.SalesOrderSoDtListUpdateDTO{}
 
 	query := `SELECT sd.id, sd.sales_order_id, sd.product_uuid,
-		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_out, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.vat_perc, sd.vat_perc_am, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
+		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.qty_out, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
+		sd.vat_perc, sd.vat_perc_am, sd.pph23_perc, sd.pph23_perc_am, sd.markup_perc, sd.markup_perc_am, sd.is_vat, sd.is_pph23, sd.is_lock_price_sell, sd.is_lock_markup,
 		sd.created_at, sd.updated_at, sd.deleted_at,
 
 		sd.id as so_dt_id,
@@ -679,34 +692,6 @@ func (r *SalesOrderRepository) DeleteSoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *gorm
 func (r *SalesOrderRepository) UpdateSoDtBoms(tx *gorm.DB, soDtBoms []map[string]interface{}, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("SoDtRepository-UpdateSoDtBoms", opentracing.ChildOf(span.Context()))
 
-	// data := make([]map[string]interface{}, 0)
-	// for _, soDtBom := range soDtBoms {
-	// 	itemJson := "{}"
-	// 	genCode := ""
-
-	// 	data = append(data, map[string]interface{}{
-	// 		"id":            soDtBom["id"],
-	// 		"sales_order_id":  soDtBom["sales_order_id"],
-	// 		"so_dt_id":     soDtBom["so_dt_id"],
-	// 		"product_id":    soDtBom["product_id"],
-	// 		"item_id":       soDtBom["item_id"],
-	// 		"item_unit_id":  soDtBom["item_unit_id"],
-	// 		"item_json":     itemJson,
-	// 		"gen_code":      genCode,
-	// 		"remark":        soDtBom["remark"],
-	// 		"qty":           soDtBom["qty"],
-	// 		"price_sell":    soDtBom["price_sell"],
-	// 		"price_buy":     soDtBom["price_buy"],
-	// 		"subtotal_sell": soDtBom["subtotal_sell"],
-	// 		"subtotal_buy":  soDtBom["subtotal_buy"],
-	// 		"updated_by_id": soDtBom["updated_by_id"],
-	// 		"updated_at":    time.Now(),
-	// 	})
-	// }
-
-	// log.Println("soDtBoms", soDtBoms)
-
-	// if err := r.utilRepo.BulkUpdate(tx, "soDtBoms", "id", data, childSpan); err != nil {
 	if err := r.utilRepo.Upsert(tx, "so_dt_boms", "id", soDtBoms, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
@@ -990,7 +975,7 @@ func (r *SalesOrderRepository) LockSoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, soDtBom
 
 func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefIndexQuoDtListDTO, int, error) {
 
-	childSpan := opentracing.StartSpan("QuotationRepository-GetQuotations", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetRefIndexQuoDts", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
@@ -1065,6 +1050,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 		"payment_ids":    "q.payment_id",
 		"pph23_ids":      "q.pph23_id",
 		"product_ids":    "qd.item_id",
+		"quotation_ids":  "q.id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -1105,10 +1091,23 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
     FROM ( 
         SELECT DISTINCT ON (qd.id)
 					qd.id, qd.quotation_id, qd.product_uuid,
-					qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.item_unit_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.vat_perc, qd.vat_perc_am, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id,
+					qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.item_unit_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id,
+					qd.vat_perc, qd.vat_perc_am, qd.pph23_perc, qd.pph23_perc_am, qd.markup_perc, qd.markup_perc_am, qd.is_vat, qd.is_pph23, qd.is_lock_price_sell, qd.is_lock_markup,
 					qd.created_at, qd.updated_at, qd.deleted_at,
+					q.vat_id as head_vat_id,
+					q.pph23_id as head_pph23_id,
+					q.vat_perc as head_vat_perc,
+					q.pph23_perc as head_pph23_perc,
+					q.disc_am as head_disc_am,
+					q.disc_perc as head_disc_perc,
+					q.markup_perc as head_markup_perc,
 
 					q.quo_no,
+					q.due_at,
+					q.customer_id,
+					q.order_type_id,
+					q.currency_id,
+					q.exchange_rate,
 
 					qd.id as quo_dt_id,
 					isg.id as item_sub_group_id,
