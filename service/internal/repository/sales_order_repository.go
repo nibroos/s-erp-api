@@ -1101,6 +1101,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 					q.disc_am as head_disc_am,
 					q.disc_perc as head_disc_perc,
 					q.markup_perc as head_markup_perc,
+					q.remark as head_remark,
 
 					q.quo_no,
 					q.due_at,
@@ -1137,7 +1138,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 
         LEFT JOIN users cu ON q.created_by_id = cu.id
         LEFT JOIN users uu ON q.updated_by_id = uu.id
-				WHERE 1=1` + condition + queryGlobal + `
+				WHERE 1=1 AND COALESCE(qd.qty_so, 0) < COALESCE(qd.qty, 0)` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
@@ -1447,4 +1448,92 @@ func (r *SalesOrderRepository) GetRefQuoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters
 	}
 
 	return quoDtBoms, nil
+}
+
+func (r *SalesOrderRepository) GetQuoDtQtyUpdate(ctx *fiber.Ctx, tx *gorm.DB, filters map[string]string, span opentracing.Span) ([]dtos.GetQuoDtQtyUpdateDTO, error) {
+
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetQuoDtQtyUpdate", opentracing.ChildOf(span.Context()))
+
+	products := []dtos.GetQuoDtQtyUpdateDTO{}
+
+	var args []interface{}
+
+	// i := 1
+	condition := ""
+
+	log.Println("filters.ids", filters["ids"])
+
+	condition += fmt.Sprintf(" AND qd.id IN (%s)", filters["ids"])
+
+	// filterIDsKey := map[string]string{
+	// 	"ids": "qd.id",
+	// }
+
+	// for key, valueID := range filterIDsKey {
+	// 	if value, ok := filters[key]; ok && value != "" {
+	// 		log.Println("value", value)
+	// 		// Split the string into an array of integers
+	// 		ids := strings.Split(value, ",")
+	// 		intIDs, err := utils.SplitStringArrayOfInts(ids)
+
+	// 		log.Println("ids", ids)
+	// 		log.Println("intIDs", intIDs)
+	// 		if err != nil {
+	// 			utils.LogErrors(childSpan, err)
+	// 			return nil, err
+	// 		}
+
+	// 		condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+	// 		args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
+	// 		i++
+	// 	}
+	// }
+
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (qd.id)
+					qd.id, qd.id as quo_dt_id, qd.qty_so
+
+				FROM quo_dts qd
+				LEFT JOIN quotations q ON qd.quotation_id = q.id
+				WHERE 1=1` + condition + `
+    ) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	var wg sync.WaitGroup
+	var selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if selectErr != nil {
+		return nil, selectErr
+	}
+
+	return products, nil
+}
+
+func (r *SalesOrderRepository) BulkUpdateQuoDtsQty(ctx *fiber.Ctx, tx *gorm.DB, quoDts []map[string]interface{}, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-BulkUpdateQuoDtsQty", opentracing.ChildOf(span.Context()))
+
+	if err := r.utilRepo.Upsert(tx, "quo_dts", "id", quoDts, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
 }

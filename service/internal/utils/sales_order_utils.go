@@ -110,6 +110,18 @@ func GetSoIDs(req dtos.UpdateSalesOrderRequest) ([]*uint, []*uint, []*uint, []*u
 	return soDtIDs, soDtBomIDs, productIDs, itemUnitIDs
 }
 
+func GetLockSalesOrderQuoIDs(req dtos.CreateSalesOrderRequest) []*uint {
+	quoDtIDs := []*uint{}
+
+	for _, reqSoDt := range req.SoDts {
+		if reqSoDt.RefType != nil && *reqSoDt.RefType == "quotations" && reqSoDt.RefID != nil && *reqSoDt.RefID > 0 {
+			quoDtIDs = append(quoDtIDs, reqSoDt.RefID)
+		}
+	}
+
+	return quoDtIDs
+}
+
 func MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, error) {
 	soDtsModel := []models.SoDt{}
 
@@ -368,4 +380,28 @@ func MapRefQuoDtBomsToQuoDts(quoDtBoms []dtos.QuotationQuoDtBomListDTO, quoDts [
 	}
 
 	return combinedQuoDts
+}
+
+func MapUpdateQuoDtsQty(quoDtsQtyUpdate []dtos.GetQuoDtQtyUpdateDTO, req dtos.CreateSalesOrderRequest) []map[string]interface{} {
+	// filter with ID to bulk update
+	bulkUpdateQuoDts := []map[string]interface{}{}
+
+	for _, reqSoDt := range req.SoDts {
+		for _, quoDts := range quoDtsQtyUpdate {
+			if reqSoDt.RefID != nil && quoDts.QuoDtID != nil && *reqSoDt.RefID == *quoDts.QuoDtID {
+
+				if quoDts.QtySO == nil {
+					quoDts.QtySO = new(float64)
+				}
+
+				newQuoDt := map[string]interface{}{
+					"id":     quoDts.QuoDtID,
+					"qty_so": (*reqSoDt.Qty + *quoDts.QtySO),
+				}
+				bulkUpdateQuoDts = append(bulkUpdateQuoDts, newQuoDt)
+			}
+		}
+	}
+
+	return bulkUpdateQuoDts
 }

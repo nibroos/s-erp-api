@@ -64,6 +64,21 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 		return nil, tx, err
 	}
 
+	quoDtIDs := utils.GetLockSalesOrderQuoIDs(req)
+	quoDtIDsString := utils.JoinUintPtrsToString(quoDtIDs, ",")
+	filters := map[string]string{"ids": quoDtIDsString}
+	getQuoDtsQtyUpdate, err := s.repo.GetQuoDtQtyUpdate(ctx, tx, filters, childSpan)
+	mapUpdateQuoDtsQty := utils.MapUpdateQuoDtsQty(getQuoDtsQtyUpdate, req)
+
+	// bulk update quo dts qty_so = qty_so - qty
+	if len(mapUpdateQuoDtsQty) > 0 {
+		if err := s.repo.BulkUpdateQuoDtsQty(ctx, tx, mapUpdateQuoDtsQty, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, tx, err
+		}
+	}
+
 	// tx, err = s.CreateSoDtBoms(ctx, soDtBoms, tx, childSpan)
 	tx, err = s.CreateSoDtBoms(ctx, soDts, req, &quotation, userID, tx, childSpan)
 	if err != nil {
@@ -525,6 +540,23 @@ func (s *SalesOrderService) LockSalesOrderTable(ctx *fiber.Ctx, tx *gorm.DB, req
 	if len(itemUnitIDs) > 0 {
 		var err error
 		if tx, err = s.utilRepo.LockRowTable(ctx, tx, itemUnitIDs, "item_units", childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	return tx, nil
+}
+
+func (s *SalesOrderService) LockCreateSalesOrderTable(ctx *fiber.Ctx, tx *gorm.DB, req dtos.CreateSalesOrderRequest, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-LockCreateSalesOrderTable", opentracing.ChildOf(span.Context()))
+
+	quoDtIDs := utils.GetLockSalesOrderQuoIDs(req)
+
+	if len(quoDtIDs) > 0 {
+		var err error
+		if tx, err = s.utilRepo.LockRowTable(ctx, tx, quoDtIDs, "quo_dts", childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
 			return nil, err

@@ -617,3 +617,9 @@ type RefIndexQuoDtListDTO struct {
 
 	QuoDtsBoms []QuotationQuoDtBomListDTO `json:"quo_dts_boms"`
 }
+
+type GetQuoDtQtyUpdateDTO struct {
+	ID      *uint    `json:"id" db:"id"`
+	QuoDtID *uint    `json:"quo_dt_id" db:"quo_dt_id"`
+	QtySO   *float64 `json:"qty_so" db:"qty_so"`
+}
