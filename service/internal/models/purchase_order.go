@@ -11,11 +11,9 @@ type PurchaseOrder struct {
 	PurchaseTypeID           *uint          `json:"purchase_type_id" gorm:"column:purchase_type_id"`
 	CurrencyID               *uint          `json:"currency_id" gorm:"column:currency_id"`
 	VatID                    *uint          `json:"vat_id" gorm:"column:vat_id"`
+	Pph23ID                  *uint          `json:"pph23_id" gorm:"column:pph23_id"`
 	PaymentTermID            *uint          `json:"payment_term_id" gorm:"column:payment_term_id"`
 	ShippingTermID           *uint          `json:"shipping_term_id" gorm:"column:shipping_term_id"`
-	Pph23ID                  *uint          `json:"pph23_id" gorm:"column:pph23_id"`
-	Pph23Percentage          *float64       `json:"pph23_percentage" gorm:"column:pph23_percentage"`
-	Pph23PercentageAmount    *float64       `json:"pph23_percentage_amount" gorm:"column:pph23_percentage_amount"`
 	BranchID                 *uint          `json:"branch_id" gorm:"column:branch_id"`
 	PoNo                     *string        `json:"po_no" gorm:"column:po_no"`
 	PoDate                   *string        `json:"po_date" gorm:"column:po_date"`
@@ -30,8 +28,8 @@ type PurchaseOrder struct {
 	DiscountFinalHeader      *float64       `json:"discount_final_header" gorm:"column:discount_final_header"`
 	DiscountType             *string        `json:"discount_type" gorm:"column:discount_type"`
 	VatPercentage            *float64       `json:"vat_percentage" gorm:"column:vat_percentage"`
-	VatPercentageAmount      *float64       `json:"vat_percentage_amount" gorm:"column:vat_percentage_amount"`
-	TotalAmountProduct       *float64       `json:"total_amount_products" gorm:"column:total_amount_products"`
+	Pph23Percentage          *float64       `json:"pph23_percentage" gorm:"column:pph23_percentage"`
+	TotalAmountProducts      *float64       `json:"total_amount_products" gorm:"column:total_amount_products"`
 	Subtotal                 *float64       `json:"subtotal" gorm:"column:subtotal"`
 	TotalQty                 *float64       `json:"total_qty" gorm:"column:total_qty"`
 	TotalDiscount            *float64       `json:"total_discount" gorm:"column:total_discount"`
