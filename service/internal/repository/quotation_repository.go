@@ -455,6 +455,8 @@ func (r *QuotationRepository) UpdateQuoDts(tx *gorm.DB, quoDts []models.QuoDt, s
 			"vat_perc_am":        quoDt.VatPercAm,
 			"pph23_perc":         quoDt.Pph23Perc,
 			"pph23_perc_am":      quoDt.Pph23PercAm,
+			"markup_perc":        quoDt.MarkupPerc,
+			"markup_perc_am":     quoDt.MarkupPercAm,
 			"is_lock_markup":     quoDt.IsLockMarkup,
 			"is_lock_price_sell": quoDt.IsLockPriceSell,
 			"is_lock_price_buy":  quoDt.IsLockPriceBuy,
