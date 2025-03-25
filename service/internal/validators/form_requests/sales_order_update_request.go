@@ -19,7 +19,7 @@ func NewSalesOrderUpdateRequest() *SalesOrderUpdateRequest {
 // Validate validates the RegisterRequest.
 func (r *SalesOrderUpdateRequest) Validate(req *dtos.UpdateSalesOrderRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
-		"id":                       []string{"required", "exists:products,id"},
+		"id":                       []string{"required", "exists:sales_orders,id"},
 		"status":                   []string{},
 		"expired_at":               []string{"date:yyyy-MM-dd"},
 		"so_dts":                   []string{"array"},

@@ -18,7 +18,6 @@ type Quotation struct {
 	Title         string         `json:"title" gorm:"column:title"`
 	Remark        *string        `json:"remark" gorm:"column:remark"`
 	Status        string         `json:"status" gorm:"column:status"`
-	IsApproved    int8           `json:"is_approved" gorm:"column:is_approved"`
 	ExchangeRate  *float64       `json:"exchange_rate" gorm:"column:exchange_rate"`
 	VatPerc       *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	Pph23Perc     *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`

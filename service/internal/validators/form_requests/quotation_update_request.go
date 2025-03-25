@@ -19,8 +19,10 @@ func NewQuotationUpdateRequest() *QuotationUpdateRequest {
 // Validate validates the RegisterRequest.
 func (r *QuotationUpdateRequest) Validate(req *dtos.UpdateQuotationRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
-		"id":                        []string{"required", "exists:products,id"},
-		"unit_id":                   []string{"exists:mix_values,id"},
+		"id":                        []string{"required", "exists:quotations,id"},
+		"customer_id":               []string{"required", "exists:customers,id"},
+		"order_type_id":             []string{"required", "exists:mix_values,id"},
+		"currency_id":               []string{"required", "exists:mix_values,id"},
 		"status":                    []string{},
 		"expired_at":                []string{"date:yyyy-MM-dd"},
 		"quo_dts":                   []string{"array"},

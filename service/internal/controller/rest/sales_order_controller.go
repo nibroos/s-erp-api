@@ -142,6 +142,13 @@ func (c *SalesOrderController) CreateSalesOrder(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
+	// Lock the rows for update
+	tx, err := c.service.LockCreateSalesOrderTable(ctx, tx, req, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to update salesOrder", http.StatusInternalServerError, err.Error(), nil)
+	}
+
 	// create header salesOrder
 	createdSalesOrder, tx, err := c.service.CreateSalesOrder(ctx, req, userID, branchID, tx, parentSpan)
 	if err != nil {
