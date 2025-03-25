@@ -15,5 +15,10 @@ func SetupPurchaseOrderRoutes(purchaseOrders fiber.Router, gormDB *gorm.DB, sqlD
 	purchaseOrderService := service.NewPurchaseOrderService(purchaseOrderRepo, utilRepo, tracer)
 	purchaseOrderController := rest.NewPurchaseOrderController(purchaseOrderService, purchaseOrderRepo, tracer)
 
+	purchaseOrders.Post("/index-purchase-order", purchaseOrderController.GetPurchaseOrders)
 	purchaseOrders.Post("/create-purchase-order", purchaseOrderController.CreatePurchaseOrder)
+	purchaseOrders.Post("/show-purchase-order", purchaseOrderController.GetPurchaseOrderByID)
+	purchaseOrders.Post("/update-purchase-order", purchaseOrderController.UpdatePurchaseOrder)
+	purchaseOrders.Post("/delete-purchase-order", purchaseOrderController.DeletePurchaseOrder)
+	purchaseOrders.Post("/restore-purchase-order", purchaseOrderController.RestorePurchaseOrder)
 }
