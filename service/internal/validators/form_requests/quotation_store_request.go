@@ -20,17 +20,6 @@ func NewQuotationStoreRequest() *QuotationStoreRequest {
 func (r *QuotationStoreRequest) Validate(req *dtos.CreateQuotationRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 
 	rules := map[string][]string{
-		// "item_sub_group_id":         []string{"required", "exists:mix_values,id"},
-		// "unit_id":                   []string{"exists:mix_values,id"},
-		// "item_unit_id":              []string{"required"},
-		// "status":                    []string{},
-		// "expired_at":                []string{"date:yyyy-MM-dd"},
-		// "quo_dts":                   []string{"array"},
-		// "quo_dts.*.product_item_id": []string{"exists:products,id"},
-		// "quo_dts.*.item_unit_id":    []string{"exists:item_units,id"},
-		// "quo_dts.*.qty":             []string{"numeric"},
-		// "quo_dts.*.gen_code":        []string{},
-		// "quo_dts.*.remark":          []string{},
 		"customer_id":          []string{"required", "exists:customers,id"},
 		"order_type_id":        []string{"required", "exists:mix_values,id"},
 		"currency_id":          []string{"required", "exists:mix_values,id"},

@@ -30,6 +30,7 @@ type QuoDt struct {
 	IsPph23         *int8          `json:"is_pph23" gorm:"column:is_pph23"`
 	IsLockMarkup    *int8          `json:"is_lock_markup" gorm:"column:is_lock_markup"`
 	IsLockPriceSell *int8          `json:"is_lock_price_sell" gorm:"column:is_lock_price_sell"`
+	IsLockPriceBuy  *int8          `json:"is_lock_price_buy" gorm:"column:is_lock_price_buy"`
 	QtySO           *float64       `json:"qty_so" gorm:"column:qty_so"`
 	Qty             *float64       `json:"qty" gorm:"column:qty"`
 	PriceSell       *float64       `json:"price_sell" gorm:"column:price_sell"`

@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS quotations (
   title TEXT,
   remark TEXT,
   status TEXT DEFAULT 'WAITING',
-  is_approved INT DEFAULT 0,
   exchange_rate DECIMAL(20, 5),
   vat_perc DECIMAL(20, 5),
   pph23_perc DECIMAL(20, 5),
@@ -39,7 +38,7 @@ CREATE TABLE IF NOT EXISTS quotations (
   deleted_at timestamp with time zone
 );
 
-COMMENT ON COLUMN quotations.status IS 'WAITING, CONFIRMED, APPROVED, PENDING, CANCELED';
+COMMENT ON COLUMN quotations.status IS 'WAITING, APPROVED, PENDING, CANCELED';
 
 CREATE INDEX idx_quotations_customer_id ON quotations(customer_id);
 

@@ -7,7 +7,6 @@ type GetQuotationsRequest struct {
 	Title          *string `json:"title"`
 	QuoNo          *string `json:"quo_no"`
 	Remark         *string `json:"remark"`
-	IsApproved     *int    `json:"is_approved"` // 0 = All, 1 = Approved, 2 = Not Approved
 	CustomerID     *int    `json:"customer_id"`
 	OrderTypeID    *int    `json:"order_type_id"`
 	CurrencyID     *int    `json:"currency_id"`
@@ -44,6 +43,7 @@ type CreateQuoDtsRequest struct {
 	Pph23PercAm     *float64                  `json:"pph23_perc_am"`
 	IsLockMarkup    *int8                     `json:"is_lock_markup"`
 	IsLockPriceSell *int8                     `json:"is_lock_price_sell"`
+	IsLockPriceBuy  *int8                     `json:"is_lock_price_buy"`
 	MarkupPerc      *float64                  `json:"markup_perc"`
 	MarkupPercAm    *float64                  `json:"markup_perc_am"`
 	QtySO           *float64                  `json:"qty_so"`
@@ -87,7 +87,6 @@ type CreateQuotationRequest struct {
 	Title         string                `json:"title"`
 	Remark        *string               `json:"remark"`
 	Status        string                `json:"status"`
-	IsApproved    int8                  `json:"is_approved"`
 	ExchangeRate  *float64              `json:"exchange_rate"`
 	DiscAm        *float64              `json:"disc_am"`
 	DiscPerc      *float64              `json:"disc_perc"`
@@ -130,6 +129,7 @@ type UpdateQuoDtsRequest struct {
 	Pph23PercAm     *float64                   `json:"pph23_perc_am"`
 	IsLockMarkup    *int8                      `json:"is_lock_markup"`
 	IsLockPriceSell *int8                      `json:"is_lock_price_sell"`
+	IsLockPriceBuy  *int8                      `json:"is_lock_price_buy"`
 	MarkupPerc      *float64                   `json:"markup_perc"`
 	MarkupPercAm    *float64                   `json:"markup_perc_am"`
 	QtySO           *float64                   `json:"qty_so"`
@@ -181,7 +181,6 @@ type UpdateQuotationRequest struct {
 	Title         string                `json:"title"`
 	Remark        *string               `json:"remark"`
 	Status        string                `json:"status"`
-	IsApproved    int8                  `json:"is_approved"`
 	ExchangeRate  *float64              `json:"exchange_rate"`
 	DiscAm        *float64              `json:"disc_am"`
 	DiscPerc      *float64              `json:"disc_perc"`
@@ -243,7 +242,6 @@ type QuotationListDTO struct {
 	Title         string   `json:"title" db:"title"`
 	Remark        *string  `json:"remark" db:"remark"`
 	Status        string   `json:"status" db:"status"`
-	IsApproved    int8     `json:"is_approved" db:"is_approved"`
 	ExchangeRate  *float64 `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
 	Pph23Perc     *float64 `json:"pph23_perc" db:"pph23_perc"`
@@ -301,7 +299,6 @@ type QuotationDetailDTO struct {
 	Title         string                  `json:"title" db:"title"`
 	Remark        *string                 `json:"remark" db:"remark"`
 	Status        string                  `json:"status" db:"status"`
-	IsApproved    int8                    `json:"is_approved" db:"is_approved"`
 	ExchangeRate  float64                 `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64                `json:"vat_perc" db:"vat_perc"`
 	Pph23Perc     *float64                `json:"pph23_perc" db:"pph23_perc"`
@@ -362,6 +359,7 @@ type QuotationQuoDtListDTO struct {
 	MarkupPercAm     *float64  `json:"markup_perc_am" db:"markup_perc_am"`
 	IsLockMarkup     *int8     `json:"is_lock_markup" db:"is_lock_markup"`
 	IsLockPriceSell  *int8     `json:"is_lock_price_sell" db:"is_lock_price_sell"`
+	IsLockPriceBuy   *int8     `json:"is_lock_price_buy" db:"is_lock_price_buy"`
 	QtySO            *float64  `json:"qty_so" db:"qty_so"`
 	Qty              *float64  `json:"qty" db:"qty"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
@@ -419,6 +417,7 @@ type QuotationQuoDtListUpdateDTO struct {
 	MarkupPercAm     *float64  `json:"markup_perc_am" db:"markup_perc_am"`
 	IsLockMarkup     *int8     `json:"is_lock_markup" db:"is_lock_markup"`
 	IsLockPriceSell  *int8     `json:"is_lock_price_sell" db:"is_lock_price_sell"`
+	IsLockPriceBuy   *int8     `json:"is_lock_price_buy" db:"is_lock_price_buy"`
 	QtySO            *float64  `json:"qty_so" db:"qty_so"`
 	Qty              *float64  `json:"qty" db:"qty"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
