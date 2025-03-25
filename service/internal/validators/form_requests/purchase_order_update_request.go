@@ -15,20 +15,19 @@ func NewPurchaseOrderUpdateRequest() *PurchaseOrderUpdateRequest {
 
 func (r *PurchaseOrderUpdateRequest) Validate(req *dtos.UpdatePurchaseOrderRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
-		"id":                    []string{"required", "exists:purchase_orders,id"},
-		"purchase_type_id":      []string{"required", "exists:mix_values,id"},
-		"currency_id":           []string{"required", "exists:mix_values,id"},
-		"po_no":                 []string{"required"},
-		"po_date":               []string{"required", "date:yyyy-MM-dd"},
-		"delivery_date":         []string{"date:yyyy-MM-dd"},
-		"status":                []string{"required"},
-		"po_dts":                []string{"array"},
-		"po_dts.*.id":           []string{"exists:po_dts,id"},
-		"po_dts.*.product_id":   []string{"required", "exists:products,id"},
-		"po_dts.*.item_unit_id": []string{"exists:item_units,id"},
-		"po_dts.*.qty":          []string{"numeric"},
-		"po_dts.*.gen_code":     []string{},
-		"po_dts.*.remark":       []string{},
+		"id":                  []string{"required", "exists:purchase_orders,id"},
+		"purchase_type_id":    []string{"required", "exists:mix_values,id"},
+		"currency_id":         []string{"required", "exists:mix_values,id"},
+		"po_no":               []string{"required"},
+		"po_date":             []string{"required", "date:yyyy-MM-dd"},
+		"delivery_date":       []string{"date:yyyy-MM-dd"},
+		"status":              []string{"required"},
+		"po_dts":              []string{"array"},
+		"po_dts.*.id":         []string{"exists:po_dts,id"},
+		"po_dts.*.product_id": []string{"required", "exists:products,id"},
+		"po_dts.*.qty":        []string{"numeric"},
+		"po_dts.*.gen_code":   []string{},
+		"po_dts.*.remark":     []string{},
 	}
 
 	customFieldNames := map[string]string{}
