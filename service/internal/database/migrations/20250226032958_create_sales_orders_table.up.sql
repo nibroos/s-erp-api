@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   sales_order_no TEXT,
   remark TEXT,
   ship_dest TEXT,
-  status TEXT DEFAULT 'WAITING',
+  status TEXT DEFAULT 'PROCESS',
   exchange_rate DECIMAL(20, 5),
   vat_perc DECIMAL(20, 5),
   pph23_perc DECIMAL(20, 5),
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   deleted_at timestamp with time zone
 );
 
-COMMENT ON COLUMN sales_orders.status IS 'WAITING, PROCESS, SHIPPED, PENDING, CANCEL, INVOICE, FINISH';
+COMMENT ON COLUMN sales_orders.status IS 'PROCESS, DELIVERY, SCHEDULE, INVOICE, CANCELED, FINISH';
 
 CREATE INDEX idx_sales_orders_customer_id ON sales_orders(customer_id);
 

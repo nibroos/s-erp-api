@@ -316,7 +316,6 @@ type SalesOrderDetailDTO struct {
 	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	Remark        *string  `json:"remark" db:"remark"`
 	Status        string   `json:"status" db:"status"`
-	IsApproved    int8     `json:"is_approved" db:"is_approved"`
 	ExchangeRate  float64  `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
 	Pph23Perc     *float64 `json:"pph23_perc" db:"pph23_perc"`
@@ -413,6 +412,8 @@ type SalesOrderSoDtListDTO struct {
 	DeleteAt      *string   `json:"deleted_at" db:"deleted_at"`
 
 	SoDtsBoms []SalesOrderSoDtBomListDTO `json:"so_dts_boms"`
+
+	RefNum *string `json:"ref_num" db:"ref_num"`
 }
 
 type SalesOrderSoDtListUpdateDTO struct {
@@ -619,7 +620,13 @@ type RefIndexQuoDtListDTO struct {
 }
 
 type GetQuoDtQtyUpdateDTO struct {
-	ID      *uint    `json:"id" db:"id"`
-	QuoDtID *uint    `json:"quo_dt_id" db:"quo_dt_id"`
-	QtySO   *float64 `json:"qty_so" db:"qty_so"`
+	ID          *uint    `json:"id" db:"id"`
+	QuoDtID     *uint    `json:"quo_dt_id" db:"quo_dt_id"`
+	QtySO       *float64 `json:"qty_so" db:"qty_so"`
+	QuotationID *uint    `json:"quotation_id" db:"quotation_id"`
+}
+
+type UpdateQuotationStatusRequest struct {
+	ID     uint   `json:"id"`
+	Status string `json:"status"`
 }

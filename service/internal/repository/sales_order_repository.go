@@ -92,7 +92,6 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 		"pph23_id":      "so.pph23_id",
 		"expired_at":    "so.expired_at",
 		"due_at":        "so.due_at",
-		"is_approve":    "so.is_approve",
 	}
 
 	for key, col := range filterKey {
@@ -547,6 +546,8 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 		pi.name as item_name,
 		pi.code as item_code,
 
+		q.quo_no as ref_num,
+
 		cu.name as created_by_name,
 		uu.name as updated_by_name
 
@@ -559,6 +560,8 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 	LEFT JOIN users cu ON sd.created_by_id = cu.id
 	LEFT JOIN users uu ON sd.updated_by_id = uu.id
+	LEFT JOIN quo_dts qd ON qd.id = sd.ref_id AND sd.ref_type = 'quotations'
+	LEFT JOIN quotations q ON q.id = qd.quotation_id
 	WHERE sd.deleted_at IS NULL`
 
 	var args []interface{}
@@ -777,7 +780,6 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 		"pph23_id":      "so.pph23_id",
 		"expired_at":    "so.expired_at",
 		"due_at":        "so.due_at",
-		"is_approve":    "so.is_approve",
 	}
 
 	for key, col := range filterKey {
@@ -1032,7 +1034,6 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 		"product_id":    "qd.item_id",
 		"expired_at":    "q.expired_at",
 		"due_at":        "q.due_at",
-		"is_approve":    "q.is_approve",
 	}
 
 	for key, col := range filterKey {
@@ -1131,6 +1132,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 				LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
 				LEFT JOIN products it ON qdb.item_id = it.id
 				LEFT JOIN customers c ON q.customer_id = c.id
+				LEFT JOIN so_dts sd ON qd.id = sd.ref_id AND sd.ref_type = 'quotations'
 
 				LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
@@ -1138,7 +1140,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 
         LEFT JOIN users cu ON q.created_by_id = cu.id
         LEFT JOIN users uu ON q.updated_by_id = uu.id
-				WHERE 1=1 AND COALESCE(qd.qty_so, 0) < COALESCE(qd.qty, 0)` + condition + queryGlobal + `
+				WHERE 1=1 AND (q.status = 'WAITING')` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
@@ -1294,7 +1296,6 @@ func (r *SalesOrderRepository) GetRefQuoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters
 		"pph23_id":      "q.pph23_id",
 		"expired_at":    "q.expired_at",
 		"due_at":        "q.due_at",
-		"is_approve":    "q.is_approve",
 	}
 
 	for key, col := range filterKey {
@@ -1465,34 +1466,11 @@ func (r *SalesOrderRepository) GetQuoDtQtyUpdate(ctx *fiber.Ctx, tx *gorm.DB, fi
 
 	condition += fmt.Sprintf(" AND qd.id IN (%s)", filters["ids"])
 
-	// filterIDsKey := map[string]string{
-	// 	"ids": "qd.id",
-	// }
-
-	// for key, valueID := range filterIDsKey {
-	// 	if value, ok := filters[key]; ok && value != "" {
-	// 		log.Println("value", value)
-	// 		// Split the string into an array of integers
-	// 		ids := strings.Split(value, ",")
-	// 		intIDs, err := utils.SplitStringArrayOfInts(ids)
-
-	// 		log.Println("ids", ids)
-	// 		log.Println("intIDs", intIDs)
-	// 		if err != nil {
-	// 			utils.LogErrors(childSpan, err)
-	// 			return nil, err
-	// 		}
-
-	// 		condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
-	// 		args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
-	// 		i++
-	// 	}
-	// }
-
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (qd.id)
-					qd.id, qd.id as quo_dt_id, qd.qty_so
+					qd.id, qd.id as quo_dt_id, qd.qty_so,
+					q.id as quotation_id
 
 				FROM quo_dts qd
 				LEFT JOIN quotations q ON qd.quotation_id = q.id
@@ -1536,4 +1514,51 @@ func (r *SalesOrderRepository) BulkUpdateQuoDtsQty(ctx *fiber.Ctx, tx *gorm.DB, 
 	}
 
 	return nil
+}
+
+// UpdateQuoStatus
+func (r *SalesOrderRepository) UpdateQuoStatus(ctx *fiber.Ctx, tx *gorm.DB, params dtos.UpdateQuotationStatusRequest, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-UpdateQuoStatus", opentracing.ChildOf(span.Context()))
+
+	updateParam := map[string]interface{}{
+		"id":     params.ID,
+		"status": params.Status,
+	}
+
+	// upsert
+	if err := r.utilRepo.Upsert(tx, "quotations", "id", []map[string]interface{}{updateParam}, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+// GetQuotationID
+func (r *SalesOrderRepository) GetQuotationIDBySalesOrderID(ctx *fiber.Ctx, tx *gorm.DB, params map[string]string, span opentracing.Span) (uint, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetQuotationID", opentracing.ChildOf(span.Context()))
+
+	var quotationID uint
+
+	baseQuery := `
+		FROM (
+			SELECT DISTINCT ON (q.id)
+				q.id
+			FROM quotations q
+			LEFT JOIN quo_dts qd ON q.id = qd.quotation_id
+			LEFT JOIN so_dts sd ON qd.id = sd.ref_id AND sd.ref_type = 'quotations'
+			LEFT JOIN sales_orders so ON sd.sales_order_id = so.id
+			WHERE so.id = $1
+		) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	err := tx.Raw(query, params["sales_order_id"]).Scan(&quotationID).Error
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return 0, err
+	}
+
+	return quotationID, nil
 }

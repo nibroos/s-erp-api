@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS quo_dts (
   is_pph23 INT DEFAULT 0,
   is_lock_markup INT DEFAULT 0,
   is_lock_price_sell INT DEFAULT 0,
+  is_lock_price_buy INT DEFAULT 0,
   qty_so DECIMAL(20, 5),
   qty DECIMAL(20, 5),
   price_sell DECIMAL(20, 5),

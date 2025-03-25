@@ -31,24 +31,24 @@ func NewSalesOrderService(repo *repository.SalesOrderRepository, utilRepo *repos
 func (s *SalesOrderService) GetSalesOrders(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderListDTO, int, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-GetSalesOrders", opentracing.ChildOf(span.Context()))
 
-	quotations, total, err := s.repo.GetSalesOrders(ctx, filters, childSpan)
+	salesOrders, total, err := s.repo.GetSalesOrders(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
 	}
-	return quotations, total, nil
+	return salesOrders, total, nil
 }
 
 func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.SalesOrder, *gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-CreateSalesOrder", opentracing.ChildOf(span.Context()))
 
-	quotation, err := s.MapCreateSalesOrder(ctx, req, userID, branchID, childSpan)
+	salesOrder, err := s.MapCreateSalesOrder(ctx, req, userID, branchID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, tx, err
 	}
 
-	if tx, err := s.repo.CreateSalesOrder(tx, &quotation, childSpan); err != nil {
+	if tx, err := s.repo.CreateSalesOrder(tx, &salesOrder, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, tx, err
@@ -56,7 +56,7 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 
 	// bulk create item soDts ref ms items / product->boms
 	var soDts []models.SoDt
-	tx, soDts, err = s.CreateSoDts(ctx, req, userID, &quotation, tx, childSpan)
+	tx, soDts, err = s.CreateSoDts(ctx, req, userID, &salesOrder, tx, childSpan)
 
 	if err != nil {
 		defer childSpan.Finish()
@@ -77,50 +77,72 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 			tx.Rollback()
 			return nil, tx, err
 		}
+
+		paramQuotation := map[string]string{"sales_order_id": fmt.Sprintf("%d", salesOrder.ID)}
+		// get quotation_id
+		quotationID, err := s.repo.GetQuotationIDBySalesOrderID(ctx, tx, paramQuotation, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, tx, err
+		}
+
+		// params dtos.UpdateQuotationStatusRequest
+		updateQuoParams := dtos.UpdateQuotationStatusRequest{
+			ID:     quotationID,
+			Status: "APPROVED",
+		}
+
+		// update status header quotations
+		if err := s.repo.UpdateQuoStatus(ctx, tx, updateQuoParams, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, tx, err
+		}
 	}
 
 	// tx, err = s.CreateSoDtBoms(ctx, soDtBoms, tx, childSpan)
-	tx, err = s.CreateSoDtBoms(ctx, soDts, req, &quotation, userID, tx, childSpan)
+	tx, err = s.CreateSoDtBoms(ctx, soDts, req, &salesOrder, userID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, tx, err
 	}
 
-	return &quotation, tx, nil
+	return &salesOrder, tx, nil
 }
 
 func (s *SalesOrderService) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.SalesOrderDetailDTO, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-GetSalesOrderByID", opentracing.ChildOf(span.Context()))
 
-	quotation, err := s.repo.GetSalesOrderByID(ctx, params, tx, childSpan)
+	salesOrder, err := s.repo.GetSalesOrderByID(ctx, params, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
 	}
-	return quotation, nil
+	return salesOrder, nil
 }
 
 func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.SalesOrder, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-UpdateSalesOrder", opentracing.ChildOf(span.Context()))
 
-	quotation, err := utils.MapUpdateSalesOrder(ctx, req, userID, branchID, childSpan)
+	salesOrder, err := utils.MapUpdateSalesOrder(ctx, req, userID, branchID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
 
-	if err := s.repo.UpdateSalesOrder(tx, &quotation, childSpan); err != nil {
+	if err := s.repo.UpdateSalesOrder(tx, &salesOrder, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
 
 	// Bulk/Create Update Batch SoDts
-	soDts, err := s.MapUpdateSoDts(ctx, req, &quotation, userID, childSpan)
+	soDts, err := s.MapUpdateSoDts(ctx, req, &salesOrder, userID, childSpan)
 
-	tx, err = s.BulkCreateUpdateSoDts(ctx, req, &quotation, userID, soDts, quotation.ID, tx, childSpan)
+	tx, err = s.BulkCreateUpdateSoDts(ctx, req, &salesOrder, userID, soDts, salesOrder.ID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -128,7 +150,7 @@ func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSale
 	}
 
 	updatedSalesOrderIDs := make([]uint, 0)
-	updatedSalesOrderIDs = append(updatedSalesOrderIDs, quotation.ID)
+	updatedSalesOrderIDs = append(updatedSalesOrderIDs, salesOrder.ID)
 
 	// get updated soDts
 	updatedSoDts, err := s.GetUpdatedSoDtsBySalesOrderIDs(ctx, tx, updatedSalesOrderIDs, childSpan)
@@ -139,14 +161,14 @@ func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSale
 	}
 
 	// Bulk/Create Update Batch SoDtBoms
-	err = s.BulkCreateUpdateSoDtBoms(ctx, updatedSoDts, req, quotation.ID, tx, childSpan)
+	err = s.BulkCreateUpdateSoDtBoms(ctx, updatedSoDts, req, salesOrder.ID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
 
-	return &quotation, nil
+	return &salesOrder, nil
 }
 
 func (s *SalesOrderService) DeleteSalesOrder(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) error {
@@ -177,7 +199,7 @@ func (s *SalesOrderService) RestoreSalesOrder(ctx *fiber.Ctx, params *dtos.GetSa
 func (s *SalesOrderService) ExcelGetSalesOrders(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-ExcelGetSalesOrders", opentracing.ChildOf(span.Context()))
 
-	quotations, _, err := s.GetSalesOrders(ctx, filters, childSpan)
+	salesOrders, _, err := s.GetSalesOrders(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -186,7 +208,7 @@ func (s *SalesOrderService) ExcelGetSalesOrders(ctx *fiber.Ctx, filters map[stri
 	file := excelize.NewFile()
 
 	// Create a new sheet
-	sheetName := "quotations"
+	sheetName := "salesOrders"
 	index, err := file.NewSheet(sheetName)
 	if err != nil {
 		return nil, err
@@ -194,10 +216,10 @@ func (s *SalesOrderService) ExcelGetSalesOrders(ctx *fiber.Ctx, filters map[stri
 
 	file.SetSheetRow("SalesOrders", "A1", &[]string{"ID", "Branch", "Code", "Factory Code", "Name", "Sku", "Barcode", "Unit", "Specification", "Desc", "Remark", "Price Sell", "Price Buy"})
 
-	for i, quotation := range quotations {
+	for i, salesOrder := range salesOrders {
 		row := []interface{}{
-			quotation.ID,
-			utils.GetPtrVal(quotation.Remark),
+			salesOrder.ID,
+			utils.GetPtrVal(salesOrder.Remark),
 		}
 		file.SetSheetRow("SalesOrders", fmt.Sprintf("A%d", i+2), &row)
 	}
@@ -224,7 +246,7 @@ func (s *SalesOrderService) CsvGetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	// filters is_csv
 	filters["is_csv"] = "1"
-	quotations, _, err := s.GetSalesOrders(ctx, filters, childSpan)
+	salesOrders, _, err := s.GetSalesOrders(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, err
@@ -247,10 +269,10 @@ func (s *SalesOrderService) CsvGetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	csv += "ID,Branch,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
 	// Build CSV rows
-	for _, quotation := range quotations {
+	for _, salesOrder := range salesOrders {
 		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-			quotation.ID,
-			utils.GetPtrVal(quotation.Remark),
+			salesOrder.ID,
+			utils.GetPtrVal(salesOrder.Remark),
 		)
 	}
 
