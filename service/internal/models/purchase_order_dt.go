@@ -41,3 +41,7 @@ type PoDt struct {
 	DeletedByID              *uint            `json:"deleted_by_id" gorm:"column:deleted_by_id"`
 	DeletedAt                gorm.DeletedAt   `json:"deleted_at" gorm:"index"`
 }
+
+func (PoDt) TableName() string {
+	return "purchase_order_dts"
+}
