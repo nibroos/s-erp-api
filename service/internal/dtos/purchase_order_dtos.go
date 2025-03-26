@@ -315,8 +315,7 @@ type PurchaseOrderPoDtListDTO struct {
 	IsPph23                  *int8    `json:"is_pph23" db:"is_pph23"`
 	TotalAmount              *float64 `json:"total_amount" db:"total_amount"`
 
-	ItemName    *string `json:"item_name" db:"item_name"`
-	ItemCode    *string `json:"item_code" db:"item_code"`
+	ProductCode *string `json:"product_code" db:"product_code"`
 	UnitName    *string `json:"unit_name" db:"unit_name"`
 	ProductName *string `json:"product_name" db:"product_name"`
 
