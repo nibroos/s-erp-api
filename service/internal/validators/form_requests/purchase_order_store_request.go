@@ -23,6 +23,7 @@ func (r *PurchaseOrderStoreRequest) Validate(req *dtos.CreatePurchaseOrderReques
 		"delivery_date":       []string{"required", "date:yyyy-MM-dd"},
 		"status":              []string{"required"},
 		"po_dts":              []string{"array"},
+		"po_dts.*.id":         []string{"exists:purchase_order_dts,id"},
 		"po_dts.*.product_id": []string{"required", "exists:products,id"},
 		"po_dts.*.qty":        []string{"numeric"},
 		"po_dts.*.gen_code":   []string{},
