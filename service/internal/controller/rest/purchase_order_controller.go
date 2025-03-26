@@ -22,88 +22,6 @@ func NewPurchaseOrderController(service *service.PurchaseOrderService, repo *rep
 	return &PurchaseOrderController{service: service, repo: repo, tracer: tracer}
 }
 
-func (c *PurchaseOrderController) CreatePurchaseOrder(ctx *fiber.Ctx) error {
-	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("PurchaseOrderController-CreatePurchaseOrder", opentracing.ChildOf(apiSpan.Context()))
-	defer func() {
-		if utils.FilterOtel(ctx) {
-			defer apiSpan.Finish()
-			defer parentSpan.Finish()
-		}
-	}()
-
-	var req dtos.CreatePurchaseOrderRequest
-
-	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
-		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
-	}
-
-	reqValidator, isValid := form_requests.NewPurchaseOrderStoreRequest().Validate(&req, ctx)
-	if !isValid {
-		return utils.ErrValidResponse(ctx, apiSpan, "Failed to create purchase order", reqValidator)
-	}
-
-	claims := utils.GetClaims(ctx, parentSpan)
-	userID := uint(claims["user_id"].(float64))
-	branchID := utils.GetDefaultBranchID(ctx)
-
-	tx := c.repo.BeginTransaction()
-
-	createdPurchaseOrder, tx, err := c.service.CreatePurchaseOrder(ctx, req, userID, branchID, tx, parentSpan)
-	if err != nil {
-		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create purchase order", http.StatusInternalServerError)
-	}
-
-	tx.Commit()
-
-	params := &dtos.GetPurchaseOrderParams{ID: createdPurchaseOrder.ID}
-	getPurchaseOrder, err := c.service.GetPurchaseOrderByID(ctx, params, tx, parentSpan)
-	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch purchase order", http.StatusInternalServerError)
-	}
-
-	filters := make(map[string]string)
-	paginationMeta := utils.CreatePaginationMeta(filters, 1)
-
-	return utils.GetResponse(ctx, []interface{}{getPurchaseOrder}, paginationMeta, "purchase order created successfully", http.StatusCreated, nil, nil)
-}
-
-func (c *PurchaseOrderController) GetPurchaseOrderByID(ctx *fiber.Ctx) error {
-	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("PurchaseOrderController-GetPurchaseOrderByID", opentracing.ChildOf(apiSpan.Context()))
-	defer func() {
-		if utils.FilterOtel(ctx) {
-			defer apiSpan.Finish()
-			defer parentSpan.Finish()
-		}
-	}()
-
-	var req dtos.GetPurchaseOrderByIDRequest
-
-	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "purchase order not found", http.StatusBadRequest, err.Error(), nil)
-	}
-
-	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "purchase order not found", http.StatusBadRequest, "ID is required", nil)
-	}
-
-	tx := c.repo.BeginTransaction()
-
-	params := &dtos.GetPurchaseOrderParams{ID: req.ID}
-	purchaseOrder, err := c.service.GetPurchaseOrderByID(ctx, params, tx, parentSpan)
-	if err != nil {
-		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch purchase order", http.StatusInternalServerError)
-	}
-
-	purchaseOrderArray := []interface{}{purchaseOrder}
-
-	filters := ctx.Locals("filters").(map[string]string)
-	paginationMeta := utils.CreatePaginationMeta(filters, 1)
-
-	return utils.GetResponse(ctx, purchaseOrderArray, paginationMeta, "purchase order fetched successfully", http.StatusOK, nil, nil)
-}
-
 func (c *PurchaseOrderController) GetPurchaseOrders(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("PurchaseOrderController-GetPurchaseOrders", opentracing.ChildOf(apiSpan.Context()))
@@ -136,6 +54,90 @@ func (c *PurchaseOrderController) GetPurchaseOrders(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, purchaseOrders, paginationMeta, "Purchase orders fetched successfully", http.StatusOK, nil, nil)
 }
 
+func (c *PurchaseOrderController) GetPurchaseOrderByID(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("PurchaseOrderController-GetPurchaseOrderByID", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.GetPurchaseOrderByIDRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusBadRequest, err.Error(), nil)
+	}
+
+	if req.ID == 0 {
+		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusBadRequest, "ID is required", nil)
+	}
+
+	tx := c.repo.BeginTransaction()
+
+	params := dtos.NewGetPurchaseOrderParams(req.ID)
+	purchaseOrder, err := c.service.GetPurchaseOrderByID(ctx, params, tx, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch purchase order", http.StatusInternalServerError)
+	}
+
+	purchaseOrderArray := []interface{}{purchaseOrder}
+
+	filters := make(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+
+	return utils.GetResponse(ctx, purchaseOrderArray, paginationMeta, "Purchase order fetched successfully", http.StatusOK, nil, nil)
+}
+
+func (c *PurchaseOrderController) CreatePurchaseOrder(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("PurchaseOrderController-CreatePurchaseOrder", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.CreatePurchaseOrderRequest
+
+	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
+	}
+
+	reqValidator, isValid := form_requests.NewPurchaseOrderStoreRequest().Validate(&req, ctx)
+	if !isValid {
+		return utils.ErrValidResponse(ctx, apiSpan, "Failed to create purchase order", reqValidator)
+	}
+
+	claims := utils.GetClaims(ctx, parentSpan)
+	userID := uint(claims["user_id"].(float64))
+	branchID := utils.GetDefaultBranchID(ctx)
+
+	tx := c.repo.BeginTransaction()
+
+	createdPurchaseOrder, err := c.service.CreatePurchaseOrder(ctx, req, userID, branchID, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to create purchase order", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	tx.Commit()
+
+	params := dtos.NewGetPurchaseOrderParams(createdPurchaseOrder.ID)
+	getPurchaseOrder, err := c.service.GetPurchaseOrderByID(ctx, params, nil, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch purchase order", http.StatusInternalServerError)
+	}
+
+	filters := make(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+
+	return utils.GetResponse(ctx, []interface{}{getPurchaseOrder}, paginationMeta, "Purchase order created successfully", http.StatusCreated, nil, nil)
+}
+
 func (c *PurchaseOrderController) UpdatePurchaseOrder(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("PurchaseOrderController-UpdatePurchaseOrder", opentracing.ChildOf(apiSpan.Context()))
@@ -164,14 +166,7 @@ func (c *PurchaseOrderController) UpdatePurchaseOrder(ctx *fiber.Ctx) error {
 
 	tx := c.repo.BeginTransaction()
 
-	tx, err := c.service.LockPurchaseOrderTable(ctx, tx, req, parentSpan)
-	if err != nil {
-		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to update purchase order", http.StatusInternalServerError, err.Error(), nil)
-	}
-
 	updatedPurchaseOrder, err := c.service.UpdatePurchaseOrder(ctx, req, userID, branchID, tx, parentSpan)
-
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -180,17 +175,17 @@ func (c *PurchaseOrderController) UpdatePurchaseOrder(ctx *fiber.Ctx) error {
 
 	tx.Commit()
 
-	params := &dtos.GetPurchaseOrderParams{ID: updatedPurchaseOrder.ID}
-	getPurchaseOrder, err := c.service.GetPurchaseOrderByID(ctx, params, tx, parentSpan)
+	params := dtos.NewGetPurchaseOrderParams(updatedPurchaseOrder.ID)
+	getPurchaseOrder, err := c.service.GetPurchaseOrderByID(ctx, params, nil, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "purchase order not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getPurchaseOrder}, paginationMeta, "purchase order updated successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getPurchaseOrder}, paginationMeta, "Purchase order updated successfully", http.StatusOK, nil, nil)
 }
 
 func (c *PurchaseOrderController) DeletePurchaseOrder(ctx *fiber.Ctx) error {
@@ -206,47 +201,53 @@ func (c *PurchaseOrderController) DeletePurchaseOrder(ctx *fiber.Ctx) error {
 	var req dtos.DeletePurchaseOrderRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "purchase order not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "purchase order not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	tx := c.repo.BeginTransaction()
-
-	params := &dtos.GetPurchaseOrderParams{ID: req.ID}
-
-	_, err := c.service.GetPurchaseOrderByID(ctx, params, tx, parentSpan)
+	err := c.service.DeletePurchaseOrder(ctx, req.ID, parentSpan)
 	if err != nil {
-		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "purchase order not found", http.StatusNotFound, err.Error(), nil)
-	}
-
-	err = c.service.DeletePoDtBomsByPurchaseOrderID(ctx, params, tx, parentSpan)
-	if err != nil {
-		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete purchase order", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	err = c.service.DeletePoDtsByPurchaseOrderID(ctx, params, tx, parentSpan)
-	if err != nil {
-		tx.Rollback()
-		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete purchase order", http.StatusInternalServerError, err.Error(), nil)
+	return utils.GetResponse(ctx, nil, nil, "Purchase order deleted successfully", http.StatusOK, nil, nil)
+}
+
+func (c *PurchaseOrderController) UpdatePurchaseOrderStatus(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("PurchaseOrderController-UpdatePurchaseOrderStatus", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.UpdatePurchaseOrderStatusRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Invalid request", http.StatusBadRequest, err.Error(), nil)
 	}
 
-	err = c.service.DeletePurchaseOrder(ctx, params, tx, parentSpan)
-	if err != nil {
-		tx.Rollback()
-		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete purchase order", http.StatusInternalServerError, err.Error(), nil)
+	if req.ID == 0 {
+		return utils.GetResponse(ctx, nil, nil, "ID is required", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	tx.Commit()
+	if req.Status == "" {
+		return utils.GetResponse(ctx, nil, nil, "Status is required", http.StatusBadRequest, "Status is required", nil)
+	}
 
-	return utils.GetResponse(ctx, nil, nil, "purchase order deleted successfully", http.StatusOK, nil, nil)
+	err := c.service.UpdatePurchaseOrderStatus(ctx, req.ID, req.Status, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to update purchase order status", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return utils.GetResponse(ctx, nil, nil, "Purchase order status updated successfully", http.StatusOK, nil, nil)
 }
 
 func (c *PurchaseOrderController) RestorePurchaseOrder(ctx *fiber.Ctx) error {
@@ -263,22 +264,23 @@ func (c *PurchaseOrderController) RestorePurchaseOrder(ctx *fiber.Ctx) error {
 
 	if err := ctx.BodyParser(&req); err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "purchase order not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "purchase order not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
 
 	isDeleted := 1
-	params := &dtos.GetPurchaseOrderParams{ID: req.ID, IsDeleted: &isDeleted}
+	params := dtos.NewGetPurchaseOrderParams(req.ID)
+	params.IsDeleted = &isDeleted
 
 	_, err := c.service.GetPurchaseOrderByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "purchase order not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	err = c.service.RestorePurchaseOrder(ctx, params, tx, parentSpan)
@@ -290,5 +292,5 @@ func (c *PurchaseOrderController) RestorePurchaseOrder(ctx *fiber.Ctx) error {
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "purchase order restored successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Purchase order restored successfully", http.StatusOK, nil, nil)
 }

@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -16,7 +15,6 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type PurchaseOrderRepository struct {
@@ -30,305 +28,9 @@ func NewPurchaseOrderRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepos
 	return &PurchaseOrderRepository{
 		db:       db,
 		sqlDB:    sqlDB,
-		utilRepo: utilRepo,
 		tracer:   tracer,
+		utilRepo: utilRepo,
 	}
-}
-
-func (r *PurchaseOrderRepository) BeginTransaction() *gorm.DB {
-	return r.db.Begin()
-}
-
-func (r *PurchaseOrderRepository) Rollback() *gorm.DB {
-	return r.db.Rollback()
-}
-
-func (r *PurchaseOrderRepository) CreatePurchaseOrder(tx *gorm.DB, purchaseOrder *models.PurchaseOrder, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-CreatePurchaseOrder", opentracing.ChildOf(span.Context()))
-	if err := tx.Create(purchaseOrder).Error; err != nil {
-		utils.LogErrors(childSpan, err)
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-func (r *PurchaseOrderRepository) CreatePoDts(tx *gorm.DB, poDts []models.PurchaseOrderDt, purchaseOrderID uint, span opentracing.Span) (*gorm.DB, []models.PurchaseOrderDt, error) {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-CreatePoDts", opentracing.ChildOf(span.Context()))
-
-	tx = tx.Create(&poDts)
-	if tx.Error != nil {
-		utils.LogErrors(childSpan, tx.Error)
-		tx.Rollback()
-		log.Fatalf("Failed to insert poDts: %v", tx.Error)
-	}
-
-	return tx, poDts, nil
-}
-
-func (r *PurchaseOrderRepository) CreatePoDtBoms(tx *gorm.DB, poDtBoms []map[string]interface{}, purchaseOrderID uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-CreatePoDtBoms", opentracing.ChildOf(span.Context()))
-
-	err := r.utilRepo.Upsert(tx, "purchase_order_dt_boms", "id", poDtBoms, span)
-	if err != nil {
-		tx.Rollback()
-		utils.LogErrors(childSpan, err)
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-func (r *PurchaseOrderRepository) GetPurchaseOrderByID(ctx *fiber.Ctx, params *dtos.GetPurchaseOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.PurchaseOrderDetailDTO, error) {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetPurchaseOrderByID", opentracing.ChildOf(span.Context()))
-	var purchaseOrder dtos.PurchaseOrderDetailDTO
-
-	claims, _ := auth.GetAuthUser(ctx)
-	branchID := claims["bid"]
-
-	isAdmin := utils.IsAdmin(ctx)
-
-	baseQuery := `
-    FROM ( 
-        SELECT DISTINCT ON (po.id)
-					po.id, po.customer_id, po.purchase_type_id, po.currency_id, po.vat_id, po.payment_term_id, po.shipping_term_id, po.pph23_id, po.branch_id, 
-					po.po_no, po.po_date, po.delivery_date, po.shipping_destination, po.remark, po.status, po.exchange_rate, po.pph23_percentage,
-					po.discount_percentage, po.discount_amount, po.discount_percentage_amount, po.discount_amount_product, po.discount_final_header, po.discount_type,
-					po.vat_percentage, po.total_amount_products, po.total_qty, po.subtotal, po.total_discount, po.total_pph23, po.total_vat, po.grand_total, 
-					po.created_by_id, po.updated_by_id, po.deleted_by_id, po.created_at, po.updated_at, po.deleted_at,
-
-					cu.name as created_by_name,
-					uu.name as updated_by_name
-
-        FROM purchase_orders po
-				LEFT JOIN purchase_order_dts pod ON pod.po_id = po.id
-				LEFT JOIN products pi ON pod.product_id = pi.id
-				LEFT JOIN item_units iu ON pod.item_unit_id = iu.id
-				LEFT JOIN purchase_order_dt_boms podb ON podb.po_dt_id = pod.id
-				LEFT JOIN products it ON podb.product_id = it.id
-
-				LEFT JOIN mix_values cur ON po.currency_id = cur.id
-				LEFT JOIN mix_values vat ON po.vat_id = vat.id
-				LEFT JOIN mix_values pph ON po.pph23_id = pph.id
-
-        LEFT JOIN users cu ON po.created_by_id = cu.id
-        LEFT JOIN users uu ON po.updated_by_id = uu.id
-    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
-
-	query := `SELECT *
-		` + baseQuery
-
-	var args []interface{}
-
-	i := 1
-	query += " AND id = $1"
-	args = append(args, params.ID)
-	i++
-
-	if !isAdmin && branchID != nil {
-		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		args = append(args, branchID)
-		i++
-	}
-
-	isDeletedQuery := ` AND deleted_at IS NULL`
-	if params.IsDeleted != nil && *params.IsDeleted == 1 {
-		isDeletedQuery = " AND deleted_at IS NOT NULL"
-	}
-
-	query += isDeletedQuery
-
-	if err := r.sqlDB.Get(&purchaseOrder, query, args...); err != nil {
-		utils.LogErrors(childSpan, err)
-		childSpan.LogKV("query", query)
-		return nil, err
-	}
-
-	return &purchaseOrder, nil
-}
-
-func (r *PurchaseOrderRepository) GetPoDtsByPurchaseOrderIDs(ctx *fiber.Ctx, tx *gorm.DB, purchaseOrderIDs []uint, span opentracing.Span) ([]dtos.PurchaseOrderPoDtListDTO, error) {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetPoDtsByPurchaseOrderIDs", opentracing.ChildOf(span.Context()))
-
-	poDts := []dtos.PurchaseOrderPoDtListDTO{}
-
-	query := `SELECT pod.id, pod.po_id, pod.product_uuid,
-		pod.item_unit_id, pod.vat_id, pod.pph23_id, pod.ref_id, pod.product_id, pod.ref_type, pod.product_type, pod.gen_code, pod.remark, 
-		pod.need_qty, pod.qty, pod.price, pod.subtotal, pod.discount_amount, pod.discount_percentage, pod.discount_percentage_num, 
-		pod.discount_percentage_amount, pod.discount_final, pod.discount_type, pod.is_vat, pod.is_pph23,
-		pod.total_amount, pod.created_by_id, pod.updated_by_id, pod.deleted_by_id, pod.created_at, pod.updated_at, pod.deleted_at,
-
-		pod.id as po_dt_id,
-		isg.id as item_sub_group_id,
-		ig.id as item_group_id,
-		isg.name as item_sub_group_name,
-		ig.name as item_group_name,
-		u.name as unit_name,
-		pi.name as item_name,
-		pi.code as item_code,
-
-		cu.name as created_by_name,
-		uu.name as updated_by_name
-
-	FROM purchase_order_dts pod
-	LEFT JOIN purchase_orders po ON pod.po_id = po.id
-	LEFT JOIN products pi ON pod.product_id = pi.id
-	LEFT JOIN item_units iu ON pod.item_unit_id = iu.id
-	LEFT JOIN mix_values u ON iu.unit_id = u.id
-	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
-	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN users cu ON pod.created_by_id = cu.id
-	LEFT JOIN users uu ON pod.updated_by_id = uu.id
-	WHERE pod.deleted_at IS NULL`
-
-	var args []interface{}
-	i := 1
-
-	if len(purchaseOrderIDs) > 0 {
-		query += " AND pod.po_id = ANY($1)"
-		args = append(args, pq.Array(purchaseOrderIDs))
-		i++
-	}
-
-	if err := r.sqlDB.SelectContext(ctx.Context(), &poDts, query, args...); err != nil {
-		utils.LogErrors(childSpan, err)
-		return nil, err
-	}
-
-	return poDts, nil
-}
-
-func (r *PurchaseOrderRepository) GetPoDtsBomByPurchaseOrders(ctx *fiber.Ctx, filters map[string]string, purchaseOrderIDs []uint, span opentracing.Span) ([]dtos.PurchaseOrderPoDtBomListDTO, error) {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetPoDtsBomByPurchaseOrders", opentracing.ChildOf(span.Context()))
-
-	claims, _ := auth.GetAuthUser(ctx)
-	branchID := claims["bid"]
-
-	isAdmin := utils.IsAdmin(ctx)
-
-	poDtBoms := []dtos.PurchaseOrderPoDtBomListDTO{}
-
-	filterDBColumnKey := []string{
-		"po.po_no", "po.remark",
-		"pi.name",
-		"it.name",
-		"pod.remark",
-		"pod.gen_code",
-		"podb.remark",
-		"podb.gen_code",
-	}
-
-	var args []interface{}
-
-	queryGlobal := ""
-
-	i := 1
-	if value, ok := filters["global"]; ok && value != "" {
-		queryGlobal = " AND ("
-		for idx, column := range filterDBColumnKey {
-			if idx > 0 {
-				queryGlobal += " OR"
-			}
-			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
-			args = append(args, "%"+value+"%")
-			i++
-		}
-		queryGlobal += ")"
-	}
-
-	condition := ""
-
-	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
-	}
-
-	filterKey := map[string]string{
-		"status":           "po.status",
-		"customer_id":      "po.customer_id",
-		"purchase_type_id": "po.purchase_type_id",
-		"currency_id":      "po.currency_id",
-		"vat_id":           "po.vat_id",
-		"payment_term_id":  "po.payment_term_id",
-		"shipping_term_id": "po.shipping_term_id",
-		"pph23_id":         "po.pph23_id",
-	}
-
-	for key, _ := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s = $%d", value, i)
-			args = append(args, value)
-			i++
-		}
-	}
-
-	if len(purchaseOrderIDs) > 0 {
-		condition += fmt.Sprintf(" AND podb.po_id = ANY($%d)", i)
-		args = append(args, pq.Array(purchaseOrderIDs))
-		i++
-	}
-
-	baseQuery := `
-    FROM ( 
-        SELECT DISTINCT ON (podb.id)
-					podb.id, podb.product_uuid, podb.po_id, podb.po_dt_id, podb.product_id, podb.item_unit_id, podb.gen_code, podb.remark, 
-					podb.qty, podb.price, podb.subtotal, podb.created_by_id, podb.updated_by_id, podb.deleted_by_id, podb.created_at, podb.updated_at, podb.deleted_at,
-					podb.id as po_dt_bom_id,
-					it.name as item_name,
-					it.code as item_code,
-					it.barcode as item_barcode,
-					it.sku as item_sku,
-					it.factory_code as item_factory_code,
-					it.specification as item_specification,
-					it.qty_stock as item_qty_stock,
-					u.name as unit_name,
-					po.branch_id,
-
-					isg.name as item_sub_group_name,
-					ig.name as item_group_name,
-
-					cu.name as created_by_name,
-					uu.name as updated_by_name
-
-        FROM purchase_order_dt_boms podb
-				LEFT JOIN purchase_order_dts pod ON pod.id = podb.po_dt_id
-				LEFT JOIN purchase_orders po ON po.id = pod.po_id
-				LEFT JOIN products pi ON pod.product_id = pi.id
-				LEFT JOIN item_units iu ON pod.item_unit_id = iu.id
-				LEFT JOIN mix_values u ON iu.unit_id = u.id
-				LEFT JOIN products it ON podb.product_id = it.id
-				LEFT JOIN mix_values isg ON it.item_sub_group_id = isg.id
-				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-
-        LEFT JOIN users cu ON po.created_by_id = cu.id
-        LEFT JOIN users uu ON po.updated_by_id = uu.id
-				WHERE 1=1` + condition + queryGlobal + `
-    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
-
-	query := `SELECT *
-		` + baseQuery
-
-	if !isAdmin && branchID != nil {
-		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		args = append(args, branchID)
-		i++
-	}
-
-	if isAdmin && filters["branch_id"] != "" {
-		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		args = append(args, filters["branch_id"])
-		i++
-	}
-
-	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
-
-	err := r.sqlDB.SelectContext(ctx.Context(), &poDtBoms, query, args...)
-	if err != nil {
-		selectSpan.LogKV("query", query)
-		utils.LogErrors(selectSpan, err)
-		return nil, err
-	}
-
-	return poDtBoms, nil
 }
 
 func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.PurchaseOrderListDTO, int, error) {
@@ -344,13 +46,10 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 	var total int
 
 	filterDBColumnKey := []string{
-		"po.po_no", "po.remark",
+		"po.po_no", "po.remark", "po.shipping_destination",
 		"pi.name",
-		"it.name",
-		"pod.remark",
-		"pod.gen_code",
-		"podb.remark",
-		"podb.gen_code",
+		"pd.remark",
+		"pd.gen_code",
 	}
 
 	var args []interface{}
@@ -359,6 +58,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 
 	i := 1
 	if value, ok := filters["global"]; ok && value != "" {
+
 		queryGlobal = " AND ("
 		for idx, column := range filterDBColumnKey {
 			if idx > 0 {
@@ -388,9 +88,9 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 		"pph23_id":         "po.pph23_id",
 	}
 
-	for key, _ := range filterKey {
+	for key, col := range filterKey {
 		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
 			args = append(args, value)
 			i++
 		}
@@ -421,7 +121,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"po.vat_id", "pod.vat_id"},
+		"vat_ids": []string{"po.vat_id", "pd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -439,17 +139,17 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 	}
 
 	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
-		dateField := ""
+		dateColumn := ""
 		switch filters["date_type"] {
-		case "po_date":
-			dateField = "po.po_date"
-		case "delivery_date":
-			dateField = "po.delivery_date"
+		case "1":
+			dateColumn = "po.po_date"
+		case "2":
+			dateColumn = "po.delivery_date"
 		default:
-			dateField = "po.po_date"
+			dateColumn = "po.po_date"
 		}
 
-		condition += fmt.Sprintf(" AND %s BETWEEN $%d AND $%d", dateField, i, i+1)
+		condition += fmt.Sprintf(" AND %s BETWEEN $%d AND $%d", dateColumn, i, i+1)
 		args = append(args, filters["start_date"], filters["end_date"])
 		i += 2
 	}
@@ -457,47 +157,38 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (po.id)
-					po.id, po.customer_id, po.purchase_type_id, po.currency_id, po.vat_id, po.payment_term_id, po.shipping_term_id, po.pph23_id, po.branch_id, 
-					po.po_no, po.po_date, po.delivery_date, po.shipping_destination, po.remark, po.status, po.exchange_rate, po.pph23_percentage,
-					po.discount_percentage, po.discount_amount, po.discount_percentage_amount, po.discount_amount_product, po.discount_final_header, po.discount_type,
-					po.vat_percentage, po.total_amount_products, po.total_qty, po.subtotal, po.total_discount, po.total_pph23, po.total_vat, po.grand_total, 
-					po.created_by_id, po.updated_by_id, po.deleted_by_id, po.created_at, po.updated_at, po.deleted_at,
+					po.id, po.customer_id, po.purchase_type_id, po.currency_id, po.vat_id, po.payment_term_id, po.shipping_term_id, po.pph23_id, po.branch_id,
+					po.po_no, po.shipping_destination, po.remark, 
+					po.status, po.exchange_rate, po.pph23_percentage, po.vat_percentage, po.total_qty, po.subtotal, po.total_discount, po.total_pph23, po.total_vat, po.grand_total, po.created_by_id, po.updated_by_id, po.deleted_by_id, po.created_at, po.updated_at, po.deleted_at,
+					TO_CHAR(po.po_date, 'YYYY-MM-DD') as po_date,
+					TO_CHAR(po.delivery_date, 'YYYY-MM-DD') as delivery_date,
+					po.discount_amount, po.discount_percentage, po.discount_percentage_amount, po.discount_final_header, po.discount_amount_product, po.discount_type, po.total_amount_products,
 
 					pi.id as product_id,
-					it.id as item_id,
-					pod.vat_id as po_dt_vat_id,
+					pd.vat_id as po_dt_vat_id,
 
 					pi.name as product_name,
-					it.name as item_name,
 					cur.name as currency_name,
 					vat.name as vat_name,
 					pph.name as pph23_name,
 					pt.name as purchase_type_name,
 					c.name as customer_name,
-					pterm.name as payment_term_name,
-					sterm.name as shipping_term_name,
 
-					pod.remark as po_dt_remark,
-					pod.gen_code as po_dt_gen_code,
-					podb.remark as po_dt_bom_remark,
-					podb.gen_code as po_dt_bom_gen_code,
+					pd.remark as po_dt_remark,
+					pd.gen_code as po_dt_gen_code,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
         FROM purchase_orders po
-				LEFT JOIN purchase_order_dts pod ON pod.po_id = po.id
-				LEFT JOIN products pi ON pod.product_id = pi.id
-				LEFT JOIN item_units iu ON pod.item_unit_id = iu.id
-				LEFT JOIN purchase_order_dt_boms podb ON podb.po_dt_id = pod.id
-				LEFT JOIN products it ON podb.product_id = it.id
+				LEFT JOIN purchase_order_dts pd ON pd.po_id = po.id
+				LEFT JOIN products pi ON pd.product_id = pi.id
+				LEFT JOIN item_units iu ON pd.item_unit_id = iu.id
 
 				LEFT JOIN mix_values cur ON po.currency_id = cur.id
 				LEFT JOIN mix_values vat ON po.vat_id = vat.id
 				LEFT JOIN mix_values pph ON po.pph23_id = pph.id
 				LEFT JOIN mix_values pt ON po.purchase_type_id = pt.id
-				LEFT JOIN mix_values pterm ON po.payment_term_id = pterm.id
-				LEFT JOIN mix_values sterm ON po.shipping_term_id = sterm.id
 				LEFT JOIN customers c ON po.customer_id = c.id
 
         LEFT JOIN users cu ON po.created_by_id = cu.id
@@ -513,7 +204,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 
 	for key, value := range filters {
 		switch key {
-		case "po_no", "remark":
+		case "po_no", "shipping_destination", "remark":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -561,8 +252,8 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "id")
-	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "po_date")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
@@ -603,132 +294,120 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 	return purchaseOrders, total, nil
 }
 
-func (r *PurchaseOrderRepository) UpdatePurchaseOrder(tx *gorm.DB, purchaseOrder *models.PurchaseOrder, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-UpdatePurchaseOrder", opentracing.ChildOf(span.Context()))
+func (r *PurchaseOrderRepository) GetPurchaseOrderByID(ctx *fiber.Ctx, params *dtos.GetPurchaseOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.PurchaseOrderDetailDTO, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetPurchaseOrderByID", opentracing.ChildOf(span.Context()))
+	var purchaseOrder dtos.PurchaseOrderDetailDTO
 
-	if err := tx.Where("id = ?", purchaseOrder.ID).Select("*").Omit(
-		"created_at", "created_by_id", "branch_id",
-	).Updates(purchaseOrder).Error; err != nil {
-		utils.LogErrors(childSpan, err)
-		return err
-	}
-	return nil
-}
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
 
-func (r *PurchaseOrderRepository) UpdatePoDts(tx *gorm.DB, poDts []models.PurchaseOrderDt, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-UpdatePoDts", opentracing.ChildOf(span.Context()))
+	isAdmin := utils.IsAdmin(ctx)
 
-	data := make([]map[string]interface{}, 0)
-	for _, poDt := range poDts {
-		data = append(data, map[string]interface{}{
-			"id":                         poDt.ID,
-			"product_uuid":               poDt.ProductUuid,
-			"po_id":                      poDt.PoID,
-			"item_unit_id":               poDt.ItemUnitID,
-			"vat_id":                     poDt.VatID,
-			"pph23_id":                   poDt.Pph23ID,
-			"ref_id":                     poDt.RefID,
-			"product_id":                 poDt.ProductID,
-			"is_vat":                     poDt.IsVat,
-			"is_pph23":                   poDt.IsPph23,
-			"product_type":               poDt.ProductType,
-			"ref_type":                   poDt.RefType,
-			"gen_code":                   poDt.GenCode,
-			"remark":                     poDt.Remark,
-			"need_qty":                   poDt.NeedQty,
-			"qty":                        poDt.Qty,
-			"price":                      poDt.Price,
-			"subtotal":                   poDt.Subtotal,
-			"discount_amount":            poDt.DiscountAmount,
-			"discount_percentage":        poDt.DiscountPercentage,
-			"discount_percentage_num":    poDt.DiscountPercentageNum,
-			"discount_percentage_amount": poDt.DiscountPercentageAmount,
-			"discount_final":             poDt.DiscountFinal,
-			"discount_type":              poDt.DiscountType,
-			"total_amount":               poDt.TotalAmount,
-			"updated_by_id":              poDt.UpdatedByID,
-			"updated_at":                 time.Now(),
-		})
+	baseQuery := `
+    FROM ( 
+			SELECT DISTINCT ON (po.id)
+				po.id, po.customer_id, po.purchase_type_id, po.currency_id, po.vat_id, po.payment_term_id, po.shipping_term_id, po.pph23_id, po.branch_id,
+				po.po_no, po.shipping_destination, po.remark, 
+				po.status, po.exchange_rate, po.pph23_percentage, po.vat_percentage, po.total_qty, po.subtotal, po.total_discount, po.total_pph23, po.total_vat, po.grand_total, po.created_by_id, po.updated_by_id, po.deleted_by_id, po.created_at, po.updated_at, po.deleted_at,
+				TO_CHAR(po.po_date, 'YYYY-MM-DD') as po_date,
+				TO_CHAR(po.delivery_date, 'YYYY-MM-DD') as delivery_date,
+				po.discount_amount, po.discount_percentage, po.discount_percentage_amount, po.discount_final_header, po.discount_amount_product, po.discount_type, po.total_amount_products,
+
+				cu.name as created_by_name,
+				uu.name as updated_by_name
+
+			FROM purchase_orders po
+			LEFT JOIN purchase_order_dts pd ON pd.po_id = po.id
+			LEFT JOIN products pi ON pd.product_id = pi.id
+			LEFT JOIN item_units iu ON pd.item_unit_id = iu.id
+
+			LEFT JOIN mix_values cur ON po.currency_id = cur.id
+			LEFT JOIN mix_values vat ON po.vat_id = vat.id
+			LEFT JOIN mix_values pph ON po.pph23_id = pph.id
+			LEFT JOIN mix_values pt ON po.purchase_type_id = pt.id
+			LEFT JOIN customers c ON po.customer_id = c.id
+
+			LEFT JOIN users cu ON po.created_by_id = cu.id
+			LEFT JOIN users uu ON po.updated_by_id = uu.id
+    ) AS alias WHERE 1=1`
+
+	if params.IsDeleted != nil && *params.IsDeleted == 1 {
+		baseQuery += " AND deleted_at IS NOT NULL"
+	} else {
+		baseQuery += " AND deleted_at IS NULL"
 	}
 
-	if err := r.utilRepo.Upsert(tx, "purchase_order_dts", "id", data, childSpan); err != nil {
+	query := `SELECT *
+		` + baseQuery
+
+	var args []interface{}
+
+	i := 1
+	query += " AND id = $1"
+	args = append(args, params.ID)
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i+1)
+		args = append(args, branchID)
+	}
+
+	err := r.sqlDB.GetContext(ctx.Context(), &purchaseOrder, query, args...)
+	if err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
-	return tx, nil
-}
-
-func (r *PurchaseOrderRepository) DeletePoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, purchaseOrderID uint, poDtIDs []uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-DeletePoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
-
-	claims := utils.GetClaims(ctx, childSpan)
-	userID := uint(claims["user_id"].(float64))
-
-	now := time.Now()
-	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
-
-	query := tx.Model(&models.PurchaseOrderDt{}).Where("po_id = ? AND deleted_at IS NULL", purchaseOrderID)
-
-	if len(poDtIDs) > 0 {
-		query = query.Where("id NOT IN (?)", poDtIDs)
-	}
-
-	if err := query.Updates(map[string]interface{}{
-		"deleted_by_id": userID,
-		"deleted_at":    deletedAt,
-	}).Error; err != nil {
+	poDts, err := r.GetPurchaseOrderPoDts(ctx, &dtos.GetPurchaseOrderPoDtParams{
+		PurchaseOrderID: purchaseOrder.ID,
+		IsDeleted:       params.IsDeleted,
+	}, span)
+	if err != nil {
 		utils.LogErrors(childSpan, err)
-		return tx, err
+		return nil, err
 	}
 
-	return tx, nil
+	purchaseOrder.PoDts = poDts
+
+	return &purchaseOrder, nil
 }
 
-func (r *PurchaseOrderRepository) GetUpdatedPoDtsByPurchaseOrderIDs(ctx *fiber.Ctx, tx *gorm.DB, purchaseOrderIDs []uint, span opentracing.Span) ([]dtos.PurchaseOrderPoDtListUpdateDTO, error) {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetUpdatedPoDtsByPurchaseOrderIDs", opentracing.ChildOf(span.Context()))
+func (r *PurchaseOrderRepository) GetPurchaseOrderPoDts(ctx *fiber.Ctx, params *dtos.GetPurchaseOrderPoDtParams, span opentracing.Span) ([]dtos.PurchaseOrderPoDtListDTO, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetPurchaseOrderPoDts", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
 
-	poDts := []dtos.PurchaseOrderPoDtListUpdateDTO{}
+	poDts := []dtos.PurchaseOrderPoDtListDTO{}
 
-	query := `SELECT pod.id, pod.po_id, pod.product_uuid,
-		pod.item_unit_id, pod.vat_id, pod.pph23_id, pod.ref_id, pod.product_id, pod.ref_type, pod.product_type, pod.gen_code, pod.remark, 
-		pod.need_qty, pod.qty, pod.price, pod.subtotal, pod.discount_amount, pod.discount_percentage, pod.discount_percentage_num, 
-		pod.discount_percentage_amount, pod.discount_final, pod.discount_type, pod.is_vat, pod.is_pph23,
-		pod.total_amount, pod.created_by_id, pod.updated_by_id, pod.deleted_by_id, pod.created_at, pod.updated_at, pod.deleted_at,
-
-		pod.id as po_dt_id,
-		isg.id as item_sub_group_id,
-		ig.id as item_group_id,
-		isg.name as item_sub_group_name,
-		ig.name as item_group_name,
-		u.name as unit_name,
-		pi.name as item_name,
-		pi.code as item_code,
-
+	query := `
+	SELECT 
+		pd.id, pd.product_uuid, pd.po_id, pd.item_unit_id, pd.vat_id, pd.pph23_id, pd.ref_id, pd.product_id, pd.bom_id,
+		pd.product_type, pd.product_json, pd.ref_type, pd.ref_json, pd.gen_code, pd.remark,
+		pd.need_qty, pd.qty, pd.price, pd.subtotal, pd.discount_amount, pd.discount_percentage, pd.discount_percentage_num,
+		pd.discount_percentage_amount, pd.discount_final, pd.discount_type, pd.is_vat, pd.is_pph23, pd.total_amount,
+		pd.created_by_id, pd.updated_by_id, pd.deleted_by_id, pd.created_at, pd.updated_at, pd.deleted_at,
+		
+		p.name as product_name,
+		p.code as product_code,
+		mv.name as unit_name,
+		
 		cu.name as created_by_name,
 		uu.name as updated_by_name
+	FROM purchase_order_dts pd
+	LEFT JOIN products p ON pd.product_id = p.id
+	LEFT JOIN item_units iu ON pd.item_unit_id = iu.id
+	LEFT JOIN mix_values mv ON iu.unit_id = mv.id
+	LEFT JOIN users cu ON pd.created_by_id = cu.id
+	LEFT JOIN users uu ON pd.updated_by_id = uu.id
+	WHERE pd.po_id = $1
+	`
 
-	FROM purchase_order_dts pod
-	LEFT JOIN purchase_orders po ON pod.po_id = po.id
-	LEFT JOIN products pi ON pod.product_id = pi.id
-	LEFT JOIN item_units iu ON pod.item_unit_id = iu.id
-	LEFT JOIN mix_values u ON iu.unit_id = u.id
-	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
-	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN users cu ON pod.created_by_id = cu.id
-	LEFT JOIN users uu ON pod.updated_by_id = uu.id
-	WHERE pod.deleted_at IS NULL`
-
-	var args []interface{}
-	i := 1
-
-	if len(purchaseOrderIDs) > 0 {
-		query += " AND pod.po_id = ANY($1)"
-		args = append(args, pq.Array(purchaseOrderIDs))
-		i++
+	if params.IsDeleted != nil && *params.IsDeleted == 0 {
+		query += " AND pd.deleted_at IS NULL"
 	}
 
-	if err := tx.Raw(query, args...).Scan(&poDts).Error; err != nil {
+	query += " ORDER BY pd.id ASC"
+
+	err := r.sqlDB.SelectContext(ctx.Context(), &poDts, query, params.PurchaseOrderID)
+	if err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
@@ -736,35 +415,78 @@ func (r *PurchaseOrderRepository) GetUpdatedPoDtsByPurchaseOrderIDs(ctx *fiber.C
 	return poDts, nil
 }
 
-func (r *PurchaseOrderRepository) UpdatePoDtBoms(tx *gorm.DB, poDtBoms []map[string]interface{}, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-UpdatePoDtBoms", opentracing.ChildOf(span.Context()))
-
-	if err := r.utilRepo.Upsert(tx, "purchase_order_dt_boms", "id", poDtBoms, childSpan); err != nil {
-		utils.LogErrors(childSpan, err)
-		return err
-	}
-
-	return nil
+func (r *PurchaseOrderRepository) BeginTransaction() *gorm.DB {
+	return r.db.Begin()
 }
 
-func (r *PurchaseOrderRepository) DeletePoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, purchaseOrderID uint, poDtBomIDs []uint, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-DeletePoDtBomsWhereNotIn", opentracing.ChildOf(span.Context()))
+func (r *PurchaseOrderRepository) Rollback(tx *gorm.DB) *gorm.DB {
+	return tx.Rollback()
+}
 
-	claims := utils.GetClaims(ctx, childSpan)
-	userID := uint(claims["user_id"].(float64))
+func (r *PurchaseOrderRepository) Commit(tx *gorm.DB) *gorm.DB {
+	return tx.Commit()
+}
 
-	now := time.Now()
-	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
+func (r *PurchaseOrderRepository) CreatePurchaseOrder(tx *gorm.DB, purchaseOrder *models.PurchaseOrder, span opentracing.Span) (*models.PurchaseOrder, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-CreatePurchaseOrder", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
 
-	query := tx.Model(&models.PurchaseOrderDtBom{}).Where("po_id = ? AND deleted_at IS NULL", purchaseOrderID)
-
-	if len(poDtBomIDs) > 0 {
-		query = query.Where("id NOT IN (?)", poDtBomIDs)
+	if err := tx.Create(purchaseOrder).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
 	}
 
-	if err := query.Updates(map[string]interface{}{
-		"deleted_by_id": userID,
-		"deleted_at":    deletedAt,
+	return purchaseOrder, nil
+}
+
+func (r *PurchaseOrderRepository) CreatePoDts(tx *gorm.DB, poDts []models.PoDt, span opentracing.Span) ([]models.PoDt, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-CreatePoDts", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if err := tx.Create(&poDts).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return poDts, nil
+}
+
+func (r *PurchaseOrderRepository) UpdatePurchaseOrder(tx *gorm.DB, purchaseOrder *models.PurchaseOrder, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-UpdatePurchaseOrder", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if err := tx.Model(&models.PurchaseOrder{}).Where("id = ?", purchaseOrder.ID).Updates(map[string]interface{}{
+		"customer_id":                purchaseOrder.CustomerID,
+		"purchase_type_id":           purchaseOrder.PurchaseTypeID,
+		"currency_id":                purchaseOrder.CurrencyID,
+		"vat_id":                     purchaseOrder.VatID,
+		"payment_term_id":            purchaseOrder.PaymentTermID,
+		"shipping_term_id":           purchaseOrder.ShippingTermID,
+		"pph23_id":                   purchaseOrder.Pph23ID,
+		"po_no":                      purchaseOrder.PoNo,
+		"po_date":                    purchaseOrder.PoDate,
+		"delivery_date":              purchaseOrder.DeliveryDate,
+		"shipping_destination":       purchaseOrder.ShippingDestination,
+		"remark":                     purchaseOrder.Remark,
+		"status":                     purchaseOrder.Status,
+		"exchange_rate":              purchaseOrder.ExchangeRate,
+		"discount_percentage":        purchaseOrder.DiscountPercentage,
+		"discount_amount":            purchaseOrder.DiscountAmount,
+		"discount_percentage_amount": purchaseOrder.DiscountPercentageAmount,
+		"discount_final_header":      purchaseOrder.DiscountFinalHeader,
+		"discount_amount_product":    purchaseOrder.DiscountAmountProduct,
+		"discount_type":              purchaseOrder.DiscountType,
+		"pph23_percentage":           purchaseOrder.Pph23Percentage,
+		"vat_percentage":             purchaseOrder.VatPercentage,
+		"total_amount_products":      purchaseOrder.TotalAmountProducts,
+		"subtotal":                   purchaseOrder.Subtotal,
+		"total_qty":                  purchaseOrder.TotalQty,
+		"total_discount":             purchaseOrder.TotalDiscount,
+		"total_pph23":                purchaseOrder.TotalPph23,
+		"total_vat":                  purchaseOrder.TotalVat,
+		"grand_total":                purchaseOrder.GrandTotal,
+		"updated_by_id":              purchaseOrder.UpdatedByID,
+		"updated_at":                 time.Now(),
 	}).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
@@ -773,78 +495,165 @@ func (r *PurchaseOrderRepository) DeletePoDtBomsWhereNotIn(ctx *fiber.Ctx, tx *g
 	return nil
 }
 
-func (r *PurchaseOrderRepository) DeletePurchaseOrder(tx *gorm.DB, params *dtos.GetPurchaseOrderParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-DeletePurchaseOrder", opentracing.ChildOf(span.Context()))
+func (r *PurchaseOrderRepository) DeletePoDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, purchaseOrderID uint, poDtIDs []*uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-DeletePoDtsWhereNotIn", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
 
-	if err := tx.Delete(&models.PurchaseOrder{}, params.ID).Error; err != nil {
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	query := tx.Model(&models.PoDt{}).Where("po_id = ? AND deleted_at IS NULL", purchaseOrderID)
+
+	if len(poDtIDs) > 0 {
+		query = query.Where("id NOT IN (?)", poDtIDs)
+	}
+
+	if err := query.Updates(map[string]interface{}{
+		"deleted_by_id": userID,
+		"deleted_at":    time.Now(),
+	}).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
+
+	return nil
+}
+
+func (r *PurchaseOrderRepository) UpdatePoDts(tx *gorm.DB, poDts []models.PoDt, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-UpdatePoDts", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	for _, poDt := range poDts {
+		if poDt.ID == 0 {
+			if err := tx.Create(&poDt).Error; err != nil {
+				utils.LogErrors(childSpan, err)
+				return err
+			}
+		} else {
+			if err := tx.Model(&models.PoDt{}).Where("id = ?", poDt.ID).Updates(map[string]interface{}{
+				"product_uuid":               poDt.ProductUuid,
+				"po_id":                      poDt.PoID,
+				"item_unit_id":               poDt.ItemUnitID,
+				"vat_id":                     poDt.VatID,
+				"pph23_id":                   poDt.Pph23ID,
+				"ref_id":                     poDt.RefID,
+				"product_id":                 poDt.ProductID,
+				"bom_id":                     poDt.BomID,
+				"product_type":               poDt.ProductType,
+				"product_json":               poDt.ProductJSON,
+				"ref_type":                   poDt.RefType,
+				"ref_json":                   poDt.RefJSON,
+				"gen_code":                   poDt.GenCode,
+				"remark":                     poDt.Remark,
+				"need_qty":                   poDt.NeedQty,
+				"qty":                        poDt.Qty,
+				"price":                      poDt.Price,
+				"subtotal":                   poDt.Subtotal,
+				"discount_amount":            poDt.DiscountAmount,
+				"discount_percentage":        poDt.DiscountPercentage,
+				"discount_percentage_num":    poDt.DiscountPercentageNum,
+				"discount_percentage_amount": poDt.DiscountPercentageAmount,
+				"discount_final":             poDt.DiscountFinal,
+				"discount_type":              poDt.DiscountType,
+				"is_vat":                     poDt.IsVat,
+				"is_pph23":                   poDt.IsPph23,
+				"total_amount":               poDt.TotalAmount,
+				"updated_by_id":              poDt.UpdatedByID,
+				"updated_at":                 time.Now(),
+				"deleted_at":                 nil,
+			}).Error; err != nil {
+				utils.LogErrors(childSpan, err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *PurchaseOrderRepository) DeletePurchaseOrder(ctx *fiber.Ctx, id uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-DeletePurchaseOrder", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Model(&models.PurchaseOrder{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"deleted_by_id": userID,
+		"deleted_at":    time.Now(),
+	}).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	if err := tx.Model(&models.PoDt{}).Where("po_id = ?", id).Updates(map[string]interface{}{
+		"deleted_by_id": userID,
+		"deleted_at":    time.Now(),
+	}).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *PurchaseOrderRepository) UpdatePurchaseOrderStatus(ctx *fiber.Ctx, id uint, status string, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-UpdatePurchaseOrderStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Model(&models.PurchaseOrder{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"status":        status,
+		"updated_by_id": userID,
+		"updated_at":    time.Now(),
+	}).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
 	return nil
 }
 
 func (r *PurchaseOrderRepository) RestorePurchaseOrder(tx *gorm.DB, params *dtos.GetPurchaseOrderParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("PurchaseOrderRepository-RestorePurchaseOrder", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
 
 	var purchaseOrder models.PurchaseOrder
 	if err := tx.Unscoped().Model(&purchaseOrder).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
-	return nil
-}
 
-func (r *PurchaseOrderRepository) DeletePoDtsByPurchaseOrderID(tx *gorm.DB, params *dtos.GetPurchaseOrderParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-DeletePoDtsByPurchaseOrderID", opentracing.ChildOf(span.Context()))
-
-	if err := tx.Where("po_id = ?", params.ID).Delete(&models.PurchaseOrderDt{}).Error; err != nil {
-		utils.LogErrors(childSpan, err)
-		return err
-	}
-
-	return nil
-}
-
-func (r *PurchaseOrderRepository) DeletePoDtBomsByPurchaseOrderID(tx *gorm.DB, params *dtos.GetPurchaseOrderParams, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-DeletePoDtBomsByPurchaseOrderID", opentracing.ChildOf(span.Context()))
-
-	if err := tx.Where("po_id = ?", params.ID).Delete(&models.PurchaseOrderDtBom{}).Error; err != nil {
-		utils.LogErrors(childSpan, err)
-		return err
-	}
-
-	return nil
-}
-
-func (r *PurchaseOrderRepository) LockPurchaseOrderHeader(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdatePurchaseOrderRequest, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-LockPurchaseOrderHeader", opentracing.ChildOf(span.Context()))
-
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", []uint{req.ID}).Find(&models.PurchaseOrder{}).Error; err != nil {
-		tx.Rollback()
-		utils.LogErrors(childSpan, err)
-		return err
-	}
-
-	return nil
-}
-
-func (r *PurchaseOrderRepository) LockPoDts(ctx *fiber.Ctx, tx *gorm.DB, poDtIDs []*uint, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-LockPoDts", opentracing.ChildOf(span.Context()))
-
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", poDtIDs).Find(&models.PurchaseOrderDt{}).Error; err != nil {
-		tx.Rollback()
-		utils.LogErrors(childSpan, err)
-		return err
-	}
-
-	return nil
-}
-
-func (r *PurchaseOrderRepository) LockPoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, poDtBomIDs []*uint, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("PurchaseOrderRepository-LockPoDtBoms", opentracing.ChildOf(span.Context()))
-
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", poDtBomIDs).Find(&models.PurchaseOrderDtBom{}).Error; err != nil {
-		tx.Rollback()
+	if err := tx.Unscoped().Model(&models.PoDt{}).Where("po_id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
