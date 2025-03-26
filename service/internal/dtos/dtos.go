@@ -1316,6 +1316,7 @@ type Pph23ListDTO struct {
 type Pph23DetailDTO struct {
 	ID            uint    `json:"id" db:"id"`
 	Name          string  `json:"name" db:"name"`
+	Num           string  `json:"num" db:"num"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        int8    `json:"status" db:"status"`

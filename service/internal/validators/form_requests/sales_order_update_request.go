@@ -19,16 +19,20 @@ func NewSalesOrderUpdateRequest() *SalesOrderUpdateRequest {
 // Validate validates the RegisterRequest.
 func (r *SalesOrderUpdateRequest) Validate(req *dtos.UpdateSalesOrderRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
-		"id":                       []string{"required", "exists:sales_orders,id"},
-		"status":                   []string{},
-		"expired_at":               []string{"date:yyyy-MM-dd"},
-		"so_dts":                   []string{"array"},
-		"so_dts.*.id":              []string{"exists:so_dts,id"},
-		"so_dts.*.product_item_id": []string{"exists:products,id"},
-		"so_dts.*.item_unit_id":    []string{"exists:item_units,id"},
-		"so_dts.*.qty":             []string{"numeric"},
-		"so_dts.*.gen_code":        []string{},
-		"so_dts.*.remark":          []string{},
+		"id":                []string{"required", "exists:sales_orders,id"},
+		"customer_id":       []string{"required", "exists:customers,id"},
+		"order_type_id":     []string{"required", "exists:mix_values,id"},
+		"currency_id":       []string{"required", "exists:mix_values,id"},
+		"po_buyer_no":       []string{"required"},
+		"status":            []string{"required"},
+		"shipping_at":       []string{"date:yyyy-MM-dd"},
+		"agree_at":          []string{"date:yyyy-MM-dd"},
+		"due_at":            []string{"date:yyyy-MM-dd"},
+		"so_dts":            []string{"array"},
+		"so_dts.*.item_id":  []string{"required", "exists:products,id"},
+		"so_dts.*.ref_id":   []string{"required"},
+		"so_dts.*.ref_type": []string{"required"},
+		"so_dts.*.qty":      []string{"required", "numeric"},
 	}
 
 	customFieldNames := map[string]string{}
