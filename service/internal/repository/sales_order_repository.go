@@ -1559,3 +1559,28 @@ func (r *SalesOrderRepository) GetQuotationIDBySalesOrderID(ctx *fiber.Ctx, tx *
 
 	return quotationID, nil
 }
+
+// GetCustomerSalesOrderCreatedThisMonth
+func (r *SalesOrderRepository) GetCustomerSalesOrderCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetCustomerSalesOrderCreatedThisMonth", opentracing.ChildOf(span.Context()))
+
+	var total int
+
+	baseQuery := `
+		FROM (
+			SELECT COUNT(*) as total
+			FROM sales_orders so
+			WHERE so.customer_id = $1 AND so.created_at >= date_trunc('month', CURRENT_DATE)
+		) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	err := tx.Raw(query, customerID).Scan(&total).Error
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return 0, err
+	}
+
+	return total, nil
+}

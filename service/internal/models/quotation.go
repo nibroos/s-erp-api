@@ -14,6 +14,7 @@ type Quotation struct {
 	PaymentID     *uint          `json:"payment_id" gorm:"column:payment_id"`
 	Pph23ID       *uint          `json:"pph23_id" gorm:"column:pph23_id"`
 	BranchID      *uint          `json:"branch_id" gorm:"column:branch_id"`
+	RevNo         *int           `json:"rev_no" gorm:"column:rev_no"`
 	QuoNo         *string        `json:"quo_no" gorm:"column:quo_no"`
 	Title         string         `json:"title" gorm:"column:title"`
 	Remark        *string        `json:"remark" gorm:"column:remark"`
@@ -22,6 +23,8 @@ type Quotation struct {
 	VatPerc       *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	Pph23Perc     *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`
 	MarkupPerc    *float64       `json:"markup_perc" gorm:"column:markup_perc"`
+	IsVat         *int           `json:"is_vat" gorm:"column:is_vat"`
+	IsPph23       *int           `json:"is_pph23" gorm:"column:is_pph23"`
 	TotalQty      *float64       `json:"total_qty" gorm:"column:total_qty"`
 	DiscAm        *float64       `json:"disc_am" gorm:"column:disc_am"`
 	DiscPerc      *float64       `json:"disc_perc" gorm:"column:disc_perc"`

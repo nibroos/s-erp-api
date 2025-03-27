@@ -25,6 +25,8 @@ func (r *QuotationUpdateRequest) Validate(req *dtos.UpdateQuotationRequest, ctx 
 		"currency_id":               []string{"required", "exists:mix_values,id"},
 		"status":                    []string{},
 		"expired_at":                []string{"date:yyyy-MM-dd"},
+		"is_vat":                    []string{"numeric"},
+		"is_pph23":                  []string{"numeric"},
 		"quo_dts":                   []string{"array"},
 		"quo_dts.*.id":              []string{"exists:quo_dts,id"},
 		"quo_dts.*.product_item_id": []string{"exists:products,id"},

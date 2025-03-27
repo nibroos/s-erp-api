@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -258,8 +260,10 @@ func GenQuoNo() string {
 	return "QUO-" + time.Now().Format("20060102-150405")
 }
 
-func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, span opentracing.Span) (models.Quotation, error) {
-	quoNo := GenQuoNo()
+func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, orderedNumber int, span opentracing.Span) (models.Quotation, error) {
+	quoNo := GenerateQuoNoOnCreateQuotation(ctx, req, orderedNumber, span)
+	revNo := 0
+
 	quotation := models.Quotation{
 		CustomerID:    req.CustomerID,
 		OrderTypeID:   req.OrderTypeID,
@@ -267,6 +271,7 @@ func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID 
 		VatID:         req.VatID,
 		PaymentID:     req.PaymentID,
 		Pph23ID:       req.Pph23ID,
+		RevNo:         &revNo,
 		QuoNo:         &quoNo,
 		Title:         req.Title,
 		Remark:        req.Remark,
@@ -296,6 +301,12 @@ func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID 
 }
 
 func MapUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID uint, branchID uint, span opentracing.Span) (models.Quotation, error) {
+	// quo_no track last number on string, REV-1, REV-2, REV-3
+	revNo := *req.RevNo
+	revNo++
+
+	quoNo := GenerateQuoNoOnUpdateQuotation(ctx, req, &revNo, span)
+
 	quotation := models.Quotation{
 		ID:            req.ID,
 		CustomerID:    req.CustomerID,
@@ -304,7 +315,8 @@ func MapUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID 
 		VatID:         req.VatID,
 		PaymentID:     req.PaymentID,
 		Pph23ID:       req.Pph23ID,
-		QuoNo:         req.QuoNo,
+		RevNo:         &revNo,
+		QuoNo:         &quoNo,
 		Title:         req.Title,
 		Remark:        req.Remark,
 		Status:        req.Status,
@@ -330,4 +342,34 @@ func MapUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, userID 
 	}
 
 	return quotation, nil
+}
+
+func GenerateQuoNoOnUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, revNo *int, span opentracing.Span) string {
+	quoNo := req.QuoNo
+
+	// get before REV-number, full string is SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
+	// check if "REV" string exist (random), if not add "REV-1" else change the number to incremented number
+	if !strings.Contains(*quoNo, "REV") {
+		*quoNo = fmt.Sprintf("%s-REV-%d", *quoNo, *revNo)
+	} else {
+		*quoNo = fmt.Sprintf("%s-%d", *quoNo, *revNo)
+	}
+
+	return *quoNo
+}
+
+func GenerateQuoNoOnCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, orderedNumber int, span opentracing.Span) string {
+	if req.QuoNo != nil {
+		return *req.QuoNo
+	}
+
+	// SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
+	surname := req.CustomerCode
+	year := time.Now().Format("2006")
+	month := time.Now().Format("01")
+	order := fmt.Sprintf("%d", orderedNumber)
+
+	str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
+
+	return str
 }

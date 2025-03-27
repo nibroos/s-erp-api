@@ -27,6 +27,8 @@ func (r *SalesOrderStoreRequest) Validate(req *dtos.CreateSalesOrderRequest, ctx
 		"status":            []string{"required"},
 		"shipping_at":       []string{"date:yyyy-MM-dd"},
 		"agree_at":          []string{"date:yyyy-MM-dd"},
+		"is_vat":            []string{"numeric"},
+		"is_pph23":          []string{"numeric"},
 		"due_at":            []string{"date:yyyy-MM-dd"},
 		"so_dts":            []string{"array"},
 		"so_dts.*.item_id":  []string{"required", "exists:products,id"},

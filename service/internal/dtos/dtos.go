@@ -545,6 +545,8 @@ type DeleteCompanyProfileRequest struct {
 type CompanyProfileListDTO struct {
 	ID                 int     `json:"id" db:"id"`
 	ParentID           *uint   `json:"parent_id" db:"parent_id"`
+	VatID              *uint   `json:"vat_id" db:"vat_id"`
+	Pph23ID            *uint   `json:"pph23_id" db:"pph23_id"`
 	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
 	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
 	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
@@ -568,6 +570,8 @@ type CompanyProfileListDTO struct {
 type CompanyProfileDetailDTO struct {
 	ID                 uint    `json:"id" db:"id"`
 	ParentID           *uint   `json:"parent_id" db:"parent_id"`
+	VatID              *uint   `json:"vat_id" db:"vat_id"`
+	Pph23ID            *uint   `json:"pph23_id" db:"pph23_id"`
 	IsPrimary          *int    `json:"is_primary" db:"is_primary"`
 	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
 	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
@@ -1821,6 +1825,8 @@ type CreateBomsRequest struct {
 type CreateProductRequest struct {
 	ItemSubGroupID uint                       `json:"item_sub_group_id"`
 	ItemUnitID     uint                       `json:"item_unit_id"`
+	VatID          *uint                      `json:"vat_id"`
+	Pph23ID        *uint                      `json:"pph23_id"`
 	Code           *string                    `json:"code"`
 	FactoryCode    *string                    `json:"factory_code"`
 	Name           string                     `json:"name"`
@@ -1855,6 +1861,8 @@ type UpdateProductRequest struct {
 	ID             uint                `json:"id"`
 	ItemSubGroupID uint                `json:"item_sub_group_id"`
 	ItemUnitID     uint                `json:"item_unit_id"`
+	VatID          *uint               `json:"vat_id"`
+	Pph23ID        *uint               `json:"pph23_id"`
 	Code           *string             `json:"code"`
 	FactoryCode    *string             `json:"factory_code"`
 	Name           string              `json:"name"`
@@ -1913,6 +1921,8 @@ type ProductListDTO struct {
 	ItemUnitUnitID   *uint    `json:"item_unit_unit_id" db:"item_unit_unit_id"`
 	BranchID         *uint    `json:"branch_id" db:"branch_id"`
 	BranchItemID     *uint    `json:"branch_item_id" db:"branch_item_id"`
+	VatID            *uint    `json:"vat_id" db:"vat_id"`
+	Pph23ID          *uint    `json:"pph23_id" db:"pph23_id"`
 	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
 	ItemGroupName    *string  `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string  `json:"unit_name" db:"unit_name"`
@@ -2012,6 +2022,8 @@ type ProductDetailDTO struct {
 	ItemUnitUnitID   *uint               `json:"item_unit_unit_id" db:"item_unit_unit_id"`
 	BranchID         *uint               `json:"branch_id" db:"branch_id"`
 	BranchItemID     *uint               `json:"branch_item_id" db:"branch_item_id"`
+	VatID            *uint               `json:"vat_id" db:"vat_id"`
+	Pph23ID          *uint               `json:"pph23_id" db:"pph23_id"`
 	ItemSubGroupName *string             `json:"item_sub_group_name" db:"item_sub_group_name"`
 	ItemGroupName    *string             `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string             `json:"unit_name" db:"unit_name"`

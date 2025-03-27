@@ -83,6 +83,7 @@ type CreateQuotationRequest struct {
 	PaymentID     *uint                 `json:"payment_id"`
 	Pph23ID       *uint                 `json:"pph23_id"`
 	BranchID      *uint                 `json:"branch_id"`
+	RevNo         *int                  `json:"rev_no"`
 	QuoNo         *string               `json:"quo_no"`
 	Title         string                `json:"title"`
 	Remark        *string               `json:"remark"`
@@ -96,6 +97,8 @@ type CreateQuotationRequest struct {
 	VatPerc       *float64              `json:"vat_perc"`
 	Pph23Perc     *float64              `json:"pph23_perc"`
 	MarkupPerc    *float64              `json:"markup_perc"`
+	IsVat         *int                  `json:"is_vat"`
+	IsPph23       *int                  `json:"is_pph23"`
 	TotalQty      *float64              `json:"total_qty"`
 	Subtotal      *float64              `json:"subtotal"`
 	TotalDiscount *float64              `json:"total_discount"`
@@ -105,6 +108,8 @@ type CreateQuotationRequest struct {
 	DueAt         *string               `json:"due_at"`
 	ExpiredAt     *string               `json:"expired_at"`
 	QuoDts        []CreateQuoDtsRequest `json:"quo_dts"`
+
+	CustomerCode *string `json:"customer_code"`
 }
 
 type UpdateQuoDtsRequest struct {
@@ -177,6 +182,7 @@ type UpdateQuotationRequest struct {
 	PaymentID     *uint                 `json:"payment_id"`
 	Pph23ID       *uint                 `json:"pph23_id"`
 	BranchID      *uint                 `json:"branch_id"`
+	RevNo         *int                  `json:"rev_no"`
 	QuoNo         *string               `json:"quo_no"`
 	Title         string                `json:"title"`
 	Remark        *string               `json:"remark"`
@@ -190,6 +196,8 @@ type UpdateQuotationRequest struct {
 	VatPerc       *float64              `json:"vat_perc"`
 	Pph23Perc     *float64              `json:"pph23_perc"`
 	MarkupPerc    *float64              `json:"markup_perc"`
+	IsVat         *int                  `json:"is_vat"`
+	IsPph23       *int                  `json:"is_pph23"`
 	TotalQty      *float64              `json:"total_qty"`
 	Subtotal      *float64              `json:"subtotal"`
 	TotalDiscount *float64              `json:"total_discount"`
@@ -199,6 +207,8 @@ type UpdateQuotationRequest struct {
 	DueAt         *string               `json:"due_at"`
 	ExpiredAt     *string               `json:"expired_at"`
 	QuoDts        []UpdateQuoDtsRequest `json:"quo_dts"`
+
+	CustomerCode *string `json:"customer_code"`
 }
 
 type GetQuotationByIDRequest struct {

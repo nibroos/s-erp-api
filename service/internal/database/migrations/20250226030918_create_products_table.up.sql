@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   item_sub_group_id INT NOT NULL REFERENCES mix_values(id) ON DELETE RESTRICT,
   item_unit_id INT,
+  vat_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  pph23_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
   code TEXT,
   factory_code TEXT,
   name VARCHAR(255) NOT NULL,
@@ -17,8 +19,8 @@ CREATE TABLE IF NOT EXISTS products (
   minimum_stock DECIMAL(20, 5),
   qty_stock DECIMAL(20, 5) DEFAULT 0,
   is_all_branch INT,
-  is_vat INT DEFAULT 1,
-  is_pph23 INT DEFAULT 1,
+  is_vat INT DEFAULT 0,
+  is_pph23 INT DEFAULT 0,
   status INT,
   expired_at timestamp with time zone,
   created_by_id INT,
@@ -34,5 +36,9 @@ COMMENT ON COLUMN products.prod_type IS 'product, single';
 CREATE INDEX idx_products_item_sub_group_id ON products(item_sub_group_id);
 
 CREATE INDEX idx_products_item_unit_id ON products(item_unit_id);
+
+CREATE INDEX idx_products_vat_id ON products(vat_id);
+
+CREATE INDEX idx_products_pph23_id ON products(pph23_id);
 
 COMMIT;

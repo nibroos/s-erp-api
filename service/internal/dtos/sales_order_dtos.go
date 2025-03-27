@@ -83,7 +83,8 @@ type CreateSalesOrderRequest struct {
 	PaymentID     *uint                `json:"payment_id"`
 	Pph23ID       *uint                `json:"pph23_id"`
 	BranchID      *uint                `json:"branch_id"`
-	PoBuyerNo     string               `json:"po_buyer_no"`
+	RevNo         *int                 `json:"rev_no"`
+	PoBuyerNo     *string              `json:"po_buyer_no"`
 	SalesOrderNo  *string              `json:"sales_order_no"`
 	Remark        *string              `json:"remark"`
 	ShipDest      *string              `json:"ship_dest"`
@@ -92,6 +93,8 @@ type CreateSalesOrderRequest struct {
 	VatPerc       *float64             `json:"vat_perc"`
 	Pph23Perc     *float64             `json:"pph23_perc"`
 	MarkupPerc    *float64             `json:"markup_perc"`
+	IsVat         *int                 `json:"is_vat"`
+	IsPph23       *int                 `json:"is_pph23"`
 	DiscAm        *float64             `json:"disc_am"`
 	DiscPerc      *float64             `json:"disc_perc"`
 	DiscPercAm    *float64             `json:"disc_perc_am"`
@@ -108,6 +111,8 @@ type CreateSalesOrderRequest struct {
 	AgreeAt       *string              `json:"agree_at"`
 	DueAt         *string              `json:"due_at"`
 	SoDts         []CreateSoDtsRequest `json:"so_dts"`
+
+	CustomerCode string `json:"customer_code"`
 }
 
 type UpdateSoDtsRequest struct {
@@ -178,7 +183,8 @@ type UpdateSalesOrderRequest struct {
 	PaymentID     *uint                `json:"payment_id"`
 	Pph23ID       *uint                `json:"pph23_id"`
 	BranchID      *uint                `json:"branch_id"`
-	PoBuyerNo     string               `json:"po_buyer_no"`
+	RevNo         *int                 `json:"rev_no"`
+	PoBuyerNo     *string              `json:"po_buyer_no"`
 	SalesOrderNo  *string              `json:"sales_order_no"`
 	Remark        *string              `json:"remark"`
 	ShipDest      *string              `json:"ship_dest"`
@@ -187,6 +193,8 @@ type UpdateSalesOrderRequest struct {
 	VatPerc       *float64             `json:"vat_perc"`
 	Pph23Perc     *float64             `json:"pph23_perc"`
 	MarkupPerc    *float64             `json:"markup_perc"`
+	IsVat         *int                 `json:"is_vat"`
+	IsPph23       *int                 `json:"is_pph23"`
 	DiscAm        *float64             `json:"disc_am"`
 	DiscPerc      *float64             `json:"disc_perc"`
 	DiscPercAm    *float64             `json:"disc_perc_am"`
@@ -203,6 +211,8 @@ type UpdateSalesOrderRequest struct {
 	AgreeAt       *string              `json:"agree_at"`
 	DueAt         *string              `json:"due_at"`
 	SoDts         []UpdateSoDtsRequest `json:"so_dts"`
+
+	CustomerCode string `json:"customer_code"`
 }
 
 type GetSalesOrderByIDRequest struct {

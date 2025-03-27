@@ -8,6 +8,8 @@ type CompanyProfile struct {
 	gorm.Model
 	ID                 uint    `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	ParentID           *uint   `json:"parent_id" gorm:"column:parent_id"`
+	VatID              *uint   `json:"vat_id" gorm:"column:vat_id"`
+	Pph23ID            *uint   `json:"pph23_id" gorm:"column:pph23_id"`
 	IsPrimary          *int    `json:"is_primary" gorm:"column:is_primary"`
 	CompanyOwnerName   *string `json:"company_owner_name" gorm:"column:company_owner_name"`
 	CompanySignName    *string `json:"company_sign_name" gorm:"column:company_sign_name"`
