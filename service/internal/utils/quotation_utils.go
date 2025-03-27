@@ -254,7 +254,12 @@ func MapCreateUpdateQuoDts(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, upda
 	return quoDtsModel, nil
 }
 
+func GenQuoNo() string {
+	return "QUO-" + time.Now().Format("20060102-150405")
+}
+
 func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, span opentracing.Span) (models.Quotation, error) {
+	quoNo := GenQuoNo()
 	quotation := models.Quotation{
 		CustomerID:    req.CustomerID,
 		OrderTypeID:   req.OrderTypeID,
@@ -262,7 +267,7 @@ func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID 
 		VatID:         req.VatID,
 		PaymentID:     req.PaymentID,
 		Pph23ID:       req.Pph23ID,
-		QuoNo:         req.QuoNo,
+		QuoNo:         &quoNo,
 		Title:         req.Title,
 		Remark:        req.Remark,
 		Status:        req.Status,

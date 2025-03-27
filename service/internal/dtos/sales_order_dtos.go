@@ -107,7 +107,6 @@ type CreateSalesOrderRequest struct {
 	ShippingAt    *string              `json:"shipping_at"`
 	AgreeAt       *string              `json:"agree_at"`
 	DueAt         *string              `json:"due_at"`
-	ExpiredAt     *string              `json:"expired_at"`
 	SoDts         []CreateSoDtsRequest `json:"so_dts"`
 }
 
@@ -203,7 +202,6 @@ type UpdateSalesOrderRequest struct {
 	ShippingAt    *string              `json:"shipping_at"`
 	AgreeAt       *string              `json:"agree_at"`
 	DueAt         *string              `json:"due_at"`
-	ExpiredAt     *string              `json:"expired_at"`
 	SoDts         []UpdateSoDtsRequest `json:"so_dts"`
 }
 
@@ -272,7 +270,6 @@ type SalesOrderListDTO struct {
 	ShippingAt    *string  `json:"shipping_at" db:"shipping_at"`
 	AgreeAt       *string  `json:"agree_at" db:"agree_at"`
 	DueAt         *string  `json:"due_at" db:"due_at"`
-	ExpiredAt     *string  `json:"expired_at" db:"expired_at"`
 	CreatedByID   *uint    `json:"crweated_by_id" db:"created_by_id"`
 	UpdatedByID   *uint    `json:"updated_by_id" db:"updated_by_id"`
 	DeletedByID   *uint    `json:"deleted_by_id" db:"deleted_by_id"`
@@ -336,7 +333,6 @@ type SalesOrderDetailDTO struct {
 	ShippingAt    *string  `json:"shipping_at" db:"shipping_at"`
 	AgreeAt       *string  `json:"agree_at" db:"agree_at"`
 	DueAt         *string  `json:"due_at" db:"due_at"`
-	ExpiredAt     *string  `json:"expired_at" db:"expired_at"`
 
 	SiTotalAm *float64 `json:"si_total_am" db:"si_total_am"`
 	SaTotalAm *float64 `json:"sa_total_am" db:"sa_total_am"`

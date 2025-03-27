@@ -308,7 +308,6 @@ func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userI
 		ShippingAt:    req.ShippingAt,
 		AgreeAt:       req.AgreeAt,
 		DueAt:         req.DueAt,
-		ExpiredAt:     req.ExpiredAt,
 		BranchID:      &branchID,
 		CreatedByID:   &userID,
 	}
@@ -350,7 +349,6 @@ func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userI
 		ShippingAt:    req.ShippingAt,
 		AgreeAt:       req.AgreeAt,
 		DueAt:         req.DueAt,
-		ExpiredAt:     req.ExpiredAt,
 		BranchID:      &branchID,
 		CreatedByID:   &userID,
 	}

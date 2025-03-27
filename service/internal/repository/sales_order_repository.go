@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -90,7 +89,6 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 		"vat_id":        "so.vat_id",
 		"payment_id":    "so.payment_id",
 		"pph23_id":      "so.pph23_id",
-		"expired_at":    "so.expired_at",
 		"due_at":        "so.due_at",
 	}
 
@@ -154,7 +152,6 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 					TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
 					TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
 					TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
-					TO_CHAR(so.expired_at, 'YYYY-MM-DD') as expired_at,
 					so.vat_perc, so.disc_am, so.disc_perc, so.disc_perc_am, so.disc_final, so.disc_type, so.qty_out, so.si_total_am, so.sa_total_am,
 
 					pi.id as product_id,
@@ -313,7 +310,6 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 				TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
 				TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
 				TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
-				TO_CHAR(so.expired_at, 'YYYY-MM-DD') as expired_at,
 				so.vat_perc, so.disc_am, so.disc_perc, so.disc_perc_am, so.disc_final, so.disc_type, so.qty_out, so.si_total_am, so.sa_total_am,
 
 				cu.name as created_by_name,
@@ -435,7 +431,6 @@ func (r *SalesOrderRepository) CreateSoDts(tx *gorm.DB, soDts []models.SoDt, sal
 	if tx.Error != nil {
 		utils.LogErrors(childSpan, tx.Error)
 		tx.Rollback()
-		log.Fatalf("Failed to insert soDts: %v", tx.Error)
 	}
 
 	return tx, soDts, nil
@@ -778,7 +773,6 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 		"vat_id":        "so.vat_id",
 		"payment_id":    "so.payment_id",
 		"pph23_id":      "so.pph23_id",
-		"expired_at":    "so.expired_at",
 		"due_at":        "so.due_at",
 	}
 
@@ -1045,13 +1039,15 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 	}
 
 	filterIDsKey := map[string]string{
-		"customer_ids":   "q.customer_id",
-		"order_type_ids": "q.order_type_id",
-		"currency_ids":   "q.currency_id",
-		"payment_ids":    "q.payment_id",
-		"pph23_ids":      "q.pph23_id",
-		"product_ids":    "qd.item_id",
-		"quotation_ids":  "q.id",
+		"customer_ids":       "q.customer_id",
+		"order_type_ids":     "q.order_type_id",
+		"currency_ids":       "q.currency_id",
+		"payment_ids":        "q.payment_id",
+		"pph23_ids":          "q.pph23_id",
+		"product_ids":        "qd.item_id",
+		"quotation_ids":      "q.id",
+		"item_group_ids":     "ig.id",
+		"item_sub_group_ids": "pi.item_sub_group_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -1085,6 +1081,21 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 				args = append(args, value)
 			}
 			condition += ")"
+		}
+	}
+
+	filterKeyLike := map[string]string{
+		"quo_no": "q.quo_no",
+		"title":  "q.title",
+		"remark": "q.remark",
+	}
+
+	for key, valColumn := range filterKeyLike {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s ILIKE $%d", valColumn, i)
+			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
+			args = append(args, "%"+value+"%")
+			i++
 		}
 	}
 
@@ -1148,18 +1159,6 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 
 	countQuery := `SELECT COUNT(*) as total
 		` + baseQuery
-
-	for key, value := range filters {
-		switch key {
-		case "quo_no", "title", "remark":
-			if value != "" {
-				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-				args = append(args, "%"+value+"%")
-				i++
-			}
-		}
-	}
 
 	if !isAdmin && branchID != nil {
 		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
@@ -1363,9 +1362,9 @@ func (r *SalesOrderRepository) GetRefQuoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters
 		"remark": "q.remark",
 	}
 
-	for key, _ := range filterKeyLike {
+	for key, valColumn := range filterKeyLike {
 		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
+			condition += fmt.Sprintf(" AND %s ILIKE $%d", valColumn, i)
 			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
 			args = append(args, "%"+value+"%")
 			i++
@@ -1461,8 +1460,6 @@ func (r *SalesOrderRepository) GetQuoDtQtyUpdate(ctx *fiber.Ctx, tx *gorm.DB, fi
 
 	// i := 1
 	condition := ""
-
-	log.Println("filters.ids", filters["ids"])
 
 	condition += fmt.Sprintf(" AND qd.id IN (%s)", filters["ids"])
 
