@@ -322,6 +322,7 @@ type SalesOrderDetailDTO struct {
 	PoBuyerNo     string   `json:"po_buyer_no" db:"po_buyer_no"`
 	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	Remark        *string  `json:"remark" db:"remark"`
+	RevNo         *int     `json:"rev_no" db:"rev_no"`
 	Status        string   `json:"status" db:"status"`
 	ExchangeRate  float64  `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
@@ -616,6 +617,8 @@ type RefIndexQuoDtListDTO struct {
 	HeadDiscPerc   *float64 `json:"head_disc_perc" db:"head_disc_perc"`
 	HeadMarkupPerc *float64 `json:"head_markup_perc" db:"head_markup_perc"`
 	HeadRemark     *string  `json:"head_remark" db:"head_remark"`
+	RefNum         *string  `json:"ref_num" db:"ref_num"`
+	HeadIsVat      *int     `json:"head_is_vat" db:"head_is_vat"`
 	ExchangeRate   *float64 `json:"exchange_rate" db:"exchange_rate"`
 	QuoNo          *string  `json:"quo_no" db:"quo_no"`
 	CustomerName   *string  `json:"customer_name" db:"customer_name"`

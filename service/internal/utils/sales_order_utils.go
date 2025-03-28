@@ -272,12 +272,28 @@ func MapUpdateSoDts(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, updatedSal
 	return soDtsModel, nil
 }
 
-func GenSalesOrderNo() string {
-	return "SO-" + time.Now().Format("20060102-150405")
+func GenSalesOrderNo(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, orderedNumber int, span opentracing.Span) string {
+	if req.PoBuyerNo != nil {
+		return *req.PoBuyerNo
+	}
+
+	// SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
+	surname := req.CustomerCode
+	year := time.Now().Format("2006")
+	month := time.Now().Format("01")
+	order := fmt.Sprintf("%d", orderedNumber)
+
+	// str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
+	str := fmt.Sprintf("SO/%s/%s-%s-%s", order, surname, year, month)
+
+	return str
 }
 
 func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userID uint, branchID uint, customerSoCreatedThisMonthNumber int, span opentracing.Span) (models.SalesOrder, error) {
-	orderNo := GenSalesOrderNo()
+	// order := 1
+	customerSoCreatedThisMonthNumber++
+
+	orderNo := GenSalesOrderNo(ctx, req, customerSoCreatedThisMonthNumber, span)
 	poBuyerNo := GeneratePoBuyerNoNoOnCreateSalesOrder(ctx, req, customerSoCreatedThisMonthNumber, span)
 
 	salesOrder := models.SalesOrder{
@@ -320,9 +336,13 @@ func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userI
 }
 
 func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userID uint, branchID uint, span opentracing.Span) (models.SalesOrder, error) {
-	revNo := *req.RevNo
+	revNo := 0
+	if req.RevNo != nil {
+		revNo = *req.RevNo
+	}
 	revNo++
 
+	salesOrderNo := GenerateSoNoOnUpdateQuotation(ctx, req, revNo, span)
 	poBuyerNo := GenerateSoNoOnUpdateQuotation(ctx, req, revNo, span)
 
 	salesOrder := models.SalesOrder{
@@ -336,7 +356,7 @@ func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userI
 		WarehouseID:   req.WarehouseID,
 		RevNo:         &revNo,
 		PoBuyerNo:     poBuyerNo,
-		SalesOrderNo:  req.SalesOrderNo,
+		SalesOrderNo:  &salesOrderNo,
 		ShipDest:      req.ShipDest,
 		Remark:        req.Remark,
 		Status:        req.Status,
@@ -429,18 +449,20 @@ func MapUpdateQuoDtsStatus(quoDtsStatusUpdate map[string]interface{}, req dtos.C
 	return params
 }
 
-func GenerateSoNoOnUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, revNo int, span opentracing.Span) string {
-	poBuyerNo := req.PoBuyerNo
+func GenerateSoNoOnUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, poBuyerNo string, revNo int, span opentracing.Span) string {
 
 	// get before REV-number, full string is SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1 or SURNAME-2001-12-20
 	// check if "REV" string exist (random), if not add "REV-1" else replace REV-1 change the number to increment REV-revNo
-	if !strings.Contains(*poBuyerNo, "REV") {
-		*poBuyerNo = fmt.Sprintf("%s-REV-1", *poBuyerNo)
+	if !strings.Contains(poBuyerNo, "REV") {
+		poBuyerNo = fmt.Sprintf("%s/REV-1", poBuyerNo)
 	} else {
-		*poBuyerNo = fmt.Sprintf("%s-%d", *poBuyerNo, revNo)
+		// remove after /REV
+		// use split to get the first part of string
+		poBuyerNo = strings.Split(poBuyerNo, "/REV")[0]
+		poBuyerNo = fmt.Sprintf("%s/REV-%d", poBuyerNo, revNo)
 	}
 
-	return *poBuyerNo
+	return poBuyerNo
 }
 
 func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, orderedNumber int, span opentracing.Span) string {
@@ -454,7 +476,8 @@ func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesO
 	month := time.Now().Format("01")
 	order := fmt.Sprintf("%d", orderedNumber)
 
-	str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
+	// str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
+	str := fmt.Sprintf("%s/%s-%s-%s", surname, year, month, order)
 
 	return str
 }

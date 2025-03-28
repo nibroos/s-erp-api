@@ -1122,6 +1122,7 @@ type CreateVatRequest struct {
 	Num         float64  `json:"num"`
 	Description *string  `json:"description"`
 	Remark      *string  `json:"remark"`
+	DateAt      *string  `json:"date_at"`
 	Status      int8     `json:"status"`
 	Divider     *float64 `json:"divider"`
 	ChangedAt   *string  `json:"changed_at"`
@@ -1134,6 +1135,7 @@ type UpdateVatRequest struct {
 	Name        string   `json:"name"`
 	Description *string  `json:"description"`
 	Remark      *string  `json:"remark"`
+	DateAt      *string  `json:"date_at"`
 	Status      int8     `json:"status"`
 	Divider     *float64 `json:"divider"`
 	Multiplier  *float64 `json:"multiplier"`
@@ -1184,6 +1186,7 @@ type VatListDTO struct {
 	Num           float64 `json:"num" db:"num"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
+	DateAt        *string `json:"date_at" db:"date_at"`
 	Status        int8    `json:"status" db:"status"`
 	Multiplier    *string `json:"multiplier" db:"multiplier"`
 	Divider       *string `json:"divider" db:"divider"`
@@ -1200,6 +1203,7 @@ type VatDetailDTO struct {
 	Num           string  `json:"num" db:"num"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
+	DateAt        *string `json:"date_at" db:"date_at"`
 	Status        int8    `json:"status" db:"status"`
 	Multiplier    *string `json:"multiplier" db:"multiplier"`
 	Divider       *string `json:"divider" db:"divider"`
@@ -1270,6 +1274,7 @@ type CreatePph23Request struct {
 	Num         float64 `json:"num"`
 	Description *string `json:"description"`
 	Remark      *string `json:"remark"`
+	DateAt      *string `json:"date_at"`
 	Status      int8    `json:"status"`
 }
 
@@ -1279,6 +1284,7 @@ type UpdatePph23Request struct {
 	Name        string  `json:"name"`
 	Description *string `json:"description"`
 	Remark      *string `json:"remark"`
+	DateAt      *string `json:"date_at"`
 	Status      int8    `json:"status"`
 }
 
@@ -1309,6 +1315,7 @@ type Pph23ListDTO struct {
 	Num           float64 `json:"num" db:"num"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
+	DateAt        *string `json:"date_at" db:"date_at"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
@@ -1323,6 +1330,7 @@ type Pph23DetailDTO struct {
 	Num           string  `json:"num" db:"num"`
 	Description   *string `json:"description" db:"description"`
 	Remark        *string `json:"remark" db:"remark"`
+	DateAt        *string `json:"date_at" db:"date_at"`
 	Status        int8    `json:"status" db:"status"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
@@ -1710,6 +1718,8 @@ type GetCustomersRequest struct {
 type CreateCustomerRequest struct {
 	CustomerTypeID *uint   `json:"customer_type_id"`
 	AgentID        *uint   `json:"agent_id"`
+	CurrencyID     *uint   `json:"currency_id"`
+	Shortname      *string `json:"shortname"`
 	Code           *string `json:"code"`
 	Name           string  `json:"name"`
 	Address        *string `json:"address"`
@@ -1723,6 +1733,8 @@ type UpdateCustomerRequest struct {
 	ID             uint    `json:"id"`
 	CustomerTypeID *uint   `json:"customer_type_id"`
 	AgentID        *uint   `json:"agent_id"`
+	CurrencyID     *uint   `json:"currency_id"`
+	Shortname      *string `json:"shortname"`
 	Code           *string `json:"code"`
 	Name           string  `json:"name"`
 	Address        *string `json:"address"`
@@ -1755,10 +1767,12 @@ type DeleteCustomerRequest struct {
 
 type CustomerListDTO struct {
 	ID               int     `json:"id" db:"id"`
+	CurrencyID       *uint   `json:"currency_id" db:"currency_id"`
 	CustomerTypeID   *uint   `json:"customer_type_id" db:"customer_type_id"`
 	CustomerTypeName *string `json:"customer_type_name" db:"customer_type_name"`
 	AgentID          *uint   `json:"agent_id" db:"agent_id"`
 	AgentName        *string `json:"agent_name" db:"agent_name"`
+	Shortname        *string `json:"shortname" db:"shortname"`
 	Code             *string `json:"code" db:"code"`
 	Name             string  `json:"name" db:"name"`
 	Address          *string `json:"address" db:"address"`
@@ -1775,10 +1789,12 @@ type CustomerListDTO struct {
 
 type CustomerDetailDTO struct {
 	ID               uint    `json:"id" db:"id"`
+	CurrencyID       *uint   `json:"currency_id" db:"currency_id"`
 	CustomerTypeID   *uint   `json:"customer_type_id" db:"customer_type_id"`
 	CustomerTypeName *string `json:"customer_type_name" db:"customer_type_name"`
 	AgentID          *uint   `json:"agent_id" db:"agent_id"`
 	AgentName        *string `json:"agent_name" db:"agent_name"`
+	Shortname        *string `json:"shortname" db:"shortname"`
 	Code             *string `json:"code" db:"code"`
 	Name             string  `json:"name" db:"name"`
 	Address          *string `json:"address" db:"address"`
@@ -1825,8 +1841,6 @@ type CreateBomsRequest struct {
 type CreateProductRequest struct {
 	ItemSubGroupID uint                       `json:"item_sub_group_id"`
 	ItemUnitID     uint                       `json:"item_unit_id"`
-	VatID          *uint                      `json:"vat_id"`
-	Pph23ID        *uint                      `json:"pph23_id"`
 	Code           *string                    `json:"code"`
 	FactoryCode    *string                    `json:"factory_code"`
 	Name           string                     `json:"name"`
@@ -1861,8 +1875,6 @@ type UpdateProductRequest struct {
 	ID             uint                `json:"id"`
 	ItemSubGroupID uint                `json:"item_sub_group_id"`
 	ItemUnitID     uint                `json:"item_unit_id"`
-	VatID          *uint               `json:"vat_id"`
-	Pph23ID        *uint               `json:"pph23_id"`
 	Code           *string             `json:"code"`
 	FactoryCode    *string             `json:"factory_code"`
 	Name           string              `json:"name"`
@@ -1921,8 +1933,6 @@ type ProductListDTO struct {
 	ItemUnitUnitID   *uint    `json:"item_unit_unit_id" db:"item_unit_unit_id"`
 	BranchID         *uint    `json:"branch_id" db:"branch_id"`
 	BranchItemID     *uint    `json:"branch_item_id" db:"branch_item_id"`
-	VatID            *uint    `json:"vat_id" db:"vat_id"`
-	Pph23ID          *uint    `json:"pph23_id" db:"pph23_id"`
 	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
 	ItemGroupName    *string  `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string  `json:"unit_name" db:"unit_name"`
@@ -2022,8 +2032,6 @@ type ProductDetailDTO struct {
 	ItemUnitUnitID   *uint               `json:"item_unit_unit_id" db:"item_unit_unit_id"`
 	BranchID         *uint               `json:"branch_id" db:"branch_id"`
 	BranchItemID     *uint               `json:"branch_item_id" db:"branch_item_id"`
-	VatID            *uint               `json:"vat_id" db:"vat_id"`
-	Pph23ID          *uint               `json:"pph23_id" db:"pph23_id"`
 	ItemSubGroupName *string             `json:"item_sub_group_name" db:"item_sub_group_name"`
 	ItemGroupName    *string             `json:"item_group_name" db:"item_group_name"`
 	UnitName         *string             `json:"unit_name" db:"unit_name"`
@@ -2039,6 +2047,8 @@ type ProductDetailDTO struct {
 	TpbCode          *string             `json:"tpb_code" db:"tpb_code"`
 	MinimumStock     *float64            `json:"minimum_stock" db:"minimum_stock"`
 	IsAllBranch      *int                `json:"is_all_branch" db:"is_all_branch"`
+	IsVat            *int                `json:"is_vat" db:"is_vat"`
+	IsPph23          *int                `json:"is_pph23" db:"is_pph23"`
 	Remark           *string             `json:"remark" db:"remark"`
 	PriceSell        *float64            `json:"price_sell" db:"price_sell"`
 	PriceBuy         *float64            `json:"price_buy" db:"price_buy"`

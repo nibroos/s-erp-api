@@ -151,6 +151,7 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 					TO_CHAR(q.due_at, 'YYYY-MM-DD') as due_at,
 					TO_CHAR(q.expired_at, 'YYYY-MM-DD') as expired_at,
 					q.vat_perc, q.disc_am, q.disc_perc, q.disc_perc_am, q.disc_final, q.disc_type,
+					q.rev_no, q.is_vat, q.is_pph23,
 
 					pi.id as product_id,
 					it.id as item_id,
@@ -306,6 +307,7 @@ func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQ
 					TO_CHAR(q.expired_at, 'YYYY-MM-DD') as expired_at,
 					q.vat_perc, q.pph23_perc, q.markup_perc, q.disc_am, q.disc_perc, q.disc_perc_am, q.disc_final, q.disc_type,
 					-- q.quotation_id,
+					q.rev_no, q.is_vat, q.is_pph23,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -989,7 +991,7 @@ func (r *QuotationRepository) LockQuoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, quoDtBo
 func (r *QuotationRepository) GetCustomerQuotationCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
 	childSpan := opentracing.StartSpan("QuotationRepository-GetCustomerQuotationCreatedThisMonth", opentracing.ChildOf(span.Context()))
 
-	query := `SELECT COUNT(*) FROM quotations WHERE customer_id = $1 AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())`
+	query := `SELECT COUNT(*) FROM quotations WHERE customer_id = $1 AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW()) AND deleted_at IS NULL`
 
 	var count int
 

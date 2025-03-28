@@ -23,7 +23,7 @@ func (r *SalesOrderStoreRequest) Validate(req *dtos.CreateSalesOrderRequest, ctx
 		"customer_id":       []string{"required", "exists:customers,id"},
 		"order_type_id":     []string{"required", "exists:mix_values,id"},
 		"currency_id":       []string{"required", "exists:mix_values,id"},
-		"po_buyer_no":       []string{"required"},
+		"po_buyer_no":       []string{},
 		"status":            []string{"required"},
 		"shipping_at":       []string{"date:yyyy-MM-dd"},
 		"agree_at":          []string{"date:yyyy-MM-dd"},

@@ -9,8 +9,6 @@ type Product struct {
 	ID             uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	ItemSubGroupID uint           `json:"item_sub_group_id" gorm:"column:item_sub_group_id"`
 	ItemUnitID     *uint          `json:"item_unit_id" gorm:"column:item_unit_id"`
-	VatID          *uint          `json:"vat_id" gorm:"column:vat_id"`
-	Pph23ID        *uint          `json:"pph23_id" gorm:"column:pph23_id"`
 	Code           *string        `json:"code" gorm:"column:code"`
 	FactoryCode    *string        `json:"factory_code" gorm:"column:factory_code"`
 	Name           string         `json:"name" gorm:"column:name"`

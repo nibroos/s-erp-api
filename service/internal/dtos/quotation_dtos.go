@@ -248,6 +248,9 @@ type QuotationListDTO struct {
 	PaymentID     *uint    `json:"payment_id" db:"payment_id"`
 	Pph23ID       *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID      *uint    `json:"branch_id" db:"branch_id"`
+	RevNo         *int     `json:"rev_no" db:"rev_no"`
+	IsVat         *int     `json:"is_vat" db:"is_vat"`
+	IsPph23       *int     `json:"is_pph23" db:"is_pph23"`
 	QuoNo         *string  `json:"quo_no" db:"quo_no"`
 	Title         string   `json:"title" db:"title"`
 	Remark        *string  `json:"remark" db:"remark"`
@@ -305,6 +308,9 @@ type QuotationDetailDTO struct {
 	PaymentID     *uint                   `json:"payment_id" db:"payment_id"`
 	Pph23ID       *uint                   `json:"pph23_id" db:"pph23_id"`
 	BranchID      *uint                   `json:"branch_id" db:"branch_id"`
+	IsVat         *int                    `json:"is_vat" db:"is_vat"`
+	IsPph23       *int                    `json:"is_pph23" db:"is_pph23"`
+	RevNo         *int                    `json:"rev_no" db:"rev_no"`
 	QuoNo         *string                 `json:"quo_no" db:"quo_no"`
 	Title         string                  `json:"title" db:"title"`
 	Remark        *string                 `json:"remark" db:"remark"`

@@ -20,41 +20,41 @@ VALUES
       WHERE
         name = 'pph23s'
     ),
-    'PPH21',
-    'PPH21',
+    'PPH23',
+    'PPH23',
+    2,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'pph23s'
+    ),
+    'PPH25',
+    'PPH25',
+    0.75,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'pph23s'
+    ),
+    'PPH26',
+    'PPH26',
     20,
-    1,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    (
-      SELECT
-        id
-      FROM
-        groups
-      WHERE
-        name = 'pph23s'
-    ),
-    'PPH22',
-    'PPH22',
-    30,
-    1,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-  ),
-  (
-    (
-      SELECT
-        id
-      FROM
-        groups
-      WHERE
-        name = 'pph23s'
-    ),
-    'PPH23',
-    'PPH23',
-    10,
     1,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP

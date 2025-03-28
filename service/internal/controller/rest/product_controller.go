@@ -112,21 +112,9 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 		prodType = "product"
 	}
 
-	isVat := 0
-	if req.VatID != nil {
-		isVat = 1
-	}
-
-	isPph23 := 0
-	if req.Pph23ID != nil {
-		isPph23 = 1
-	}
-
 	product := models.Product{
 		ItemSubGroupID: req.ItemSubGroupID,
 		ItemUnitID:     &req.ItemUnitID,
-		VatID:          req.VatID,
-		Pph23ID:        req.Pph23ID,
 		Code:           req.Code,
 		FactoryCode:    req.FactoryCode,
 		Name:           req.Name,
@@ -138,8 +126,8 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 		TpbCode:        req.TpbCode,
 		MinimumStock:   req.MinimumStock,
 		IsAllBranch:    req.IsAllBranch,
-		IsVat:          &isVat,
-		IsPph23:        &isPph23,
+		IsVat:          req.IsVat,
+		IsPph23:        req.IsPph23,
 		Remark:         req.Remark,
 		Status:         req.Status,
 		ExpiredAt:      req.ExpiredAt,
@@ -317,22 +305,10 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 		prodType = "product"
 	}
 
-	isVat := 0
-	if req.VatID != nil {
-		isVat = 1
-	}
-
-	isPph23 := 0
-	if req.Pph23ID != nil {
-		isPph23 = 1
-	}
-
 	product := models.Product{
 		ID:             req.ID,
 		ItemSubGroupID: req.ItemSubGroupID,
 		ItemUnitID:     &req.ItemUnitID,
-		VatID:          req.VatID,
-		Pph23ID:        req.Pph23ID,
 		Code:           req.Code,
 		FactoryCode:    req.FactoryCode,
 		Name:           req.Name,
@@ -344,8 +320,8 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 		TpbCode:        req.TpbCode,
 		MinimumStock:   req.MinimumStock,
 		IsAllBranch:    req.IsAllBranch,
-		IsVat:          &isVat,
-		IsPph23:        &isPph23,
+		IsVat:          req.IsVat,
+		IsPph23:        req.IsPph23,
 		Remark:         req.Remark,
 		Status:         req.Status,
 		ExpiredAt:      req.ExpiredAt,

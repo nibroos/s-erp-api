@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS mix_values (
   parent_id INT,
   name VARCHAR(500) NOT NULL,
   description TEXT,
+  date_at DATE,
+  time_at TIME,
   remark TEXT,
   num DECIMAL(20, 5),
   order_item DECIMAL(20, 5),

@@ -34,55 +34,86 @@ func (r *Pph23Repository) GetPph23s(ctx *fiber.Ctx, filters map[string]string, s
 	pph23s := []dtos.Pph23ListDTO{}
 	var total int
 
-	query := `SELECT *
-    FROM ( 
-        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
-        cu.name as created_by_name,
-        uu.name as updated_by_name
-
-        FROM mix_values m
-                LEFT JOIN groups g ON m.group_id = g.id
-        LEFT JOIN users cu ON m.created_by_id = cu.id
-        LEFT JOIN users uu ON m.updated_by_id = uu.id
-                WHERE g.name = 'pph23s'
-    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
-
-	countQuery := `SELECT COUNT(*) FROM (
-        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
-        cu.name as created_by_name,
-        uu.name as updated_by_name
-
-        FROM mix_values m
-        LEFT JOIN users cu ON m.created_by_id = cu.id
-        LEFT JOIN users uu ON m.updated_by_id = uu.id
-                LEFT JOIN groups g ON m.group_id = g.id
-                WHERE g.name = 'pph23s'
-    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+	condition := ""
 
 	var args []interface{}
 
 	i := 1
-	for key, value := range filters {
-		switch key {
-		case "name", "description", "remark":
-			if value != "" {
-				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-				args = append(args, "%"+value+"%")
-				i++
+
+	filterDBColumnKey := []string{
+		"m.name",
+		"m.description",
+		"m.remark",
+	}
+
+	queryGlobal := ""
+
+	if value, ok := filters["global"]; ok && value != "" {
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
 			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	filtersParams := map[string]string{
+		"name":        "m.name",
+		"description": "m.description",
+		"remark":      "m.remark",
+	}
+
+	for key, colDB := range filtersParams {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s ILIKE $%d", colDB, i)
+			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
+			args = append(args, "%"+value+"%")
+			i++
 		}
 	}
 
-	if filters["ids"] != "" {
-		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	filterIDsKey := map[string]string{
+		"ids": "m.id",
 	}
-	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 3
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s IN ANY(%d)", valueID, i)
+			args = append(args, value)
+			i++
+		}
 	}
+
+	query := `SELECT *
+    FROM ( 
+        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				TO_CHAR(m.date_at, 'YYYY-MM-DD') as date_at,
+        cu.name as created_by_name,
+        uu.name as updated_by_name
+
+        FROM mix_values m
+                LEFT JOIN groups g ON m.group_id = g.id
+        LEFT JOIN users cu ON m.created_by_id = cu.id
+        LEFT JOIN users uu ON m.updated_by_id = uu.id
+                WHERE g.name = 'pph23s' ` + queryGlobal + condition + `
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	countQuery := `SELECT COUNT(*) FROM (
+        SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				TO_CHAR(m.date_at, 'YYYY-MM-DD') as date_at,
+        cu.name as created_by_name,
+        uu.name as updated_by_name
+
+        FROM mix_values m
+        LEFT JOIN users cu ON m.created_by_id = cu.id
+        LEFT JOIN users uu ON m.updated_by_id = uu.id
+                LEFT JOIN groups g ON m.group_id = g.id
+                WHERE g.name = 'pph23s' ` + queryGlobal + condition + `
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countArgs := append([]interface{}{}, args...)
 
@@ -161,6 +192,7 @@ func (r *Pph23Repository) GetPph23ByID(ctx *fiber.Ctx, params *dtos.GetPph23Para
 	var pph23 dtos.Pph23DetailDTO
 
 	query := `SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	TO_CHAR(m.date_at, 'YYYY-MM-DD') as date_at,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 
