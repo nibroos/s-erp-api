@@ -342,8 +342,8 @@ func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userI
 	}
 	revNo++
 
-	salesOrderNo := GenerateSoNoOnUpdateQuotation(ctx, req, revNo, span)
-	poBuyerNo := GenerateSoNoOnUpdateQuotation(ctx, req, revNo, span)
+	salesOrderNo := GenerateSoNoOnUpdateQuotation(ctx, req, req.SalesOrderNo, revNo, span)
+	poBuyerNo := GenerateSoNoOnUpdateQuotation(ctx, req, req.PoBuyerNo, revNo, span)
 
 	salesOrder := models.SalesOrder{
 		ID:            req.ID,
@@ -449,20 +449,20 @@ func MapUpdateQuoDtsStatus(quoDtsStatusUpdate map[string]interface{}, req dtos.C
 	return params
 }
 
-func GenerateSoNoOnUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, poBuyerNo string, revNo int, span opentracing.Span) string {
+func GenerateSoNoOnUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, salesOrderNo *string, revNo int, span opentracing.Span) string {
 
 	// get before REV-number, full string is SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1 or SURNAME-2001-12-20
 	// check if "REV" string exist (random), if not add "REV-1" else replace REV-1 change the number to increment REV-revNo
-	if !strings.Contains(poBuyerNo, "REV") {
-		poBuyerNo = fmt.Sprintf("%s/REV-1", poBuyerNo)
+	if !strings.Contains(*salesOrderNo, "REV") {
+		*salesOrderNo = fmt.Sprintf("%s/REV-1", *salesOrderNo)
 	} else {
 		// remove after /REV
 		// use split to get the first part of string
-		poBuyerNo = strings.Split(poBuyerNo, "/REV")[0]
-		poBuyerNo = fmt.Sprintf("%s/REV-%d", poBuyerNo, revNo)
+		*salesOrderNo = strings.Split(*salesOrderNo, "/REV")[0]
+		*salesOrderNo = fmt.Sprintf("%s/REV-%d", *salesOrderNo, revNo)
 	}
 
-	return poBuyerNo
+	return *salesOrderNo
 }
 
 func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, orderedNumber int, span opentracing.Span) string {
