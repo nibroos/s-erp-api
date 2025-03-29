@@ -37,7 +37,7 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (c.id)
-					c.id, c.customer_type_id, c.agent_id, c.name, c.code, c.address, c.phone, c.email, c.pic, c.status, c.created_at, c.updated_at, c.deleted_at,
+					c.id, c.customer_type_id, c.agent_id, c.currency_id, c.shortname, c.name, c.code, c.address, c.phone, c.email, c.pic, c.status, c.created_at, c.updated_at, c.deleted_at,
 				ct.name as customer_type_name,
 				ag.name as agent_name,
 
@@ -53,7 +53,7 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (c.id) 
-					c.id, c.customer_type_id, c.agent_id, c.name, c.code, c.address, c.phone, c.email, c.pic, c.status, c.created_at, c.updated_at, c.deleted_at,
+					c.id, c.customer_type_id, c.agent_id, c.currency_id, c.shortname, c.name, c.code, c.address, c.phone, c.email, c.pic, c.status, c.created_at, c.updated_at, c.deleted_at,
 				ct.name as customer_type_name,
 				ag.name as agent_name,
 
@@ -185,7 +185,7 @@ func (r *CustomerRepository) GetCustomerByID(ctx *fiber.Ctx, params *dtos.GetCus
 
 	query := `
 	SELECT 
-		c.id, c.customer_type_id, c.agent_id, c.name, c.code, c.address, c.phone, c.email, c.pic, c.status, c.created_at, c.updated_at, c.deleted_at,
+		c.id, c.customer_type_id, c.agent_id, c.currency_id, c.shortname, c.name, c.code, c.address, c.phone, c.email, c.pic, c.status, c.created_at, c.updated_at, c.deleted_at,
     ct.name as customer_type_name,
     ag.name as agent_name,
     cu.name as created_by_name,

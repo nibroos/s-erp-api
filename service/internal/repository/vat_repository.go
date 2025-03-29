@@ -34,10 +34,91 @@ func (r *VatRepository) GetVats(ctx *fiber.Ctx, filters map[string]string, span 
 	vats := []dtos.VatListDTO{}
 	var total int
 
+	condition := ""
+
+	var args []interface{}
+
+	i := 1
+
+	filterDBColumnKey := []string{
+		"m.name",
+		"m.description",
+		"m.remark",
+	}
+
+	queryGlobal := ""
+
+	if value, ok := filters["global"]; ok && value != "" {
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	filterDateAt := map[string]string{
+		"date_at": "m.date_at",
+	}
+
+	// for key, colDB := range filterDateAt {
+	// 	if value, ok := filters[key]; ok && value != "" {
+	// 		// date before or after
+	// 		// condition += fmt.Sprintf(" AND %s = $%d", value, i)
+	// 		condition += fmt.Sprintf(" AND %s <= $%d", colDB, i)
+	// 		args = append(args, value)
+	// 		i++
+	// 	}
+	// }
+	for key, colDB := range filterDateAt {
+		if value, ok := filters[key]; ok && value != "" {
+			if value < "2022-04-01" {
+				value = "2022-04-01"
+			}
+
+			condition += fmt.Sprintf(" AND %s <= $%d", colDB, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filtersParams := map[string]string{
+		"name":        "m.name",
+		"description": "m.description",
+		"remark":      "m.remark",
+	}
+
+	for key, colDB := range filtersParams {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s ILIKE $%d", colDB, i)
+			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"ids": "m.id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s IN (%d)", valueID, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
 				m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				TO_CHAR(m.date_at, 'YYYY-MM-DD') as date_at,
+
 				vh.multiplier, vh.divider,
         cu.name as created_by_name,
         uu.name as updated_by_name
@@ -50,12 +131,14 @@ func (r *VatRepository) GetVats(ctx *fiber.Ctx, filters map[string]string, span 
 				LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'vats'
+				WHERE g.name = 'vats' ` + queryGlobal + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
         SELECT DISTINCT ON (m.id)
 				m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				TO_CHAR(m.date_at, 'YYYY-MM-DD') as date_at,
+
 				vh.multiplier, vh.divider,
         cu.name as created_by_name,
         uu.name as updated_by_name
@@ -68,33 +151,8 @@ func (r *VatRepository) GetVats(ctx *fiber.Ctx, filters map[string]string, span 
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
 				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'vats'
+				WHERE g.name = 'vats' ` + queryGlobal + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
-
-	var args []interface{}
-
-	i := 1
-	for key, value := range filters {
-		switch key {
-		case "name", "description", "remark":
-			if value != "" {
-				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-				args = append(args, "%"+value+"%")
-				i++
-			}
-		}
-	}
-
-	if filters["ids"] != "" {
-		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
-	}
-	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
-		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
-		i += 3
-	}
 
 	countArgs := append([]interface{}{}, args...)
 
@@ -169,6 +227,8 @@ func (r *VatRepository) GetVatByID(ctx *fiber.Ctx, params *dtos.GetVatParams, sp
 	var vat dtos.VatDetailDTO
 
 	query := `SELECT m.id, m.name, m.num, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	TO_CHAR(m.date_at, 'YYYY-MM-DD') as date_at,
+
 	vh.multiplier, vh.divider,
 	cu.name as created_by_name,
 	uu.name as updated_by_name

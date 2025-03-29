@@ -111,7 +111,6 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	i := 1
 
 	if value, ok := filters["global"]; ok && value != "" {
-
 		queryGlobal = " AND ("
 		for idx, column := range filterDBColumnKey {
 			if idx > 0 {
@@ -378,7 +377,7 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
+					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch, m.is_pph23, m.is_vat,
 					` + cdSelect + `
 
 					m.id as product_id,

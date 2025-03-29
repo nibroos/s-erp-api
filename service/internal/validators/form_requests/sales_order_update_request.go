@@ -28,6 +28,8 @@ func (r *SalesOrderUpdateRequest) Validate(req *dtos.UpdateSalesOrderRequest, ct
 		"shipping_at":       []string{"date:yyyy-MM-dd"},
 		"agree_at":          []string{"date:yyyy-MM-dd"},
 		"due_at":            []string{"date:yyyy-MM-dd"},
+		"is_vat":            []string{"numeric"},
+		"is_pph23":          []string{"numeric"},
 		"so_dts":            []string{"array"},
 		"so_dts.*.item_id":  []string{"required", "exists:products,id"},
 		"so_dts.*.ref_id":   []string{"required"},

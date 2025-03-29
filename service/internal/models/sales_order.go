@@ -15,6 +15,7 @@ type SalesOrder struct {
 	VatID         *uint          `json:"vat_id" gorm:"column:vat_id"`
 	Pph23ID       *uint          `json:"pph23_id" gorm:"column:pph23_id"`
 	BranchID      *uint          `json:"branch_id" gorm:"column:branch_id"`
+	RevNo         *int           `json:"rev_no" gorm:"column:rev_no"`
 	PoBuyerNo     string         `json:"po_buyer_no" gorm:"column:po_buyer_no"`
 	SalesOrderNo  *string        `json:"sales_order_no" gorm:"column:sales_order_no"`
 	Remark        *string        `json:"remark" gorm:"column:remark"`
@@ -24,6 +25,8 @@ type SalesOrder struct {
 	VatPerc       *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	Pph23Perc     *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`
 	MarkupPerc    *float64       `json:"markup_perc" gorm:"column:markup_perc"`
+	IsVat         *int           `json:"is_vat" gorm:"column:is_vat"`
+	IsPph23       *int           `json:"is_pph23" gorm:"column:is_pph23"`
 	DiscAm        *float64       `json:"disc_am" gorm:"column:disc_am"`
 	DiscPerc      *float64       `json:"disc_perc" gorm:"column:disc_perc"`
 	DiscPercAm    *float64       `json:"disc_perc_am" gorm:"column:disc_perc_am"`

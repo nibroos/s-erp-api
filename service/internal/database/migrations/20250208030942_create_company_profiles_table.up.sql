@@ -3,6 +3,8 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS company_profiles (
   id SERIAL PRIMARY KEY,
   parent_id INT,
+  vat_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  pph23_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
   is_primary INT,
   payment_id INT,
   company_name VARCHAR(255) NOT NULL,
@@ -27,6 +29,10 @@ CREATE TABLE IF NOT EXISTS company_profiles (
 );
 
 CREATE INDEX idx_company_profiles_parent_id ON company_profiles (parent_id);
+
+CREATE INDEX idx_company_profiles_vat_id ON company_profiles (vat_id);
+
+CREATE INDEX idx_company_profiles_pph23_id ON company_profiles (pph23_id);
 
 CREATE INDEX idx_company_profiles_payment_id ON company_profiles (payment_id);
 
