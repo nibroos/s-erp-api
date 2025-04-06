@@ -23,4 +23,5 @@ const (
 	PurchaseTypeID = 27
 	RoleID         = 12
 	WarehouseID    = 38
+	TaskID         = 39
 )
