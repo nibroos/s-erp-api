@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS invoice_dp_dts (
   vat_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
   pph23_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
   ref_id INT,
+  ref_dt_id INT,
   product_id INT,
   ref_type TEXT,
   ref_json JSONB,
