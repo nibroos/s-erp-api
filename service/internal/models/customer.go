@@ -9,6 +9,9 @@ type Customer struct {
 	ID             uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	CustomerTypeID *uint          `json:"customer_type_id" gorm:"column:customer_type_id"`
 	AgentID        *uint          `json:"agent_id" gorm:"column:agent_id"`
+	CustomerID     *uint          `json:"customer_id" gorm:"column:customer_id"`
+	CurrencyID     *uint          `json:"currency_id" gorm:"column:currency_id"`
+	Shortname      *string        `json:"shortname" gorm:"column:shortname"`
 	Code           *string        `json:"code" gorm:"column:code"`
 	Name           string         `json:"name" gorm:"column:name"`
 	Address        *string        `json:"address" gorm:"column:address"`

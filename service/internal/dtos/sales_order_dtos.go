@@ -83,7 +83,8 @@ type CreateSalesOrderRequest struct {
 	PaymentID     *uint                `json:"payment_id"`
 	Pph23ID       *uint                `json:"pph23_id"`
 	BranchID      *uint                `json:"branch_id"`
-	PoBuyerNo     string               `json:"po_buyer_no"`
+	RevNo         *int                 `json:"rev_no"`
+	PoBuyerNo     *string              `json:"po_buyer_no"`
 	SalesOrderNo  *string              `json:"sales_order_no"`
 	Remark        *string              `json:"remark"`
 	ShipDest      *string              `json:"ship_dest"`
@@ -92,6 +93,8 @@ type CreateSalesOrderRequest struct {
 	VatPerc       *float64             `json:"vat_perc"`
 	Pph23Perc     *float64             `json:"pph23_perc"`
 	MarkupPerc    *float64             `json:"markup_perc"`
+	IsVat         *int                 `json:"is_vat"`
+	IsPph23       *int                 `json:"is_pph23"`
 	DiscAm        *float64             `json:"disc_am"`
 	DiscPerc      *float64             `json:"disc_perc"`
 	DiscPercAm    *float64             `json:"disc_perc_am"`
@@ -108,6 +111,8 @@ type CreateSalesOrderRequest struct {
 	AgreeAt       *string              `json:"agree_at"`
 	DueAt         *string              `json:"due_at"`
 	SoDts         []CreateSoDtsRequest `json:"so_dts"`
+
+	CustomerCode string `json:"customer_code"`
 }
 
 type UpdateSoDtsRequest struct {
@@ -178,7 +183,8 @@ type UpdateSalesOrderRequest struct {
 	PaymentID     *uint                `json:"payment_id"`
 	Pph23ID       *uint                `json:"pph23_id"`
 	BranchID      *uint                `json:"branch_id"`
-	PoBuyerNo     string               `json:"po_buyer_no"`
+	RevNo         *int                 `json:"rev_no"`
+	PoBuyerNo     *string              `json:"po_buyer_no"`
 	SalesOrderNo  *string              `json:"sales_order_no"`
 	Remark        *string              `json:"remark"`
 	ShipDest      *string              `json:"ship_dest"`
@@ -187,6 +193,8 @@ type UpdateSalesOrderRequest struct {
 	VatPerc       *float64             `json:"vat_perc"`
 	Pph23Perc     *float64             `json:"pph23_perc"`
 	MarkupPerc    *float64             `json:"markup_perc"`
+	IsVat         *int                 `json:"is_vat"`
+	IsPph23       *int                 `json:"is_pph23"`
 	DiscAm        *float64             `json:"disc_am"`
 	DiscPerc      *float64             `json:"disc_perc"`
 	DiscPercAm    *float64             `json:"disc_perc_am"`
@@ -203,6 +211,8 @@ type UpdateSalesOrderRequest struct {
 	AgreeAt       *string              `json:"agree_at"`
 	DueAt         *string              `json:"due_at"`
 	SoDts         []UpdateSoDtsRequest `json:"so_dts"`
+
+	CustomerCode string `json:"customer_code"`
 }
 
 type GetSalesOrderByIDRequest struct {
@@ -312,6 +322,7 @@ type SalesOrderDetailDTO struct {
 	PoBuyerNo     string   `json:"po_buyer_no" db:"po_buyer_no"`
 	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	Remark        *string  `json:"remark" db:"remark"`
+	RevNo         *int     `json:"rev_no" db:"rev_no"`
 	Status        string   `json:"status" db:"status"`
 	ExchangeRate  float64  `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
@@ -606,6 +617,8 @@ type RefIndexQuoDtListDTO struct {
 	HeadDiscPerc   *float64 `json:"head_disc_perc" db:"head_disc_perc"`
 	HeadMarkupPerc *float64 `json:"head_markup_perc" db:"head_markup_perc"`
 	HeadRemark     *string  `json:"head_remark" db:"head_remark"`
+	RefNum         *string  `json:"ref_num" db:"ref_num"`
+	HeadIsVat      *int     `json:"head_is_vat" db:"head_is_vat"`
 	ExchangeRate   *float64 `json:"exchange_rate" db:"exchange_rate"`
 	QuoNo          *string  `json:"quo_no" db:"quo_no"`
 	CustomerName   *string  `json:"customer_name" db:"customer_name"`

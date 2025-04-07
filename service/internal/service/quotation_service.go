@@ -42,7 +42,9 @@ func (s *QuotationService) GetQuotations(ctx *fiber.Ctx, filters map[string]stri
 func (s *QuotationService) CreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Quotation, *gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuotation", opentracing.ChildOf(span.Context()))
 
-	quotation, err := s.MapCreateQuotation(ctx, req, userID, branchID, childSpan)
+	customerQuoCreatedThisMonthNumber, err := s.repo.GetCustomerQuotationCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+
+	quotation, err := utils.MapCreateQuotation(ctx, req, userID, branchID, customerQuoCreatedThisMonthNumber, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, tx, err
@@ -343,18 +345,6 @@ func (s *QuotationService) GetUpdatedQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *go
 		return nil, err
 	}
 	return quoDts, nil
-}
-
-func (s *QuotationService) MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, span opentracing.Span) (models.Quotation, error) {
-	childSpan := opentracing.StartSpan("QuotationService-MapCreateQuotation", opentracing.ChildOf(span.Context()))
-
-	quotationsModel, err := utils.MapCreateQuotation(ctx, req, userID, branchID, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		return quotationsModel, err
-	}
-
-	return quotationsModel, nil
 }
 
 func (s *QuotationService) MapCreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, createdQuotation *models.Quotation, userID uint, span opentracing.Span) ([]models.QuoDt, error) {

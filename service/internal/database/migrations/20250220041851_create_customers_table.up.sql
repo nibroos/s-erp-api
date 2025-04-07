@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS customers (
   id SERIAL PRIMARY KEY,
   customer_type_id INT NOT NULL REFERENCES mix_values(id) ON DELETE RESTRICT,
   agent_id INT REFERENCES customers(id) ON DELETE RESTRICT,
+  currency_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  shortname TEXT,
   code TEXT,
   name VARCHAR(255) NOT NULL,
   address TEXT,
@@ -22,5 +24,7 @@ CREATE TABLE IF NOT EXISTS customers (
 CREATE INDEX idx_customers_customer_type_id ON customers(customer_type_id);
 
 CREATE INDEX idx_customers_agent_id ON customers(agent_id);
+
+CREATE INDEX idx_customers_currency_id ON customers(currency_id);
 
 COMMIT;

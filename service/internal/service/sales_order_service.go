@@ -42,7 +42,9 @@ func (s *SalesOrderService) GetSalesOrders(ctx *fiber.Ctx, filters map[string]st
 func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.SalesOrder, *gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-CreateSalesOrder", opentracing.ChildOf(span.Context()))
 
-	salesOrder, err := s.MapCreateSalesOrder(ctx, req, userID, branchID, childSpan)
+	customerSoCreatedThisMonthNumber, err := s.repo.GetCustomerSalesOrderCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+
+	salesOrder, err := utils.MapCreateSalesOrder(ctx, req, userID, branchID, customerSoCreatedThisMonthNumber, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, tx, err
@@ -381,18 +383,6 @@ func (s *SalesOrderService) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *g
 		return nil, err
 	}
 	return soDts, nil
-}
-
-func (s *SalesOrderService) MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userID uint, branchID uint, span opentracing.Span) (models.SalesOrder, error) {
-	childSpan := opentracing.StartSpan("SalesOrderService-MapCreateSalesOrder", opentracing.ChildOf(span.Context()))
-
-	quotationsModel, err := utils.MapCreateSalesOrder(ctx, req, userID, branchID, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		return quotationsModel, err
-	}
-
-	return quotationsModel, nil
 }
 
 func (s *SalesOrderService) MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, error) {

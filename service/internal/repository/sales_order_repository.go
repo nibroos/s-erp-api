@@ -311,6 +311,7 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 				TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
 				TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
 				so.vat_perc, so.disc_am, so.disc_perc, so.disc_perc_am, so.disc_final, so.disc_type, so.qty_out, so.si_total_am, so.sa_total_am,
+				so.rev_no,
 
 				cu.name as created_by_name,
 				uu.name as updated_by_name
@@ -1114,6 +1115,8 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 					q.disc_perc as head_disc_perc,
 					q.markup_perc as head_markup_perc,
 					q.remark as head_remark,
+					q.is_vat as head_is_vat,
+					q.quo_no as ref_num,
 
 					q.quo_no,
 					q.due_at,
@@ -1558,4 +1561,30 @@ func (r *SalesOrderRepository) GetQuotationIDBySalesOrderID(ctx *fiber.Ctx, tx *
 	}
 
 	return quotationID, nil
+}
+
+// GetCustomerSalesOrderCreatedThisMonth
+func (r *SalesOrderRepository) GetCustomerSalesOrderCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetCustomerSalesOrderCreatedThisMonth", opentracing.ChildOf(span.Context()))
+
+	var total int
+
+	baseQuery := `
+		FROM (
+			SELECT COUNT(*) as total
+			FROM sales_orders so
+			WHERE so.customer_id = $1 AND so.created_at >= date_trunc('month', CURRENT_DATE)
+			AND so.deleted_at IS NULL
+		) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	err := tx.Raw(query, customerID).Scan(&total).Error
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return 0, err
+	}
+
+	return total, nil
 }
