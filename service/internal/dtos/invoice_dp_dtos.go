@@ -6,6 +6,7 @@ type GetInvoiceDpsRequest struct {
 	Global         *string `json:"global"`
 	InvoiceNo      *string `json:"invoice_no"`
 	Remark         *string `json:"remark"`
+	Status         *string `json:"status"`
 	CustomerID     *int    `json:"customer_id"`
 	CurrencyID     *int    `json:"currency_id"`
 	PaymentTermID  *int    `json:"payment_term_id"`
@@ -20,41 +21,31 @@ type GetInvoiceDpsRequest struct {
 	OrderDirection *string `json:"order_direction" default:"asc"`
 }
 
-type CreateInvoiceDpDtBomRequest struct {
-	ProductUuid string   `json:"product_uuid"`
-	ProductID   *uint    `json:"product_id"`
-	ItemUnitID  *uint    `json:"item_unit_id"`
-	Remark      *string  `json:"remark"`
-	Qty         *float64 `json:"qty"`
-	Price       *float64 `json:"price"`
-	Subtotal    *float64 `json:"subtotal"`
-}
-
 type CreateInvoiceDpDtRequest struct {
-	ProductUuid              string                        `json:"product_uuid"`
-	ItemUnitID               *uint                         `json:"item_unit_id"`
-	VatID                    *uint                         `json:"vat_id"`
-	Pph23ID                  *uint                         `json:"pph23_id"`
-	RefID                    *uint                         `json:"ref_id"`
-	ProductID                *uint                         `json:"product_id"`
-	RefType                  *string                       `json:"ref_type"`
-	ProductType              *string                       `json:"product_type"`
-	Remark                   *string                       `json:"remark"`
-	DpPercentage             *float64                      `json:"dp_percentage"`
-	IsVat                    *uint                         `json:"is_vat"`
-	IsPph23                  *uint                         `json:"is_pph23"`
-	Qty                      *float64                      `json:"qty"`
-	Price                    *float64                      `json:"price"`
-	Subtotal                 *float64                      `json:"subtotal"`
-	DiscountAmount           *float64                      `json:"discount_amount"`
-	DiscountPercentage       *float64                      `json:"discount_percentage"`
-	DiscountPercentageNum    *float64                      `json:"discount_percentage_num"`
-	DiscountPercentageAmount *float64                      `json:"discount_percentage_amount"`
-	DiscountFinal            *float64                      `json:"discount_final"`
-	DiscountType             *string                       `json:"discount_type"`
-	TotalAmount              *float64                      `json:"total_amount"`
-	TotalDp                  *float64                      `json:"total_dp"`
-	InvoiceDpDtBoms          []CreateInvoiceDpDtBomRequest `json:"invoice_dp_dt_boms"`
+	ProductUuid              string   `json:"product_uuid"`
+	ItemUnitID               *uint    `json:"item_unit_id"`
+	VatID                    *uint    `json:"vat_id"`
+	Pph23ID                  *uint    `json:"pph23_id"`
+	RefID                    *uint    `json:"ref_id"`
+	RefDtID                  *uint    `json:"ref_dt_id"`
+	ProductID                *uint    `json:"product_id"`
+	RefType                  *string  `json:"ref_type"`
+	ProductType              *string  `json:"product_type"`
+	Remark                   *string  `json:"remark"`
+	DpPercentage             *float64 `json:"dp_percentage"`
+	IsVat                    *uint    `json:"is_vat"`
+	IsPph23                  *uint    `json:"is_pph23"`
+	Qty                      *float64 `json:"qty"`
+	Price                    *float64 `json:"price"`
+	Subtotal                 *float64 `json:"subtotal"`
+	DiscountAmount           *float64 `json:"discount_amount"`
+	DiscountPercentage       *float64 `json:"discount_percentage"`
+	DiscountPercentageNum    *float64 `json:"discount_percentage_num"`
+	DiscountPercentageAmount *float64 `json:"discount_percentage_amount"`
+	DiscountFinal            *float64 `json:"discount_final"`
+	DiscountType             *string  `json:"discount_type"`
+	TotalAmount              *float64 `json:"total_amount"`
+	TotalDp                  *float64 `json:"total_dp"`
 }
 
 type CreateInvoiceDpRequest struct {
@@ -68,6 +59,7 @@ type CreateInvoiceDpRequest struct {
 	InvoiceDate              *string                    `json:"invoice_date"`
 	ExchangeRate             *float64                   `json:"exchange_rate"`
 	Remark                   *string                    `json:"remark"`
+	Status                   *string                    `json:"status"`
 	Pph23Percentage          *float64                   `json:"pph23_percentage"`
 	VatPercentage            *float64                   `json:"vat_percentage"`
 	DiscountAmount           *float64                   `json:"discount_amount"`
@@ -77,6 +69,7 @@ type CreateInvoiceDpRequest struct {
 	DiscountType             *string                    `json:"discount_type"`
 	DpPercentage             *float64                   `json:"dp_percentage"`
 	TotalAmountProducts      *float64                   `json:"total_amount_products"`
+	TotalDpProducts          *float64                   `json:"total_dp_products"`
 	Subtotal                 *float64                   `json:"subtotal"`
 	TotalQty                 *float64                   `json:"total_qty"`
 	TotalDiscount            *float64                   `json:"total_discount"`
@@ -86,49 +79,34 @@ type CreateInvoiceDpRequest struct {
 	InvoiceDpDts             []CreateInvoiceDpDtRequest `json:"invoice_dp_dts"`
 }
 
-type UpdateInvoiceDpDtBomRequest struct {
-	ID               *uint    `json:"id"`
-	InvoiceDpDtBomID *uint    `json:"invoice_dp_dt_bom_id"`
-	InvoiceDpID      *uint    `json:"invoice_dp_id"`
-	InvoiceDpDtID    *uint    `json:"invoice_dp_dt_id"`
-	ProductUuid      *string  `json:"product_uuid"`
-	ProductID        *uint    `json:"product_id"`
-	BomID            *uint    `json:"bom_id"`
-	ItemUnitID       *uint    `json:"item_unit_id"`
-	Remark           *string  `json:"remark"`
-	Qty              *float64 `json:"qty"`
-	Price            *float64 `json:"price"`
-	Subtotal         *float64 `json:"subtotal"`
-}
-
 type UpdateInvoiceDpDtRequest struct {
-	ID                       *uint                          `json:"id"`
-	InvoiceDpDtID            *uint                          `json:"invoice_dp_dt_id"`
-	ProductUuid              string                         `json:"product_uuid"`
-	InvoiceDpID              *uint                          `json:"invoice_dp_id"`
-	ItemUnitID               *uint                          `json:"item_unit_id"`
-	VatID                    *uint                          `json:"vat_id"`
-	Pph23ID                  *uint                          `json:"pph23_id"`
-	RefID                    *uint                          `json:"ref_id"`
-	ProductID                *uint                          `json:"product_id"`
-	RefType                  *string                        `json:"ref_type"`
-	ProductType              *string                        `json:"product_type"`
-	Remark                   *string                        `json:"remark"`
-	DpPercentage             *float64                       `json:"dp_percentage"`
-	IsVat                    *uint                          `json:"is_vat"`
-	IsPph23                  *uint                          `json:"is_pph23"`
-	Qty                      *float64                       `json:"qty"`
-	Price                    *float64                       `json:"price"`
-	Subtotal                 *float64                       `json:"subtotal"`
-	DiscountAmount           *float64                       `json:"discount_amount"`
-	DiscountPercentage       *float64                       `json:"discount_percentage"`
-	DiscountPercentageNum    *float64                       `json:"discount_percentage_num"`
-	DiscountPercentageAmount *float64                       `json:"discount_percentage_amount"`
-	DiscountFinal            *float64                       `json:"discount_final"`
-	DiscountType             *string                        `json:"discount_type"`
-	TotalAmount              *float64                       `json:"total_amount"`
-	TotalDp                  *float64                       `json:"total_dp"`
-	InvoiceDpDtBoms          []*UpdateInvoiceDpDtBomRequest `json:"invoice_dp_dt_boms" gorm:"-"`
+	ID                       *uint    `json:"id"`
+	InvoiceDpDtID            *uint    `json:"invoice_dp_dt_id"`
+	ProductUuid              string   `json:"product_uuid"`
+	InvoiceDpID              *uint    `json:"invoice_dp_id"`
+	ItemUnitID               *uint    `json:"item_unit_id"`
+	VatID                    *uint    `json:"vat_id"`
+	Pph23ID                  *uint    `json:"pph23_id"`
+	RefID                    *uint    `json:"ref_id"`
+	RefDtID                  *uint    `json:"ref_dt_id"`
+	ProductID                *uint    `json:"product_id"`
+	RefType                  *string  `json:"ref_type"`
+	ProductType              *string  `json:"product_type"`
+	Remark                   *string  `json:"remark"`
+	DpPercentage             *float64 `json:"dp_percentage"`
+	IsVat                    *uint    `json:"is_vat"`
+	IsPph23                  *uint    `json:"is_pph23"`
+	Qty                      *float64 `json:"qty"`
+	Price                    *float64 `json:"price"`
+	Subtotal                 *float64 `json:"subtotal"`
+	DiscountAmount           *float64 `json:"discount_amount"`
+	DiscountPercentage       *float64 `json:"discount_percentage"`
+	DiscountPercentageNum    *float64 `json:"discount_percentage_num"`
+	DiscountPercentageAmount *float64 `json:"discount_percentage_amount"`
+	DiscountFinal            *float64 `json:"discount_final"`
+	DiscountType             *string  `json:"discount_type"`
+	TotalAmount              *float64 `json:"total_amount"`
+	TotalDp                  *float64 `json:"total_dp"`
 }
 
 type UpdateInvoiceDpRequest struct {
@@ -144,6 +122,7 @@ type UpdateInvoiceDpRequest struct {
 	InvoiceDate              *string                    `json:"invoice_date"`
 	ExchangeRate             *float64                   `json:"exchange_rate"`
 	Remark                   *string                    `json:"remark"`
+	Status                   *string                    `json:"status"`
 	Pph23Percentage          *float64                   `json:"pph23_percentage"`
 	VatPercentage            *float64                   `json:"vat_percentage"`
 	DiscountAmount           *float64                   `json:"discount_amount"`
@@ -153,6 +132,7 @@ type UpdateInvoiceDpRequest struct {
 	DiscountType             *string                    `json:"discount_type"`
 	DpPercentage             *float64                   `json:"dp_percentage"`
 	TotalAmountProducts      *float64                   `json:"total_amount_products"`
+	TotalDpProducts          *float64                   `json:"total_dp_products"`
 	Subtotal                 *float64                   `json:"subtotal"`
 	TotalQty                 *float64                   `json:"total_qty"`
 	TotalDiscount            *float64                   `json:"total_discount"`
@@ -201,6 +181,7 @@ type InvoiceDpListDTO struct {
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
 	Remark                   *string  `json:"remark" db:"remark"`
+	Status                   *string  `json:"status" db:"status"`
 	ExchangeRate             *float64 `json:"exchange_rate" db:"exchange_rate"`
 	VatPercentage            *float64 `json:"vat_percentage" db:"vat_percentage"`
 	Pph23Percentage          *float64 `json:"pph23_percentage" db:"pph23_percentage"`
@@ -211,6 +192,7 @@ type InvoiceDpListDTO struct {
 	DiscountType             *string  `json:"discount_type" db:"discount_type"`
 	DpPercentage             *float64 `json:"dp_percentage" db:"dp_percentage"`
 	TotalAmountProducts      *float64 `json:"total_amount_products" db:"total_amount_products"`
+	TotalDpProducts          *float64 `json:"total_dp_products" db:"total_dp_products"`
 	TotalQty                 *float64 `json:"total_qty" db:"total_qty"`
 	Subtotal                 *float64 `json:"subtotal" db:"subtotal"`
 	TotalDiscount            *float64 `json:"total_discount" db:"total_discount"`
@@ -226,7 +208,6 @@ type InvoiceDpListDTO struct {
 	UpdatedAt                *string  `json:"updated_at" db:"updated_at"`
 	DeleteAt                 *string  `json:"deleted_at" db:"deleted_at"`
 
-	// Additional fields for joins
 	CurrencyName      *string `json:"currency_name" db:"currency_name"`
 	CustomerName      *string `json:"customer_name" db:"customer_name"`
 	PaymentTermName   *string `json:"payment_term_name" db:"payment_term_name"`
@@ -248,6 +229,7 @@ type InvoiceDpDetailDTO struct {
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
 	Remark                   *string  `json:"remark" db:"remark"`
+	Status                   *string  `json:"status" db:"status"`
 	ExchangeRate             float64  `json:"exchange_rate" db:"exchange_rate"`
 	VatPercentage            *float64 `json:"vat_percentage" db:"vat_percentage"`
 	Pph23Percentage          *float64 `json:"pph23_percentage" db:"pph23_percentage"`
@@ -258,6 +240,7 @@ type InvoiceDpDetailDTO struct {
 	DiscountType             *string  `json:"discount_type" db:"discount_type"`
 	DpPercentage             *float64 `json:"dp_percentage" db:"dp_percentage"`
 	TotalAmountProducts      *float64 `json:"total_amount_products" db:"total_amount_products"`
+	TotalDpProducts          *float64 `json:"total_dp_products" db:"total_dp_products"`
 	TotalQty                 float64  `json:"total_qty" db:"total_qty"`
 	Subtotal                 float64  `json:"subtotal" db:"subtotal"`
 	TotalDiscount            float64  `json:"total_discount" db:"total_discount"`
@@ -286,6 +269,7 @@ type InvoiceDpDtListDTO struct {
 	VatID                    *uint    `json:"vat_id" db:"vat_id"`
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	RefID                    *uint    `json:"ref_id" db:"ref_id"`
+	RefDtID                  *uint    `json:"ref_dt_id" db:"ref_dt_id"`
 	ProductID                *uint    `json:"product_id" db:"product_id"`
 	ItemSubGroupID           *uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
 	ItemGroupID              *uint    `json:"item_group_id" db:"item_group_id"`
@@ -301,6 +285,8 @@ type InvoiceDpDtListDTO struct {
 	DpPercentage             *float64 `json:"dp_percentage" db:"dp_percentage"`
 	IsVat                    *uint    `json:"is_vat" db:"is_vat"`
 	IsPph23                  *uint    `json:"is_pph23" db:"is_pph23"`
+	VatName                  *string  `json:"vat_name" db:"vat_name"`
+	Pph23Name                *string  `json:"pph23_name" db:"pph23_name"`
 	Qty                      *float64 `json:"qty" db:"qty"`
 	Price                    *float64 `json:"price" db:"price"`
 	Subtotal                 *float64 `json:"subtotal" db:"subtotal"`
@@ -322,9 +308,9 @@ type InvoiceDpDtListDTO struct {
 	UpdatedAt     *string   `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string   `json:"deleted_at" db:"deleted_at"`
 
-	InvoiceDpDtBoms []InvoiceDpDtBomListDTO `json:"invoice_dp_dt_boms"`
-
 	RefNum *string `json:"ref_num" db:"ref_num"`
+
+	SoDtsBoms []SalesOrderSoDtBomListDTO `json:"invoice_dp_dt_boms"`
 }
 
 type InvoiceDpDtListUpdateDTO struct {
@@ -336,6 +322,7 @@ type InvoiceDpDtListUpdateDTO struct {
 	VatID                    *uint    `json:"vat_id" db:"vat_id"`
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	RefID                    *uint    `json:"ref_id" db:"ref_id"`
+	RefDtID                  *uint    `json:"ref_dt_id"`
 	ProductID                *uint    `json:"product_id" db:"product_id"`
 	ItemSubGroupID           *uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
 	ItemGroupID              *uint    `json:"item_group_id" db:"item_group_id"`
@@ -371,43 +358,6 @@ type InvoiceDpDtListUpdateDTO struct {
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt     *string   `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string   `json:"deleted_at" db:"deleted_at"`
-}
-
-type InvoiceDpDtBomListDTO struct {
-	ID                *uint    `json:"id" db:"id"`
-	InvoiceDpDtBomID  *uint    `json:"invoice_dp_dt_bom_id" db:"invoice_dp_dt_bom_id"`
-	InvoiceDpID       *uint    `json:"invoice_dp_id" db:"invoice_dp_id"`
-	InvoiceDpDtID     *uint    `json:"invoice_dp_dt_id" db:"invoice_dp_dt_id"`
-	BomID             *uint    `json:"bom_id" db:"bom_id"`
-	ProductID         uint     `json:"product_id" db:"product_id"`
-	ProductUuid       string   `json:"product_uuid" db:"product_uuid"`
-	ItemID            *uint    `json:"item_id" db:"item_id"`
-	ItemSubGroupID    *uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
-	ItemGroupID       *uint    `json:"item_group_id" db:"item_group_id"`
-	ItemSubGroupName  *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
-	ItemGroupName     *string  `json:"item_group_name" db:"item_group_name"`
-	ItemName          *string  `json:"item_name" db:"item_name"`
-	ItemCode          *string  `json:"item_code" db:"item_code"`
-	ItemBarcode       *string  `json:"item_barcode" db:"item_barcode"`
-	ItemSku           *string  `json:"item_sku" db:"item_sku"`
-	ItemFactoryCode   *string  `json:"item_factory_code" db:"item_factory_code"`
-	ItemSpecification *string  `json:"item_specification" db:"item_specification"`
-	ItemQtyStock      *string  `json:"item_qty_stock" db:"item_qty_stock"`
-	UnitName          *string  `json:"unit_name" db:"unit_name"`
-	ItemUnitID        *uint    `json:"item_unit_id" db:"item_unit_id"`
-	Remark            *string  `json:"remark" db:"remark"`
-	Qty               *float64 `json:"qty" db:"qty"`
-	Price             *float64 `json:"price" db:"price"`
-	Subtotal          *float64 `json:"subtotal" db:"subtotal"`
-
-	CreatedByID   *uint     `json:"created_by_id" db:"created_by_id"`
-	UpdatedByID   *uint     `json:"updated_by_id" db:"updated_by_id"`
-	DeletedByID   *uint     `json:"deleted_by_id" db:"deleted_by_id"`
-	CreatedByName *string   `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName *string   `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt     time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt     *string   `json:"updated_at" db:"updated_at"`
-	DeletedAt     *string   `json:"deleted_at" db:"deleted_at"`
 }
 
 type GetInvoiceDpsResult struct {
@@ -462,6 +412,8 @@ type RefSalesOrderDtListDTO struct {
 	Remark           *string   `json:"remark" db:"remark"`
 	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
 	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
+	VatName          *string   `json:"vat_name" db:"vat_name"`
+	Pph23Name        *string   `json:"pph23_name" db:"pph23_name"`
 	Pph23Perc        *float64  `json:"pph23_perc" db:"pph23_perc"`
 	Pph23PercAm      *float64  `json:"pph23_perc_am" db:"pph23_perc_am"`
 	MarkupPerc       *float64  `json:"markup_perc" db:"markup_perc"`

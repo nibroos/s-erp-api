@@ -17,6 +17,7 @@ type InvoiceDp struct {
 	InvoiceDate              *string        `json:"invoice_date" gorm:"column:invoice_date"`
 	ExchangeRate             *float64       `json:"exchange_rate" gorm:"column:exchange_rate"`
 	Remark                   *string        `json:"remark" gorm:"column:remark"`
+	Status                   *string        `json:"status" gorm:"column:status"`
 	Pph23Percentage          *float64       `json:"pph23_percentage" gorm:"column:pph23_percentage"`
 	VatPercentage            *float64       `json:"vat_percentage" gorm:"column:vat_percentage"`
 	DiscountAmount           *float64       `json:"discount_amount" gorm:"column:discount_amount"`
@@ -27,6 +28,7 @@ type InvoiceDp struct {
 	DpPercentage             *float64       `json:"dp_percentage" gorm:"column:dp_percentage"`
 	Subtotal                 *float64       `json:"subtotal" gorm:"column:subtotal"`
 	TotalAmountProducts      *float64       `json:"total_amount_products" gorm:"column:total_amount_products"`
+	TotalDpProducts          *float64       `json:"total_dp_products" gorm:"column:total_dp_products"`
 	TotalQty                 *float64       `json:"total_qty" gorm:"column:total_qty"`
 	TotalDiscount            *float64       `json:"total_discount" gorm:"column:total_discount"`
 	TotalPph23               *float64       `json:"total_pph23" gorm:"column:total_pph23"`

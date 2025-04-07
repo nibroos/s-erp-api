@@ -10,80 +10,8 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
-func MapFilterInvoiceDpDtBomsToInvoiceDpDts(invoiceDpDtBoms []dtos.InvoiceDpDtBomListDTO, invoiceDpDts []dtos.InvoiceDpDtListDTO) []dtos.InvoiceDpDtListDTO {
-	combinedInvoiceDpDts := []dtos.InvoiceDpDtListDTO{}
-
-	for _, invoiceDpDt := range invoiceDpDts {
-		newInvoiceDpDtBoms := make([]dtos.InvoiceDpDtBomListDTO, 0)
-		for _, invoiceDpDtBom := range invoiceDpDtBoms {
-			if *invoiceDpDtBom.InvoiceDpDtID == *invoiceDpDt.ID {
-				invoiceDpDtBoms = append(invoiceDpDtBoms, invoiceDpDtBom)
-				newInvoiceDpDtBoms = append(newInvoiceDpDtBoms, invoiceDpDtBom)
-			}
-		}
-
-		invoiceDpDt.InvoiceDpDtBoms = newInvoiceDpDtBoms
-		combinedInvoiceDpDts = append(combinedInvoiceDpDts, invoiceDpDt)
-	}
-
-	return combinedInvoiceDpDts
-}
-
-func MapFilterUpdateInvoiceDpDtBomsToInvoiceDpDts(ctx *fiber.Ctx, invoiceDpDts []dtos.InvoiceDpDtListUpdateDTO, req dtos.UpdateInvoiceDpRequest, invoiceDpID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
-	childSpan := span.Tracer().StartSpan("MapFilterUpdateInvoiceDpDtBomsToInvoiceDpDts", opentracing.ChildOf(span.Context()))
-
-	bulkCreateInvoiceDpDtBoms := []map[string]interface{}{}
-
-	bulkUpdateInvoiceDpDtBoms := []map[string]interface{}{}
-
-	invoiceDpDtBomIDs := []uint{}
-
-	claims := GetClaims(ctx, childSpan)
-	userID := uint(claims["user_id"].(float64))
-
-	for _, reqInvoiceDpDt := range req.InvoiceDpDts {
-		for _, reqInvoiceDpDtBom := range reqInvoiceDpDt.InvoiceDpDtBoms {
-			for _, invoiceDpDt := range invoiceDpDts {
-				if *reqInvoiceDpDtBom.ProductUuid == *invoiceDpDt.ProductUuid {
-					invoiceDpDtBomID := uint(0)
-					if reqInvoiceDpDtBom.InvoiceDpDtBomID != nil {
-						invoiceDpDtBomID = *reqInvoiceDpDtBom.InvoiceDpDtBomID
-					}
-					newInvoiceDpDtBom := map[string]interface{}{
-						"id":               invoiceDpDtBomID,
-						"product_uuid":     reqInvoiceDpDtBom.ProductUuid,
-						"invoice_dp_id":    invoiceDpID,
-						"invoice_dp_dt_id": invoiceDpDt.InvoiceDpDtID,
-						"product_id":       reqInvoiceDpDtBom.ProductID,
-						"bom_id":           reqInvoiceDpDtBom.BomID,
-						"item_unit_id":     reqInvoiceDpDtBom.ItemUnitID,
-						"remark":           reqInvoiceDpDtBom.Remark,
-						"qty":              reqInvoiceDpDtBom.Qty,
-						"price":            reqInvoiceDpDtBom.Price,
-						"subtotal":         reqInvoiceDpDtBom.Subtotal,
-					}
-
-					if reqInvoiceDpDtBom.InvoiceDpDtBomID == nil {
-						newInvoiceDpDtBom["created_by_id"] = userID
-						newInvoiceDpDtBom["created_at"] = time.Now()
-						bulkCreateInvoiceDpDtBoms = append(bulkCreateInvoiceDpDtBoms, newInvoiceDpDtBom)
-					} else {
-						newInvoiceDpDtBom["updated_by_id"] = userID
-						newInvoiceDpDtBom["updated_at"] = time.Now()
-						bulkUpdateInvoiceDpDtBoms = append(bulkUpdateInvoiceDpDtBoms, newInvoiceDpDtBom)
-						invoiceDpDtBomIDs = append(invoiceDpDtBomIDs, *reqInvoiceDpDtBom.InvoiceDpDtBomID)
-					}
-				}
-			}
-		}
-	}
-
-	return bulkCreateInvoiceDpDtBoms, bulkUpdateInvoiceDpDtBoms, invoiceDpDtBomIDs, nil
-}
-
-func GetInvoiceDpIDs(req dtos.UpdateInvoiceDpRequest) ([]*uint, []*uint, []*uint, []*uint) {
+func GetInvoiceDpIDs(req dtos.UpdateInvoiceDpRequest) ([]*uint, []*uint, []*uint) {
 	invoiceDpDtIDs := []*uint{}
-	invoiceDpDtBomIDs := []*uint{}
 	productIDs := []*uint{}
 	itemUnitIDs := []*uint{}
 
@@ -91,17 +19,9 @@ func GetInvoiceDpIDs(req dtos.UpdateInvoiceDpRequest) ([]*uint, []*uint, []*uint
 		if reqInvoiceDpDt.InvoiceDpDtID != nil && *reqInvoiceDpDt.InvoiceDpDtID > 0 {
 			invoiceDpDtIDs = append(invoiceDpDtIDs, reqInvoiceDpDt.InvoiceDpDtID)
 		}
-
-		for _, reqInvoiceDpDtBom := range reqInvoiceDpDt.InvoiceDpDtBoms {
-			if reqInvoiceDpDtBom.InvoiceDpDtBomID != nil && *reqInvoiceDpDtBom.InvoiceDpDtBomID > 0 {
-				invoiceDpDtBomIDs = append(invoiceDpDtBomIDs, reqInvoiceDpDtBom.InvoiceDpDtBomID)
-				productIDs = append(productIDs, reqInvoiceDpDtBom.ProductID)
-				itemUnitIDs = append(itemUnitIDs, reqInvoiceDpDtBom.ItemUnitID)
-			}
-		}
 	}
 
-	return invoiceDpDtIDs, invoiceDpDtBomIDs, productIDs, itemUnitIDs
+	return invoiceDpDtIDs, productIDs, itemUnitIDs
 }
 
 func GetLockInvoiceDpSalesOrderIDs(req dtos.CreateInvoiceDpRequest) []*uint {
@@ -133,6 +53,7 @@ func MapCreateInvoiceDpDts(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, crea
 			VatID:                    invoiceDpDt.VatID,
 			Pph23ID:                  invoiceDpDt.Pph23ID,
 			RefID:                    invoiceDpDt.RefID,
+			RefDtID:                  invoiceDpDt.RefDtID,
 			ProductID:                invoiceDpDt.ProductID,
 			RefType:                  invoiceDpDt.RefType,
 			ProductType:              invoiceDpDt.ProductType,
@@ -161,36 +82,6 @@ func MapCreateInvoiceDpDts(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, crea
 	return invoiceDpDtsModel, nil
 }
 
-func MapCreateInvoiceDpDtBoms(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, createdInvoiceDpDts []models.InvoiceDpDt, userID uint, span opentracing.Span) []map[string]interface{} {
-	invoiceDpDtBomsModel := make([]map[string]interface{}, 0)
-	productJSON := "{}"
-
-	for _, reqInvoiceDpDt := range req.InvoiceDpDts {
-		for _, reqInvoiceDpDtBom := range reqInvoiceDpDt.InvoiceDpDtBoms {
-			for _, createdInvoiceDpDt := range createdInvoiceDpDts {
-				if reqInvoiceDpDtBom.ProductUuid == createdInvoiceDpDt.ProductUuid {
-					invoiceDpDtBomsModel = append(invoiceDpDtBomsModel, map[string]interface{}{
-						"id":               0,
-						"product_uuid":     reqInvoiceDpDtBom.ProductUuid,
-						"invoice_dp_id":    createdInvoiceDpDt.InvoiceDpID,
-						"invoice_dp_dt_id": createdInvoiceDpDt.ID,
-						"product_id":       reqInvoiceDpDtBom.ProductID,
-						"item_unit_id":     reqInvoiceDpDtBom.ItemUnitID,
-						"remark":           reqInvoiceDpDtBom.Remark,
-						"qty":              reqInvoiceDpDtBom.Qty,
-						"price":            reqInvoiceDpDtBom.Price,
-						"subtotal":         reqInvoiceDpDtBom.Subtotal,
-						"product_json":     &productJSON,
-						"created_by_id":    userID,
-					})
-				}
-			}
-		}
-	}
-
-	return invoiceDpDtBomsModel
-}
-
 func MapUpdateInvoiceDpDts(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, updatedInvoiceDp *models.InvoiceDp, userID uint, span opentracing.Span) ([]models.InvoiceDpDt, error) {
 	invoiceDpDtsModel := []models.InvoiceDpDt{}
 
@@ -214,6 +105,7 @@ func MapUpdateInvoiceDpDts(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, upda
 			VatID:                    reqInvoiceDpDt.VatID,
 			Pph23ID:                  reqInvoiceDpDt.Pph23ID,
 			RefID:                    reqInvoiceDpDt.RefID,
+			RefDtID:                  reqInvoiceDpDt.RefDtID,
 			ProductID:                reqInvoiceDpDt.ProductID,
 			RefType:                  reqInvoiceDpDt.RefType,
 			ProductType:              reqInvoiceDpDt.ProductType,
@@ -263,6 +155,7 @@ func MapCreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, userID 
 		InvoiceDate:              req.InvoiceDate,
 		ExchangeRate:             req.ExchangeRate,
 		Remark:                   req.Remark,
+		Status:                   req.Status,
 		Pph23Percentage:          req.Pph23Percentage,
 		VatPercentage:            req.VatPercentage,
 		DiscountAmount:           req.DiscountAmount,
@@ -297,6 +190,7 @@ func MapUpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, userID 
 		InvoiceDate:              req.InvoiceDate,
 		ExchangeRate:             req.ExchangeRate,
 		Remark:                   req.Remark,
+		Status:                   req.Status,
 		Pph23Percentage:          req.Pph23Percentage,
 		VatPercentage:            req.VatPercentage,
 		DiscountAmount:           req.DiscountAmount,

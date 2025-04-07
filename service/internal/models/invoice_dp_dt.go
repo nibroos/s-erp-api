@@ -15,6 +15,7 @@ type InvoiceDpDt struct {
 	VatID                    *uint            `json:"vat_id" gorm:"column:vat_id"`
 	Pph23ID                  *uint            `json:"pph23_id" gorm:"column:pph23_id"`
 	RefID                    *uint            `json:"ref_id" gorm:"column:ref_id"`
+	RefDtID                  *uint            `json:"ref_dt_id" gorm:"column:ref_dt_id"`
 	ProductID                *uint            `json:"product_id" gorm:"column:product_id"`
 	RefType                  *string          `json:"ref_type" gorm:"column:ref_type"`
 	RefJSON                  *json.RawMessage `json:"ref_json" gorm:"column:ref_json"`
