@@ -50,7 +50,7 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 		return nil, tx, err
 	}
 
-	if tx, err := s.repo.CreateSalesOrder(tx, &salesOrder, childSpan); err != nil {
+	if tx, err = s.repo.CreateSalesOrder(tx, &salesOrder, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, tx, err
@@ -58,11 +58,13 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 
 	// go routine to create schedule entity related to sales order
 	// go func() {
-	// 	if tx, err := s.CreateSchedule(ctx, *req.Schedule, salesOrder.ID, userID, tx, childSpan); err != nil {
-	// 		childSpan.Finish()
-	// 		tx.Rollback()
-	// 		return
-	// 	}
+	tx, err = s.CreateSchedule(ctx, *req.Schedule, salesOrder.ID, userID, tx, childSpan)
+
+	if err != nil {
+		childSpan.Finish()
+		tx.Rollback()
+		return nil, tx, err
+	}
 	// }()
 
 	// bulk create item soDts ref ms items / product->boms
@@ -134,7 +136,7 @@ func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.CreateSchedu
 		return tx, err
 	}
 
-	if tx, err := s.repo.CreateSchedule(ctx, tx, &schedule, childSpan); err != nil {
+	if tx, err = s.repo.CreateSchedule(ctx, tx, &schedule, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return tx, err
@@ -149,7 +151,7 @@ func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.CreateSchedu
 			return tx, err
 		}
 
-		if tx, err := s.repo.CreateScheduleSteps(ctx, tx, steps, childSpan); err != nil {
+		if tx, err = s.repo.CreateScheduleSteps(ctx, tx, steps, childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
 			return tx, err
@@ -163,7 +165,7 @@ func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.CreateSchedu
 			return tx, err
 		}
 
-		if tx, err := s.repo.CreateScheduleTasks(ctx, tx, tasks, childSpan); err != nil {
+		if tx, err = s.repo.CreateScheduleTasks(ctx, tx, tasks, childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
 			return tx, err

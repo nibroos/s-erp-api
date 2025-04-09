@@ -36,8 +36,6 @@ CREATE INDEX idx_schedule_tasks_schedule_id ON schedule_tasks(schedule_id);
 
 CREATE INDEX idx_schedule_tasks_parent_id ON schedule_tasks(parent_id);
 
-CREATE INDEX idx_schedule_tasks_task_id ON schedule_tasks(task_id);
-
 CREATE INDEX idx_schedule_tasks_entity_type ON schedule_tasks(entity_type);
 
 COMMIT;
