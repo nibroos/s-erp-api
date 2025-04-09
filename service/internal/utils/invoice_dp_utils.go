@@ -2,6 +2,8 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -47,34 +49,29 @@ func MapCreateInvoiceDpDts(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, crea
 		productJSON := json.RawMessage(productJSONStr)
 
 		invoiceDpDtModel := models.InvoiceDpDt{
-			ProductUuid:              invoiceDpDt.ProductUuid,
-			InvoiceDpID:              &createdInvoiceDp.ID,
-			ItemUnitID:               invoiceDpDt.ItemUnitID,
-			VatID:                    invoiceDpDt.VatID,
-			Pph23ID:                  invoiceDpDt.Pph23ID,
-			RefID:                    invoiceDpDt.RefID,
-			RefDtID:                  invoiceDpDt.RefDtID,
-			ProductID:                invoiceDpDt.ProductID,
-			RefType:                  invoiceDpDt.RefType,
-			ProductType:              invoiceDpDt.ProductType,
-			RefJSON:                  &refJSON,
-			ProductJSON:              &productJSON,
-			Remark:                   invoiceDpDt.Remark,
-			DpPercentage:             invoiceDpDt.DpPercentage,
-			IsVat:                    invoiceDpDt.IsVat,
-			IsPph23:                  invoiceDpDt.IsPph23,
-			Qty:                      invoiceDpDt.Qty,
-			Price:                    invoiceDpDt.Price,
-			Subtotal:                 invoiceDpDt.Subtotal,
-			DiscountAmount:           invoiceDpDt.DiscountAmount,
-			DiscountPercentage:       invoiceDpDt.DiscountPercentage,
-			DiscountPercentageNum:    invoiceDpDt.DiscountPercentageNum,
-			DiscountPercentageAmount: invoiceDpDt.DiscountPercentageAmount,
-			DiscountFinal:            invoiceDpDt.DiscountFinal,
-			DiscountType:             invoiceDpDt.DiscountType,
-			TotalAmount:              invoiceDpDt.TotalAmount,
-			TotalDp:                  invoiceDpDt.TotalDp,
-			CreatedByID:              &userID,
+			ProductUuid:  invoiceDpDt.ProductUuid,
+			InvoiceDpID:  &createdInvoiceDp.ID,
+			ItemUnitID:   invoiceDpDt.ItemUnitID,
+			VatID:        invoiceDpDt.VatID,
+			Pph23ID:      invoiceDpDt.Pph23ID,
+			RefID:        invoiceDpDt.RefID,
+			RefDtID:      invoiceDpDt.RefDtID,
+			ProductID:    invoiceDpDt.ProductID,
+			RefType:      invoiceDpDt.RefType,
+			ProductType:  invoiceDpDt.ProductType,
+			RefJSON:      &refJSON,
+			ProductJSON:  &productJSON,
+			Remark:       invoiceDpDt.Remark,
+			DpPercentage: invoiceDpDt.DpPercentage,
+			IsVat:        invoiceDpDt.IsVat,
+			IsPph23:      invoiceDpDt.IsPph23,
+			Qty:          invoiceDpDt.Qty,
+			Price:        invoiceDpDt.Price,
+			Subtotal:     invoiceDpDt.Subtotal,
+			Discount:     invoiceDpDt.Discount,
+			TotalAmount:  invoiceDpDt.TotalAmount,
+			TotalDp:      invoiceDpDt.TotalDp,
+			CreatedByID:  &userID,
 		}
 		invoiceDpDtsModel = append(invoiceDpDtsModel, invoiceDpDtModel)
 	}
@@ -98,35 +95,30 @@ func MapUpdateInvoiceDpDts(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, upda
 		}
 
 		invoiceDpDtModel := models.InvoiceDpDt{
-			ID:                       invoiceDpDtID,
-			ProductUuid:              reqInvoiceDpDt.ProductUuid,
-			InvoiceDpID:              &updatedInvoiceDp.ID,
-			ItemUnitID:               reqInvoiceDpDt.ItemUnitID,
-			VatID:                    reqInvoiceDpDt.VatID,
-			Pph23ID:                  reqInvoiceDpDt.Pph23ID,
-			RefID:                    reqInvoiceDpDt.RefID,
-			RefDtID:                  reqInvoiceDpDt.RefDtID,
-			ProductID:                reqInvoiceDpDt.ProductID,
-			RefType:                  reqInvoiceDpDt.RefType,
-			ProductType:              reqInvoiceDpDt.ProductType,
-			RefJSON:                  &refJSON,
-			ProductJSON:              &productJSON,
-			Remark:                   reqInvoiceDpDt.Remark,
-			DpPercentage:             reqInvoiceDpDt.DpPercentage,
-			IsVat:                    reqInvoiceDpDt.IsVat,
-			IsPph23:                  reqInvoiceDpDt.IsPph23,
-			Qty:                      reqInvoiceDpDt.Qty,
-			Price:                    reqInvoiceDpDt.Price,
-			Subtotal:                 reqInvoiceDpDt.Subtotal,
-			DiscountAmount:           reqInvoiceDpDt.DiscountAmount,
-			DiscountPercentage:       reqInvoiceDpDt.DiscountPercentage,
-			DiscountPercentageNum:    reqInvoiceDpDt.DiscountPercentageNum,
-			DiscountPercentageAmount: reqInvoiceDpDt.DiscountPercentageAmount,
-			DiscountFinal:            reqInvoiceDpDt.DiscountFinal,
-			DiscountType:             reqInvoiceDpDt.DiscountType,
-			TotalAmount:              reqInvoiceDpDt.TotalAmount,
-			TotalDp:                  reqInvoiceDpDt.TotalDp,
-			CreatedByID:              &userID,
+			ID:           invoiceDpDtID,
+			ProductUuid:  reqInvoiceDpDt.ProductUuid,
+			InvoiceDpID:  &updatedInvoiceDp.ID,
+			ItemUnitID:   reqInvoiceDpDt.ItemUnitID,
+			VatID:        reqInvoiceDpDt.VatID,
+			Pph23ID:      reqInvoiceDpDt.Pph23ID,
+			RefID:        reqInvoiceDpDt.RefID,
+			RefDtID:      reqInvoiceDpDt.RefDtID,
+			ProductID:    reqInvoiceDpDt.ProductID,
+			RefType:      reqInvoiceDpDt.RefType,
+			ProductType:  reqInvoiceDpDt.ProductType,
+			RefJSON:      &refJSON,
+			ProductJSON:  &productJSON,
+			Remark:       reqInvoiceDpDt.Remark,
+			DpPercentage: reqInvoiceDpDt.DpPercentage,
+			IsVat:        reqInvoiceDpDt.IsVat,
+			IsPph23:      reqInvoiceDpDt.IsPph23,
+			Qty:          reqInvoiceDpDt.Qty,
+			Price:        reqInvoiceDpDt.Price,
+			Subtotal:     reqInvoiceDpDt.Subtotal,
+			Discount:     reqInvoiceDpDt.Discount,
+			TotalAmount:  reqInvoiceDpDt.TotalAmount,
+			TotalDp:      reqInvoiceDpDt.TotalDp,
+			CreatedByID:  &userID,
 		}
 		invoiceDpDtsModel = append(invoiceDpDtsModel, invoiceDpDtModel)
 	}
@@ -134,15 +126,37 @@ func MapUpdateInvoiceDpDts(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, upda
 	return invoiceDpDtsModel, nil
 }
 
-func GenInvoiceDpNo() string {
-	return "INV-DP-" + time.Now().Format("20060102-150405")
+func GenInvoiceDpNo(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, orderedNumber int, span opentracing.Span) string {
+	if req.InvoiceNo != nil {
+		return *req.InvoiceNo
+	}
+
+	prefix := "IDP"
+	year := time.Now().Format("2006")
+	month := time.Now().Format("01")
+	day := time.Now().Format("02")
+	order := fmt.Sprintf("%d", orderedNumber)
+
+	str := fmt.Sprintf("%s/%s/%s-%s-%s", prefix, order, year, month, day)
+
+	return str
 }
 
-func MapCreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, userID uint, branchID uint, span opentracing.Span) (models.InvoiceDp, error) {
-	invoiceNo := GenInvoiceDpNo()
-	if req.InvoiceNo != nil {
-		invoiceNo = *req.InvoiceNo
+func GenerateInvoiceDpNoOnUpdate(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, revNo *int, span opentracing.Span) string {
+	invoiceNo := req.InvoiceNo
+
+	if !strings.Contains(*invoiceNo, "REV") {
+		*invoiceNo = fmt.Sprintf("%s/REV-%d", *invoiceNo, *revNo)
+	} else {
+		*invoiceNo = strings.Split(*invoiceNo, "/REV")[0]
+		*invoiceNo = fmt.Sprintf("%s/REV-%d", *invoiceNo, *revNo)
 	}
+
+	return *invoiceNo
+}
+
+func MapCreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, userID uint, branchID uint, orderedNumber int, span opentracing.Span) (models.InvoiceDp, error) {
+	invoiceNo := GenInvoiceDpNo(ctx, req, orderedNumber, span)
 
 	invoiceDp := models.InvoiceDp{
 		CustomerID:               req.CustomerID,
@@ -156,6 +170,7 @@ func MapCreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, userID 
 		ExchangeRate:             req.ExchangeRate,
 		Remark:                   req.Remark,
 		Status:                   req.Status,
+		RevNo:                    new(int),
 		Pph23Percentage:          req.Pph23Percentage,
 		VatPercentage:            req.VatPercentage,
 		DiscountAmount:           req.DiscountAmount,
@@ -165,6 +180,7 @@ func MapCreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, userID 
 		DiscountType:             req.DiscountType,
 		DpPercentage:             req.DpPercentage,
 		TotalAmountProducts:      req.TotalAmountProducts,
+		TotalDpProducts:          req.TotalDpProducts,
 		Subtotal:                 req.Subtotal,
 		TotalQty:                 req.TotalQty,
 		TotalDiscount:            req.TotalDiscount,
@@ -173,11 +189,24 @@ func MapCreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, userID 
 		GrandTotal:               req.GrandTotal,
 		CreatedByID:              &userID,
 	}
+	*invoiceDp.RevNo = 0
 
 	return invoiceDp, nil
 }
 
 func MapUpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, userID uint, branchID uint, span opentracing.Span) (models.InvoiceDp, error) {
+	revNo := 0
+	if req.RevNo != nil {
+		revNo = *req.RevNo + 1
+	} else {
+		revNo = 1
+	}
+
+	invoiceNo := *req.InvoiceNo
+	if req.RevNo != nil {
+		invoiceNo = GenerateInvoiceDpNoOnUpdate(ctx, req, &revNo, span)
+	}
+
 	invoiceDp := models.InvoiceDp{
 		ID:                       req.ID,
 		CustomerID:               req.CustomerID,
@@ -186,11 +215,12 @@ func MapUpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, userID 
 		VatID:                    req.VatID,
 		Pph23ID:                  req.Pph23ID,
 		BranchID:                 &branchID,
-		InvoiceNo:                req.InvoiceNo,
+		InvoiceNo:                &invoiceNo,
 		InvoiceDate:              req.InvoiceDate,
 		ExchangeRate:             req.ExchangeRate,
 		Remark:                   req.Remark,
 		Status:                   req.Status,
+		RevNo:                    &revNo,
 		Pph23Percentage:          req.Pph23Percentage,
 		VatPercentage:            req.VatPercentage,
 		DiscountAmount:           req.DiscountAmount,
@@ -200,13 +230,14 @@ func MapUpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, userID 
 		DiscountType:             req.DiscountType,
 		DpPercentage:             req.DpPercentage,
 		TotalAmountProducts:      req.TotalAmountProducts,
+		TotalDpProducts:          req.TotalDpProducts,
 		Subtotal:                 req.Subtotal,
 		TotalQty:                 req.TotalQty,
 		TotalDiscount:            req.TotalDiscount,
 		TotalPph23:               req.TotalPph23,
 		TotalVat:                 req.TotalVat,
 		GrandTotal:               req.GrandTotal,
-		CreatedByID:              &userID,
+		UpdatedByID:              &userID,
 	}
 
 	return invoiceDp, nil

@@ -41,8 +41,18 @@ func (s *InvoiceDpService) CreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoic
 	childSpan := opentracing.StartSpan("InvoiceDpService-CreateInvoiceDp", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	invoiceDp, err := utils.MapCreateInvoiceDp(ctx, req, userID, branchID, childSpan)
+	invoiceDpCreatedThisMonthNumber, err := s.repo.GetInvoiceDpCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, tx, err
+	}
+
+	orderedNumber := invoiceDpCreatedThisMonthNumber + 1
+
+	invoiceDp, err := utils.MapCreateInvoiceDp(ctx, req, userID, branchID, orderedNumber, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, tx, err
 	}
