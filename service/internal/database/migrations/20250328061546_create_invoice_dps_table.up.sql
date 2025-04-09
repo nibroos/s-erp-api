@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS invoice_dps (
   invoice_date date,
   exchange_rate DECIMAL(20, 5),
   remark TEXT,
+  rev_no INT,
   status TEXT,
   pph23_percentage DECIMAL(20, 5),
   vat_percentage DECIMAL(20, 5),
