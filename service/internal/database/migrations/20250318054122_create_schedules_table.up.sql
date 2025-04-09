@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS schedules (
   id SERIAL PRIMARY KEY,
   assignee_id INT REFERENCES users(id) ON DELETE RESTRICT,
   sales_order_id INT REFERENCES sales_orders(id) ON DELETE RESTRICT,
+  uuid TEXT,
   steps_id INT,
   title TEXT,
   remark TEXT,

@@ -56,6 +56,15 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 		return nil, tx, err
 	}
 
+	// go routine to create schedule entity related to sales order
+	// go func() {
+	// 	if tx, err := s.CreateSchedule(ctx, *req.Schedule, salesOrder.ID, userID, tx, childSpan); err != nil {
+	// 		childSpan.Finish()
+	// 		tx.Rollback()
+	// 		return
+	// 	}
+	// }()
+
 	// bulk create item soDts ref ms items / product->boms
 	var soDts []models.SoDt
 	tx, soDts, err = s.CreateSoDts(ctx, req, userID, &salesOrder, tx, childSpan)
@@ -112,6 +121,56 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 	}
 
 	return &salesOrder, tx, nil
+}
+
+// CreateSchedule
+func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, salesOrderID uint, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-CreateSchedule", opentracing.ChildOf(span.Context()))
+
+	schedule, err := utils.MapCreateSchedule(ctx, req, salesOrderID, userID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return tx, err
+	}
+
+	if tx, err := s.repo.CreateSchedule(ctx, tx, &schedule, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return tx, err
+	}
+
+	// create steps
+	if len(req.Steps) > 0 {
+		steps, err := utils.MapCreateScheduleSteps(ctx, req.Steps, schedule.ID, userID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return tx, err
+		}
+
+		if tx, err := s.repo.CreateScheduleSteps(ctx, tx, steps, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return tx, err
+		}
+
+		// create schedule task
+		tasks, err := utils.MapCreateScheduleTasks(ctx, req.Steps, steps, schedule.ID, userID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return tx, err
+		}
+
+		if tx, err := s.repo.CreateScheduleTasks(ctx, tx, tasks, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return tx, err
+		}
+	}
+
+	return tx, nil
 }
 
 func (s *SalesOrderService) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.SalesOrderDetailDTO, error) {

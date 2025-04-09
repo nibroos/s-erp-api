@@ -75,44 +75,96 @@ type CreateSoDtsBomsRequest struct {
 }
 
 type CreateSalesOrderRequest struct {
-	CustomerID    *uint                `json:"customer_id"`
-	OrderTypeID   *uint                `json:"order_type_id"`
-	CurrencyID    *uint                `json:"currency_id"`
-	WarehouseID   *uint                `json:"warehouse_id"`
-	VatID         *uint                `json:"vat_id"`
-	PaymentID     *uint                `json:"payment_id"`
-	Pph23ID       *uint                `json:"pph23_id"`
-	BranchID      *uint                `json:"branch_id"`
-	RevNo         *int                 `json:"rev_no"`
-	PoBuyerNo     *string              `json:"po_buyer_no"`
-	SalesOrderNo  *string              `json:"sales_order_no"`
-	Remark        *string              `json:"remark"`
-	ShipDest      *string              `json:"ship_dest"`
-	Status        string               `json:"status"`
-	ExchangeRate  *float64             `json:"exchange_rate"`
-	VatPerc       *float64             `json:"vat_perc"`
-	Pph23Perc     *float64             `json:"pph23_perc"`
-	MarkupPerc    *float64             `json:"markup_perc"`
-	IsVat         *int                 `json:"is_vat"`
-	IsPph23       *int                 `json:"is_pph23"`
-	DiscAm        *float64             `json:"disc_am"`
-	DiscPerc      *float64             `json:"disc_perc"`
-	DiscPercAm    *float64             `json:"disc_perc_am"`
-	DiscFinal     *float64             `json:"disc_final"`
-	DiscType      *string              `json:"disc_type"`
-	TotalQty      *float64             `json:"total_qty"`
-	Subtotal      *float64             `json:"subtotal"`
-	TotalDiscount *float64             `json:"total_discount"`
-	TotalPph23    *float64             `json:"total_pph23"`
-	TotalVat      *float64             `json:"total_vat"`
-	GrandTotal    *float64             `json:"grand_total"`
-	OrderAt       *string              `json:"order_at"`
-	ShippingAt    *string              `json:"shipping_at"`
-	AgreeAt       *string              `json:"agree_at"`
-	DueAt         *string              `json:"due_at"`
-	SoDts         []CreateSoDtsRequest `json:"so_dts"`
+	CustomerID    *uint                  `json:"customer_id"`
+	OrderTypeID   *uint                  `json:"order_type_id"`
+	CurrencyID    *uint                  `json:"currency_id"`
+	WarehouseID   *uint                  `json:"warehouse_id"`
+	VatID         *uint                  `json:"vat_id"`
+	PaymentID     *uint                  `json:"payment_id"`
+	Pph23ID       *uint                  `json:"pph23_id"`
+	BranchID      *uint                  `json:"branch_id"`
+	RevNo         *int                   `json:"rev_no"`
+	PoBuyerNo     *string                `json:"po_buyer_no"`
+	SalesOrderNo  *string                `json:"sales_order_no"`
+	Remark        *string                `json:"remark"`
+	ShipDest      *string                `json:"ship_dest"`
+	Status        string                 `json:"status"`
+	ExchangeRate  *float64               `json:"exchange_rate"`
+	VatPerc       *float64               `json:"vat_perc"`
+	Pph23Perc     *float64               `json:"pph23_perc"`
+	MarkupPerc    *float64               `json:"markup_perc"`
+	IsVat         *int                   `json:"is_vat"`
+	IsPph23       *int                   `json:"is_pph23"`
+	DiscAm        *float64               `json:"disc_am"`
+	DiscPerc      *float64               `json:"disc_perc"`
+	DiscPercAm    *float64               `json:"disc_perc_am"`
+	DiscFinal     *float64               `json:"disc_final"`
+	DiscType      *string                `json:"disc_type"`
+	TotalQty      *float64               `json:"total_qty"`
+	Subtotal      *float64               `json:"subtotal"`
+	TotalDiscount *float64               `json:"total_discount"`
+	TotalPph23    *float64               `json:"total_pph23"`
+	TotalVat      *float64               `json:"total_vat"`
+	GrandTotal    *float64               `json:"grand_total"`
+	OrderAt       *string                `json:"order_at"`
+	ShippingAt    *string                `json:"shipping_at"`
+	AgreeAt       *string                `json:"agree_at"`
+	DueAt         *string                `json:"due_at"`
+	SoDts         []CreateSoDtsRequest   `json:"so_dts"`
+	Schedule      *CreateScheduleRequest `json:"schedule"`
 
 	CustomerCode string `json:"customer_code"`
+}
+
+type CreateScheduleRequest struct {
+	AssigneeID *uint `json:"assignee_id"`
+	// SalesOrderID  uint    `json:"sales_order_id"`
+	UUID    *string `json:"uuid"`
+	StepsID *uint   `json:"steps_id"`
+	Title   string  `json:"title"`
+	Remark  *string `json:"remark"`
+	// Status        string  `json:"status"`
+	StartAt *string `json:"start_at"`
+	EndAt   *string `json:"end_at"`
+	Color   *string `json:"color"`
+
+	Steps []CreateScheduleStepRequest `json:"steps"`
+}
+
+type CreateScheduleStepRequest struct {
+	AssigneeID *uint   `json:"assignee_id"`
+	ParentID   *uint   `json:"parent_id"`
+	EntityID   *uint   `json:"entity_id"`
+	EntityType string  `json:"entity_type"`
+	UUID       *string `json:"uuid"`
+	ParentUUID *string `json:"parent_uuid"`
+	Title      string  `json:"title"`
+	Remark     *string `json:"remark"`
+	OrderItem  *int    `json:"order_item"`
+	Color      *string `json:"color"`
+	IsChecked  *int    `json:"is_checked"`
+	// Locations   *string `json:"locations"`
+	StartAt *string `json:"start_at"`
+	EndAt   *string `json:"end_at"`
+
+	Tasks []CreateScheduleTaskRequest `json:"tasks"`
+}
+
+type CreateScheduleTaskRequest struct {
+	AssigneeID *uint   `json:"assignee_id"`
+	ParentID   *uint   `json:"parent_id"`
+	EntityID   *uint   `json:"entity_id"`
+	EntityType string  `json:"entity_type"`
+	UUID       *string `json:"uuid"`
+	ParentUUID *string `json:"parent_uuid"`
+	Title      string  `json:"title"`
+	Remark     *string `json:"remark"`
+	OrderItem  *int    `json:"order_item"`
+	Color      *string `json:"color"`
+	IsChecked  *int    `json:"is_checked"`
+	// Locations   *string `json:"locations"`
+	StartAt *string `json:"start_at"`
+	EndAt   *string `json:"end_at"`
 }
 
 type UpdateSoDtsRequest struct {
@@ -357,6 +409,88 @@ type SalesOrderDetailDTO struct {
 	UpdatedAt     *string                 `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string                 `json:"deleted_at" db:"deleted_at"`
 	SoDts         []SalesOrderSoDtListDTO `json:"so_dts"`
+}
+
+type ScheduleDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	AssigneeID    *uint   `json:"assignee_id" db:"assignee_id"`
+	SalesOrderID  uint    `json:"sales_order_id" db:"sales_order_id"`
+	StepsID       *uint   `json:"steps_id" db:"steps_id"`
+	UUID          *string `json:"uuid" db:"uuid"`
+	Title         string  `json:"title" db:"title"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        string  `json:"status" db:"status"`
+	StartAt       *string `json:"start_at" db:"start_at"`
+	EndAt         *string `json:"end_at" db:"end_at"`
+	Color         *string `json:"color" db:"color"`
+	CreatedByID   *uint   `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint   `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+
+	AssigneeName *string `json:"assignee_name" db:"assignee_name"`
+
+	Steps []ScheduleStepListDTO `json:"steps"`
+}
+
+type ScheduleStepListDTO struct {
+	ID         *uint   `json:"id" db:"id"`
+	Uuid       *string `json:"uuid" db:"uuid"`
+	StepIndex  *int    `json:"step_index" db:"step_index"`
+	ScheduleID *uint   `json:"schedule_id" db:"schedule_id"`
+	AssigneeID *uint   `json:"assignee_id" db:"assignee_id"`
+	ParentID   *uint   `json:"parent_id" db:"parent_id"`
+	EntityID   *uint   `json:"entity_id" db:"entity_id"`
+	EntityType *string `json:"entity_type" db:"entity_type"`
+	ParentUUID *string `json:"parent_uuid" db:"parent_uuid"`
+	Title      *string `json:"title" db:"title"`
+	Remark     *string `json:"remark" db:"remark"`
+	OrderItem  *int    `json:"order_item" db:"order_item"`
+	Color      *string `json:"color" db:"color"`
+	StartAt    *string `json:"start_at" db:"start_at"`
+	EndAt      *string `json:"end_at" db:"end_at"`
+
+	CreatedByID   *uint   `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint   `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+
+	Tasks []ScheduleTaskListDTO `json:"tasks"`
+}
+
+type ScheduleTaskListDTO struct {
+	ID         *uint   `json:"id" db:"id"`
+	Uuid       *string `json:"uuid" db:"uuid"`
+	ParentID   *uint   `json:"parent_id" db:"parent_id"`
+	ParentUUID *string `json:"parent_uuid" db:"parent_uuid"`
+	ScheduleID *uint   `json:"schedule_id" db:"schedule_id"`
+	AssigneeID *uint   `json:"assignee_id" db:"assignee_id"`
+	EntityID   *uint   `json:"entity_id" db:"entity_id"`
+	EntityType *string `json:"entity_type" db:"entity_type"`
+	Title      *string `json:"title" db:"title"`
+	Remark     *string `json:"remark" db:"remark"`
+	OrderItem  *int    `json:"order_item" db:"order_item"`
+	Color      *string `json:"color" db:"color"`
+	StartAt    *string `json:"start_at" db:"start_at"`
+	EndAt      *string `json:"end_at" db:"end_at"`
+	IsChecked  *int    `json:"is_checked" db:"is_checked"`
+
+	CreatedByID   *uint   `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint   `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
 }
 
 type SalesOrderSoDtListDTO struct {

@@ -481,3 +481,76 @@ func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesO
 
 	return str
 }
+
+func MapCreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, userID uint, salesOrderID uint, span opentracing.Span) (models.Schedule, error) {
+	scheduleTask := models.Schedule{
+		AssigneeID:   req.AssigneeID,
+		SalesOrderID: salesOrderID,
+		UUID:         req.UUID,
+		Title:        req.Title,
+		Remark:       req.Remark,
+		Status:       "WAITING",
+		StartAt:      req.StartAt,
+		EndAt:        req.EndAt,
+		Color:        req.Color,
+		CreatedByID:  &userID,
+	}
+
+	return scheduleTask, nil
+}
+
+func MapCreateScheduleSteps(ctx *fiber.Ctx, req []dtos.CreateScheduleStepRequest, scheduleID uint, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
+	scheduleTask := []*models.ScheduleTask{}
+	for _, reqStep := range req {
+		scheduleTask = append(scheduleTask, &models.ScheduleTask{
+			ScheduleID:  scheduleID,
+			AssigneeID:  reqStep.AssigneeID,
+			ParentID:    reqStep.ParentID,
+			EntityID:    reqStep.EntityID,
+			EntityType:  reqStep.EntityType,
+			UUID:        reqStep.UUID,
+			ParentUUID:  reqStep.ParentUUID,
+			Title:       reqStep.Title,
+			Remark:      reqStep.Remark,
+			OrderItem:   reqStep.OrderItem,
+			IsChecked:   reqStep.IsChecked,
+			StartAt:     reqStep.StartAt,
+			EndAt:       reqStep.EndAt,
+			Color:       reqStep.Color,
+			CreatedByID: &userID,
+		})
+	}
+
+	return scheduleTask, nil
+}
+
+func MapCreateScheduleTasks(ctx *fiber.Ctx, req []dtos.CreateScheduleStepRequest, steps []*models.ScheduleTask, scheduleID uint, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
+	scheduleTask := []*models.ScheduleTask{}
+	for _, reqStep := range req {
+		for _, reqTask := range steps {
+			for _, createdStep := range steps {
+				if reqStep.UUID == createdStep.UUID {
+					scheduleTask = append(scheduleTask, &models.ScheduleTask{
+						ScheduleID:  scheduleID,
+						AssigneeID:  reqTask.AssigneeID,
+						ParentID:    &createdStep.ID,
+						EntityID:    reqTask.EntityID,
+						EntityType:  reqTask.EntityType,
+						UUID:        reqTask.UUID,
+						ParentUUID:  reqTask.ParentUUID,
+						Title:       reqTask.Title,
+						Remark:      reqTask.Remark,
+						OrderItem:   reqTask.OrderItem,
+						IsChecked:   reqTask.IsChecked,
+						StartAt:     reqTask.StartAt,
+						EndAt:       reqTask.EndAt,
+						Color:       reqTask.Color,
+						CreatedByID: &userID,
+					})
+				}
+			}
+		}
+	}
+
+	return scheduleTask, nil
+}

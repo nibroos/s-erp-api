@@ -1588,3 +1588,45 @@ func (r *SalesOrderRepository) GetCustomerSalesOrderCreatedThisMonth(ctx *fiber.
 
 	return total, nil
 }
+
+// CreateSchedule
+func (r *SalesOrderRepository) CreateSchedule(ctx *fiber.Ctx, tx *gorm.DB, schedule *models.Schedule, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateSchedule", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Create(schedule).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+// CreateScheduleSteps
+func (r *SalesOrderRepository) CreateScheduleSteps(ctx *fiber.Ctx, tx *gorm.DB, scheduleSteps []*models.ScheduleTask, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateScheduleSteps", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Create(&scheduleSteps).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+// CreateScheduleTasks
+func (r *SalesOrderRepository) CreateScheduleTasks(ctx *fiber.Ctx, tx *gorm.DB, scheduleTasks []*models.ScheduleTask, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateScheduleTasks", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Create(&scheduleTasks).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return nil, err
+	}
+
+	return tx, nil
+}
