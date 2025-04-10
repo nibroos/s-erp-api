@@ -295,7 +295,7 @@ func (r *InvoiceDpRepository) GetInvoiceDpByID(ctx *fiber.Ctx, params *dtos.GetI
             idp.invoice_no, idp.remark, idp.status, 
             idp.exchange_rate, idp.pph23_percentage, idp.vat_percentage, idp.dp_percentage, idp.total_qty, idp.subtotal, idp.total_discount, idp.total_pph23, idp.total_vat, idp.grand_total, idp.created_by_id, idp.updated_by_id, idp.deleted_by_id, idp.created_at, idp.updated_at, idp.deleted_at,
             TO_CHAR(idp.invoice_date, 'YYYY-MM-DD') as invoice_date,
-            idp.discount_amount, idp.discount_percentage, idp.discount_percentage_amount, idp.discount_final, idp.discount_type, idp.total_amount_products, idp.total_dp_products,
+            idp.discount_amount, idp.discount_percentage, idp.discount_percentage_amount, idp.discount_final, idp.discount_type, idp.total_amount_products, idp.total_dp_products, idp.rev_no,
 
             cu.name as created_by_name,
             uu.name as updated_by_name
@@ -437,13 +437,16 @@ func (r *InvoiceDpRepository) GetInvoiceDpDts(ctx *fiber.Ctx, invoiceDpID uint, 
 		pph.name as pph23_name,
 		
 		cu.name as created_by_name,
-		uu.name as updated_by_name
+		uu.name as updated_by_name,
+
+		CASE WHEN idt.ref_type = 'so' THEN so.sales_order_no ELSE NULL END as ref_num
 	FROM invoice_dp_dts idt
 	LEFT JOIN products p ON idt.product_id = p.id
 	LEFT JOIN item_units iu ON idt.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
 	LEFT JOIN mix_values v ON idt.vat_id = v.id
 	LEFT JOIN mix_values pph ON idt.pph23_id = pph.id
+	LEFT JOIN sales_orders so ON idt.ref_id = so.id AND idt.ref_type = 'so'
 	LEFT JOIN users cu ON idt.created_by_id = cu.id
 	LEFT JOIN users uu ON idt.updated_by_id = uu.id
 	WHERE idt.invoice_dp_id = $1 AND idt.deleted_at IS NULL
