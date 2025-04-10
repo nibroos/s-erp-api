@@ -61,6 +61,9 @@ func (c *SeederController) RunSeeders(ctx *fiber.Ctx) error {
 		"20250304101919_create_mix_values_purchase_types_seeder.sql",
 		"20250306120206_create_mix_values_ingoing_outgoing_types_seeder.sql",
 		"20250312092648_create_mix_values_warehouse_seeder.sql",
+		"20250312092649_create_mix_values_tasks_seeder.sql",
+		"20250312092650_create_roles_values_seeder.sql",
+		"20250312092650_create_users_seeder.sql",
 	}
 
 	// Get the seed files directory from the environment variable

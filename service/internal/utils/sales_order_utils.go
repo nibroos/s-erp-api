@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -601,6 +602,7 @@ func MapGetScheduleStepsTasks(ctx *fiber.Ctx, scheduleSteps []dtos.ScheduleTaskL
 
 func MapUpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, userID uint, span opentracing.Span) (models.Schedule, error) {
 	scheduleTask := models.Schedule{
+		ID:           req.ID,
 		AssigneeID:   req.AssigneeID,
 		SalesOrderID: req.SalesOrderID,
 		UUID:         req.UUID,
@@ -616,11 +618,11 @@ func MapUpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderSchedu
 	return scheduleTask, nil
 }
 
-func MapUpdateScheduleSteps(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
+func MapUpdateScheduleSteps(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest, userID uint, scheduleID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
 	scheduleTask := []*models.ScheduleTask{}
 	for _, reqStep := range req {
-		scheduleTask = append(scheduleTask, &models.ScheduleTask{
-			ScheduleID:  reqStep.ScheduleID,
+		scheduleStep := &models.ScheduleTask{
+			ScheduleID:  scheduleID,
 			AssigneeID:  reqStep.AssigneeID,
 			ParentID:    reqStep.ParentID,
 			EntityID:    reqStep.EntityID,
@@ -635,7 +637,15 @@ func MapUpdateScheduleSteps(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest
 			EndAt:       reqStep.EndAt,
 			Color:       reqStep.Color,
 			CreatedByID: &userID,
-		})
+		}
+
+		// if reqstep.ID != nil && *reqStep.ID > 0 {
+		if reqStep.ID != nil && *reqStep.ID > 0 {
+			log.Println("ID", *reqStep.ID)
+			scheduleStep.ID = *reqStep.ID
+		}
+
+		scheduleTask = append(scheduleTask, scheduleStep)
 	}
 
 	return scheduleTask, nil
@@ -673,7 +683,7 @@ func MapUpdateScheduleTasks(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest
 }
 
 // func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtListDTO, req dtos.UpdateSalesOrderRequest, salesOrderID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
-func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.ScheduleStepListDTO, req dtos.UpdateSalesOrderScheduleRequest, scheduleID uint, span opentracing.Span) ([]*models.ScheduleTask, []map[string]interface{}, []uint, error) {
+func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.UpdatedScheduleStepListDTO, req dtos.UpdateSalesOrderScheduleRequest, scheduleID uint, span opentracing.Span) ([]*models.ScheduleTask, []map[string]interface{}, []uint, error) {
 	childSpan := span.Tracer().StartSpan("MapFilterUpdateScheduleTasksToSteps", opentracing.ChildOf(span.Context()))
 
 	// filter without ID to bulk create
@@ -692,9 +702,12 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.ScheduleSt
 			for _, step := range steps {
 				if *reqTask.ParentUUID == *step.Uuid {
 					taskID := uint(0)
-					if reqTask.ID != nil {
+					if reqTask.ID != nil && *reqTask.ID > 0 {
 						taskID = *reqTask.ID
 					}
+
+					log.Println("taskID", taskID)
+					log.Println("reqTask.ID", reqTask.ID)
 
 					if reqTask.ID == nil {
 						// newTask["created_by_id"] = userID
@@ -717,6 +730,8 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.ScheduleSt
 							EndAt:       reqTask.EndAt,
 							CreatedByID: &userID,
 						}
+						log.Println("newTask", newTask)
+
 						bulkCreateTasks = append(bulkCreateTasks, newTask)
 					} else if reqTask.ID != nil && *reqTask.ID > 0 {
 						newTask := map[string]interface{}{
@@ -740,6 +755,8 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.ScheduleSt
 						newTask["updated_at"] = time.Now()
 						bulkUpdateTasks = append(bulkUpdateTasks, newTask)
 						taskIDs = append(taskIDs, *reqTask.ID)
+
+						log.Println("updatedTask", newTask)
 					}
 				}
 			}

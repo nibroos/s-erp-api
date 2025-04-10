@@ -1,3 +1,5 @@
+BEGIN;
+
 INSERT INTO
   pools (
     group1_id,
@@ -30,9 +32,10 @@ SELECT
     SELECT
       id
     FROM
-      mix_values
+      mix_values mv2
     WHERE
-      name = 'superadmin'
+      -- name = 'superadmin'
+      mv2.name IN ('superadmin', 'manager')
   ),
   id,
   1,

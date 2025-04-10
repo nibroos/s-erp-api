@@ -470,6 +470,33 @@ type ScheduleStepListDTO struct {
 	Tasks []ScheduleTaskListDTO `json:"tasks"`
 }
 
+type UpdatedScheduleStepListDTO struct {
+	ID         *uint   `json:"id" db:"id"`
+	Uuid       *string `json:"uuid" db:"uuid"`
+	StepIndex  *int    `json:"step_index" db:"step_index"`
+	ScheduleID *uint   `json:"schedule_id" db:"schedule_id"`
+	AssigneeID *uint   `json:"assignee_id" db:"assignee_id"`
+	ParentID   *uint   `json:"parent_id" db:"parent_id"`
+	EntityID   *uint   `json:"entity_id" db:"entity_id"`
+	EntityType *string `json:"entity_type" db:"entity_type"`
+	ParentUUID *string `json:"parent_uuid" db:"parent_uuid"`
+	Title      *string `json:"title" db:"title"`
+	Remark     *string `json:"remark" db:"remark"`
+	OrderItem  *int    `json:"order_item" db:"order_item"`
+	Color      *string `json:"color" db:"color"`
+	StartAt    *string `json:"start_at" db:"start_at"`
+	EndAt      *string `json:"end_at" db:"end_at"`
+
+	CreatedByID   *uint   `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint   `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
 type ScheduleTaskListDTO struct {
 	ID         *uint   `json:"id" db:"id"`
 	Uuid       *string `json:"uuid" db:"uuid"`
