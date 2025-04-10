@@ -164,20 +164,20 @@ func (s *InvoiceDpService) UpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoic
 	childSpan := opentracing.StartSpan("InvoiceDpService-UpdateInvoiceDp", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	invoiceDp, err := utils.MapUpdateInvoiceDp(ctx, req, userID, branchID, childSpan)
+	params := dtos.GetInvoiceDpParams{ID: req.ID}
+	existingInvoiceDp, err := s.GetInvoiceDpByID(ctx, &params, tx, childSpan)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	invoiceDp, err := utils.MapUpdateInvoiceDp(ctx, req, userID, branchID, existingInvoiceDp.RevNo, childSpan)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
 	tx, err = s.repo.UpdateInvoiceDp(tx, &invoiceDp, childSpan)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-
-	params := dtos.GetInvoiceDpParams{ID: req.ID}
-	existingInvoiceDp, err := s.GetInvoiceDpByID(ctx, &params, tx, childSpan)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
