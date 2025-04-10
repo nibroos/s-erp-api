@@ -305,6 +305,7 @@ func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userI
 		Pph23ID:       req.Pph23ID,
 		WarehouseID:   req.WarehouseID,
 		PoBuyerNo:     poBuyerNo,
+		PoBuyerNoOri:  &poBuyerNo,
 		SalesOrderNo:  &orderNo,
 		ShipDest:      req.ShipDest,
 		Remark:        req.Remark,
@@ -356,6 +357,7 @@ func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userI
 		WarehouseID:   req.WarehouseID,
 		RevNo:         &revNo,
 		PoBuyerNo:     poBuyerNo,
+		PoBuyerNoOri:  req.PoBuyerNoOri,
 		SalesOrderNo:  &salesOrderNo,
 		ShipDest:      req.ShipDest,
 		Remark:        req.Remark,
@@ -480,4 +482,269 @@ func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesO
 	str := fmt.Sprintf("%s/%s-%s-%s", surname, year, month, order)
 
 	return str
+}
+
+func MapCreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, userID uint, salesOrder *models.SalesOrder, span opentracing.Span) (models.Schedule, error) {
+	scheduleTask := models.Schedule{
+		AssigneeID:   req.AssigneeID,
+		SalesOrderID: salesOrder.ID,
+		UUID:         req.UUID,
+		Title:        req.Title,
+		Remark:       req.Remark,
+		Status:       "WAITING",
+		StartAt:      req.StartAt,
+		EndAt:        req.EndAt,
+		Color:        req.Color,
+		CreatedByID:  &userID,
+	}
+
+	return scheduleTask, nil
+}
+
+func MapCreateScheduleSteps(ctx *fiber.Ctx, req []dtos.CreateScheduleStepRequest, scheduleID uint, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
+	scheduleTask := []*models.ScheduleTask{}
+	for _, reqStep := range req {
+		scheduleTask = append(scheduleTask, &models.ScheduleTask{
+			ScheduleID:  scheduleID,
+			AssigneeID:  reqStep.AssigneeID,
+			ParentID:    reqStep.ParentID,
+			EntityID:    reqStep.EntityID,
+			EntityType:  reqStep.EntityType,
+			UUID:        reqStep.UUID,
+			ParentUUID:  reqStep.ParentUUID,
+			Title:       reqStep.Title,
+			Remark:      reqStep.Remark,
+			OrderItem:   reqStep.OrderItem,
+			IsChecked:   reqStep.IsChecked,
+			StartAt:     reqStep.StartAt,
+			EndAt:       reqStep.EndAt,
+			Color:       reqStep.Color,
+			CreatedByID: &userID,
+		})
+	}
+
+	return scheduleTask, nil
+}
+
+func MapCreateScheduleTasks(ctx *fiber.Ctx, req []dtos.CreateScheduleStepRequest, steps []*models.ScheduleTask, scheduleID uint, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
+	scheduleTask := []*models.ScheduleTask{}
+	for _, reqStep := range req {
+		for _, reqTask := range reqStep.Tasks {
+			for _, createdStep := range steps {
+				if reqStep.UUID == createdStep.UUID {
+					scheduleTask = append(scheduleTask, &models.ScheduleTask{
+						ScheduleID:  scheduleID,
+						AssigneeID:  reqTask.AssigneeID,
+						ParentID:    &createdStep.ID,
+						EntityID:    reqTask.EntityID,
+						EntityType:  reqTask.EntityType,
+						UUID:        reqTask.UUID,
+						ParentUUID:  reqTask.ParentUUID,
+						Title:       reqTask.Title,
+						Remark:      reqTask.Remark,
+						OrderItem:   reqTask.OrderItem,
+						IsChecked:   reqTask.IsChecked,
+						StartAt:     reqTask.StartAt,
+						EndAt:       reqTask.EndAt,
+						Color:       reqTask.Color,
+						CreatedByID: &userID,
+					})
+				}
+			}
+		}
+	}
+
+	return scheduleTask, nil
+}
+
+func MapGetScheduleStepsTasks(ctx *fiber.Ctx, scheduleSteps []dtos.ScheduleTaskListDTO, span opentracing.Span) ([]dtos.ScheduleStepListDTO, error) {
+	mappedScheduleSteps := []dtos.ScheduleStepListDTO{}
+	for _, scheduleStep := range scheduleSteps {
+		if scheduleStep.EntityType != nil && *scheduleStep.EntityType == "steps" {
+			tasks := []dtos.ScheduleTaskListDTO{}
+			for _, task := range scheduleSteps {
+				if task.EntityType != nil && *task.EntityType == "tasks" && task.ParentID != nil && *task.ParentID == *scheduleStep.ID {
+					tasks = append(tasks, task)
+				}
+			}
+
+			mappedScheduleSteps = append(mappedScheduleSteps, dtos.ScheduleStepListDTO{
+				ID:            scheduleStep.ID,
+				ScheduleID:    scheduleStep.ScheduleID,
+				AssigneeID:    scheduleStep.AssigneeID,
+				ParentID:      scheduleStep.ParentID,
+				EntityID:      scheduleStep.EntityID,
+				EntityType:    scheduleStep.EntityType,
+				Uuid:          scheduleStep.Uuid,
+				ParentUUID:    scheduleStep.ParentUUID,
+				Title:         scheduleStep.Title,
+				Remark:        scheduleStep.Remark,
+				OrderItem:     scheduleStep.OrderItem,
+				StartAt:       scheduleStep.StartAt,
+				EndAt:         scheduleStep.EndAt,
+				Color:         scheduleStep.Color,
+				StepIndex:     scheduleStep.OrderItem,
+				Tasks:         tasks,
+				CreatedByID:   scheduleStep.CreatedByID,
+				UpdatedByID:   scheduleStep.UpdatedByID,
+				DeletedByID:   scheduleStep.DeletedByID,
+				CreatedByName: scheduleStep.CreatedByName,
+				UpdatedByName: scheduleStep.UpdatedByName,
+				CreatedAt:     scheduleStep.CreatedAt,
+				UpdatedAt:     scheduleStep.UpdatedAt,
+			})
+		}
+	}
+
+	return mappedScheduleSteps, nil
+}
+
+func MapUpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, userID uint, span opentracing.Span) (models.Schedule, error) {
+	scheduleTask := models.Schedule{
+		AssigneeID:   req.AssigneeID,
+		SalesOrderID: req.SalesOrderID,
+		UUID:         req.UUID,
+		Title:        req.Title,
+		Remark:       req.Remark,
+		Status:       "WAITING",
+		StartAt:      req.StartAt,
+		EndAt:        req.EndAt,
+		Color:        req.Color,
+		CreatedByID:  &userID,
+	}
+
+	return scheduleTask, nil
+}
+
+func MapUpdateScheduleSteps(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
+	scheduleTask := []*models.ScheduleTask{}
+	for _, reqStep := range req {
+		scheduleTask = append(scheduleTask, &models.ScheduleTask{
+			ScheduleID:  reqStep.ScheduleID,
+			AssigneeID:  reqStep.AssigneeID,
+			ParentID:    reqStep.ParentID,
+			EntityID:    reqStep.EntityID,
+			EntityType:  reqStep.EntityType,
+			UUID:        reqStep.UUID,
+			ParentUUID:  reqStep.ParentUUID,
+			Title:       reqStep.Title,
+			Remark:      reqStep.Remark,
+			OrderItem:   reqStep.OrderItem,
+			IsChecked:   reqStep.IsChecked,
+			StartAt:     reqStep.StartAt,
+			EndAt:       reqStep.EndAt,
+			Color:       reqStep.Color,
+			CreatedByID: &userID,
+		})
+	}
+
+	return scheduleTask, nil
+}
+
+func MapUpdateScheduleTasks(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest, steps []*models.ScheduleTask, scheduleID uint, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
+	scheduleTask := []*models.ScheduleTask{}
+	for _, reqStep := range req {
+		for _, reqTask := range reqStep.Tasks {
+			for _, createdStep := range steps {
+				if reqStep.UUID == createdStep.UUID {
+					scheduleTask = append(scheduleTask, &models.ScheduleTask{
+						ScheduleID:  scheduleID,
+						AssigneeID:  reqTask.AssigneeID,
+						ParentID:    &createdStep.ID,
+						EntityID:    reqTask.EntityID,
+						EntityType:  reqTask.EntityType,
+						UUID:        reqTask.UUID,
+						ParentUUID:  reqTask.ParentUUID,
+						Title:       reqTask.Title,
+						Remark:      reqTask.Remark,
+						OrderItem:   reqTask.OrderItem,
+						IsChecked:   reqTask.IsChecked,
+						StartAt:     reqTask.StartAt,
+						EndAt:       reqTask.EndAt,
+						Color:       reqTask.Color,
+						CreatedByID: &userID,
+					})
+				}
+			}
+		}
+	}
+
+	return scheduleTask, nil
+}
+
+// func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtListDTO, req dtos.UpdateSalesOrderRequest, salesOrderID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
+func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.ScheduleStepListDTO, req dtos.UpdateSalesOrderScheduleRequest, scheduleID uint, span opentracing.Span) ([]*models.ScheduleTask, []map[string]interface{}, []uint, error) {
+	childSpan := span.Tracer().StartSpan("MapFilterUpdateScheduleTasksToSteps", opentracing.ChildOf(span.Context()))
+
+	// filter without ID to bulk create
+	// bulkCreateTasks := []map[string]interface{}{}
+	bulkCreateTasks := []*models.ScheduleTask{}
+	// filter with ID to bulk update
+	bulkUpdateTasks := []map[string]interface{}{}
+	// get all ids
+	taskIDs := []uint{}
+
+	claims := GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	for _, reqStep := range req.Steps {
+		for _, reqTask := range reqStep.Tasks {
+			for _, step := range steps {
+				if *reqTask.ParentUUID == *step.Uuid {
+					taskID := uint(0)
+					if reqTask.ID != nil {
+						taskID = *reqTask.ID
+					}
+
+					if reqTask.ID == nil {
+						// newTask["created_by_id"] = userID
+						// newTask["created_at"] = time.Now()
+						// bulkCreateTasks = append(bulkCreateTasks, newTask)
+						newTask := &models.ScheduleTask{
+							ScheduleID:  scheduleID,
+							AssigneeID:  reqTask.AssigneeID,
+							ParentID:    step.ID,
+							EntityID:    reqTask.EntityID,
+							EntityType:  reqTask.EntityType,
+							UUID:        reqTask.UUID,
+							ParentUUID:  reqTask.ParentUUID,
+							Title:       reqTask.Title,
+							Remark:      reqTask.Remark,
+							OrderItem:   reqTask.OrderItem,
+							Color:       reqTask.Color,
+							IsChecked:   reqTask.IsChecked,
+							StartAt:     reqTask.StartAt,
+							EndAt:       reqTask.EndAt,
+							CreatedByID: &userID,
+						}
+						bulkCreateTasks = append(bulkCreateTasks, newTask)
+					} else if reqTask.ID != nil && *reqTask.ID > 0 {
+						newTask := map[string]interface{}{
+							"id":          taskID,
+							"schedule_id": scheduleID,
+							"assignee_id": reqTask.AssigneeID,
+							"parent_id":   step.ID,
+							"entity_id":   reqTask.EntityID,
+							"entity_type": reqTask.EntityType,
+							"uuid":        reqTask.UUID,
+							"parent_uuid": reqTask.ParentUUID,
+							"title":       reqTask.Title,
+							"remark":      reqTask.Remark,
+							"order_item":  reqTask.OrderItem,
+							"color":       reqTask.Color,
+							"is_checked":  reqTask.IsChecked,
+							"start_at":    reqTask.StartAt,
+							"end_at":      reqTask.EndAt,
+						}
+						newTask["updated_by_id"] = userID
+						newTask["updated_at"] = time.Now()
+						bulkUpdateTasks = append(bulkUpdateTasks, newTask)
+						taskIDs = append(taskIDs, *reqTask.ID)
+					}
+				}
+			}
+		}
+	}
+
+	return bulkCreateTasks, bulkUpdateTasks, taskIDs, nil
 }

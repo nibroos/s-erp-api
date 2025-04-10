@@ -304,7 +304,7 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
     FROM ( 
 			SELECT DISTINCT ON (so.id)
 				so.id, so.customer_id, so.order_type_id, so.currency_id, so.vat_id, so.payment_id, so.pph23_id, so.branch_id,
-				so.po_buyer_no, so.sales_order_no, so.ship_dest, so.remark, 
+				so.po_buyer_no, so.po_buyer_no_ori, so.sales_order_no, so.ship_dest, so.remark, 
 				so.status, so.exchange_rate, so.pph23_perc, so.markup_perc, so.total_qty, so.subtotal, so.total_discount, so.total_pph23, so.total_vat, so.grand_total, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
 				TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
 				TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
@@ -369,6 +369,49 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 	}
 
 	return &salesOrder, nil
+}
+
+func (r *SalesOrderRepository) GetScheduleBySalesOrderID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.ScheduleDetailDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetScheduleBySalesOrderID", opentracing.ChildOf(span.Context()))
+	var schedule dtos.ScheduleDetailDTO
+
+	baseQuery := `
+    FROM ( 
+			SELECT DISTINCT ON (s.id)
+				s.id, s.assignee_id, s.sales_order_id, s.uuid, s.steps_id, s.title, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
+
+				TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_at,
+				TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_at,
+
+				ass.name as assignee_name,
+				cu.name as created_by_name,
+				uu.name as updated_by_name
+
+			FROM schedules s
+			LEFT JOIN sales_orders so ON s.sales_order_id = so.id
+
+			LEFT JOIN users ass ON s.assignee_id = ass.id
+			LEFT JOIN users cu ON s.created_by_id = cu.id
+			LEFT JOIN users uu ON s.updated_by_id = uu.id
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	query := `SELECT *
+		` + baseQuery
+
+	var args []interface{}
+
+	i := 1
+	query += " AND sales_order_id = $1"
+	args = append(args, params.ID)
+	i++
+
+	if err := r.sqlDB.Get(&schedule, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		childSpan.LogKV("query", query)
+		return nil, err
+	}
+
+	return &schedule, nil
 }
 
 // BeginTransaction starts a new transaction
@@ -1587,4 +1630,353 @@ func (r *SalesOrderRepository) GetCustomerSalesOrderCreatedThisMonth(ctx *fiber.
 	}
 
 	return total, nil
+}
+
+// CreateSchedule
+func (r *SalesOrderRepository) CreateSchedule(ctx *fiber.Ctx, tx *gorm.DB, schedule *models.Schedule, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateSchedule", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Create(schedule).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+// CreateScheduleSteps
+func (r *SalesOrderRepository) CreateScheduleSteps(ctx *fiber.Ctx, tx *gorm.DB, scheduleSteps []*models.ScheduleTask, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateScheduleSteps", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Create(&scheduleSteps).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+// CreateScheduleTasks
+func (r *SalesOrderRepository) CreateScheduleTasks(ctx *fiber.Ctx, tx *gorm.DB, scheduleTasks []*models.ScheduleTask, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateScheduleTasks", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Create(&scheduleTasks).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+// GetScheduleTasksByScheduleID
+func (r *SalesOrderRepository) GetScheduleTasksByScheduleID(ctx *fiber.Ctx, filters map[string]string, scheduleIDs []uint, span opentracing.Span) ([]dtos.ScheduleTaskListDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetScheduleTasksByScheduleID", opentracing.ChildOf(span.Context()))
+
+	scheduleTasks := []dtos.ScheduleTaskListDTO{}
+
+	filterDBColumnKey := []string{
+		"st.title", "st.color", "st.remark",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"schedule_id": "st.schedule_id",
+		"entity_id":   "st.entity_id",
+		"assignee_id": "st.assignee_id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		// "customer_ids":       "so.customer_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		// "vat_ids": []string{"so.vat_id", "sd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	if len(scheduleIDs) > 0 {
+		condition += fmt.Sprintf(" AND st.schedule_id = ANY($%d)", i)
+		args = append(args, pq.Array(scheduleIDs))
+		i++
+	}
+
+	filterKeyLike := map[string]string{
+		"title":  "st.title",
+		"color":  "st.color",
+		"remark": "st.remark",
+	}
+
+	for key, _ := range filterKeyLike {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
+			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+	}
+
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (st.id)
+					st.id, st.schedule_id, st.assignee_id, st.parent_id, st.entity_id, st.entity_type, st.uuid, st.parent_uuid, st.title, st.remark, st.order_item, st.color, st.is_checked,
+					
+					TO_CHAR(st.start_at, 'YYYY-MM-DD') as start_at,
+					TO_CHAR(st.end_at, 'YYYY-MM-DD') as end_at,
+
+					st.created_by_id, st.updated_by_id, st.deleted_by_id, st.created_at, st.updated_at, st.deleted_at,
+
+					cu.name as created_by_name,
+					uu.name as updated_by_name
+
+				FROM schedule_tasks st
+
+        LEFT JOIN users cu ON st.created_by_id = cu.id
+        LEFT JOIN users uu ON st.updated_by_id = uu.id
+				WHERE 1=1` + condition + queryGlobal + `
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	query := `SELECT *
+		` + baseQuery
+
+	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+	err := r.sqlDB.SelectContext(ctx.Context(), &scheduleTasks, query, args...)
+	if err != nil {
+		selectSpan.LogKV("query", query)
+		utils.LogErrors(selectSpan, err)
+		return nil, err
+	}
+
+	return scheduleTasks, nil
+}
+
+func (r *SalesOrderRepository) UpdateSalesOrderSchedule(tx *gorm.DB, salesOrderSchedule *models.Schedule, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-UpdateSalesOrderSchedule", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Where("id = ?", salesOrderSchedule.ID).Select("*").Omit(
+		"created_at", "created_by_id",
+	).Updates(salesOrderSchedule).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+}
+
+func (r *SalesOrderRepository) DeleteScheduleStepsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, scheduleID uint, scheduleStepIDs []uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SoDtRepository-DeleteScheduleStepsWhereNotIn", opentracing.ChildOf(span.Context()))
+
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	now := time.Now()
+	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
+
+	query := tx.Model(&models.ScheduleTask{}).Where("schedule_id = ? AND deleted_at IS NULL", scheduleID)
+
+	if len(scheduleStepIDs) > 0 {
+		query = query.Where("id NOT IN (?)", scheduleStepIDs)
+	}
+
+	if err := query.Updates(map[string]interface{}{
+		"deleted_by_id": userID,
+		"deleted_at":    deletedAt,
+	}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	return tx, nil
+}
+
+// bulk/batch update schedule steps
+func (r *SalesOrderRepository) UpdateScheduleSteps(ctx *fiber.Ctx, tx *gorm.DB, scheduleSteps []*models.ScheduleTask, userID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SoDtRepository-UpdateScheduleSteps", opentracing.ChildOf(span.Context()))
+
+	data := make([]map[string]interface{}, 0)
+	for _, scheduleStep := range scheduleSteps {
+		data = append(data, map[string]interface{}{
+			"id":            scheduleStep.ID,
+			"schedule_id":   scheduleStep.ScheduleID,
+			"assignee_id":   scheduleStep.AssigneeID,
+			"parent_id":     scheduleStep.ParentID,
+			"entity_id":     scheduleStep.EntityID,
+			"entity_type":   scheduleStep.EntityType,
+			"uuid":          scheduleStep.UUID,
+			"parent_uuid":   scheduleStep.ParentUUID,
+			"title":         scheduleStep.Title,
+			"remark":        scheduleStep.Remark,
+			"order_item":    scheduleStep.OrderItem,
+			"color":         scheduleStep.Color,
+			"is_checked":    scheduleStep.IsChecked,
+			"start_at":      scheduleStep.StartAt,
+			"end_at":        scheduleStep.EndAt,
+			"updated_by_id": userID,
+			"updated_at":    time.Now(),
+		})
+	}
+
+	// if err := r.utilRepo.BulkUpdate(tx, "scheduleSteps", "id", data, childSpan); err != nil {
+	if err := r.utilRepo.Upsert(tx, "schedule_tasks", "id", data, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (r *SalesOrderRepository) GetUpdatedScheduleStepsBySalesOrderScheduleIDs(ctx *fiber.Ctx, tx *gorm.DB, salesOrderScheduleIDs []uint, span opentracing.Span) ([]dtos.ScheduleStepListDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetSoDtsBySalesOrderIDs", opentracing.ChildOf(span.Context()))
+
+	soDts := []dtos.ScheduleStepListDTO{}
+
+	query := `SELECT sd.id, sd.sales_order_id, sd.product_uuid,
+		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.qty_out, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
+		sd.vat_perc, sd.vat_perc_am, sd.pph23_perc, sd.pph23_perc_am, sd.markup_perc, sd.markup_perc_am, sd.is_vat, sd.is_pph23, sd.is_lock_price_sell, sd.is_lock_markup,
+		sd.created_at, sd.updated_at, sd.deleted_at,
+
+		sd.id as so_dt_id,
+		isg.id as item_sub_group_id,
+		ig.id as item_group_id,
+		isg.name as item_sub_group_name,
+		ig.name as item_group_name,
+		u.name as unit_name,
+		pi.name as item_name,
+		pi.code as item_code,
+
+		cu.name as created_by_name,
+		uu.name as updated_by_name
+
+	FROM so_dts sd
+	LEFT JOIN sales_orders p ON sd.sales_order_id = p.id
+	LEFT JOIN products pi ON sd.item_id = pi.id
+	LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
+	LEFT JOIN mix_values u ON iu.unit_id = u.id
+	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
+	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+	LEFT JOIN users cu ON sd.created_by_id = cu.id
+	LEFT JOIN users uu ON sd.updated_by_id = uu.id
+	WHERE sd.deleted_at IS NULL`
+
+	var args []interface{}
+	i := 1
+
+	if len(salesOrderScheduleIDs) > 0 {
+		query += " AND sd.sales_order_id = ANY($1)"
+		args = append(args, pq.Array(salesOrderScheduleIDs))
+		i++
+
+	}
+
+	// GORM Raw
+	if err := tx.Raw(query, args...).Scan(&soDts).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return soDts, nil
+}
+
+func (r *SalesOrderRepository) DeleteScheduleTasksWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, salesOrderID uint, soDtBomIDs []uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SoDtRepository-DeleteScheduleTasksWhereNotIn", opentracing.ChildOf(span.Context()))
+
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	now := time.Now()
+	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
+
+	query := tx.Model(&models.ScheduleTask{}).Where("schedule_id = ? AND deleted_at IS NULL", salesOrderID)
+
+	if len(soDtBomIDs) > 0 {
+		query = query.Where("id NOT IN (?)", soDtBomIDs)
+	}
+
+	if err := query.Updates(map[string]interface{}{
+		"deleted_by_id": userID,
+		"deleted_at":    deletedAt,
+	}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+// bulk/batch update soDts
+func (r *SalesOrderRepository) UpdateScheduleTasks(tx *gorm.DB, tasks []map[string]interface{}, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SoDtRepository-UpdateScheduleTasks", opentracing.ChildOf(span.Context()))
+
+	if err := r.utilRepo.Upsert(tx, "schedule_tasks", "id", tasks, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
 }

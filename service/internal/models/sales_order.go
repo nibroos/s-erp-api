@@ -17,6 +17,7 @@ type SalesOrder struct {
 	BranchID      *uint          `json:"branch_id" gorm:"column:branch_id"`
 	RevNo         *int           `json:"rev_no" gorm:"column:rev_no"`
 	PoBuyerNo     string         `json:"po_buyer_no" gorm:"column:po_buyer_no"`
+	PoBuyerNoOri  *string        `json:"po_buyer_no_ori" gorm:"column:po_buyer_no_ori"`
 	SalesOrderNo  *string        `json:"sales_order_no" gorm:"column:sales_order_no"`
 	Remark        *string        `json:"remark" gorm:"column:remark"`
 	ShipDest      *string        `json:"ship_dest" gorm:"column:ship_dest"`

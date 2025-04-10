@@ -50,11 +50,22 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 		return nil, tx, err
 	}
 
-	if tx, err := s.repo.CreateSalesOrder(tx, &salesOrder, childSpan); err != nil {
+	if tx, err = s.repo.CreateSalesOrder(tx, &salesOrder, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, tx, err
 	}
+
+	// go routine to create schedule entity related to sales order
+	// go func() {
+	tx, err = s.CreateSchedule(ctx, *req.Schedule, &salesOrder, userID, tx, childSpan)
+
+	if err != nil {
+		childSpan.Finish()
+		tx.Rollback()
+		return nil, tx, err
+	}
+	// }()
 
 	// bulk create item soDts ref ms items / product->boms
 	var soDts []models.SoDt
@@ -114,6 +125,56 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 	return &salesOrder, tx, nil
 }
 
+// CreateSchedule
+func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, salesOrder *models.SalesOrder, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-CreateSchedule", opentracing.ChildOf(span.Context()))
+
+	schedule, err := utils.MapCreateSchedule(ctx, req, userID, salesOrder, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return tx, err
+	}
+
+	if tx, err = s.repo.CreateSchedule(ctx, tx, &schedule, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return tx, err
+	}
+
+	// create steps
+	if len(req.Steps) > 0 {
+		steps, err := utils.MapCreateScheduleSteps(ctx, req.Steps, schedule.ID, userID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return tx, err
+		}
+
+		if tx, err = s.repo.CreateScheduleSteps(ctx, tx, steps, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return tx, err
+		}
+
+		// create schedule task
+		tasks, err := utils.MapCreateScheduleTasks(ctx, req.Steps, steps, schedule.ID, userID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return tx, err
+		}
+
+		if tx, err = s.repo.CreateScheduleTasks(ctx, tx, tasks, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return tx, err
+		}
+	}
+
+	return tx, nil
+}
+
 func (s *SalesOrderService) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.SalesOrderDetailDTO, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-GetSalesOrderByID", opentracing.ChildOf(span.Context()))
 
@@ -122,7 +183,39 @@ func (s *SalesOrderService) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.GetSa
 		defer childSpan.Finish()
 		return nil, err
 	}
+
 	return salesOrder, nil
+}
+
+// get schedule by sales order id
+func (s *SalesOrderService) GetScheduleBySalesOrderID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.ScheduleDetailDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetScheduleBySalesOrderID", opentracing.ChildOf(span.Context()))
+
+	schedule, err := s.repo.GetScheduleBySalesOrderID(ctx, params, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	scheduleIDs := []uint{schedule.ID}
+	filters := map[string]string{}
+
+	scheduleTasks, err := s.repo.GetScheduleTasksByScheduleID(ctx, filters, scheduleIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	// map steps
+	steps, err := utils.MapGetScheduleStepsTasks(ctx, scheduleTasks, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	schedule.Steps = steps
+
+	return schedule, nil
 }
 
 func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.SalesOrder, error) {
@@ -604,4 +697,150 @@ func (s *SalesOrderService) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[string
 	}
 
 	return quoDts, total, nil
+}
+
+func (s *SalesOrderService) UpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Schedule, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-UpdateSalesOrderSchedule", opentracing.ChildOf(span.Context()))
+
+	salesOrderSchedule, err := utils.MapUpdateSalesOrderSchedule(ctx, req, userID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	if err := s.repo.UpdateSalesOrderSchedule(tx, &salesOrderSchedule, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	// Bulk/Create Update Batch SoDts
+	scheduleSteps, err := utils.MapUpdateScheduleSteps(ctx, req.Steps, userID, childSpan)
+
+	tx, err = s.BulkCreateUpdateScheduleSteps(ctx, req, &salesOrderSchedule, userID, scheduleSteps, salesOrderSchedule.ID, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	updatedSalesOrderScheduleIDs := make([]uint, 0)
+	updatedSalesOrderScheduleIDs = append(updatedSalesOrderScheduleIDs, salesOrderSchedule.ID)
+
+	// get updated soDts
+	updatedScheduleSteps, err := s.repo.GetUpdatedScheduleStepsBySalesOrderScheduleIDs(ctx, tx, updatedSalesOrderScheduleIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	// Bulk/Create Update Batch SoDtBoms
+	err = s.BulkCreateUpdateScheduleTasks(ctx, updatedScheduleSteps, req, salesOrderSchedule.ID, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	return &salesOrderSchedule, nil
+}
+
+// bulk create/update boms for a quotation
+func (s *SalesOrderService) BulkCreateUpdateScheduleSteps(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, updatedSalesOrderSchedule *models.Schedule, userID uint, steps []*models.ScheduleTask, scheduleID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-BulkCreateUpdateScheduleSteps", opentracing.ChildOf(span.Context()))
+
+	// Bulk/Create Update Batch ScheduleSteps
+	scheduleSteps, err := utils.MapUpdateScheduleSteps(ctx, req.Steps, userID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	// filter without ID to bulk create
+	bulkCreateScheduleSteps := []*models.ScheduleTask{}
+	// filter with ID to bulk update
+	bulkUpdateScheduleSteps := []*models.ScheduleTask{}
+	// get all ids
+	scheduleStepIDs := []uint{}
+
+	for _, scheduleStep := range scheduleSteps {
+		if scheduleStep.ID == 0 {
+			scheduleStep.CreatedByID = &userID
+			scheduleStep.CreatedAt = time.Now()
+			bulkCreateScheduleSteps = append(bulkCreateScheduleSteps, scheduleStep)
+		} else {
+			bulkUpdateScheduleSteps = append(bulkUpdateScheduleSteps, scheduleStep)
+			scheduleStepIDs = append(scheduleStepIDs, scheduleStep.ID)
+		}
+	}
+
+	// delete scheduleSteps that are not in the list
+	if len(scheduleStepIDs) > 0 {
+		if tx, err := s.repo.DeleteScheduleStepsWhereNotIn(ctx, tx, scheduleID, scheduleStepIDs, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(bulkCreateScheduleSteps) > 0 {
+		if tx, err := s.repo.CreateScheduleSteps(ctx, tx, bulkCreateScheduleSteps, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(bulkUpdateScheduleSteps) > 0 {
+		if tx, err := s.repo.UpdateScheduleSteps(ctx, tx, bulkUpdateScheduleSteps, userID, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	return tx, nil
+}
+
+// bulk create/update boms for a quotation
+func (s *SalesOrderService) BulkCreateUpdateScheduleTasks(ctx *fiber.Ctx, steps []dtos.ScheduleStepListDTO, req dtos.UpdateSalesOrderScheduleRequest, scheduleID uint, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderService-BulkCreateUpdateScheduleTasks", opentracing.ChildOf(span.Context()))
+
+	bulkCreateScheduleTasks, bulkUpdateScheduleTasks, soDtBomIDs, err := utils.MapFilterUpdateScheduleTasksToSteps(ctx, steps, req, scheduleID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+
+		return err
+	}
+
+	// delete soDts that are not in the list
+	if len(soDtBomIDs) > 0 {
+		if err := s.repo.DeleteScheduleTasksWhereNotIn(ctx, tx, scheduleID, soDtBomIDs, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if len(bulkCreateScheduleTasks) > 0 {
+		if tx, err := s.repo.CreateScheduleTasks(ctx, tx, bulkCreateScheduleTasks, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if len(bulkUpdateScheduleTasks) > 0 {
+		if err := s.repo.UpdateScheduleTasks(tx, bulkUpdateScheduleTasks, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return nil
 }
