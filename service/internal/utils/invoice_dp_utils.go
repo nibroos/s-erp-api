@@ -194,18 +194,16 @@ func MapCreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, userID 
 	return invoiceDp, nil
 }
 
-func MapUpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, userID uint, branchID uint, span opentracing.Span) (models.InvoiceDp, error) {
+func MapUpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, userID uint, branchID uint, existingRevNo *int, span opentracing.Span) (models.InvoiceDp, error) {
 	revNo := 0
-	if req.RevNo != nil {
-		revNo = *req.RevNo + 1
+	if existingRevNo != nil {
+		revNo = *existingRevNo + 1
 	} else {
 		revNo = 1
 	}
 
 	invoiceNo := *req.InvoiceNo
-	if req.RevNo != nil {
-		invoiceNo = GenerateInvoiceDpNoOnUpdate(ctx, req, &revNo, span)
-	}
+	invoiceNo = GenerateInvoiceDpNoOnUpdate(ctx, req, &revNo, span)
 
 	invoiceDp := models.InvoiceDp{
 		ID:                       req.ID,
