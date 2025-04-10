@@ -15,12 +15,12 @@ func NewInvoiceDpUpdateRequest() *InvoiceDpUpdateRequest {
 
 func (r *InvoiceDpUpdateRequest) Validate(req *dtos.UpdateInvoiceDpRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
-		"id":                          []string{"required", "exists:invoice_dps,id"},
-		"customer_id":                 []string{"required", "exists:customers,id"},
-		"currency_id":                 []string{"required", "exists:mix_values,id"},
-		"invoice_date":                []string{"required", "date:yyyy-MM-dd"},
-		"dp_percentage":               []string{"required", "numeric"},
-		"invoice_dp_dts":              []string{"array"},
+		"id":           []string{"required", "exists:invoice_dps,id"},
+		"customer_id":  []string{"required", "exists:customers,id"},
+		"currency_id":  []string{"required", "exists:mix_values,id"},
+		"invoice_date": []string{"required", "date:yyyy-MM-dd"},
+		// "dp_percentage":               []string{"required", "numeric"},
+		"invoice_dp_dts":              []string{"required", "array"},
 		"invoice_dp_dts.*.product_id": []string{"required"},
 		"invoice_dp_dts.*.ref_id":     []string{"required"},
 		"invoice_dp_dts.*.ref_type":   []string{"required"},
@@ -28,7 +28,9 @@ func (r *InvoiceDpUpdateRequest) Validate(req *dtos.UpdateInvoiceDpRequest, ctx 
 		"invoice_dp_dts.*.price":      []string{"required", "numeric"},
 	}
 
-	customFieldNames := map[string]string{}
+	customFieldNames := map[string]string{
+		"invoice_dp_dts": "item sales order",
+	}
 
 	var requestBody map[string]interface{}
 	if err := ctx.BodyParser(&requestBody); err != nil {
