@@ -70,11 +70,11 @@ func (c *SalesOrderController) GetSalesOrderByID(ctx *fiber.Ctx) error {
 	var req dtos.GetSalesOrderByIDRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "salesOrder not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "sales order not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "salesOrder not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "sales order not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
@@ -83,6 +83,11 @@ func (c *SalesOrderController) GetSalesOrderByID(ctx *fiber.Ctx) error {
 	salesOrder, err := c.service.GetSalesOrderByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
+	}
+
+	salesOrder.Schedule, err = c.service.GetScheduleBySalesOrderID(ctx, params, tx, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
 	}
 
 	createdSalesOrderIDs := make([]uint, 0)
@@ -133,7 +138,7 @@ func (c *SalesOrderController) CreateSalesOrder(ctx *fiber.Ctx) error {
 	// Validate the request
 	reqValidator, isValid := form_requests.NewSalesOrderStoreRequest().Validate(&req, ctx)
 	if !isValid {
-		return utils.ErrValidResponse(ctx, apiSpan, "Failed to create salesOrder", reqValidator)
+		return utils.ErrValidResponse(ctx, apiSpan, "Failed to create Sales Order", reqValidator)
 	}
 
 	claims := utils.GetClaims(ctx, parentSpan)
@@ -146,13 +151,13 @@ func (c *SalesOrderController) CreateSalesOrder(ctx *fiber.Ctx) error {
 	tx, err := c.service.LockCreateSalesOrderTable(ctx, tx, req, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to update salesOrder", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Sales Order", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	// create header salesOrder
 	createdSalesOrder, tx, err := c.service.CreateSalesOrder(ctx, req, userID, branchID, tx, parentSpan)
 	if err != nil {
-		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create salesOrder", http.StatusInternalServerError)
+		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Sales Order", http.StatusInternalServerError)
 	}
 
 	tx.Commit()
@@ -160,13 +165,13 @@ func (c *SalesOrderController) CreateSalesOrder(ctx *fiber.Ctx) error {
 	params := &dtos.GetSalesOrderParams{ID: createdSalesOrder.ID}
 	getSalesOrder, err := c.service.GetSalesOrderByID(ctx, params, tx, parentSpan)
 	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch sales order", http.StatusInternalServerError)
 	}
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getSalesOrder}, paginationMeta, "salesOrder created successfully", http.StatusCreated, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getSalesOrder}, paginationMeta, "Sales Order created successfully", http.StatusCreated, nil, nil)
 }
 
 // update salesOrder
@@ -408,10 +413,58 @@ func (c *SalesOrderController) GetRefIndexQuoDts(ctx *fiber.Ctx) error {
 
 	quoDts, total, err := c.service.GetRefIndexQuoDts(ctx, filters, parentSpan)
 	if err != nil {
-		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch quoDt", http.StatusInternalServerError)
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch quotation", http.StatusInternalServerError)
 	}
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
-	return utils.GetResponse(ctx, quoDts, paginationMeta, "quoDt fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, quoDts, paginationMeta, "Quotation fetched successfully", http.StatusOK, nil, nil)
+}
+
+// UpdateScheduleSalesOrder updates the schedule of a sales order
+func (c *SalesOrderController) UpdateScheduleSalesOrder(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("SalesOrderController-UpdateScheduleSalesOrder", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.UpdateSalesOrderScheduleRequest
+
+	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
+	}
+
+	// Validate the request
+	reqValidator, isValid := form_requests.NewScheduleUpdateRequest().Validate(&req, ctx)
+	if !isValid {
+		utils.LogResponse(apiSpan, reqValidator)
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
+	}
+
+	// Extract user ID from JWT
+	claims := utils.GetClaims(ctx, parentSpan)
+	userID := uint(claims["user_id"].(float64))
+	branchID := utils.GetDefaultBranchID(ctx)
+
+	tx := c.repo.BeginTransaction()
+
+	_, err := c.service.UpdateSalesOrderSchedule(ctx, req, userID, branchID, tx, parentSpan)
+
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Schedule", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	tx.Commit()
+
+	filters := make(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+
+	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Schedule updated successfully", http.StatusOK, nil, nil)
 }

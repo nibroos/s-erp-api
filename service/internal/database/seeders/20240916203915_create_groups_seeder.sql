@@ -391,6 +391,26 @@ VALUES
     '{}',
     1,
     1
+  ),
+  (
+    39,
+    'tasks',
+    'Tasks',
+    'Tasks table for storing tasks master data',
+    1,
+    '{}',
+    1,
+    1
+  ),
+  (
+    40,
+    'steps',
+    'Steps',
+    'Steps table for storing steps master data',
+    1,
+    '{}',
+    1,
+    1
   );
 
 -- vats, pph23s, cap_types, cap_sizes, cap_categories, cap_colors, cap_statuses

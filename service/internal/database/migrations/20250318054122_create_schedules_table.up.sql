@@ -2,16 +2,17 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS schedules (
   id SERIAL PRIMARY KEY,
-  customer_id INT REFERENCES customers(id) ON DELETE RESTRICT,
   assignee_id INT REFERENCES users(id) ON DELETE RESTRICT,
-  sales_order_id INT REFERENCES sales_orders(id) ON DELETE RESTRICT,
-  schedule_type_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
-  schedule_no TEXT,
+  -- sales_order_id INT REFERENCES sales_orders(id) ON DELETE RESTRICT,
+  sales_order_id INT,
+  uuid TEXT,
+  steps_id INT,
   title TEXT,
   remark TEXT,
   status TEXT DEFAULT 'WAITING',
   start_at date,
   end_at date,
+  color TEXT,
   created_by_id INT,
   updated_by_id INT,
   deleted_by_id INT,
@@ -19,5 +20,11 @@ CREATE TABLE IF NOT EXISTS schedules (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
+
+COMMENT ON COLUMN schedules.status IS 'WAITING, PROCESS, FINISHED, CANCELED';
+
+CREATE INDEX idx_schedules_assignee_id ON schedules(assignee_id);
+
+CREATE INDEX idx_schedules_sales_order_id ON schedules(sales_order_id);
 
 COMMIT;

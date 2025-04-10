@@ -85,6 +85,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	units := version.Group("/units")
 	SetupUnitRoutes(units, gormDB, sqlDB, utilRepo, tracer)
 
+	tasks := version.Group("/tasks")
+	SetupTaskRoutes(tasks, gormDB, sqlDB, utilRepo, tracer)
+
 	vats := version.Group("/vats")
 	SetupVatRoutes(vats, gormDB, sqlDB, utilRepo, tracer)
 

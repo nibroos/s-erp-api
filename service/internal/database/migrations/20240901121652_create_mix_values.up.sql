@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS mix_values (
   remark TEXT,
   num DECIMAL(20, 5),
   order_item DECIMAL(20, 5),
+  color TEXT,
   status INT,
   options_json JSONB,
   created_by_id INT,
