@@ -237,6 +237,7 @@ type UpdateSalesOrderRequest struct {
 	BranchID      *uint                `json:"branch_id"`
 	RevNo         *int                 `json:"rev_no"`
 	PoBuyerNo     *string              `json:"po_buyer_no"`
+	PoBuyerNoOri  *string              `json:"po_buyer_no_ori"`
 	SalesOrderNo  *string              `json:"sales_order_no"`
 	Remark        *string              `json:"remark"`
 	ShipDest      *string              `json:"ship_dest"`
@@ -307,6 +308,7 @@ type SalesOrderListDTO struct {
 	BranchID      *uint    `json:"branch_id" db:"branch_id"`
 	SalesOrderNo  *string  `json:"sales_order_no" db:"sales_order_no"`
 	PoBuyerNo     string   `json:"po_buyer_no" db:"po_buyer_no"`
+	PoBuyerNoOri  *string  `json:"po_buyer_no_ori" db:"po_buyer_no_ori"`
 	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	Remark        *string  `json:"remark" db:"remark"`
 	Status        string   `json:"status" db:"status"`
@@ -372,6 +374,7 @@ type SalesOrderDetailDTO struct {
 	BranchID      *uint    `json:"branch_id" db:"branch_id"`
 	SalesOrderNo  *string  `json:"sales_order_no" db:"sales_order_no"`
 	PoBuyerNo     string   `json:"po_buyer_no" db:"po_buyer_no"`
+	PoBuyerNoOri  *string  `json:"po_buyer_no_ori" db:"po_buyer_no_ori"`
 	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	Remark        *string  `json:"remark" db:"remark"`
 	RevNo         *int     `json:"rev_no" db:"rev_no"`
@@ -409,6 +412,7 @@ type SalesOrderDetailDTO struct {
 	UpdatedAt     *string                 `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string                 `json:"deleted_at" db:"deleted_at"`
 	SoDts         []SalesOrderSoDtListDTO `json:"so_dts"`
+	Schedule      *ScheduleDetailDTO      `json:"schedule"`
 }
 
 type ScheduleDetailDTO struct {
@@ -772,4 +776,61 @@ type GetQuoDtQtyUpdateDTO struct {
 type UpdateQuotationStatusRequest struct {
 	ID     uint   `json:"id"`
 	Status string `json:"status"`
+}
+
+type UpdateSalesOrderScheduleRequest struct {
+	ID           uint    `json:"id"`
+	AssigneeID   *uint   `json:"assignee_id"`
+	SalesOrderID uint    `json:"sales_order_id"`
+	StepsID      *uint   `json:"steps_id"`
+	UUID         *string `json:"uuid"`
+	Title        string  `json:"title"`
+	Remark       *string `json:"remark"`
+	Status       string  `json:"status"`
+	StartAt      *string `json:"start_at"`
+	EndAt        *string `json:"end_at"`
+	Color        *string `json:"color"`
+	CreatedByID  *uint   `json:"created_by_id"`
+	UpdatedByID  *uint   `json:"updated_by_id"`
+	DeletedByID  *uint   `json:"deleted_by_id"`
+
+	Steps []UpdateScheduleStepRequest `json:"steps"`
+}
+
+type UpdateScheduleStepRequest struct {
+	ID         *uint   `json:"id"`
+	ScheduleID uint    `json:"schedule_id"`
+	AssigneeID *uint   `json:"assignee_id"`
+	ParentID   *uint   `json:"parent_id"`
+	EntityID   *uint   `json:"entity_id"`
+	EntityType string  `json:"entity_type"`
+	UUID       *string `json:"uuid"`
+	ParentUUID *string `json:"parent_uuid"`
+	Title      string  `json:"title"`
+	Remark     *string `json:"remark"`
+	OrderItem  *int    `json:"order_item"`
+	Color      *string `json:"color"`
+	IsChecked  *int    `json:"is_checked"`
+	StartAt    *string `json:"start_at"`
+	EndAt      *string `json:"end_at"`
+
+	Tasks []UpdateScheduleTaskRequest `json:"tasks"`
+}
+
+type UpdateScheduleTaskRequest struct {
+	ID         *uint   `json:"id"`
+	ScheduleID uint    `json:"schedule_id"`
+	AssigneeID *uint   `json:"assignee_id"`
+	ParentID   *uint   `json:"parent_id"`
+	EntityID   *uint   `json:"entity_id"`
+	EntityType string  `json:"entity_type"`
+	UUID       *string `json:"uuid"`
+	ParentUUID *string `json:"parent_uuid"`
+	Title      string  `json:"title"`
+	Remark     *string `json:"remark"`
+	OrderItem  *int    `json:"order_item"`
+	Color      *string `json:"color"`
+	IsChecked  *int    `json:"is_checked"`
+	StartAt    *string `json:"start_at"`
+	EndAt      *string `json:"end_at"`
 }

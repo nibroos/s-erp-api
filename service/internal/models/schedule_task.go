@@ -5,6 +5,7 @@ import (
 )
 
 type ScheduleTask struct {
+	gorm.Model
 	ID          uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	ScheduleID  uint           `json:"schedule_id" gorm:"column:schedule_id"`
 	AssigneeID  *uint          `json:"assignee_id" gorm:"column:assignee_id"`

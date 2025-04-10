@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   branch_id INT REFERENCES branches(id) ON DELETE RESTRICT,
   rev_no INT DEFAULT 0,
   po_buyer_no TEXT,
+  po_buyer_no_ori TEXT,
   sales_order_no TEXT,
   remark TEXT,
   ship_dest TEXT,
