@@ -877,10 +877,16 @@ type UpdateScheduleTasksCheckAppDeleteFileRequest struct {
 }
 
 type UpdateScheduleTasksCheckAppFileRequest struct {
-	LastModified int64  `json:"last_modified"`
-	Name         string `json:"name"`
-	Size         int64  `json:"size"`
-	Type         string `json:"type"`
+	LastModified int64   `json:"last_modified"`
+	Name         string  `json:"name"`
+	Size         int64   `json:"size"`
+	Type         string  `json:"type"`
+	RefType      *string `json:"ref_type"`
+	RefID        *uint   `json:"ref_id"`
+	FileUrl      *string `json:"file_url"`
+	FileName     *string `json:"file_name"`
+	Remark       *string `json:"remark"`
+	FileProp     *string `json:"file_prop"`
 }
 
 type UpdateScheduleTaskCheckAppRequest struct {

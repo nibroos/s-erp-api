@@ -1,6 +1,9 @@
 package form_requests
 
 import (
+	"encoding/json"
+	"log"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/validators"
@@ -40,9 +43,66 @@ func (r *SalesOrderUpdateRequest) Validate(req *dtos.UpdateSalesOrderRequest, ct
 	customFieldNames := map[string]string{}
 
 	var requestBody map[string]interface{}
-	if err := ctx.BodyParser(&requestBody); err != nil {
-		return map[string][]string{"error": {"Invalid request body"}}, false
+
+	// if err := ctx.BodyParser(&requestBody); err != nil {
+	// 	// form, err := ctx.MultipartForm()
+	// 	form := ctx.FormValue("data")
+	// 	if err != nil {
+	// 		return map[string][]string{"error": {"Invalid request body or form-data"}}, false
+	// 	}
+
+	// 	if err := json.Unmarshal([]byte(form), &requestBody); err != nil {
+	// 		return map[string][]string{"error": {"Invalid JSON format"}}, false
+	// 	}
+
+	// 	// Convert empty strings to null in the map
+	// 	for key, value := range requestBody {
+	// 		if str, ok := value.(string); ok && str == "" {
+	// 			requestBody[key] = nil
+	// 		}
+	// 	}
+
+	// 	requestBody = make(map[string]interface{})
+	// 	for key, value := range form {
+
+	// 		// log.Println("requestBody, form.Value", values)
+	// 		// if len(values) > 0 {
+	// 		// 	requestBody[key] = values[0]
+	// 		// }
+	// 		if string(value) == "" {
+	// 			requestBody[strconv.Itoa(key)] = nil
+	// 		} else {
+	// 			requestBody[strconv.Itoa(key)] = string(value)
+	// 		}
+	// 	}
+	// }
+	form := ctx.FormValue("data")
+
+	if err := json.Unmarshal([]byte(form), &requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid JSON format"}}, false
 	}
+
+	// Convert empty strings to null in the map
+	for key, value := range requestBody {
+		if str, ok := value.(string); ok && str == "" {
+			requestBody[key] = nil
+		}
+	}
+
+	requestBody = make(map[string]interface{})
+	// Parse the data string as JSON when present
+	if err := json.Unmarshal([]byte(form), &requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid JSON format"}}, false
+	}
+
+	// Convert empty strings to null in the map
+	for key, value := range requestBody {
+		if str, ok := value.(string); ok && str == "" {
+			requestBody[key] = nil
+		}
+	}
+	log.Println("requestBody", requestBody)
+
 	request := validators.NewRequest(rules, requestBody, customFieldNames)
 	errors, valid := request.Validate()
 

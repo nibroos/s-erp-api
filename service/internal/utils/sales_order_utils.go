@@ -2,6 +2,8 @@ package utils
 
 import (
 	"fmt"
+	"log"
+	"mime/multipart"
 	"strings"
 	"time"
 
@@ -759,4 +761,37 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.UpdatedSch
 	}
 
 	return bulkCreateTasks, bulkUpdateTasks, taskIDs, nil
+}
+
+// MapNewFiles
+func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesOrderID uint, userID uint, span opentracing.Span) ([]map[string]interface{}, error) {
+	childSpan := opentracing.StartSpan("MapNewSalesOrderFiles", opentracing.ChildOf(span.Context()))
+
+	newFiles := []map[string]interface{}{}
+
+	for _, file := range files {
+		log.Println("file", file.Filename)
+		// fileName := file.Filename
+
+		newFilePath, err := HandleFileUpload(ctx, file, userID, span)
+		if err != nil {
+			defer childSpan.Finish()
+			return nil, err
+		}
+
+		newFile := map[string]interface{}{
+			"ref_id":        salesOrderID,
+			"ref_type":      "sales_orders",
+			"file_type":     file.Header.Get("Content-Type"),
+			"file_size":     file.Size,
+			"file_url":      &newFilePath,
+			"file_name":     file.Filename,
+			"created_by_id": userID,
+			"created_at":    time.Now(),
+		}
+
+		newFiles = append(newFiles, newFile)
+	}
+
+	return newFiles, nil
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -337,6 +338,13 @@ func executeSQLFile(db *sql.DB, filePath string) error {
 func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 	// Parse the request body into a map
 	var body map[string]interface{}
+	log.Println("ctx.Get", ctx.Get("Content-Type"))
+	log.Println("ctx.Body", string(ctx.Body()))
+
+	// "data" is used for JSON data in multipart/form-data
+	data := ctx.FormValue("data")
+	log.Println("ctx.FormFile-data", data)
+
 	if ctx.Get("Content-Type") == "application/json" {
 		if err := json.Unmarshal(ctx.Body(), &body); err != nil {
 			return err
@@ -347,8 +355,11 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 			if str, ok := value.(string); ok && str == "" {
 				body[key] = nil
 			}
+
 		}
+		log.Println("body1", body)
 	} else if ctx.Get("Content-Type") == "multipart/form-data" {
+		log.Println("multipart/form-data1111")
 		form, err := ctx.MultipartForm()
 		if err != nil {
 			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to parse multipart form"})
@@ -365,6 +376,20 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 				}
 			}
 		}
+		log.Println("body2", body)
+	} else if data != "" {
+		// Parse the data string as JSON when present
+		if err := json.Unmarshal([]byte(data), &body); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to parse data JSON"})
+		}
+
+		// Convert empty strings to null in the map
+		for key, value := range body {
+			if str, ok := value.(string); ok && str == "" {
+				body[key] = nil
+			}
+		}
+		log.Println("body3", body)
 	}
 
 	// Marshal the modified body back to JSON
@@ -372,6 +397,7 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 	if err != nil {
 		return err
 	}
+	log.Println("modifiedBody", string(modifiedBody))
 
 	// Unmarshal the modified body into the provided struct
 	if err := json.Unmarshal(modifiedBody, out); err != nil {
@@ -380,6 +406,8 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 
 	// Convert empty strings to null in the struct fields
 	convertEmptyStringsToNull(out)
+
+	log.Println("out", out)
 
 	return nil
 }

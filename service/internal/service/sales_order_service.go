@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -234,6 +235,26 @@ func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSale
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
+	}
+
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	files := form.File["files"]
+	if len(files) > 0 {
+		// handle new files upload
+		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, salesOrder.ID, userID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+
+		log.Println("newFiles", newFiles)
 	}
 
 	// Bulk/Create Update Batch SoDts
