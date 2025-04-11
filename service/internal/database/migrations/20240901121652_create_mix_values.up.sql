@@ -26,4 +26,6 @@ CREATE INDEX idx_mix_values_group_id ON mix_values (group_id);
 
 CREATE INDEX idx_mix_values_parent_id ON mix_values (parent_id);
 
+CREATE INDEX idx_mix_values_name ON mix_values (name);
+
 COMMIT;

@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -491,6 +490,7 @@ func MapCreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, userID ui
 		SalesOrderID: salesOrder.ID,
 		UUID:         req.UUID,
 		Title:        req.Title,
+		ModuleType:   req.ModuleType,
 		Remark:       req.Remark,
 		Status:       "WAITING",
 		StartAt:      req.StartAt,
@@ -607,6 +607,7 @@ func MapUpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderSchedu
 		SalesOrderID: req.SalesOrderID,
 		UUID:         req.UUID,
 		Title:        req.Title,
+		ModuleType:   req.ModuleType,
 		Remark:       req.Remark,
 		Status:       "WAITING",
 		StartAt:      req.StartAt,
@@ -641,7 +642,6 @@ func MapUpdateScheduleSteps(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest
 
 		// if reqstep.ID != nil && *reqStep.ID > 0 {
 		if reqStep.ID != nil && *reqStep.ID > 0 {
-			log.Println("ID", *reqStep.ID)
 			scheduleStep.ID = *reqStep.ID
 		}
 
@@ -706,9 +706,6 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.UpdatedSch
 						taskID = *reqTask.ID
 					}
 
-					log.Println("taskID", taskID)
-					log.Println("reqTask.ID", reqTask.ID)
-
 					if reqTask.ID == nil {
 						// newTask["created_by_id"] = userID
 						// newTask["created_at"] = time.Now()
@@ -730,7 +727,6 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.UpdatedSch
 							EndAt:       reqTask.EndAt,
 							CreatedByID: &userID,
 						}
-						log.Println("newTask", newTask)
 
 						bulkCreateTasks = append(bulkCreateTasks, newTask)
 					} else if reqTask.ID != nil && *reqTask.ID > 0 {
@@ -756,7 +752,6 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.UpdatedSch
 						bulkUpdateTasks = append(bulkUpdateTasks, newTask)
 						taskIDs = append(taskIDs, *reqTask.ID)
 
-						log.Println("updatedTask", newTask)
 					}
 				}
 			}

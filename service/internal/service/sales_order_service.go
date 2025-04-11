@@ -67,59 +67,61 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 	}
 	// }()
 
-	// bulk create item soDts ref ms items / product->boms
-	var soDts []models.SoDt
-	tx, soDts, err = s.CreateSoDts(ctx, req, userID, &salesOrder, tx, childSpan)
+	if len(req.SoDts) > 0 {
+		// bulk create item soDts ref ms items / product->boms
+		var soDts []models.SoDt
+		tx, soDts, err = s.CreateSoDts(ctx, req, userID, &salesOrder, tx, childSpan)
 
-	if err != nil {
-		defer childSpan.Finish()
-		tx.Rollback()
-		return nil, tx, err
-	}
-
-	quoDtIDs := utils.GetLockSalesOrderQuoIDs(req)
-	quoDtIDsString := utils.JoinUintPtrsToString(quoDtIDs, ",")
-	filters := map[string]string{"ids": quoDtIDsString}
-	getQuoDtsQtyUpdate, err := s.repo.GetQuoDtQtyUpdate(ctx, tx, filters, childSpan)
-	mapUpdateQuoDtsQty := utils.MapUpdateQuoDtsQty(getQuoDtsQtyUpdate, req)
-
-	// bulk update quo dts qty_so = qty_so - qty
-	if len(mapUpdateQuoDtsQty) > 0 {
-		if err := s.repo.BulkUpdateQuoDtsQty(ctx, tx, mapUpdateQuoDtsQty, childSpan); err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return nil, tx, err
-		}
-
-		paramQuotation := map[string]string{"sales_order_id": fmt.Sprintf("%d", salesOrder.ID)}
-		// get quotation_id
-		quotationID, err := s.repo.GetQuotationIDBySalesOrderID(ctx, tx, paramQuotation, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
 			return nil, tx, err
 		}
 
-		// params dtos.UpdateQuotationStatusRequest
-		updateQuoParams := dtos.UpdateQuotationStatusRequest{
-			ID:     quotationID,
-			Status: "APPROVED",
+		quoDtIDs := utils.GetLockSalesOrderQuoIDs(req)
+		quoDtIDsString := utils.JoinUintPtrsToString(quoDtIDs, ",")
+		filters := map[string]string{"ids": quoDtIDsString}
+		getQuoDtsQtyUpdate, err := s.repo.GetQuoDtQtyUpdate(ctx, tx, filters, childSpan)
+		mapUpdateQuoDtsQty := utils.MapUpdateQuoDtsQty(getQuoDtsQtyUpdate, req)
+
+		// bulk update quo dts qty_so = qty_so - qty
+		if len(mapUpdateQuoDtsQty) > 0 {
+			if err := s.repo.BulkUpdateQuoDtsQty(ctx, tx, mapUpdateQuoDtsQty, childSpan); err != nil {
+				defer childSpan.Finish()
+				tx.Rollback()
+				return nil, tx, err
+			}
+
+			paramQuotation := map[string]string{"sales_order_id": fmt.Sprintf("%d", salesOrder.ID)}
+			// get quotation_id
+			quotationID, err := s.repo.GetQuotationIDBySalesOrderID(ctx, tx, paramQuotation, childSpan)
+			if err != nil {
+				defer childSpan.Finish()
+				tx.Rollback()
+				return nil, tx, err
+			}
+
+			// params dtos.UpdateQuotationStatusRequest
+			updateQuoParams := dtos.UpdateQuotationStatusRequest{
+				ID:     quotationID,
+				Status: "APPROVED",
+			}
+
+			// update status header quotations
+			if err := s.repo.UpdateQuoStatus(ctx, tx, updateQuoParams, childSpan); err != nil {
+				defer childSpan.Finish()
+				tx.Rollback()
+				return nil, tx, err
+			}
 		}
 
-		// update status header quotations
-		if err := s.repo.UpdateQuoStatus(ctx, tx, updateQuoParams, childSpan); err != nil {
+		// tx, err = s.CreateSoDtBoms(ctx, soDtBoms, tx, childSpan)
+		tx, err = s.CreateSoDtBoms(ctx, soDts, req, &salesOrder, userID, tx, childSpan)
+		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
 			return nil, tx, err
 		}
-	}
-
-	// tx, err = s.CreateSoDtBoms(ctx, soDtBoms, tx, childSpan)
-	tx, err = s.CreateSoDtBoms(ctx, soDts, req, &salesOrder, userID, tx, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		tx.Rollback()
-		return nil, tx, err
 	}
 
 	return &salesOrder, tx, nil

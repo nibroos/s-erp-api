@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS schedules (
   sales_order_id INT,
   uuid TEXT,
   steps_id INT,
+  module_type TEXT,
   title TEXT,
   remark TEXT,
   status TEXT DEFAULT 'WAITING',
@@ -22,6 +23,8 @@ CREATE TABLE IF NOT EXISTS schedules (
 );
 
 COMMENT ON COLUMN schedules.status IS 'WAITING, PROCESS, FINISHED, CANCELED';
+
+COMMENT ON COLUMN schedules.module_type IS 'sales_orders, feedbacks';
 
 CREATE INDEX idx_schedules_assignee_id ON schedules(assignee_id);
 

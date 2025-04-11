@@ -25,7 +25,7 @@ func (r *ScheduleUpdateRequest) Validate(req *dtos.UpdateSalesOrderScheduleReque
 		"sales_order_id": []string{"exists:sales_orders,id"},
 		"uuid":           []string{},
 		"steps_id":       []string{},
-		"title":          []string{"required"},
+		"title":          []string{},
 		"remark":         []string{},
 		"status":         []string{},
 		// "start_at":       []string{"date_format:Y-m-d"},

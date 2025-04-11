@@ -119,10 +119,11 @@ type CreateSalesOrderRequest struct {
 type CreateScheduleRequest struct {
 	AssigneeID *uint `json:"assignee_id"`
 	// SalesOrderID  uint    `json:"sales_order_id"`
-	UUID    *string `json:"uuid"`
-	StepsID *uint   `json:"steps_id"`
-	Title   string  `json:"title"`
-	Remark  *string `json:"remark"`
+	UUID       *string `json:"uuid"`
+	StepsID    *uint   `json:"steps_id"`
+	Title      string  `json:"title"`
+	ModuleType string  `json:"module_type"`
+	Remark     *string `json:"remark"`
 	// Status        string  `json:"status"`
 	StartAt *string `json:"start_at"`
 	EndAt   *string `json:"end_at"`
@@ -422,6 +423,7 @@ type ScheduleDetailDTO struct {
 	StepsID       *uint   `json:"steps_id" db:"steps_id"`
 	UUID          *string `json:"uuid" db:"uuid"`
 	Title         string  `json:"title" db:"title"`
+	ModuleType    *string `json:"module_type" db:"module_type"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        string  `json:"status" db:"status"`
 	StartAt       *string `json:"start_at" db:"start_at"`
@@ -812,6 +814,7 @@ type UpdateSalesOrderScheduleRequest struct {
 	StepsID      *uint   `json:"steps_id"`
 	UUID         *string `json:"uuid"`
 	Title        string  `json:"title"`
+	ModuleType   string  `json:"module_type"`
 	Remark       *string `json:"remark"`
 	Status       string  `json:"status"`
 	StartAt      *string `json:"start_at"`
@@ -861,3 +864,53 @@ type UpdateScheduleTaskRequest struct {
 	StartAt    *string `json:"start_at"`
 	EndAt      *string `json:"end_at"`
 }
+
+type UpdateScheduleTasksCheckAppRequest struct {
+	Tasks        []UpdateScheduleTaskCheckAppRequest            `json:"tasks"`
+	DeletedFiles []UpdateScheduleTasksCheckAppDeleteFileRequest `json:"deleted_files"`
+	Files        []UpdateScheduleTasksCheckAppFileRequest       `json:"files"`
+}
+
+type UpdateScheduleTasksCheckAppDeleteFileRequest struct {
+	ID      uint   `json:"id"`
+	FileUrl string `json:"file_url"`
+}
+
+type UpdateScheduleTasksCheckAppFileRequest struct {
+	LastModified int64  `json:"last_modified"`
+	Name         string `json:"name"`
+	Size         int64  `json:"size"`
+	Type         string `json:"type"`
+}
+
+type UpdateScheduleTaskCheckAppRequest struct {
+	ID         *uint   `json:"id"`
+	AssigneeID *uint   `json:"assignee_id"`
+	Remark     *string `json:"remark"`
+	IsChecked  *int    `json:"is_checked"`
+}
+
+// {
+// 	"tasks": [
+// 		{
+// 			"id": 1,
+// 			"assignee_id": 1,
+// 			"remark": "test",
+// 			"is_checked": 1
+// 		}
+// 	],
+// 	"deleted_files": [
+// 		{
+// 			"id": 1,
+// 			"file_url": "https://example.com/file.jpg"
+// 		}
+// 	],
+// 	"files": [
+// 		{
+// 			"last_modified": 1723451248056,
+// 			"name": "PT Dalim.jpg",
+// 			"size": 211233,
+// 			"type": "image/jpeg"
+// 		} // file & include
+// 	]
+// }

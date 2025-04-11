@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS schedule_tasks (
   start_at timestamp,
   end_at timestamp,
   options_json JSONB DEFAULT '{}',
+  -- roles ['technician', 'customer_service', 'developer', 'all']
   created_by_id INT,
   updated_by_id INT,
   deleted_by_id INT,

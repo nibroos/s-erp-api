@@ -32,6 +32,17 @@ VALUES
     'YUBIPRO',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
+  ),
+  -- DEVELOPER
+  (
+    NULL,
+    'dev',
+    'dev@yubipro.com',
+    'Developer User',
+    crypt('deveyubi', gen_salt('bf')),
+    'YUBIPRO',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
   );
 
 INSERT INTO
@@ -116,6 +127,44 @@ VALUES
         mix_values
       WHERE
         name = 'technician'
+    ),
+    1,
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'users'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        users
+      WHERE
+        username = 'dev'
+    ),
+    (
+      SELECT
+        id
+      FROM
+        mix_values
+      WHERE
+        name = 'developer'
     ),
     1,
     1,

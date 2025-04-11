@@ -22,7 +22,7 @@ VALUES
         name = 'roles'
     ),
     'technician',
-    'Technician Role',
+    'Technician',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -38,7 +38,23 @@ VALUES
         name = 'roles'
     ),
     'customer_service',
-    'Customer Service Role',
+    'Customer Service',
+    1,
+    '{}',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+  ),
+  (
+    (
+      SELECT
+        id
+      FROM
+        groups
+      WHERE
+        name = 'roles'
+    ),
+    'developer',
+    'Developer',
     1,
     '{}',
     CURRENT_TIMESTAMP,

@@ -22,7 +22,7 @@ VALUES
         name = 'roles'
     ),
     'superadmin',
-    'Super Admin Role',
+    'Super Admin',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -38,7 +38,7 @@ VALUES
         name = 'roles'
     ),
     'manager',
-    'Manager Role',
+    'Manager',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -54,7 +54,7 @@ VALUES
         name = 'roles'
     ),
     'marketing',
-    'Marketing Role',
+    'Marketing',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -70,7 +70,7 @@ VALUES
         name = 'roles'
     ),
     'sales',
-    'Sales Role',
+    'Sales',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -86,7 +86,7 @@ VALUES
         name = 'roles'
     ),
     'purchase',
-    'Purchase Role',
+    'Purchase',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -102,7 +102,7 @@ VALUES
         name = 'roles'
     ),
     'inventory',
-    'Inventory Role',
+    'Inventory',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -118,7 +118,7 @@ VALUES
         name = 'roles'
     ),
     'production',
-    'Production Role',
+    'Production',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -134,7 +134,7 @@ VALUES
         name = 'roles'
     ),
     'exim',
-    'Exim Role',
+    'Exim',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -150,7 +150,7 @@ VALUES
         name = 'roles'
     ),
     'accounting',
-    'Accounting Role',
+    'Accounting',
     1,
     '{}',
     CURRENT_TIMESTAMP,
@@ -166,7 +166,7 @@ VALUES
         name = 'roles'
     ),
     'beacukai',
-    'Beacukai Role',
+    'Beacukai',
     1,
     '{}',
     CURRENT_TIMESTAMP,

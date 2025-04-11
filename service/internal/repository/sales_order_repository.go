@@ -147,13 +147,15 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	filterKeyJoin := map[string]string{
 		"is_task_exists": "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
 	}
-	for _, join := range filterKeyJoin {
-		joinCondition += fmt.Sprintf(" %s", join)
+	for key, join := range filterKeyJoin {
+		if filters[key] == "1" {
+			joinCondition += fmt.Sprintf(" %s", join)
+		}
 	}
 
 	customCondition := ""
 	filterKeyCustom := map[string]string{
-		"is_task_exists": " AND st.is_checked = 1",
+		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
 		customCondition += fmt.Sprintf("%s", join)
@@ -396,7 +398,7 @@ func (r *SalesOrderRepository) GetScheduleBySalesOrderID(ctx *fiber.Ctx, params 
 	baseQuery := `
     FROM ( 
 			SELECT DISTINCT ON (s.id)
-				s.id, s.assignee_id, s.sales_order_id, s.uuid, s.steps_id, s.title, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
+				s.id, s.assignee_id, s.sales_order_id, s.uuid, s.steps_id, s.title, s.module_type, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
 
 				TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_at,
 				TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_at,
@@ -1818,7 +1820,9 @@ func (r *SalesOrderRepository) GetScheduleTasksByScheduleID(ctx *fiber.Ctx, filt
         LEFT JOIN users cu ON st.created_by_id = cu.id
         LEFT JOIN users uu ON st.updated_by_id = uu.id
 				WHERE 1=1` + condition + queryGlobal + `
-    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+			
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL 
+		ORDER BY order_item ASC`
 
 	query := `SELECT *
 		` + baseQuery
