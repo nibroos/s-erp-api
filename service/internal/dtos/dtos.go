@@ -491,6 +491,10 @@ type CreateCompanyProfileRequest struct {
 	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
 	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
 	CompanyName        string  `json:"company_name" db:"company_name"`
+	CompanyCity        *string `json:"company_city" db:"company_city"`
+	CompanyProvince    *string `json:"company_province" db:"company_province"`
+	CompanyDistrict    *string `json:"company_district" db:"company_district"`
+	CompanyPostalCode  *string `json:"company_postal_code" db:"company_postal_code"`
 	CompanyAddress     *string `json:"company_address" db:"company_address"`
 	CompanyPhone       *string `json:"company_phone" db:"company_phone"`
 	CompanyEmail       *string `json:"company_email" db:"company_email"`
@@ -509,6 +513,10 @@ type UpdateCompanyProfileRequest struct {
 	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
 	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
 	CompanyName        string  `json:"company_name" db:"company_name"`
+	CompanyCity        *string `json:"company_city" db:"company_city"`
+	CompanyProvince    *string `json:"company_province" db:"company_province"`
+	CompanyDistrict    *string `json:"company_district" db:"company_district"`
+	CompanyPostalCode  *string `json:"company_postal_code" db:"company_postal_code"`
 	CompanyAddress     *string `json:"company_address" db:"company_address"`
 	CompanyPhone       *string `json:"company_phone" db:"company_phone"`
 	CompanyEmail       *string `json:"company_email" db:"company_email"`
@@ -551,6 +559,10 @@ type CompanyProfileListDTO struct {
 	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
 	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
 	CompanyName        string  `json:"company_name" db:"company_name"`
+	CompanyCity        *string `json:"company_city" db:"company_city"`
+	CompanyProvince    *string `json:"company_province" db:"company_province"`
+	CompanyDistrict    *string `json:"company_district" db:"company_district"`
+	CompanyPostalCode  *string `json:"company_postal_code" db:"company_postal_code"`
 	CompanyAddress     *string `json:"company_address" db:"company_address"`
 	CompanyPhone       *string `json:"company_phone" db:"company_phone"`
 	CompanyEmail       *string `json:"company_email" db:"company_email"`
@@ -576,6 +588,10 @@ type CompanyProfileDetailDTO struct {
 	CompanyOwnerName   *string `json:"company_owner_name" db:"company_owner_name"`
 	CompanySignName    *string `json:"company_sign_name" db:"company_sign_name"`
 	CompanyName        *string `json:"company_name" db:"company_name"`
+	CompanyCity        *string `json:"company_city" db:"company_city"`
+	CompanyProvince    *string `json:"company_province" db:"company_province"`
+	CompanyDistrict    *string `json:"company_district" db:"company_district"`
+	CompanyPostalCode  *string `json:"company_postal_code" db:"company_postal_code"`
 	CompanyAddress     *string `json:"company_address" db:"company_address"`
 	CompanyPhone       *string `json:"company_phone" db:"company_phone"`
 	CompanyEmail       *string `json:"company_email" db:"company_email"`
@@ -2506,4 +2522,148 @@ type AccountSettingDetailDTO struct {
 	Roles           []string `json:"roles"`
 	CreatedAt       *string  `json:"created_at" db:"created_at"`
 	UpdatedAt       *string  `json:"updated_at" db:"updated_at"`
+}
+
+type BankInformationRequest struct {
+	ID            *uint   `json:"id"`
+	BankName      string  `json:"bank_name"`
+	AccountNumber string  `json:"account_number"`
+	AccountName   string  `json:"account_name"`
+	BranchName    *string `json:"branch_name"`
+	SwiftCode     *string `json:"swift_code"`
+	Description   *string `json:"description"`
+	Status        *int    `json:"status"`
+}
+
+type GetBankInformationsRequest struct {
+	Global            string `json:"global"`
+	Name              string `json:"name"`
+	CommpanyProfileID uint   `json:"commpany_profile_id"`
+	PerPage           string `json:"per_page" default:"10"`
+	Page              string `json:"page" default:"1"`
+	OrderColumn       string `json:"order_column" default:"id"`
+	OrderDirection    string `json:"order_direction" default:"asc"`
+}
+
+type CreateBankInformationRequest struct {
+	CommpanyProfileID uint    `json:"commpany_profile_id" form:"commpany_profile_id"`
+	Name              string  `json:"name" form:"name"`
+	AccountNumber     string  `json:"account_number" form:"account_number"`
+	AccountName       string  `json:"account_name" form:"account_name"`
+	Description       *string `json:"description" form:"description"`
+}
+
+type UpdateBankInformationRequest struct {
+	ID                uint    `json:"id" form:"id"`
+	CommpanyProfileID uint    `json:"commpany_profile_id" form:"commpany_profile_id"`
+	Name              string  `json:"name" form:"name"`
+	AccountNumber     string  `json:"account_number" form:"account_number"`
+	AccountName       string  `json:"account_name" form:"account_name"`
+	Description       *string `json:"description" form:"description"`
+}
+
+type GetBankInformationByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetBankInformationParams struct {
+	ID                uint
+	CommpanyProfileID *uint
+	IsDeleted         *int
+}
+
+func NewGetBankInformationParams(id uint) *GetBankInformationParams {
+	defaultIsDeleted := 0
+	return &GetBankInformationParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteBankInformationRequest struct {
+	ID uint `json:"id"`
+}
+
+type BankInformationListDTO struct {
+	ID                int     `json:"id" db:"id"`
+	CommpanyProfileID uint    `json:"commpany_profile_id" db:"commpany_profile_id"`
+	CompanyName       *string `json:"company_name" db:"company_name"`
+	Name              string  `json:"name" db:"name"`
+	AccountNumber     string  `json:"account_number" db:"account_number"`
+	AccountName       string  `json:"account_name" db:"account_name"`
+	Description       *string `json:"description" db:"description"`
+	CreatedByName     *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName     *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt         *string `json:"created_at" db:"created_at"`
+	UpdatedAt         *string `json:"updated_at" db:"updated_at"`
+	DeletedAt         *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type BankInformationDetailDTO struct {
+	ID                uint    `json:"id" db:"id"`
+	CommpanyProfileID uint    `json:"commpany_profile_id" db:"commpany_profile_id"`
+	CompanyName       *string `json:"company_name" db:"company_name"`
+	Name              string  `json:"name" db:"name"`
+	AccountNumber     string  `json:"account_number" db:"account_number"`
+	AccountName       string  `json:"account_name" db:"account_name"`
+	Description       *string `json:"description" db:"description"`
+	CreatedByName     *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName     *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt         *string `json:"created_at" db:"created_at"`
+	UpdatedAt         *string `json:"updated_at" db:"updated_at"`
+	DeletedAt         *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type GetBankInformationsResult struct {
+	BankInformations []BankInformationListDTO
+	Total            int
+	Err              error
+}
+
+type CompanyProfileWithBanksDTO struct {
+	CompanyProfileDetailDTO
+	BankInformations []BankInformationListDTO `json:"bank_informations"`
+}
+
+type CreateCompanyProfileWithBanksRequest struct {
+	CreateCompanyProfileRequest
+	BankInformations []BankInformationRequest `json:"bank_informations" form:"bank_informations"`
+}
+
+type UpdateCompanyProfileWithBanksRequest struct {
+	UpdateCompanyProfileRequest
+	BankInformations []BankInformationRequest `json:"bank_informations" form:"bank_informations"`
+}
+
+type BankInformationWithCompanyDTO struct {
+	ID                uint    `json:"id" db:"id"`
+	CommpanyProfileID uint    `json:"commpany_profile_id" db:"commpany_profile_id"`
+	CompanyName       *string `json:"company_name" db:"company_name"`
+	CompanyID         uint    `json:"company_id" db:"company_id"`
+	CompanyEmail      *string `json:"company_email" db:"company_email"`
+	CompanyPhone      *string `json:"company_phone" db:"company_phone"`
+	CompanyAddress    *string `json:"company_address" db:"company_address"`
+	Name              string  `json:"name" db:"name"`
+	AccountNumber     string  `json:"account_number" db:"account_number"`
+	AccountName       string  `json:"account_name" db:"account_name"`
+	Description       *string `json:"description" db:"description"`
+	CreatedByName     *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName     *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt         *string `json:"created_at" db:"created_at"`
+	UpdatedAt         *string `json:"updated_at" db:"updated_at"`
+	DeletedAt         *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type GetBankInformationsWithCompanyResult struct {
+	BankInformations []BankInformationWithCompanyDTO
+	Total            int
+	Err              error
+}
+
+type GetBankInformationsWithCompanyRequest struct {
+	Global         string `json:"global"`
+	PerPage        int    `json:"per_page" default:"10"`
+	Page           int    `json:"page" default:"1"`
+	OrderColumn    string `json:"order_column" default:"id"`
+	OrderDirection string `json:"order_direction" default:"asc"`
 }
