@@ -90,6 +90,11 @@ func (c *SalesOrderController) GetSalesOrderByID(ctx *fiber.Ctx) error {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
 	}
 
+	salesOrder.Attachments, err = c.service.GetAttachmentsBySalesOrderID(ctx, tx, salesOrder.ID, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
+	}
+
 	createdSalesOrderIDs := make([]uint, 0)
 	createdSalesOrderIDs = append(createdSalesOrderIDs, salesOrder.ID)
 

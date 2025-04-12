@@ -404,16 +404,34 @@ type SalesOrderDetailDTO struct {
 	SiTotalAm *float64 `json:"si_total_am" db:"si_total_am"`
 	SaTotalAm *float64 `json:"sa_total_am" db:"sa_total_am"`
 
-	CreatedByID   *uint                   `json:"created_by_id" db:"created_by_id"`
-	UpdatedByID   *uint                   `json:"updated_by_id" db:"updated_by_id"`
-	DeletedByID   *uint                   `json:"deleted_by_id" db:"deleted_by_id"`
-	CreatedByName *string                 `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName *string                 `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt     *string                 `json:"created_at" db:"created_at"`
-	UpdatedAt     *string                 `json:"updated_at" db:"updated_at"`
-	DeleteAt      *string                 `json:"deleted_at" db:"deleted_at"`
-	SoDts         []SalesOrderSoDtListDTO `json:"so_dts"`
-	Schedule      *ScheduleDetailDTO      `json:"schedule"`
+	CreatedByID   *uint                      `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint                      `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint                      `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName *string                    `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string                    `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string                    `json:"created_at" db:"created_at"`
+	UpdatedAt     *string                    `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string                    `json:"deleted_at" db:"deleted_at"`
+	SoDts         []SalesOrderSoDtListDTO    `json:"so_dts"`
+	Schedule      *ScheduleDetailDTO         `json:"schedule"`
+	Attachments   []SalesOrderAttachmentsDTO `json:"attachments"`
+}
+
+type SalesOrderAttachmentsDTO struct {
+	ID         *uint   `json:"id" db:"id"`
+	RefID      *uint   `json:"ref_id" db:"ref_id"`
+	RefType    *string `json:"ref_type" db:"ref_type"`
+	FileType   *string `json:"file_type" db:"file_type"`
+	FileUrl    *string `json:"file_url" db:"file_url"`
+	FileName   *string `json:"file_name" db:"file_name"`
+	Remark     *string `json:"remark" db:"remark"`
+	FileSize   *int64  `json:"file_size" db:"file_size"`
+	DeviceType *string `json:"device_type" db:"device_type"`
+	CreatedAt  *string `json:"created_at" db:"created_at"`
+	DeletedAt  *string `json:"deleted_at" db:"deleted_at"`
+
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
 }
 
 type ScheduleDetailDTO struct {
@@ -864,7 +882,6 @@ type UpdateScheduleTaskRequest struct {
 	StartAt    *string `json:"start_at"`
 	EndAt      *string `json:"end_at"`
 }
-
 type UpdateScheduleTasksCheckAppRequest struct {
 	Tasks        []UpdateScheduleTaskCheckAppRequest            `json:"tasks"`
 	DeletedFiles []UpdateScheduleTasksCheckAppDeleteFileRequest `json:"deleted_files"`

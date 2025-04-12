@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"mime/multipart"
@@ -764,10 +765,17 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.UpdatedSch
 }
 
 // MapNewFiles
-func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesOrderID uint, userID uint, span opentracing.Span) ([]map[string]interface{}, error) {
+func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesOrderID uint, userID uint, span opentracing.Span) ([]*models.Letter, error) {
 	childSpan := opentracing.StartSpan("MapNewSalesOrderFiles", opentracing.ChildOf(span.Context()))
 
-	newFiles := []map[string]interface{}{}
+	deviceType := []string{"web"}
+	if ctx.Get("device_type") != "" {
+		// push device type
+		deviceType = append(deviceType, ctx.FormValue("device_type"))
+	}
+
+	// newFiles := []map[string]interface{}{}
+	newFiles := []*models.Letter{}
 
 	for _, file := range files {
 		log.Println("file", file.Filename)
@@ -779,15 +787,25 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesO
 			return nil, err
 		}
 
-		newFile := map[string]interface{}{
-			"ref_id":        salesOrderID,
-			"ref_type":      "sales_orders",
-			"file_type":     file.Header.Get("Content-Type"),
-			"file_size":     file.Size,
-			"file_url":      &newFilePath,
-			"file_name":     file.Filename,
-			"created_by_id": userID,
-			"created_at":    time.Now(),
+		fileProp := map[string]interface{}{
+			"file_size":   file.Size,
+			"device_type": deviceType,
+		}
+
+		filePropJSON, err := json.Marshal(fileProp)
+		if err != nil {
+			defer childSpan.Finish()
+			return nil, err
+		}
+
+		newFile := &models.Letter{
+			RefID:       &salesOrderID,
+			RefType:     "sales_orders",
+			FileType:    file.Header.Get("Content-Type"),
+			FileUrl:     newFilePath,
+			FileName:    file.Filename,
+			CreatedByID: &userID,
+			FileProp:    string(filePropJSON),
 		}
 
 		newFiles = append(newFiles, newFile)

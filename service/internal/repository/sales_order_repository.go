@@ -1996,3 +1996,61 @@ func (r *SalesOrderRepository) UpdateScheduleTasks(tx *gorm.DB, tasks []map[stri
 
 	return nil
 }
+
+// CreateSalesOrderFiles
+func (r *SalesOrderRepository) CreateSalesOrderFiles(ctx *fiber.Ctx, tx *gorm.DB, letters []*models.Letter, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateSalesOrderFiles", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Create(&letters).Error; err != nil {
+		tx.Rollback()
+		utils.LogErrors(childSpan, err)
+
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+// GetAttachmentsBySalesOrderID
+func (r *SalesOrderRepository) GetAttachmentsBySalesOrderID(ctx *fiber.Ctx, tx *gorm.DB, salesOrderID uint, span opentracing.Span) ([]dtos.SalesOrderAttachmentsDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetAttachmentsBySalesOrderID", opentracing.ChildOf(span.Context()))
+
+	attachments := []dtos.SalesOrderAttachmentsDTO{}
+
+	baseQuery := `
+    FROM ( 
+			SELECT DISTINCT ON (ltr.id)
+				ltr.id, ltr.ref_id, ltr.ref_type, ltr.file_type, ltr.file_url, ltr.file_name, ltr.created_at, ltr.deleted_at,
+				-- json file_size
+				ltr.file_prop->>'file_size' as file_size,
+				ltr.file_prop->>'device_type' as device_type,
+
+				TO_CHAR(ltr.created_at, 'YYYY-MM-DD') as created_at,
+
+				cu.name as created_by_name,
+				uu.name as updated_by_name
+
+			FROM letters ltr
+			JOIN sales_orders so ON ltr.ref_id = so.id AND ltr.ref_type = 'sales_orders'
+
+			LEFT JOIN users cu ON ltr.created_by_id = cu.id
+			LEFT JOIN users uu ON ltr.updated_by_id = uu.id
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	query := `SELECT *
+		` + baseQuery
+
+	var args []interface{}
+
+	i := 1
+	query += " AND ref_id = $1"
+	args = append(args, salesOrderID)
+	i++
+
+	if err := r.sqlDB.SelectContext(ctx.Context(), &attachments, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return attachments, nil
+}

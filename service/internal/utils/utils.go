@@ -343,7 +343,9 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 
 	// "data" is used for JSON data in multipart/form-data
 	data := ctx.FormValue("data")
+	// fileHeader, err := ctx.FormFile("files[0]")
 	log.Println("ctx.FormFile-data", data)
+	// log.Println("ctx.FormFile-fileHeader", fileHeader)
 
 	if ctx.Get("Content-Type") == "application/json" {
 		if err := json.Unmarshal(ctx.Body(), &body); err != nil {

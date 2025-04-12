@@ -244,7 +244,9 @@ func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSale
 		return nil, err
 	}
 
+	// files, err := ctx.FormFile("files")
 	files := form.File["files"]
+	log.Println("UpdateSalesOrder-files", files)
 	if len(files) > 0 {
 		// handle new files upload
 		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, salesOrder.ID, userID, childSpan)
@@ -254,7 +256,12 @@ func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSale
 			return nil, err
 		}
 
-		log.Println("newFiles", newFiles)
+		// create new letters
+		if tx, err = s.repo.CreateSalesOrderFiles(ctx, tx, newFiles, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	// Bulk/Create Update Batch SoDts
@@ -866,4 +873,17 @@ func (s *SalesOrderService) BulkCreateUpdateScheduleTasks(ctx *fiber.Ctx, steps 
 	}
 
 	return nil
+}
+
+// GetAttachmentsBySalesOrderID
+func (s *SalesOrderService) GetAttachmentsBySalesOrderID(ctx *fiber.Ctx, tx *gorm.DB, salesOrderID uint, span opentracing.Span) ([]dtos.SalesOrderAttachmentsDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetAttachmentsBySalesOrderID", opentracing.ChildOf(span.Context()))
+
+	attachments, err := s.repo.GetAttachmentsBySalesOrderID(ctx, tx, salesOrderID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	return attachments, nil
 }
