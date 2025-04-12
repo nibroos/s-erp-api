@@ -135,7 +135,7 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (idp.id)
-					idp.id, idp.customer_id, idp.currency_id, idp.payment_term_id, idp.vat_id, idp.pph23_id, idp.branch_id,
+					idp.id, idp.customer_id, idp.currency_id, idp.payment_term_id, idp.vat_id, idp.pph23_id, idp.branch_id, idp.bank_id,
 					idp.invoice_no, idp.remark, idp.status, 
 					idp.exchange_rate, idp.pph23_percentage, idp.vat_percentage, idp.dp_percentage, idp.total_qty, idp.subtotal, idp.total_discount, idp.total_pph23, idp.total_vat, idp.grand_total, idp.created_by_id, idp.updated_by_id, idp.deleted_by_id, idp.created_at, idp.updated_at, idp.deleted_at,
 					TO_CHAR(idp.invoice_date, 'YYYY-MM-DD') as invoice_date,
@@ -161,6 +161,7 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 				LEFT JOIN mix_values vat ON idp.vat_id = vat.id
 				LEFT JOIN mix_values pph ON idp.pph23_id = pph.id
 				LEFT JOIN branches b ON idp.branch_id = b.id
+				LEFT JOIN bank_informations bn ON idp.bank_id = bn.id
 
         LEFT JOIN users cu ON idp.created_by_id = cu.id
         LEFT JOIN users uu ON idp.updated_by_id = uu.id
@@ -291,7 +292,7 @@ func (r *InvoiceDpRepository) GetInvoiceDpByID(ctx *fiber.Ctx, params *dtos.GetI
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (idp.id)
-            idp.id, idp.customer_id, idp.currency_id, idp.payment_term_id, idp.vat_id, idp.pph23_id, idp.branch_id,
+            idp.id, idp.customer_id, idp.currency_id, idp.payment_term_id, idp.vat_id, idp.pph23_id, idp.branch_id, idp.bank_id,
             idp.invoice_no, idp.remark, idp.status, 
             idp.exchange_rate, idp.pph23_percentage, idp.vat_percentage, idp.dp_percentage, idp.total_qty, idp.subtotal, idp.total_discount, idp.total_pph23, idp.total_vat, idp.grand_total, idp.created_by_id, idp.updated_by_id, idp.deleted_by_id, idp.created_at, idp.updated_at, idp.deleted_at,
             TO_CHAR(idp.invoice_date, 'YYYY-MM-DD') as invoice_date,
@@ -933,6 +934,28 @@ func (r *InvoiceDpRepository) UpdateSalesOrderStatus(tx *gorm.DB, salesOrderID u
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
 		return tx, result.Error
+	}
+
+	return tx, nil
+}
+
+func (r *InvoiceDpRepository) UpdateSoDtsTotalDp(tx *gorm.DB, invoiceDpDts []models.InvoiceDpDt, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpRepository-UpdateSoDtsTotalDp", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	for _, invoiceDpDt := range invoiceDpDts {
+		if invoiceDpDt.RefType != nil && *invoiceDpDt.RefType == "so" && invoiceDpDt.RefDtID != nil && invoiceDpDt.TotalDp != nil {
+			result := tx.Exec(`
+                UPDATE so_dts 
+                SET total_dp = ? 
+                WHERE id = ?
+            `, invoiceDpDt.TotalDp, invoiceDpDt.RefDtID)
+
+			if result.Error != nil {
+				utils.LogErrors(childSpan, result.Error)
+				return tx, result.Error
+			}
+		}
 	}
 
 	return tx, nil

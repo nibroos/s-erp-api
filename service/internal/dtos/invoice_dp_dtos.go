@@ -14,6 +14,7 @@ type GetInvoiceDpsRequest struct {
 	VatID          *int    `json:"vat_id"`
 	Pph23ID        *int    `json:"pph23_id"`
 	BranchID       *int    `json:"branch_id"`
+	BankID         *int    `json:"bank_id"`
 	StartDate      *string `json:"start_date"`
 	EndDate        *string `json:"end_date"`
 	PerPage        *string `json:"per_page" default:"10"`
@@ -51,6 +52,7 @@ type CreateInvoiceDpRequest struct {
 	VatID                    *uint                      `json:"vat_id"`
 	Pph23ID                  *uint                      `json:"pph23_id"`
 	BranchID                 *uint                      `json:"branch_id"`
+	BankID                   *uint                      `json:"bank_id"`
 	InvoiceNo                *string                    `json:"invoice_no"`
 	InvoiceDate              *string                    `json:"invoice_date"`
 	ExchangeRate             *float64                   `json:"exchange_rate"`
@@ -110,6 +112,7 @@ type UpdateInvoiceDpRequest struct {
 	VatID                    *uint                      `json:"vat_id"`
 	Pph23ID                  *uint                      `json:"pph23_id"`
 	BranchID                 *uint                      `json:"branch_id"`
+	BankID                   *uint                      `json:"bank_id"`
 	InvoiceNo                *string                    `json:"invoice_no"`
 	InvoiceDate              *string                    `json:"invoice_date"`
 	ExchangeRate             *float64                   `json:"exchange_rate"`
@@ -171,6 +174,7 @@ type InvoiceDpListDTO struct {
 	VatID                    *uint    `json:"vat_id" db:"vat_id"`
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
+	BankID                   *uint    `json:"bank_id" db:"bank_id"`
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
 	Remark                   *string  `json:"remark" db:"remark"`
@@ -220,6 +224,7 @@ type InvoiceDpDetailDTO struct {
 	VatID                    *uint    `json:"vat_id" db:"vat_id"`
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
+	BankID                   *uint    `json:"bank_id" db:"bank_id"`
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
 	Remark                   *string  `json:"remark" db:"remark"`

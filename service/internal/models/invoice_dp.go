@@ -13,6 +13,7 @@ type InvoiceDp struct {
 	VatID                    *uint          `json:"vat_id" gorm:"column:vat_id"`
 	Pph23ID                  *uint          `json:"pph23_id" gorm:"column:pph23_id"`
 	BranchID                 *uint          `json:"branch_id" gorm:"column:branch_id"`
+	BankID                   *uint          `json:"bank_id" gorm:"column:bank_id"`
 	InvoiceNo                *string        `json:"invoice_no" gorm:"column:invoice_no"`
 	RevNo                    *int           `json:"rev_no" gorm:"column:rev_no"`
 	InvoiceDate              *string        `json:"invoice_date" gorm:"column:invoice_date"`

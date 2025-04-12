@@ -63,7 +63,13 @@ func (s *InvoiceDpService) CreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoic
 		return nil, tx, err
 	}
 
-	tx, _, err = s.CreateInvoiceDpDts(ctx, req, userID, &invoiceDp, tx, childSpan)
+	tx, createdInvoiceDpDts, err := s.CreateInvoiceDpDts(ctx, req, userID, &invoiceDp, tx, childSpan)
+	if err != nil {
+		tx.Rollback()
+		return nil, tx, err
+	}
+
+	tx, err = s.repo.UpdateSoDtsTotalDp(tx, createdInvoiceDpDts, childSpan)
 	if err != nil {
 		tx.Rollback()
 		return nil, tx, err
@@ -230,10 +236,22 @@ func (s *InvoiceDpService) UpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoic
 			tx.Rollback()
 			return nil, err
 		}
+
+		tx, err = s.repo.UpdateSoDtsTotalDp(tx, createInvoiceDpDts, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	if len(updateInvoiceDpDts) > 0 {
 		tx, err = s.repo.BulkUpdateInvoiceDpDts(tx, updateInvoiceDpDts, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		tx, err = s.repo.UpdateSoDtsTotalDp(tx, updateInvoiceDpDts, childSpan)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
