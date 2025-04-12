@@ -31,7 +31,6 @@ func (c *CompanyProfileController) GetCompanyProfiles(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("CompanyProfileController-GetCompanyProfiles", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
-		// If no error, delete span
 		if utils.FilterOtel(ctx) {
 			defer apiSpan.Finish()
 			defer parentSpan.Finish()
@@ -60,7 +59,6 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("CompanyProfileController-CreateCompanyProfile", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
-		// If no error, delete span
 		if utils.FilterOtel(ctx) {
 			defer apiSpan.Finish()
 			defer parentSpan.Finish()
@@ -69,7 +67,6 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 
 	var req dtos.CreateCompanyProfileRequest
 
-	// Parse form values and assign them to the struct fields
 	req.ParentID = utils.ParseUintPointer(ctx.FormValue("parent_id"))
 	req.IsPrimary = utils.ParseIntNullPointer(ctx.FormValue("is_primary"))
 	req.CompanyOwnerName = utils.ParseStringPointer(ctx.FormValue("company_owner_name"))
@@ -87,14 +84,12 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	req.CompanyRemark = utils.ParseStringPointer(ctx.FormValue("company_remark"))
 	req.CompanyStatus = utils.ParseIntNullPointer(ctx.FormValue("company_status"))
 
-	// Validate the request
 	reqValidator, isValid := form_requests.NewCompanyProfileStoreRequest().Validate(&req, ctx)
 	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
-	// Extract user ID from JWT
 	claims, err := middleware.GetAuthUser(ctx)
 	if err != nil {
 		utils.LogErrors(parentSpan, err)
@@ -102,7 +97,6 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	// Handle file upload
 	logoSpan := opentracing.StartSpan("CompanyProfileController-CreateCompanyProfile-logoSpan", opentracing.ChildOf(parentSpan.Context()))
 	file, err := ctx.FormFile("company_logo")
 	if err == nil {
@@ -149,7 +143,6 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 		UpdatedByID:        userID,
 	}
 
-	// Parse bank information from form data
 	var bankInformations []*models.BankInformation
 	bankInfosJSON := ctx.FormValue("bank_informations")
 	if bankInfosJSON != "" {
@@ -209,7 +202,6 @@ func (c *CompanyProfileController) GetCompanyProfileByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("CompanyProfileController-GetCompanyProfileByID", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
-		// If no error, delete span
 		if utils.FilterOtel(ctx) {
 			defer apiSpan.Finish()
 			defer parentSpan.Finish()
@@ -240,12 +232,10 @@ func (c *CompanyProfileController) GetCompanyProfileByID(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, companyProfileArray, paginationMeta, "Company profile fetched successfully", http.StatusOK, nil, nil)
 }
 
-// update companyProfile
 func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("CompanyProfileController-UpdateCompanyProfile", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
-		// If no error, delete span
 		if utils.FilterOtel(ctx) {
 			defer apiSpan.Finish()
 			defer parentSpan.Finish()
@@ -253,7 +243,6 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	}()
 
 	var req dtos.UpdateCompanyProfileRequest
-	// Parse form values and assign them to the struct fields
 	req.ID = *utils.ParseUintPointer(ctx.FormValue("id"))
 	req.ParentID = utils.ParseUintPointer(ctx.FormValue("parent_id"))
 	req.IsPrimary = utils.ParseIntNullPointer(ctx.FormValue("is_primary"))
@@ -279,14 +268,12 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	// Validate the request
 	reqValidator, isValid := form_requests.NewCompanyProfileUpdateRequest().Validate(&req, ctx)
 	if !isValid {
 		utils.LogResponse(apiSpan, reqValidator)
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
 	}
 
-	// Get existing company profile
 	params := &dtos.GetCompanyProfileParams{ID: req.ID}
 	existingCompanyProfile, err := c.service.GetCompanyProfileByID(ctx, params, parentSpan)
 	if err != nil {
@@ -294,13 +281,11 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Company profile not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	// Handle file upload for logo
 	logoSpan := opentracing.StartSpan("CompanyProfileController-UpdateCompanyProfile-logoSpan", opentracing.ChildOf(parentSpan.Context()))
 	deleteLogo := ctx.FormValue("company_logo_deleted") == "1"
 	file, err := ctx.FormFile("company_logo")
 
 	if err == nil {
-		// New file uploaded
 		filePath, err := utils.HandleFileUpload(ctx, file, userID, logoSpan)
 		if err != nil {
 			utils.LogErrors(parentSpan, err)
@@ -308,20 +293,16 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 		}
 		req.CompanyLogo = &filePath
 	} else if deleteLogo {
-		// User wants to delete the logo
 		req.CompanyLogo = nil
 	} else if existingCompanyProfile.CompanyLogo != nil {
-		// Keep existing logo
 		req.CompanyLogo = existingCompanyProfile.CompanyLogo
 	}
 
-	// Handle file upload for sign
 	signSpan := opentracing.StartSpan("CompanyProfileController-UpdateCompanyProfile-signSpan", opentracing.ChildOf(parentSpan.Context()))
 	deleteSign := ctx.FormValue("company_sign_deleted") == "1"
 	fileSign, err := ctx.FormFile("company_sign")
 
 	if err == nil {
-		// New file uploaded
 		filePath, err := utils.HandleFileUpload(ctx, fileSign, userID, signSpan)
 		if err != nil {
 			utils.LogErrors(parentSpan, err)
@@ -329,10 +310,8 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 		}
 		req.CompanySign = &filePath
 	} else if deleteSign {
-		// User wants to delete the sign
 		req.CompanySign = nil
 	} else if existingCompanyProfile.CompanySign != nil {
-		// Keep existing sign
 		req.CompanySign = existingCompanyProfile.CompanySign
 	}
 
@@ -360,7 +339,6 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 		UpdatedByID:        userID,
 	}
 
-	// Parse bank information from form data
 	var bankInformations []*models.BankInformation
 	bankInfosJSON := ctx.FormValue("bank_informations")
 	if bankInfosJSON != "" {
@@ -393,7 +371,6 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 				UpdatedByID:       &userID,
 			}
 
-			// If it's a new bank record, set the created_by_id
 			if bankID == 0 {
 				bankInfo.CreatedByID = &userID
 			}
@@ -410,7 +387,6 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	}
 	tx.Commit()
 
-	// Get updated company profile with bank information
 	getCompanyProfile, err := c.service.GetCompanyProfileByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -510,7 +486,6 @@ func (c *CompanyProfileController) RestoreCompanyProfile(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, nil, nil, "Company profile restored successfully", http.StatusOK, nil, nil)
 }
 
-// Bank Information specific endpoints
 func (c *CompanyProfileController) GetBankInformations(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("CompanyProfileController-GetBankInformations", opentracing.ChildOf(apiSpan.Context()))
@@ -581,7 +556,6 @@ func (c *CompanyProfileController) CreateBankInformation(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Invalid request", http.StatusBadRequest, err.Error(), nil)
 	}
 
-	// Extract user ID from JWT
 	claims, err := middleware.GetAuthUser(ctx)
 	if err != nil {
 		utils.LogErrors(parentSpan, err)
@@ -589,7 +563,6 @@ func (c *CompanyProfileController) CreateBankInformation(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	// Validate company profile exists
 	companyProfileID, err := strconv.ParseUint(ctx.FormValue("commpany_profile_id"), 10, 64)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, "Invalid company profile ID", http.StatusBadRequest))
@@ -625,7 +598,6 @@ func (c *CompanyProfileController) CreateBankInformation(ctx *fiber.Ctx) error {
 
 	tx.Commit()
 
-	// Get the created bank information
 	params := &dtos.GetBankInformationParams{ID: createdBankInfo.ID}
 	getBankInfo, err := c.service.GetBankInformationByID(ctx, params, parentSpan)
 	if err != nil {
@@ -656,7 +628,6 @@ func (c *CompanyProfileController) UpdateBankInformation(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Bank information ID is required", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	// Extract user ID from JWT
 	claims, err := middleware.GetAuthUser(ctx)
 	if err != nil {
 		utils.LogErrors(parentSpan, err)
@@ -664,7 +635,6 @@ func (c *CompanyProfileController) UpdateBankInformation(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
-	// Check if bank information exists
 	params := &dtos.GetBankInformationParams{ID: *req.ID}
 	existingBankInfo, err := c.service.GetBankInformationByID(ctx, params, parentSpan)
 	if err != nil {
@@ -680,13 +650,12 @@ func (c *CompanyProfileController) UpdateBankInformation(ctx *fiber.Ctx) error {
 		AccountNumber:     &req.AccountNumber,
 		AccountName:       &req.AccountName,
 		Description:       req.Description,
-		CommpanyProfileID: &companyProfileID, // Take the address of the ID
+		CommpanyProfileID: &companyProfileID,
 		UpdatedByID:       &userID,
 	}
 
 	tx := c.repo.BeginTransaction()
 
-	// Change this line to not assign the result to a variable
 	_, err = c.service.UpdateBankInformation(ctx, &bankInformation, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
@@ -696,7 +665,6 @@ func (c *CompanyProfileController) UpdateBankInformation(ctx *fiber.Ctx) error {
 
 	tx.Commit()
 
-	// Get the updated bank information
 	getBankInfo, err := c.service.GetBankInformationByID(ctx, params, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -722,7 +690,6 @@ func (c *CompanyProfileController) DeleteBankInformation(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Invalid ID", http.StatusBadRequest, err.Error(), nil)
 	}
 
-	// Check if bank information exists
 	params := &dtos.GetBankInformationParams{ID: uint(id)}
 	_, err = c.service.GetBankInformationByID(ctx, params, parentSpan)
 	if err != nil {

@@ -182,7 +182,6 @@ func (r *CompanyProfileRepository) GetCompanyProfiles(ctx *fiber.Ctx, filters ma
 		}
 	}()
 
-	// Wait for both goroutines to finish
 	wg.Wait()
 
 	if countErr != nil || selectErr != nil {
