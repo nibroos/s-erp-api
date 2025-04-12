@@ -20,9 +20,10 @@ func SetupCompanyProfileRoutes(companyProfile fiber.Router, gormDB *gorm.DB, sql
 	// companyProfile.Post("/index-company-profile", middleware.PermissionMiddleware("index-company-profile"), companyProfileController.GetCompanyProfiles)
 	companyProfile.Post("/index-company-profile", companyProfileController.GetCompanyProfiles)
 	companyProfile.Post("/show-company-profile", companyProfileController.GetCompanyProfileByID)
-	companyProfile.Post("/show-primary-company-profile", companyProfileController.GetPrimaryCompanyProfileByID)
+	// companyProfile.Post("/show-primary-company-profile", companyProfileController.GetPrimaryCompanyProfileByID)
 	companyProfile.Post("/create-company-profile", companyProfileController.CreateCompanyProfile)
 	companyProfile.Post("/update-company-profile", companyProfileController.UpdateCompanyProfile)
 	companyProfile.Post("/delete-company-profile", companyProfileController.DeleteCompanyProfile)
 	companyProfile.Post("/restore-company-profile", companyProfileController.RestoreCompanyProfile)
+	companyProfile.Post("/index-bank-information", companyProfileController.GetBankInformationsWithCompany)
 }
