@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS letters (
   id SERIAL PRIMARY KEY,
   ref_id INT,
@@ -16,5 +14,3 @@ CREATE TABLE IF NOT EXISTS letters (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
-
-COMMIT;

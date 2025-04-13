@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS identifiers (
   id SERIAL PRIMARY KEY,
   type_identifier_id INT REFERENCES mix_values(id),
@@ -11,5 +9,3 @@ CREATE TABLE IF NOT EXISTS identifiers (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
-
-COMMIT;

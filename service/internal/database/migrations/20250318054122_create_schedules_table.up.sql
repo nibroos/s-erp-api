@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS schedules (
   id SERIAL PRIMARY KEY,
   assignee_id INT REFERENCES users(id) ON DELETE RESTRICT,
@@ -29,5 +27,3 @@ COMMENT ON COLUMN schedules.module_type IS 'sales_orders, feedbacks';
 CREATE INDEX idx_schedules_assignee_id ON schedules(assignee_id);
 
 CREATE INDEX idx_schedules_sales_order_id ON schedules(sales_order_id);
-
-COMMIT;

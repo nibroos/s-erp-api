@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS addresses (
   id SERIAL PRIMARY KEY,
   type_address_id INT REFERENCES mix_values(id),
@@ -11,5 +9,3 @@ CREATE TABLE IF NOT EXISTS addresses (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
-
-COMMIT;

@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS branch_items (
   id SERIAL PRIMARY KEY,
   branch_id INT NOT NULL REFERENCES branches (id) ON DELETE RESTRICT,
@@ -31,5 +29,3 @@ CREATE TABLE IF NOT EXISTS branch_items (
 CREATE INDEX idx_branch_items_branch_id ON branch_items(branch_id);
 
 CREATE INDEX idx_branch_items_item_unit_id ON branch_items(item_unit_id);
-
-COMMIT;

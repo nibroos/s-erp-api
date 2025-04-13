@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS purchase_order_dts (
   id SERIAL PRIMARY KEY,
   product_uuid TEXT,
@@ -38,11 +36,15 @@ CREATE TABLE IF NOT EXISTS purchase_order_dts (
 );
 
 CREATE INDEX idx_purchase_order_dts_po_id ON purchase_order_dts(po_id);
-CREATE INDEX idx_purchase_order_dts_item_unit_id ON purchase_order_dts(item_unit_id);
-CREATE INDEX idx_purchase_order_dts_vat_id ON purchase_order_dts(vat_id);
-CREATE INDEX idx_purchase_order_dts_pph23_id ON purchase_order_dts(pph23_id);
-CREATE INDEX idx_purchase_order_dts_ref_id ON purchase_order_dts(ref_id);
-CREATE INDEX idx_purchase_order_dts_product_id ON purchase_order_dts(product_id);
-CREATE INDEX idx_purchase_order_dts_bom_id ON purchase_order_dts(bom_id);
 
-COMMIT;
+CREATE INDEX idx_purchase_order_dts_item_unit_id ON purchase_order_dts(item_unit_id);
+
+CREATE INDEX idx_purchase_order_dts_vat_id ON purchase_order_dts(vat_id);
+
+CREATE INDEX idx_purchase_order_dts_pph23_id ON purchase_order_dts(pph23_id);
+
+CREATE INDEX idx_purchase_order_dts_ref_id ON purchase_order_dts(ref_id);
+
+CREATE INDEX idx_purchase_order_dts_product_id ON purchase_order_dts(product_id);
+
+CREATE INDEX idx_purchase_order_dts_bom_id ON purchase_order_dts(bom_id);

@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TYPE schedule_task_entity_type AS ENUM ('steps', 'tasks', 'comments');
 
 CREATE TABLE IF NOT EXISTS schedule_tasks (
@@ -38,5 +36,3 @@ CREATE INDEX idx_schedule_tasks_schedule_id ON schedule_tasks(schedule_id);
 CREATE INDEX idx_schedule_tasks_parent_id ON schedule_tasks(parent_id);
 
 CREATE INDEX idx_schedule_tasks_entity_type ON schedule_tasks(entity_type);
-
-COMMIT;
