@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -78,7 +79,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND so.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
@@ -145,7 +146,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	joinCondition := ""
 
 	filterKeyJoin := map[string]string{
-		"is_task_exists": "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+		"is_task_exists": "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
 	}
 	for key, join := range filterKeyJoin {
 		if filters[key] == "1" {
@@ -826,7 +827,7 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND so.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
@@ -1078,7 +1079,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND q.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
@@ -1348,7 +1349,7 @@ func (r *SalesOrderRepository) GetRefQuoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND q.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
@@ -1726,7 +1727,7 @@ func (r *SalesOrderRepository) GetScheduleTasksByScheduleID(ctx *fiber.Ctx, filt
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND st.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
@@ -2053,4 +2054,110 @@ func (r *SalesOrderRepository) GetAttachmentsBySalesOrderID(ctx *fiber.Ctx, tx *
 	}
 
 	return attachments, nil
+}
+
+// DeleteSalesOrderFilesByIDs: Delete database & file record
+func (r *SalesOrderRepository) DeleteSalesOrderFilesByIDs(ctx *fiber.Ctx, tx *gorm.DB, letterIDs []uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-DeleteSalesOrderFilesByIDs", opentracing.ChildOf(span.Context()))
+
+	// First get the file paths before marking records as deleted
+	var letters []models.Letter
+	if err := tx.Where("id IN (?) AND deleted_at IS NULL", letterIDs).Find(&letters).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	now := time.Now()
+	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
+
+	// Mark records as deleted in database
+	query := tx.Model(&models.Letter{}).Where("id IN (?) AND deleted_at IS NULL", letterIDs)
+	if err := query.Updates(map[string]interface{}{
+		"deleted_by_id": userID,
+		"deleted_at":    deletedAt,
+	}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	// Create error channel for collecting deletion errors
+	errChan := make(chan error, len(letters))
+	var wg sync.WaitGroup
+
+	// Delete physical files concurrently
+	for _, letter := range letters {
+		wg.Add(1)
+		go func(filePath string) {
+			defer wg.Done()
+
+			// Check if file exists
+			if _, err := os.Stat(filePath); os.IsNotExist(err) {
+				errChan <- fmt.Errorf("file %s does not exist", filePath)
+				return
+			}
+
+			// Delete the file
+			if err := os.Remove(filePath); err != nil {
+				errChan <- fmt.Errorf("failed to delete file %s: %v", filePath, err)
+				return
+			}
+		}(letter.FileUrl)
+	}
+
+	// Wait for all deletions to complete
+	wg.Wait()
+	close(errChan)
+
+	// Collect any errors that occurred during file deletion
+	var errors []error
+	for err := range errChan {
+		if err != nil {
+			errors = append(errors, err)
+			utils.LogErrors(childSpan, err)
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("some files failed to delete: %v", errors)
+	}
+
+	return nil
+}
+
+// DeleteSalesOrderScheduleBySalesOrderID
+func (r *SalesOrderRepository) DeleteSalesOrderScheduleBySalesOrderID(ctx *fiber.Ctx, tx *gorm.DB, salesOrderID uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-DeleteSalesOrderScheduleBySalesOrderID", opentracing.ChildOf(span.Context()))
+
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	now := time.Now()
+	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
+
+	query := tx.Model(&models.Schedule{}).Where("sales_order_id = ? AND deleted_at IS NULL", salesOrderID)
+
+	if err := query.Updates(map[string]interface{}{
+		"deleted_by_id": userID,
+		"deleted_at":    deletedAt,
+	}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+// UpdateAttachmentsDesc
+func (r *SalesOrderRepository) UpdateAttachmentsDesc(ctx *fiber.Ctx, tx *gorm.DB, attachments []map[string]interface{}, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-UpdateAttachmentsDesc", opentracing.ChildOf(span.Context()))
+
+	if err := r.utilRepo.Upsert(tx, "letters", "id", attachments, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return tx, nil
 }

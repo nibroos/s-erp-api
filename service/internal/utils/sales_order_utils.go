@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"mime/multipart"
 	"strings"
 	"time"
@@ -505,7 +504,23 @@ func MapCreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, userID ui
 	return scheduleTask, nil
 }
 
-func MapCreateScheduleSteps(ctx *fiber.Ctx, req []dtos.CreateScheduleStepRequest, scheduleID uint, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
+func MapReqCreateSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, userID uint, salesOrder *models.SalesOrder, span opentracing.Span) (dtos.CreateScheduleRequest, error) {
+	scheduleTask := dtos.CreateScheduleRequest{
+		AssigneeID: req.AssigneeID,
+		UUID:       req.UUID,
+		Title:      req.Title,
+		ModuleType: req.ModuleType,
+		Remark:     req.Remark,
+		StartAt:    req.StartAt,
+		EndAt:      req.EndAt,
+		Color:      req.Color,
+		Steps:      req.Steps,
+	}
+
+	return scheduleTask, nil
+}
+
+func MapCreateScheduleSteps(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest, scheduleID uint, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
 	scheduleTask := []*models.ScheduleTask{}
 	for _, reqStep := range req {
 		scheduleTask = append(scheduleTask, &models.ScheduleTask{
@@ -530,7 +545,7 @@ func MapCreateScheduleSteps(ctx *fiber.Ctx, req []dtos.CreateScheduleStepRequest
 	return scheduleTask, nil
 }
 
-func MapCreateScheduleTasks(ctx *fiber.Ctx, req []dtos.CreateScheduleStepRequest, steps []*models.ScheduleTask, scheduleID uint, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
+func MapCreateScheduleTasks(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest, steps []*models.ScheduleTask, scheduleID uint, userID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
 	scheduleTask := []*models.ScheduleTask{}
 	for _, reqStep := range req {
 		for _, reqTask := range reqStep.Tasks {
@@ -605,7 +620,7 @@ func MapGetScheduleStepsTasks(ctx *fiber.Ctx, scheduleSteps []dtos.ScheduleTaskL
 
 func MapUpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, userID uint, span opentracing.Span) (models.Schedule, error) {
 	scheduleTask := models.Schedule{
-		ID:           req.ID,
+		ID:           &req.ID,
 		AssigneeID:   req.AssigneeID,
 		SalesOrderID: req.SalesOrderID,
 		UUID:         req.UUID,
@@ -778,7 +793,6 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesO
 	newFiles := []*models.Letter{}
 
 	for _, file := range files {
-		log.Println("file", file.Filename)
 		// fileName := file.Filename
 
 		newFilePath, err := HandleFileUpload(ctx, file, userID, span)
@@ -790,6 +804,7 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesO
 		fileProp := map[string]interface{}{
 			"file_size":   file.Size,
 			"device_type": deviceType,
+			"original":    file.Filename,
 		}
 
 		filePropJSON, err := json.Marshal(fileProp)
@@ -812,4 +827,49 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesO
 	}
 
 	return newFiles, nil
+}
+
+// type UpdateSalesOrderAttachmentsDTO struct {
+// 	ID       *uint   `json:"id" db:"id"`
+// 	RefID    *uint   `json:"ref_id" db:"ref_id"`
+// 	RefType  *string `json:"ref_type" db:"ref_type"`
+// 	FileType *string `json:"file_type" db:"file_type"`
+// 	FileUrl  *string `json:"file_url" db:"file_url"`
+// 	FileName *string `json:"file_name" db:"file_name"`
+// 	Remark   *string `json:"remark" db:"remark"`
+// }
+
+func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSalesOrderAttachmentsDTO, salesOrderID uint, userID uint, span opentracing.Span) []map[string]interface{} {
+	// newFiles := []map[string]interface{}{}
+	updatedAttachments := []map[string]interface{}{}
+
+	for _, attachment := range attachments {
+		// fileProp := map[string]interface{}{
+		// 	"file_size":   attachment.FileSize,
+		// 	"device_type": attachment.DeviceType,
+		// 	"original":    attachment.FileName,
+		// }
+
+		// filePropJSON, err := json.Marshal(fileProp)
+		// if err != nil {
+		// 	defer childSpan.Finish()
+		// 	return nil, err
+		// }
+
+		newFile := map[string]interface{}{
+			"id":        attachment.ID,
+			"file_type": attachment.FileType,
+			"file_url":  attachment.FileUrl,
+			"file_name": attachment.FileName,
+			"ref_type":  attachment.RefType,
+			"ref_id":    &salesOrderID,
+			"remark":    attachment.Remark,
+			// FileProp:    string(filePropJSON),
+			"updated_by_id": &userID,
+		}
+
+		updatedAttachments = append(updatedAttachments, newFile)
+	}
+
+	return updatedAttachments
 }

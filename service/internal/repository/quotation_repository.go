@@ -79,7 +79,7 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND q.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
@@ -780,7 +780,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND q.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{

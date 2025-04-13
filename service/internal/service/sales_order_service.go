@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -57,14 +56,42 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 		return nil, tx, err
 	}
 
-	// go routine to create schedule entity related to sales order
-	// go func() {
-	tx, err = s.CreateSchedule(ctx, *req.Schedule, &salesOrder, userID, tx, childSpan)
-
+	form, err := ctx.MultipartForm()
 	if err != nil {
-		childSpan.Finish()
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, tx, err
+	}
+
+	// files, err := ctx.FormFile("files")
+	files := form.File["files"]
+	if len(files) > 0 {
+		// handle new files upload
+		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, salesOrder.ID, userID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, tx, err
+		}
+
+		// create new letters
+		if tx, err = s.repo.CreateSalesOrderFiles(ctx, tx, newFiles, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, tx, err
+		}
+	}
+	// go routine to create schedule entity related to sales order
+	// go func() {
+
+	if req.Schedule != nil {
+		tx, err = s.CreateSchedule(ctx, *req.Schedule, &salesOrder, userID, tx, childSpan)
+
+		if err != nil {
+			childSpan.Finish()
+			tx.Rollback()
+			return nil, tx, err
+		}
 	}
 	// }()
 
@@ -147,7 +174,7 @@ func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.CreateSchedu
 
 	// create steps
 	if len(req.Steps) > 0 {
-		steps, err := utils.MapCreateScheduleSteps(ctx, req.Steps, schedule.ID, userID, childSpan)
+		steps, err := utils.MapCreateScheduleSteps(ctx, req.Steps, *schedule.ID, userID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -161,7 +188,7 @@ func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.CreateSchedu
 		}
 
 		// create schedule task
-		tasks, err := utils.MapCreateScheduleTasks(ctx, req.Steps, steps, schedule.ID, userID, childSpan)
+		tasks, err := utils.MapCreateScheduleTasks(ctx, req.Steps, steps, *schedule.ID, userID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -244,9 +271,27 @@ func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSale
 		return nil, err
 	}
 
+	// update desc
+	if len(req.Attachments) > 0 {
+		attachments := utils.MapUpdateSalesOrderAttachments(ctx, req.Attachments, salesOrder.ID, userID, childSpan)
+
+		if tx, err := s.repo.UpdateAttachmentsDesc(ctx, tx, attachments, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(req.DeletedFiles) > 0 {
+		if err := s.repo.DeleteSalesOrderFilesByIDs(ctx, tx, req.DeletedFiles, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
 	// files, err := ctx.FormFile("files")
 	files := form.File["files"]
-	log.Println("UpdateSalesOrder-files", files)
 	if len(files) > 0 {
 		// handle new files upload
 		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, salesOrder.ID, userID, childSpan)
@@ -739,39 +784,71 @@ func (s *SalesOrderService) UpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.Up
 		return nil, err
 	}
 
-	if err := s.repo.UpdateSalesOrderSchedule(tx, &salesOrderSchedule, childSpan); err != nil {
-		defer childSpan.Finish()
-		tx.Rollback()
-		return nil, err
+	// delete schedule
+	if salesOrderSchedule.ID == nil || *salesOrderSchedule.ID == 0 && req.IsDelete != nil && *req.IsDelete == 1 {
+		if err := s.repo.DeleteSalesOrderScheduleBySalesOrderID(ctx, tx, req.SalesOrderID, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+
+		return &salesOrderSchedule, nil
 	}
 
-	// Bulk/Create Update Batch Steps
-	scheduleSteps, err := utils.MapUpdateScheduleSteps(ctx, req.Steps, userID, salesOrderSchedule.ID, childSpan)
+	if salesOrderSchedule.ID == nil || *salesOrderSchedule.ID == 0 {
+		salesOrder := &models.SalesOrder{
+			ID: req.SalesOrderID,
+		}
 
-	tx, err = s.BulkCreateUpdateScheduleSteps(ctx, req, &salesOrderSchedule, userID, scheduleSteps, salesOrderSchedule.ID, tx, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		tx.Rollback()
-		return nil, err
+		reqSchedule, err := utils.MapReqCreateSchedule(ctx, req, userID, salesOrder, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+
+		if tx, err := s.CreateSchedule(ctx, reqSchedule, salesOrder, userID, tx, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
-	updatedSalesOrderScheduleIDs := make([]uint, 0)
-	updatedSalesOrderScheduleIDs = append(updatedSalesOrderScheduleIDs, salesOrderSchedule.ID)
+	if salesOrderSchedule.ID != nil && *salesOrderSchedule.ID > 0 {
+		if err := s.repo.UpdateSalesOrderSchedule(tx, &salesOrderSchedule, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
 
-	// get updated steps
-	updatedScheduleSteps, err := s.repo.GetUpdatedScheduleStepsBySalesOrderScheduleIDs(ctx, tx, updatedSalesOrderScheduleIDs, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		tx.Rollback()
-		return nil, err
-	}
+		// Bulk/Create Update Batch Steps
+		scheduleSteps, err := utils.MapUpdateScheduleSteps(ctx, req.Steps, userID, *salesOrderSchedule.ID, childSpan)
 
-	// Bulk/Create Update Batch Tasks
-	err = s.BulkCreateUpdateScheduleTasks(ctx, updatedScheduleSteps, req, salesOrderSchedule.ID, tx, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		tx.Rollback()
-		return nil, err
+		tx, err = s.BulkCreateUpdateScheduleSteps(ctx, req, &salesOrderSchedule, userID, scheduleSteps, *salesOrderSchedule.ID, tx, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+
+		updatedSalesOrderScheduleIDs := make([]uint, 0)
+		updatedSalesOrderScheduleIDs = append(updatedSalesOrderScheduleIDs, *salesOrderSchedule.ID)
+
+		// get updated steps
+		updatedScheduleSteps, err := s.repo.GetUpdatedScheduleStepsBySalesOrderScheduleIDs(ctx, tx, updatedSalesOrderScheduleIDs, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+
+		// Bulk/Create Update Batch Tasks
+		err = s.BulkCreateUpdateScheduleTasks(ctx, updatedScheduleSteps, req, *salesOrderSchedule.ID, tx, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	return &salesOrderSchedule, nil
@@ -782,7 +859,7 @@ func (s *SalesOrderService) BulkCreateUpdateScheduleSteps(ctx *fiber.Ctx, req dt
 	childSpan := opentracing.StartSpan("SalesOrderService-BulkCreateUpdateScheduleSteps", opentracing.ChildOf(span.Context()))
 
 	// Bulk/Create Update Batch ScheduleSteps
-	scheduleSteps, err := utils.MapUpdateScheduleSteps(ctx, req.Steps, userID, updatedSalesOrderSchedule.ID, childSpan)
+	scheduleSteps, err := utils.MapUpdateScheduleSteps(ctx, req.Steps, userID, *updatedSalesOrderSchedule.ID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
