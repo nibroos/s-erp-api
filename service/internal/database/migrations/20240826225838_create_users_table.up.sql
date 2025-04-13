@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(255) UNIQUE,
@@ -18,5 +16,3 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
-
-COMMIT;

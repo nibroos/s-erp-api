@@ -119,16 +119,17 @@ type CreateSalesOrderRequest struct {
 type CreateScheduleRequest struct {
 	AssigneeID *uint `json:"assignee_id"`
 	// SalesOrderID  uint    `json:"sales_order_id"`
-	UUID    *string `json:"uuid"`
-	StepsID *uint   `json:"steps_id"`
-	Title   string  `json:"title"`
-	Remark  *string `json:"remark"`
+	UUID       *string `json:"uuid"`
+	StepsID    *uint   `json:"steps_id"`
+	Title      string  `json:"title"`
+	ModuleType string  `json:"module_type"`
+	Remark     *string `json:"remark"`
 	// Status        string  `json:"status"`
 	StartAt *string `json:"start_at"`
 	EndAt   *string `json:"end_at"`
 	Color   *string `json:"color"`
 
-	Steps []CreateScheduleStepRequest `json:"steps"`
+	Steps []UpdateScheduleStepRequest `json:"steps"`
 }
 
 type CreateScheduleStepRequest struct {
@@ -225,47 +226,59 @@ type UpdateSoDtsBomsRequest struct {
 }
 
 type UpdateSalesOrderRequest struct {
-	ID            uint                 `json:"id"`
-	SalesOrderID  *uint                `json:"sales_order_id"`
-	CustomerID    *uint                `json:"customer_id"`
-	OrderTypeID   *uint                `json:"order_type_id"`
-	CurrencyID    *uint                `json:"currency_id"`
-	WarehouseID   *uint                `json:"warehouse_id"`
-	VatID         *uint                `json:"vat_id"`
-	PaymentID     *uint                `json:"payment_id"`
-	Pph23ID       *uint                `json:"pph23_id"`
-	BranchID      *uint                `json:"branch_id"`
-	RevNo         *int                 `json:"rev_no"`
-	PoBuyerNo     *string              `json:"po_buyer_no"`
-	PoBuyerNoOri  *string              `json:"po_buyer_no_ori"`
-	SalesOrderNo  *string              `json:"sales_order_no"`
-	Remark        *string              `json:"remark"`
-	ShipDest      *string              `json:"ship_dest"`
-	Status        string               `json:"status"`
-	ExchangeRate  *float64             `json:"exchange_rate"`
-	VatPerc       *float64             `json:"vat_perc"`
-	Pph23Perc     *float64             `json:"pph23_perc"`
-	MarkupPerc    *float64             `json:"markup_perc"`
-	IsVat         *int                 `json:"is_vat"`
-	IsPph23       *int                 `json:"is_pph23"`
-	DiscAm        *float64             `json:"disc_am"`
-	DiscPerc      *float64             `json:"disc_perc"`
-	DiscPercAm    *float64             `json:"disc_perc_am"`
-	DiscFinal     *float64             `json:"disc_final"`
-	DiscType      *string              `json:"disc_type"`
-	TotalQty      *float64             `json:"total_qty"`
-	Subtotal      *float64             `json:"subtotal"`
-	TotalDiscount *float64             `json:"total_discount"`
-	TotalPph23    *float64             `json:"total_pph23"`
-	TotalVat      *float64             `json:"total_vat"`
-	GrandTotal    *float64             `json:"grand_total"`
-	OrderAt       *string              `json:"order_at"`
-	ShippingAt    *string              `json:"shipping_at"`
-	AgreeAt       *string              `json:"agree_at"`
-	DueAt         *string              `json:"due_at"`
-	SoDts         []UpdateSoDtsRequest `json:"so_dts"`
+	ID            uint                             `json:"id"`
+	SalesOrderID  *uint                            `json:"sales_order_id"`
+	CustomerID    *uint                            `json:"customer_id"`
+	OrderTypeID   *uint                            `json:"order_type_id"`
+	CurrencyID    *uint                            `json:"currency_id"`
+	WarehouseID   *uint                            `json:"warehouse_id"`
+	VatID         *uint                            `json:"vat_id"`
+	PaymentID     *uint                            `json:"payment_id"`
+	Pph23ID       *uint                            `json:"pph23_id"`
+	BranchID      *uint                            `json:"branch_id"`
+	RevNo         *int                             `json:"rev_no"`
+	PoBuyerNo     *string                          `json:"po_buyer_no"`
+	PoBuyerNoOri  *string                          `json:"po_buyer_no_ori"`
+	SalesOrderNo  *string                          `json:"sales_order_no"`
+	Remark        *string                          `json:"remark"`
+	ShipDest      *string                          `json:"ship_dest"`
+	Status        string                           `json:"status"`
+	ExchangeRate  *float64                         `json:"exchange_rate"`
+	VatPerc       *float64                         `json:"vat_perc"`
+	Pph23Perc     *float64                         `json:"pph23_perc"`
+	MarkupPerc    *float64                         `json:"markup_perc"`
+	IsVat         *int                             `json:"is_vat"`
+	IsPph23       *int                             `json:"is_pph23"`
+	DiscAm        *float64                         `json:"disc_am"`
+	DiscPerc      *float64                         `json:"disc_perc"`
+	DiscPercAm    *float64                         `json:"disc_perc_am"`
+	DiscFinal     *float64                         `json:"disc_final"`
+	DiscType      *string                          `json:"disc_type"`
+	TotalQty      *float64                         `json:"total_qty"`
+	Subtotal      *float64                         `json:"subtotal"`
+	TotalDiscount *float64                         `json:"total_discount"`
+	TotalPph23    *float64                         `json:"total_pph23"`
+	TotalVat      *float64                         `json:"total_vat"`
+	GrandTotal    *float64                         `json:"grand_total"`
+	OrderAt       *string                          `json:"order_at"`
+	ShippingAt    *string                          `json:"shipping_at"`
+	AgreeAt       *string                          `json:"agree_at"`
+	DueAt         *string                          `json:"due_at"`
+	SoDts         []UpdateSoDtsRequest             `json:"so_dts"`
+	Attachments   []UpdateSalesOrderAttachmentsDTO `json:"attachments"`
+	DeletedFiles  []uint                           `json:"deleted_files"`
 
 	CustomerCode string `json:"customer_code"`
+}
+
+type UpdateSalesOrderAttachmentsDTO struct {
+	ID       *uint   `json:"id" db:"id"`
+	RefID    *uint   `json:"ref_id" db:"ref_id"`
+	RefType  *string `json:"ref_type" db:"ref_type"`
+	FileType *string `json:"file_type" db:"file_type"`
+	FileUrl  *string `json:"file_url" db:"file_url"`
+	FileName *string `json:"file_name" db:"file_name"`
+	Remark   *string `json:"remark" db:"remark"`
 }
 
 type GetSalesOrderByIDRequest struct {
@@ -403,16 +416,34 @@ type SalesOrderDetailDTO struct {
 	SiTotalAm *float64 `json:"si_total_am" db:"si_total_am"`
 	SaTotalAm *float64 `json:"sa_total_am" db:"sa_total_am"`
 
-	CreatedByID   *uint                   `json:"created_by_id" db:"created_by_id"`
-	UpdatedByID   *uint                   `json:"updated_by_id" db:"updated_by_id"`
-	DeletedByID   *uint                   `json:"deleted_by_id" db:"deleted_by_id"`
-	CreatedByName *string                 `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName *string                 `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt     *string                 `json:"created_at" db:"created_at"`
-	UpdatedAt     *string                 `json:"updated_at" db:"updated_at"`
-	DeleteAt      *string                 `json:"deleted_at" db:"deleted_at"`
-	SoDts         []SalesOrderSoDtListDTO `json:"so_dts"`
-	Schedule      *ScheduleDetailDTO      `json:"schedule"`
+	CreatedByID   *uint                      `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint                      `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint                      `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName *string                    `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string                    `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string                    `json:"created_at" db:"created_at"`
+	UpdatedAt     *string                    `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string                    `json:"deleted_at" db:"deleted_at"`
+	SoDts         []SalesOrderSoDtListDTO    `json:"so_dts"`
+	Schedule      *ScheduleDetailDTO         `json:"schedule"`
+	Attachments   []SalesOrderAttachmentsDTO `json:"attachments"`
+}
+
+type SalesOrderAttachmentsDTO struct {
+	ID         *uint   `json:"id" db:"id"`
+	RefID      *uint   `json:"ref_id" db:"ref_id"`
+	RefType    *string `json:"ref_type" db:"ref_type"`
+	FileType   *string `json:"file_type" db:"file_type"`
+	FileUrl    *string `json:"file_url" db:"file_url"`
+	FileName   *string `json:"file_name" db:"file_name"`
+	Remark     *string `json:"remark" db:"remark"`
+	FileSize   *int64  `json:"file_size" db:"file_size"`
+	DeviceType *string `json:"device_type" db:"device_type"`
+	CreatedAt  *string `json:"created_at" db:"created_at"`
+	DeletedAt  *string `json:"deleted_at" db:"deleted_at"`
+
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
 }
 
 type ScheduleDetailDTO struct {
@@ -422,6 +453,7 @@ type ScheduleDetailDTO struct {
 	StepsID       *uint   `json:"steps_id" db:"steps_id"`
 	UUID          *string `json:"uuid" db:"uuid"`
 	Title         string  `json:"title" db:"title"`
+	ModuleType    *string `json:"module_type" db:"module_type"`
 	Remark        *string `json:"remark" db:"remark"`
 	Status        string  `json:"status" db:"status"`
 	StartAt       *string `json:"start_at" db:"start_at"`
@@ -468,6 +500,33 @@ type ScheduleStepListDTO struct {
 	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
 
 	Tasks []ScheduleTaskListDTO `json:"tasks"`
+}
+
+type UpdatedScheduleStepListDTO struct {
+	ID         *uint   `json:"id" db:"id"`
+	Uuid       *string `json:"uuid" db:"uuid"`
+	StepIndex  *int    `json:"step_index" db:"step_index"`
+	ScheduleID *uint   `json:"schedule_id" db:"schedule_id"`
+	AssigneeID *uint   `json:"assignee_id" db:"assignee_id"`
+	ParentID   *uint   `json:"parent_id" db:"parent_id"`
+	EntityID   *uint   `json:"entity_id" db:"entity_id"`
+	EntityType *string `json:"entity_type" db:"entity_type"`
+	ParentUUID *string `json:"parent_uuid" db:"parent_uuid"`
+	Title      *string `json:"title" db:"title"`
+	Remark     *string `json:"remark" db:"remark"`
+	OrderItem  *int    `json:"order_item" db:"order_item"`
+	Color      *string `json:"color" db:"color"`
+	StartAt    *string `json:"start_at" db:"start_at"`
+	EndAt      *string `json:"end_at" db:"end_at"`
+
+	CreatedByID   *uint   `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint   `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
 }
 
 type ScheduleTaskListDTO struct {
@@ -785,6 +844,7 @@ type UpdateSalesOrderScheduleRequest struct {
 	StepsID      *uint   `json:"steps_id"`
 	UUID         *string `json:"uuid"`
 	Title        string  `json:"title"`
+	ModuleType   string  `json:"module_type"`
 	Remark       *string `json:"remark"`
 	Status       string  `json:"status"`
 	StartAt      *string `json:"start_at"`
@@ -793,6 +853,7 @@ type UpdateSalesOrderScheduleRequest struct {
 	CreatedByID  *uint   `json:"created_by_id"`
 	UpdatedByID  *uint   `json:"updated_by_id"`
 	DeletedByID  *uint   `json:"deleted_by_id"`
+	IsDelete     *int    `json:"is_delete"`
 
 	Steps []UpdateScheduleStepRequest `json:"steps"`
 }
@@ -834,3 +895,58 @@ type UpdateScheduleTaskRequest struct {
 	StartAt    *string `json:"start_at"`
 	EndAt      *string `json:"end_at"`
 }
+type UpdateScheduleTasksCheckAppRequest struct {
+	Tasks        []UpdateScheduleTaskCheckAppRequest            `json:"tasks"`
+	DeletedFiles []UpdateScheduleTasksCheckAppDeleteFileRequest `json:"deleted_files"`
+	Files        []UpdateScheduleTasksCheckAppFileRequest       `json:"files"`
+}
+
+type UpdateScheduleTasksCheckAppDeleteFileRequest struct {
+	ID      uint   `json:"id"`
+	FileUrl string `json:"file_url"`
+}
+
+type UpdateScheduleTasksCheckAppFileRequest struct {
+	LastModified int64   `json:"last_modified"`
+	Name         string  `json:"name"`
+	Size         int64   `json:"size"`
+	Type         string  `json:"type"`
+	RefType      *string `json:"ref_type"`
+	RefID        *uint   `json:"ref_id"`
+	FileUrl      *string `json:"file_url"`
+	FileName     *string `json:"file_name"`
+	Remark       *string `json:"remark"`
+	FileProp     *string `json:"file_prop"`
+}
+
+type UpdateScheduleTaskCheckAppRequest struct {
+	ID         *uint   `json:"id"`
+	AssigneeID *uint   `json:"assignee_id"`
+	Remark     *string `json:"remark"`
+	IsChecked  *int    `json:"is_checked"`
+}
+
+// {
+// 	"tasks": [
+// 		{
+// 			"id": 1,
+// 			"assignee_id": 1,
+// 			"remark": "test",
+// 			"is_checked": 1
+// 		}
+// 	],
+// 	"deleted_files": [
+// 		{
+// 			"id": 1,
+// 			"file_url": "https://example.com/file.jpg"
+// 		}
+// 	],
+// 	"files": [
+// 		{
+// 			"last_modified": 1723451248056,
+// 			"name": "PT Dalim.jpg",
+// 			"size": 211233,
+// 			"type": "image/jpeg"
+// 		} // file & include
+// 	]
+// }

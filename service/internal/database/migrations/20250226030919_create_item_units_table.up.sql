@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS item_units (
   id SERIAL PRIMARY KEY,
   unit_id INT NOT NULL REFERENCES mix_values (id) ON DELETE RESTRICT,
@@ -20,5 +18,3 @@ CREATE TABLE IF NOT EXISTS item_units (
 CREATE INDEX idx_item_units_unit_id ON item_units(unit_id);
 
 CREATE INDEX idx_item_units_product_id ON item_units(product_id);
-
-COMMIT;

@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS vat_histories (
   id SERIAL PRIMARY KEY,
   vat_id INT NOT NULL REFERENCES mix_values (id) ON DELETE RESTRICT,
@@ -19,5 +17,3 @@ CREATE TABLE IF NOT EXISTS vat_histories (
 );
 
 CREATE INDEX idx_vat_histories_vat_id ON vat_histories (vat_id);
-
-COMMIT;

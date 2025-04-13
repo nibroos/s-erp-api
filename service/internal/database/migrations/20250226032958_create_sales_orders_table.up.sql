@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS sales_orders (
   id SERIAL PRIMARY KEY,
   customer_id INT REFERENCES customers(id) ON DELETE RESTRICT,
@@ -65,5 +63,3 @@ CREATE INDEX idx_sales_orders_vat_id ON sales_orders(vat_id);
 CREATE INDEX idx_sales_orders_pph23_id ON sales_orders(pph23_id);
 
 CREATE INDEX idx_sales_orders_branch_id ON sales_orders(branch_id);
-
-COMMIT;

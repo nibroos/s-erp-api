@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS schedulers (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
@@ -14,5 +12,3 @@ CREATE TABLE IF NOT EXISTS schedulers (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
-
-COMMIT;

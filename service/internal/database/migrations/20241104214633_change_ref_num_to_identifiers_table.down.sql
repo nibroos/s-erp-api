@@ -1,5 +1,3 @@
-BEGIN;
-
 ALTER TABLE
   addresses
 ALTER COLUMN
@@ -14,5 +12,3 @@ ALTER TABLE
   contacts
 ALTER COLUMN
   ref_num TYPE INT USING ref_num :: INTEGER;
-
-COMMIT;

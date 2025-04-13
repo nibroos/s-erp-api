@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS company_profiles (
   id SERIAL PRIMARY KEY,
   parent_id INT,
@@ -35,5 +33,3 @@ CREATE INDEX idx_company_profiles_vat_id ON company_profiles (vat_id);
 CREATE INDEX idx_company_profiles_pph23_id ON company_profiles (pph23_id);
 
 CREATE INDEX idx_company_profiles_payment_id ON company_profiles (payment_id);
-
-COMMIT;

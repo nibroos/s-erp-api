@@ -2507,3 +2507,16 @@ type AccountSettingDetailDTO struct {
 	CreatedAt       *string  `json:"created_at" db:"created_at"`
 	UpdatedAt       *string  `json:"updated_at" db:"updated_at"`
 }
+
+type LetterDetailDTO struct {
+	ID        *uint   `json:"id" db:"id"`
+	RefID     *uint   `json:"ref_id" db:"ref_id"`
+	RefType   *string `json:"ref_type" db:"ref_type"`
+	FileType  *string `json:"file_type" db:"file_type"`
+	FileUrl   *string `json:"file_url" db:"file_url"`
+	FileName  *string `json:"file_name" db:"file_name"`
+	Remark    *string `json:"remark" db:"remark"`
+	FileSize  *int64  `json:"file_size" db:"file_size"`
+	CreatedAt *string `json:"created_at" db:"created_at"`
+	DeletedAt *string `json:"deleted_at" db:"deleted_at"`
+}
