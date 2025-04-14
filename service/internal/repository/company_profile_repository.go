@@ -356,9 +356,19 @@ func (r *CompanyProfileRepository) UpdateCompanyProfile(tx *gorm.DB, companyProf
 		return err
 	}
 
+	var existingBankIDs []uint
+	if err := tx.Model(&models.BankInformation{}).Where("commpany_profile_id = ? AND deleted_at IS NULL", companyProfile.ID).Pluck("id", &existingBankIDs).Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	updatedBankIDs := make(map[uint]bool)
+
 	if len(bankInformations) > 0 {
 		for _, bank := range bankInformations {
 			if bank.ID > 0 {
+				updatedBankIDs[bank.ID] = true
 				if err := tx.Model(&models.BankInformation{}).Where("id = ?", bank.ID).Select("*").Omit("created_at", "created_by_id").Updates(bank).Error; err != nil {
 					defer childSpan.Finish()
 					utils.LogErrors(childSpan, err)
@@ -374,6 +384,17 @@ func (r *CompanyProfileRepository) UpdateCompanyProfile(tx *gorm.DB, companyProf
 					utils.LogErrors(childSpan, err)
 					return err
 				}
+				updatedBankIDs[bank.ID] = true
+			}
+		}
+	}
+
+	for _, existingID := range existingBankIDs {
+		if !updatedBankIDs[existingID] {
+			if err := tx.Delete(&models.BankInformation{}, existingID).Error; err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				return err
 			}
 		}
 	}
