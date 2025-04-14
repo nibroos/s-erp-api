@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -15,7 +14,6 @@ func GetDatabaseURL() string {
 		os.Getenv("POSTGRES_PORT"),
 		os.Getenv("POSTGRES_DB"),
 	)
-	log.Println("Loading environment variables from .env file", env)
 
 	return env
 }

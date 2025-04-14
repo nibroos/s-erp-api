@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"strings"
 	"time"
@@ -779,6 +780,36 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.UpdatedSch
 	return bulkCreateTasks, bulkUpdateTasks, taskIDs, nil
 }
 
+// func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtListDTO, req dtos.UpdateSalesOrderRequest, salesOrderID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
+func MapFilterUpdateScheduleTasksApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRequest, scheduleID uint, span opentracing.Span) ([]map[string]interface{}, error) {
+	childSpan := span.Tracer().StartSpan("MapFilterUpdateScheduleTasksToSteps", opentracing.ChildOf(span.Context()))
+
+	bulkUpdateTasks := []map[string]interface{}{}
+
+	claims := GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	for _, reqTask := range req.Tasks {
+		newTask := map[string]interface{}{
+			"id":          *reqTask.ID,
+			"schedule_id": scheduleID,
+			"assignee_id": *reqTask.AssigneeID,
+			"title":       *reqTask.Title,
+			"remark":      *reqTask.Remark,
+			"is_checked":  *reqTask.IsChecked,
+		}
+		newTask["updated_by_id"] = userID
+		newTask["updated_at"] = time.Now()
+		bulkUpdateTasks = append(bulkUpdateTasks, newTask)
+
+		// log.Println("bulkUpdateTasks", *reqTask.ID, *reqTask.IsChecked, *reqTask.Remark, *reqTask.AssigneeID, *reqTask.Title)
+	}
+
+	log.Println("MapFilterUpdateScheduleTasksToSteps", bulkUpdateTasks)
+
+	return bulkUpdateTasks, nil
+}
+
 // MapNewFiles
 func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesOrderID uint, userID uint, span opentracing.Span) ([]*models.Letter, error) {
 	childSpan := opentracing.StartSpan("MapNewSalesOrderFiles", opentracing.ChildOf(span.Context()))
@@ -815,7 +846,7 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesO
 
 		newFile := &models.Letter{
 			RefID:       &salesOrderID,
-			RefType:     "sales_orders",
+			RefType:     ctx.FormValue("ref_type", "sales_orders"),
 			FileType:    file.Header.Get("Content-Type"),
 			FileUrl:     newFilePath,
 			FileName:    file.Filename,
@@ -857,13 +888,13 @@ func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSal
 		// }
 
 		newFile := map[string]interface{}{
-			"id":        attachment.ID,
-			"file_type": attachment.FileType,
-			"file_url":  attachment.FileUrl,
+			"id": attachment.ID,
+			// "file_type": attachment.FileType,
+			// "file_url":  attachment.FileUrl,
 			"file_name": attachment.FileName,
-			"ref_type":  attachment.RefType,
-			"ref_id":    &salesOrderID,
-			"remark":    attachment.Remark,
+			// "ref_type":  attachment.RefType,
+			"ref_id": &salesOrderID,
+			"remark": attachment.Remark,
 			// FileProp:    string(filePropJSON),
 			"updated_by_id": &userID,
 		}

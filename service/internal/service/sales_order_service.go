@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -854,6 +855,65 @@ func (s *SalesOrderService) UpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.Up
 	return &salesOrderSchedule, nil
 }
 
+func (s *SalesOrderService) UpdateSalesOrderScheduleApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderService-UpdateSalesOrderScheduleApp", opentracing.ChildOf(span.Context()))
+
+	updatedSalesOrderScheduleIDs := make([]uint, 0)
+	updatedSalesOrderScheduleIDs = append(updatedSalesOrderScheduleIDs, req.SalesOrderID)
+
+	log.Println("SalesOrderService-UpdateSalesOrderScheduleApp", req)
+
+	// Bulk/Create Update Batch Tasks
+	err := s.BulkCreateUpdateScheduleTasksApp(ctx, req, req.ScheduleID, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
+	// update desc
+	if len(req.Attachments) > 0 {
+		attachments := utils.MapUpdateSalesOrderAttachments(ctx, req.Attachments, req.SalesOrderID, userID, childSpan)
+
+		log.Println("attachments", attachments)
+
+		if tx, err := s.repo.UpdateAttachmentsDesc(ctx, tx, attachments, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return err
+		}
+	}
+
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil
+	}
+
+	files := form.File["files"]
+	if len(files) > 0 {
+		// handle new files upload
+		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, req.SalesOrderID, userID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil
+		}
+
+		log.Println("newFiles", newFiles)
+
+		// create new letters
+		if tx, err = s.repo.CreateSalesOrderFiles(ctx, tx, newFiles, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil
+		}
+	}
+
+	return nil
+}
+
 // bulk create/update boms for a quotation
 func (s *SalesOrderService) BulkCreateUpdateScheduleSteps(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, updatedSalesOrderSchedule *models.Schedule, userID uint, steps []*models.ScheduleTask, scheduleID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-BulkCreateUpdateScheduleSteps", opentracing.ChildOf(span.Context()))
@@ -940,6 +1000,40 @@ func (s *SalesOrderService) BulkCreateUpdateScheduleTasks(ctx *fiber.Ctx, steps 
 			return err
 		}
 	}
+
+	if len(bulkUpdateScheduleTasks) > 0 {
+		if err := s.repo.UpdateScheduleTasks(tx, bulkUpdateScheduleTasks, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return nil
+}
+
+// bulk create/update boms for a quotation
+func (s *SalesOrderService) BulkCreateUpdateScheduleTasksApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRequest, scheduleID uint, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderService-BulkCreateUpdateScheduleTasksApp", opentracing.ChildOf(span.Context()))
+
+	bulkUpdateScheduleTasks, err := utils.MapFilterUpdateScheduleTasksApp(ctx, req, scheduleID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+
+		return err
+	}
+
+	log.Println("bulkUpdateScheduleTasks", bulkUpdateScheduleTasks)
+
+	// // delete soDts that are not in the list
+	// if len(taskIDs) > 0 {
+	// 	if err := s.repo.DeleteScheduleTasksWhereNotIn(ctx, tx, scheduleID, taskIDs, childSpan); err != nil {
+	// 		defer childSpan.Finish()
+	// 		tx.Rollback()
+	// 		return err
+	// 	}
+	// }
 
 	if len(bulkUpdateScheduleTasks) > 0 {
 		if err := s.repo.UpdateScheduleTasks(tx, bulkUpdateScheduleTasks, childSpan); err != nil {

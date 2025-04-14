@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"sync"
@@ -1995,6 +1996,8 @@ func (r *SalesOrderRepository) UpdateScheduleTasks(tx *gorm.DB, tasks []map[stri
 		return err
 	}
 
+	log.Println("SoDtRepository-UpdateScheduleTasks", tasks)
+
 	return nil
 }
 
@@ -2008,6 +2011,8 @@ func (r *SalesOrderRepository) CreateSalesOrderFiles(ctx *fiber.Ctx, tx *gorm.DB
 
 		return nil, err
 	}
+
+	log.Println("SalesOrderRepository-CreateSalesOrderFiles", letters)
 
 	return tx, nil
 }
@@ -2158,6 +2163,8 @@ func (r *SalesOrderRepository) UpdateAttachmentsDesc(ctx *fiber.Ctx, tx *gorm.DB
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
+
+	log.Println("SalesOrderRepository-UpdateAttachmentsDesc", attachments)
 
 	return tx, nil
 }

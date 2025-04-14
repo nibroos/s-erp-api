@@ -27,4 +27,5 @@ func SetupSalesOrderRoutes(salesOrders fiber.Router, gormDB *gorm.DB, sqlDB *sql
 	salesOrders.Post("/index-ref-quo-dt", salesOrderController.GetRefIndexQuoDts)
 
 	salesOrders.Post("/update-sales-order-schedule", salesOrderController.UpdateScheduleSalesOrder)
+	salesOrders.Post("/update-sales-order-schedule-app", salesOrderController.UpdateScheduleSalesOrderApp)
 }

@@ -858,6 +858,25 @@ type UpdateSalesOrderScheduleRequest struct {
 	Steps []UpdateScheduleStepRequest `json:"steps"`
 }
 
+type UpdateSalesOrderScheduleAppRequest struct {
+	// sales_orders | feedbacks
+	RefType      string                                   `json:"ref_type"`
+	SalesOrderID uint                                     `json:"sales_order_id"`
+	ScheduleID   uint                                     `json:"schedule_id"`
+	DeviceType   string                                   `json:"device_type"`
+	DeletedFiles []uint                                   `json:"deleted_files"`
+	Tasks        []UpdateSalesOrderScheduleAppTaskRequest `json:"tasks"`
+	Attachments  []UpdateSalesOrderAttachmentsDTO         `json:"attachments"`
+}
+
+type UpdateSalesOrderScheduleAppTaskRequest struct {
+	ID         *uint   `json:"id"`
+	AssigneeID *uint   `json:"assignee_id"`
+	Title      *string `json:"title"`
+	Remark     *string `json:"remark"`
+	IsChecked  *int    `json:"is_checked"`
+}
+
 type UpdateScheduleStepRequest struct {
 	ID         *uint   `json:"id"`
 	ScheduleID uint    `json:"schedule_id"`
@@ -896,14 +915,8 @@ type UpdateScheduleTaskRequest struct {
 	EndAt      *string `json:"end_at"`
 }
 type UpdateScheduleTasksCheckAppRequest struct {
-	Tasks        []UpdateScheduleTaskCheckAppRequest            `json:"tasks"`
-	DeletedFiles []UpdateScheduleTasksCheckAppDeleteFileRequest `json:"deleted_files"`
-	Files        []UpdateScheduleTasksCheckAppFileRequest       `json:"files"`
-}
-
-type UpdateScheduleTasksCheckAppDeleteFileRequest struct {
-	ID      uint   `json:"id"`
-	FileUrl string `json:"file_url"`
+	Tasks []UpdateScheduleTaskCheckAppRequest      `json:"tasks"`
+	Files []UpdateScheduleTasksCheckAppFileRequest `json:"files"`
 }
 
 type UpdateScheduleTasksCheckAppFileRequest struct {
