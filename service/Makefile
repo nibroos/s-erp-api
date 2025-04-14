@@ -31,27 +31,27 @@ migrate-create:
 	service \
 	$(MIGRATE) create -ext sql -dir internal/database/migrations $(name)
 
-.PHONY: migrate-up
-migrate-up:
-	@echo "Running migrations up inside Docker container"
-	docker compose -f ../docker/docker-compose-dev.yml run --rm \
-	-e POSTGRES_USER=$(POSTGRES_USER) \
-	-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
-	-e POSTGRES_DB=$(POSTGRES_DB) \
-	-e POSTGRES_PORT=$(POSTGRES_PORT) \
-	service \
-	$(MIGRATE) up
+# .PHONY: migrate-up
+# migrate-up:
+# 	@echo "Running migrations up inside Docker container"
+# 	docker compose -f ../docker/docker-compose-dev.yml run --rm \
+# 	-e POSTGRES_USER=$(POSTGRES_USER) \
+# 	-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+# 	-e POSTGRES_DB=$(POSTGRES_DB) \
+# 	-e POSTGRES_PORT=$(POSTGRES_PORT) \
+# 	service \
+# 	$(MIGRATE) up
 
-.PHONY: migrate-down
-migrate-down:
-	@echo "Running migrations down inside Docker container"
-	docker compose -f ../docker/docker-compose-dev.yml run --rm \
-	-e POSTGRES_USER=$(POSTGRES_USER) \
-	-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
-	-e POSTGRES_DB=$(POSTGRES_DB) \
-	-e POSTGRES_PORT=$(POSTGRES_PORT) \
-	service \
-	$(MIGRATE) down 1
+# .PHONY: migrate-down
+# migrate-down:
+# 	@echo "Running migrations down inside Docker container"
+# 	docker compose -f ../docker/docker-compose-dev.yml run --rm \
+# 	-e POSTGRES_USER=$(POSTGRES_USER) \
+# 	-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+# 	-e POSTGRES_DB=$(POSTGRES_DB) \
+# 	-e POSTGRES_PORT=$(POSTGRES_PORT) \
+# 	service \
+# 	$(MIGRATE) down 1
 
 # .PHONY: mgrt-up
 # migrate-up:
@@ -79,6 +79,28 @@ mgrt-down:
 	)
 	@docker exec -i $$(docker compose -f ../docker/docker-compose-dev.yml ps -q service) \
 		sh -c "cd /apps/cmd/migrate/down && go run main.go"
+
+.PHONY: migrate-up
+migrate-up:
+	@echo "Running migrations up inside Docker container"
+	docker compose -f ../docker/docker-compose-dev.yml run --rm \
+	-e POSTGRES_USER=$(POSTGRES_USER) \
+	-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+	-e POSTGRES_DB=$(POSTGRES_DB) \
+	-e POSTGRES_PORT=$(POSTGRES_PORT) \
+	service \
+	sh -c "cd /apps/cmd/migrate/up && go run main.go"
+
+.PHONY: migrate-down
+migrate-down:
+	@echo "Running migrations down inside Docker container"
+	docker compose -f ../docker/docker-compose-dev.yml run --rm \
+	-e POSTGRES_USER=$(POSTGRES_USER) \
+	-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+	-e POSTGRES_DB=$(POSTGRES_DB) \
+	-e POSTGRES_PORT=$(POSTGRES_PORT) \
+	service \
+	sh -c "cd /apps/cmd/migrate/down && go run main.go"
 
 .PHONY: migrate-force
 migrate-force:
