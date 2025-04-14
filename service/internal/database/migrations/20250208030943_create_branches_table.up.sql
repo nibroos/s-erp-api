@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS branches (
   id SERIAL PRIMARY KEY,
   parent_id INT,
@@ -28,5 +26,3 @@ CREATE TABLE IF NOT EXISTS branches (
 CREATE INDEX idx_branches_parent_id ON branches (parent_id);
 
 CREATE INDEX idx_branches_company_profile_id ON branches (company_profile_id);
-
-COMMIT;

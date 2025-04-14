@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS so_dts (
   id SERIAL PRIMARY KEY,
   product_uuid TEXT,
@@ -69,5 +67,3 @@ CREATE INDEX idx_so_dts_ref_id ON so_dts(ref_id);
 CREATE INDEX idx_so_dts_vat_id ON so_dts(vat_id);
 
 CREATE INDEX idx_so_dts_pph23_id ON so_dts(pph23_id);
-
-COMMIT;

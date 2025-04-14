@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   item_sub_group_id INT NOT NULL REFERENCES mix_values(id) ON DELETE RESTRICT,
@@ -34,5 +32,3 @@ COMMENT ON COLUMN products.prod_type IS 'product, single';
 CREATE INDEX idx_products_item_sub_group_id ON products(item_sub_group_id);
 
 CREATE INDEX idx_products_item_unit_id ON products(item_unit_id);
-
-COMMIT;

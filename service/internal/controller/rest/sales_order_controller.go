@@ -43,7 +43,7 @@ func (c *SalesOrderController) GetSalesOrders(ctx *fiber.Ctx) error {
 
 	salesOrders, total, err := c.service.GetSalesOrders(ctx, filters, parentSpan)
 	if err != nil {
-		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
 	}
 
 	salesOrderIDs := make([]uint, 0)
@@ -53,7 +53,7 @@ func (c *SalesOrderController) GetSalesOrders(ctx *fiber.Ctx) error {
 
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
-	return utils.GetResponse(ctx, salesOrders, paginationMeta, "salesOrder fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, salesOrders, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, nil)
 }
 
 func (c *SalesOrderController) GetSalesOrderByID(ctx *fiber.Ctx) error {
@@ -82,12 +82,17 @@ func (c *SalesOrderController) GetSalesOrderByID(ctx *fiber.Ctx) error {
 	params := &dtos.GetSalesOrderParams{ID: req.ID}
 	salesOrder, err := c.service.GetSalesOrderByID(ctx, params, tx, parentSpan)
 	if err != nil {
-		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
 	}
 
 	salesOrder.Schedule, err = c.service.GetScheduleBySalesOrderID(ctx, params, tx, parentSpan)
 	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
+	}
+
+	salesOrder.Attachments, err = c.service.GetAttachmentsBySalesOrderID(ctx, tx, salesOrder.ID, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
 	}
 
 	createdSalesOrderIDs := make([]uint, 0)
@@ -96,14 +101,14 @@ func (c *SalesOrderController) GetSalesOrderByID(ctx *fiber.Ctx) error {
 	// get soDts
 	soDts, err := c.service.GetSoDtsBySalesOrderIDs(ctx, tx, createdSalesOrderIDs, parentSpan)
 	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
 	}
 
 	filters := ctx.Locals("filters").(map[string]string)
 	// get soDtBoms
 	soDtBoms, err := c.service.GetSoDtsBomBySalesOrders(ctx, filters, createdSalesOrderIDs, parentSpan)
 	if err != nil {
-		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch salesOrder", http.StatusInternalServerError)
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
 	}
 
 	soDts = c.service.MapFilterSoDtBomsToSoDts(ctx, soDtBoms, soDts, parentSpan)
@@ -114,7 +119,7 @@ func (c *SalesOrderController) GetSalesOrderByID(ctx *fiber.Ctx) error {
 
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, salesOrderArray, paginationMeta, "salesOrder fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, salesOrderArray, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, nil)
 }
 
 func (c *SalesOrderController) CreateSalesOrder(ctx *fiber.Ctx) error {
@@ -210,7 +215,7 @@ func (c *SalesOrderController) UpdateSalesOrder(ctx *fiber.Ctx) error {
 	tx, err := c.service.LockSalesOrderTable(ctx, tx, req, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to update salesOrder", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Sales Order", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	updatedSalesOrder, err := c.service.UpdateSalesOrder(ctx, req, userID, branchID, tx, parentSpan)
@@ -218,7 +223,7 @@ func (c *SalesOrderController) UpdateSalesOrder(ctx *fiber.Ctx) error {
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to update salesOrder", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Sales Order", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
@@ -227,13 +232,13 @@ func (c *SalesOrderController) UpdateSalesOrder(ctx *fiber.Ctx) error {
 	getSalesOrder, err := c.service.GetSalesOrderByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "salesOrder not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Sales Order not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{getSalesOrder}, paginationMeta, "salesOrder updated successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{getSalesOrder}, paginationMeta, "Sales Order updated successfully", http.StatusOK, nil, nil)
 }
 
 // delete salesOrder
@@ -251,11 +256,11 @@ func (c *SalesOrderController) DeleteSalesOrder(ctx *fiber.Ctx) error {
 	var req dtos.DeleteSalesOrderRequest
 
 	if err := ctx.BodyParser(&req); err != nil {
-		return utils.GetResponse(ctx, nil, nil, "salesOrder not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Sales Order not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "salesOrder not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Sales Order not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	// Transaction handling
@@ -266,7 +271,7 @@ func (c *SalesOrderController) DeleteSalesOrder(ctx *fiber.Ctx) error {
 	_, err := c.service.GetSalesOrderByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "salesOrder not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Sales Order not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	// DELETE soDtBoms by SalesOrder ID
@@ -274,7 +279,7 @@ func (c *SalesOrderController) DeleteSalesOrder(ctx *fiber.Ctx) error {
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete salesOrder", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Sales Order", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	// DELETE soDts by SalesOrder ID
@@ -282,19 +287,19 @@ func (c *SalesOrderController) DeleteSalesOrder(ctx *fiber.Ctx) error {
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete salesOrder", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Sales Order", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	err = c.service.DeleteSalesOrder(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to delete salesOrder", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Sales Order", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "salesOrder deleted successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Sales Order deleted successfully", http.StatusOK, nil, nil)
 }
 
 // restore salesOrder
@@ -313,11 +318,11 @@ func (c *SalesOrderController) RestoreSalesOrder(ctx *fiber.Ctx) error {
 
 	if err := ctx.BodyParser(&req); err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "salesOrder not found", http.StatusBadRequest, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Sales Order not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
 	if req.ID == 0 {
-		return utils.GetResponse(ctx, nil, nil, "salesOrder not found", http.StatusBadRequest, "ID is required", nil)
+		return utils.GetResponse(ctx, nil, nil, "Sales Order not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
@@ -328,19 +333,19 @@ func (c *SalesOrderController) RestoreSalesOrder(ctx *fiber.Ctx) error {
 	_, err := c.service.GetSalesOrderByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "salesOrder not found", http.StatusNotFound, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Sales Order not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	err = c.service.RestoreSalesOrder(ctx, params, tx, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to restore salesOrder", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to restore Sales Order", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
 
-	return utils.GetResponse(ctx, nil, nil, "salesOrder restored successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, nil, nil, "Sales Order restored successfully", http.StatusOK, nil, nil)
 }
 
 func (c *SalesOrderController) ExcelGetSalesOrders(ctx *fiber.Ctx) error {

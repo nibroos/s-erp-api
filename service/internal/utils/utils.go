@@ -337,6 +337,11 @@ func executeSQLFile(db *sql.DB, filePath string) error {
 func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 	// Parse the request body into a map
 	var body map[string]interface{}
+
+	// "data" is used for JSON data in multipart/form-data
+	data := ctx.FormValue("data")
+	// fileHeader, err := ctx.FormFile("files[0]")
+
 	if ctx.Get("Content-Type") == "application/json" {
 		if err := json.Unmarshal(ctx.Body(), &body); err != nil {
 			return err
@@ -347,6 +352,7 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 			if str, ok := value.(string); ok && str == "" {
 				body[key] = nil
 			}
+
 		}
 	} else if ctx.Get("Content-Type") == "multipart/form-data" {
 		form, err := ctx.MultipartForm()
@@ -363,6 +369,18 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 				} else {
 					body[key] = values[0]
 				}
+			}
+		}
+	} else if data != "" {
+		// Parse the data string as JSON when present
+		if err := json.Unmarshal([]byte(data), &body); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to parse data JSON"})
+		}
+
+		// Convert empty strings to null in the map
+		for key, value := range body {
+			if str, ok := value.(string); ok && str == "" {
+				body[key] = nil
 			}
 		}
 	}

@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS purchase_orders (
   id SERIAL PRIMARY KEY,
   customer_id INT REFERENCES customers(id) ON DELETE RESTRICT,
@@ -41,12 +39,17 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
 );
 
 CREATE INDEX idx_purchase_orders_customer_id ON purchase_orders(customer_id);
-CREATE INDEX idx_purchase_orders_purchase_type_id ON purchase_orders(purchase_type_id);
-CREATE INDEX idx_purchase_orders_currency_id ON purchase_orders(currency_id);
-CREATE INDEX idx_purchase_orders_vat_id ON purchase_orders(vat_id);
-CREATE INDEX idx_purchase_orders_payment_term_id ON purchase_orders(payment_term_id);
-CREATE INDEX idx_purchase_orders_shipping_term_id ON purchase_orders(shipping_term_id);
-CREATE INDEX idx_purchase_orders_pph23_id ON purchase_orders(pph23_id);
-CREATE INDEX idx_purchase_orders_branch_id ON purchase_orders(branch_id);
 
-COMMIT;
+CREATE INDEX idx_purchase_orders_purchase_type_id ON purchase_orders(purchase_type_id);
+
+CREATE INDEX idx_purchase_orders_currency_id ON purchase_orders(currency_id);
+
+CREATE INDEX idx_purchase_orders_vat_id ON purchase_orders(vat_id);
+
+CREATE INDEX idx_purchase_orders_payment_term_id ON purchase_orders(payment_term_id);
+
+CREATE INDEX idx_purchase_orders_shipping_term_id ON purchase_orders(shipping_term_id);
+
+CREATE INDEX idx_purchase_orders_pph23_id ON purchase_orders(pph23_id);
+
+CREATE INDEX idx_purchase_orders_branch_id ON purchase_orders(branch_id);

@@ -72,8 +72,7 @@ func (r *UtilRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params *dtos.GetC
 
 func (r *UtilRepository) Upsert(tx *gorm.DB, table string, idColumn string, data []map[string]interface{}, span opentracing.Span) error {
 	// Start a child span for tracing
-	childSpan := opentracing.StartSpan("BulkUpdate", opentracing.ChildOf(span.Context()))
-	defer childSpan.Finish()
+	childSpan := opentracing.StartSpan("utils-BulkUpdate", opentracing.ChildOf(span.Context()))
 
 	if len(data) == 0 {
 		return nil // No data to upsert
@@ -111,6 +110,7 @@ func (r *UtilRepository) Upsert(tx *gorm.DB, table string, idColumn string, data
 	// Handle inserts
 	if len(insertsData) > 0 {
 		if err := r.handleInserts(tx, table, insertsData); err != nil {
+			defer childSpan.Finish()
 			childSpan.LogKV("error", err.Error())
 			return err
 		}
@@ -119,6 +119,7 @@ func (r *UtilRepository) Upsert(tx *gorm.DB, table string, idColumn string, data
 	// Handle updates
 	if len(updatesData) > 0 {
 		if err := r.handleUpdates(tx, table, idColumn, updatesData); err != nil {
+			defer childSpan.Finish()
 			childSpan.LogKV("error", err.Error())
 			return err
 		}

@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS pools (
   id SERIAL PRIMARY KEY,
   group1_id INT REFERENCES groups(id) ON DELETE RESTRICT,
@@ -23,5 +21,3 @@ CREATE INDEX idx_pools_group2_id ON pools (group2_id);
 CREATE INDEX idx_pools_mv1_id ON pools (mv1_id);
 
 CREATE INDEX idx_pools_mv2_id ON pools (mv2_id);
-
-COMMIT;

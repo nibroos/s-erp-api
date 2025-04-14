@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS mix_values (
   id SERIAL PRIMARY KEY,
   group_id INT NOT NULL REFERENCES groups(id) ON DELETE RESTRICT,
@@ -26,4 +24,4 @@ CREATE INDEX idx_mix_values_group_id ON mix_values (group_id);
 
 CREATE INDEX idx_mix_values_parent_id ON mix_values (parent_id);
 
-COMMIT;
+CREATE INDEX idx_mix_values_name ON mix_values (name);

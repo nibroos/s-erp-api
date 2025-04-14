@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS boms (
   id SERIAL PRIMARY KEY,
   product_id INT NOT NULL REFERENCES products (id) ON DELETE RESTRICT,
@@ -18,5 +16,3 @@ CREATE TABLE IF NOT EXISTS boms (
 CREATE INDEX idx_boms_product_item_id ON boms(product_item_id);
 
 CREATE INDEX idx_boms_item_unit_id ON boms(item_unit_id);
-
-COMMIT;

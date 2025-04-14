@@ -20,12 +20,12 @@ func NewScheduleUpdateRequest() *ScheduleUpdateRequest {
 func (r *ScheduleUpdateRequest) Validate(req *dtos.UpdateSalesOrderScheduleRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 
 	rules := map[string][]string{
-		"id":             []string{"required", "exists:schedules,id"},
+		// "id":             []string{"required", "exists:schedules,id"},
 		"assignee_id":    []string{"exists:users,id"},
 		"sales_order_id": []string{"exists:sales_orders,id"},
 		"uuid":           []string{},
 		"steps_id":       []string{},
-		"title":          []string{"required"},
+		"title":          []string{},
 		"remark":         []string{},
 		"status":         []string{},
 		// "start_at":       []string{"date_format:Y-m-d"},

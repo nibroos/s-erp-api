@@ -16,6 +16,7 @@ PROTO_DIR=internal/proto
 GENERATED_PROTO_DIR=internal/proto/generated
 PROTO_FILES=$(wildcard $(PROTO_DIR)/*.proto)
 SEEDER_DIR=internal/database/seeders
+SERVICE_CONTAINER := $(shell docker compose -f ../docker/docker-compose-dev.yml ps -q service)
 
 # Commands
 
@@ -30,6 +31,55 @@ migrate-create:
 	service \
 	$(MIGRATE) create -ext sql -dir internal/database/migrations $(name)
 
+# .PHONY: migrate-up
+# migrate-up:
+# 	@echo "Running migrations up inside Docker container"
+# 	docker compose -f ../docker/docker-compose-dev.yml run --rm \
+# 	-e POSTGRES_USER=$(POSTGRES_USER) \
+# 	-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+# 	-e POSTGRES_DB=$(POSTGRES_DB) \
+# 	-e POSTGRES_PORT=$(POSTGRES_PORT) \
+# 	service \
+# 	$(MIGRATE) up
+
+# .PHONY: migrate-down
+# migrate-down:
+# 	@echo "Running migrations down inside Docker container"
+# 	docker compose -f ../docker/docker-compose-dev.yml run --rm \
+# 	-e POSTGRES_USER=$(POSTGRES_USER) \
+# 	-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+# 	-e POSTGRES_DB=$(POSTGRES_DB) \
+# 	-e POSTGRES_PORT=$(POSTGRES_PORT) \
+# 	service \
+# 	$(MIGRATE) down 1
+
+# .PHONY: mgrt-up
+# migrate-up:
+# 	@echo "Running migrations up inside Docker container"
+# 	docker exec -it s-erp-api-service-1 sh -c "cd cmd/migrate/up && go run main.go"
+
+.PHONY: mgrt-up
+mgrt-up:
+	@echo "Running migrations up inside Docker container"
+	@docker compose -f ../docker/docker-compose-dev.yml ps -q service > /dev/null 2>&1 || ( \
+		echo "Service container is not running. Starting services..." && \
+		docker compose -f ../docker/docker-compose-dev.yml up -d service && \
+		sleep 3 \
+	)
+	@docker exec -i $$(docker compose -f ../docker/docker-compose-dev.yml ps -q service) \
+		sh -c "cd /apps/cmd/migrate/up && go run main.go"
+
+.PHONY: mgrt-down
+mgrt-down:
+	@echo "Running migrations down inside Docker container"
+	@docker compose -f ../docker/docker-compose-dev.yml ps -q service > /dev/null 2>&1 || ( \
+		echo "Service container is not running. Starting services..." && \
+		docker compose -f ../docker/docker-compose-dev.yml up -d service && \
+		sleep 3 \
+	)
+	@docker exec -i $$(docker compose -f ../docker/docker-compose-dev.yml ps -q service) \
+		sh -c "cd /apps/cmd/migrate/down && go run main.go"
+
 .PHONY: migrate-up
 migrate-up:
 	@echo "Running migrations up inside Docker container"
@@ -39,7 +89,7 @@ migrate-up:
 	-e POSTGRES_DB=$(POSTGRES_DB) \
 	-e POSTGRES_PORT=$(POSTGRES_PORT) \
 	service \
-	$(MIGRATE) up
+	sh -c "cd /apps/cmd/migrate/up && go run main.go"
 
 .PHONY: migrate-down
 migrate-down:
@@ -50,7 +100,7 @@ migrate-down:
 	-e POSTGRES_DB=$(POSTGRES_DB) \
 	-e POSTGRES_PORT=$(POSTGRES_PORT) \
 	service \
-	$(MIGRATE) down 1
+	sh -c "cd /apps/cmd/migrate/down && go run main.go"
 
 .PHONY: migrate-force
 migrate-force:

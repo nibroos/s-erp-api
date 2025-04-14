@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS groups (
   id SERIAL PRIMARY KEY,
   name VARCHAR(500) NOT NULL,
@@ -14,5 +12,3 @@ CREATE TABLE IF NOT EXISTS groups (
   updated_at timestamp with time zone,
   deleted_at timestamp with time zone
 );
-
-COMMIT;

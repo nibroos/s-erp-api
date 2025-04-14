@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TYPE schedule_task_entity_type AS ENUM ('steps', 'tasks', 'comments');
 
 CREATE TABLE IF NOT EXISTS schedule_tasks (
@@ -20,6 +18,7 @@ CREATE TABLE IF NOT EXISTS schedule_tasks (
   start_at timestamp,
   end_at timestamp,
   options_json JSONB DEFAULT '{}',
+  -- roles ['technician', 'customer_service', 'developer', 'all']
   created_by_id INT,
   updated_by_id INT,
   deleted_by_id INT,
@@ -37,5 +36,3 @@ CREATE INDEX idx_schedule_tasks_schedule_id ON schedule_tasks(schedule_id);
 CREATE INDEX idx_schedule_tasks_parent_id ON schedule_tasks(parent_id);
 
 CREATE INDEX idx_schedule_tasks_entity_type ON schedule_tasks(entity_type);
-
-COMMIT;

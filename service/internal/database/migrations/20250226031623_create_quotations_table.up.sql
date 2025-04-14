@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS quotations (
   id SERIAL PRIMARY KEY,
   customer_id INT REFERENCES customers(id) ON DELETE RESTRICT,
@@ -54,5 +52,3 @@ CREATE INDEX idx_quotations_vat_id ON quotations(vat_id);
 CREATE INDEX idx_quotations_pph23_id ON quotations(pph23_id);
 
 CREATE INDEX idx_quotations_branch_id ON quotations(branch_id);
-
-COMMIT;
