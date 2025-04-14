@@ -681,7 +681,8 @@ func (r *CompanyProfileRepository) GetBankInformationsWithCompany(ctx *fiber.Ctx
         LEFT JOIN 
             users ub ON bi.updated_by_id = ub.id
         WHERE 
-            bi.deleted_at IS NULL AND cp.is_primary = 1
+            bi.deleted_at IS NULL AND cp.id = 1
+            AND (bi.name != '' OR bi.account_number != '' OR bi.account_name != '')
     `
 
 	var conditions []string
