@@ -277,16 +277,24 @@ func MapRefSoDtBomsToSoDts(soDtBoms []dtos.SalesOrderSoDtBomListDTO, soDts []dto
 func MapUpdateSoDtsQtyForInvoice(soDtsQtyUpdate []dtos.GetSoDtQtyUpdateForInvoiceDTO, req dtos.CreateInvoiceDpRequest) []map[string]interface{} {
 	bulkUpdateSoDts := []map[string]interface{}{}
 
+	soDtsQtyMap := make(map[uint]*dtos.GetSoDtQtyUpdateForInvoiceDTO)
+	for i := range soDtsQtyUpdate {
+		if soDtsQtyUpdate[i].SoDtID != nil {
+			soDtsQtyMap[*soDtsQtyUpdate[i].SoDtID] = &soDtsQtyUpdate[i]
+		}
+	}
+
 	for _, reqInvoiceDpDt := range req.InvoiceDpDts {
-		for _, soDts := range soDtsQtyUpdate {
-			if reqInvoiceDpDt.RefID != nil && soDts.SoDtID != nil && *reqInvoiceDpDt.RefID == *soDts.SoDtID {
-				if soDts.QtyInvoiced == nil {
-					soDts.QtyInvoiced = new(float64)
+		if reqInvoiceDpDt.RefID != nil {
+			soDtID := *reqInvoiceDpDt.RefID
+			if soDt, exists := soDtsQtyMap[soDtID]; exists {
+				if soDt.QtyInvoiced == nil {
+					soDt.QtyInvoiced = new(float64)
 				}
 
 				newSoDt := map[string]interface{}{
-					"id":           soDts.SoDtID,
-					"qty_invoiced": (*reqInvoiceDpDt.Qty + *soDts.QtyInvoiced),
+					"id":           soDtID,
+					"qty_invoiced": (*reqInvoiceDpDt.Qty + *soDt.QtyInvoiced),
 				}
 				bulkUpdateSoDts = append(bulkUpdateSoDts, newSoDt)
 			}

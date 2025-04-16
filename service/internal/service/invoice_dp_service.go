@@ -223,6 +223,12 @@ func (s *InvoiceDpService) UpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoic
 	}
 
 	if len(deleteInvoiceDpDtIDs) > 0 {
+		tx, err = s.repo.ResetSoDtsTotalDp(tx, deleteInvoiceDpDtIDs, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
 		tx, err = s.repo.DeleteInvoiceDpDtsByIDs(tx, deleteInvoiceDpDtIDs, userID, childSpan)
 		if err != nil {
 			tx.Rollback()
@@ -264,6 +270,22 @@ func (s *InvoiceDpService) UpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoic
 func (s *InvoiceDpService) DeleteInvoiceDp(ctx *fiber.Ctx, invoiceDpID uint, userID uint, tx *gorm.DB, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("InvoiceDpService-DeleteInvoiceDp", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
+
+	var invoiceDpDtIDs []uint
+	if err := tx.Model(&models.InvoiceDpDt{}).
+		Where("invoice_dp_id = ?", invoiceDpID).
+		Pluck("id", &invoiceDpDtIDs).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if len(invoiceDpDtIDs) > 0 {
+		tx, err := s.repo.ResetSoDtsTotalDp(tx, invoiceDpDtIDs, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
 
 	tx, err := s.repo.DeleteInvoiceDp(tx, invoiceDpID, userID, childSpan)
 	if err != nil {

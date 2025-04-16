@@ -501,17 +501,13 @@ func (r *InvoiceDpRepository) BulkUpdateInvoiceDpDts(tx *gorm.DB, invoiceDpDts [
 		return tx, nil
 	}
 
-	for _, invoiceDpDt := range invoiceDpDts {
-		result := tx.Model(&models.InvoiceDpDt{}).Where("id = ?", invoiceDpDt.ID).Updates(invoiceDpDt)
-		if result.Error != nil {
-			utils.LogErrors(childSpan, result.Error)
-			return tx, result.Error
-		}
+	if err := tx.Save(&invoiceDpDts).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
 	}
 
 	return tx, nil
 }
-
 func (r *InvoiceDpRepository) DeleteInvoiceDpDtsByIDs(tx *gorm.DB, invoiceDpDtIDs []uint, userID uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InvoiceDpRepository-DeleteInvoiceDpDtsByIDs", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
@@ -911,19 +907,43 @@ func (r *InvoiceDpRepository) BulkUpdateSoDtsQty(tx *gorm.DB, soDtsQtyUpdate []m
 		return tx, nil
 	}
 
+	type SoDtUpdate struct {
+		ID          uint    `gorm:"column:id"`
+		QtyInvoiced float64 `gorm:"column:qty_invoiced"`
+	}
+
+	updates := make([]SoDtUpdate, 0, len(soDtsQtyUpdate))
 	for _, soDt := range soDtsQtyUpdate {
-		result := tx.Model(&models.SoDt{}).Where("id = ?", soDt["id"]).Updates(map[string]interface{}{
-			"qty_invoiced": soDt["qty_invoiced"],
+		updates = append(updates, SoDtUpdate{
+			ID:          soDt["id"].(uint),
+			QtyInvoiced: soDt["qty_invoiced"].(float64),
 		})
-		if result.Error != nil {
-			utils.LogErrors(childSpan, result.Error)
-			return tx, result.Error
+	}
+
+	if len(updates) > 0 {
+		valueStrings := make([]string, 0, len(updates))
+		valueArgs := make([]interface{}, 0, len(updates)*2)
+
+		for i, update := range updates {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d)", i*2+1, i*2+2))
+			valueArgs = append(valueArgs, update.ID, update.QtyInvoiced)
+		}
+
+		stmt := fmt.Sprintf(`
+            UPDATE so_dts AS s
+            SET qty_invoiced = v.qty_invoiced
+            FROM (VALUES %s) AS v(id, qty_invoiced)
+            WHERE s.id = v.id::integer
+        `, strings.Join(valueStrings, ","))
+
+		if err := tx.Exec(stmt, valueArgs...).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return tx, err
 		}
 	}
 
 	return tx, nil
 }
-
 func (r *InvoiceDpRepository) UpdateSalesOrderStatus(tx *gorm.DB, salesOrderID uint, status string, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InvoiceDpRepository-UpdateSalesOrderStatus", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
@@ -943,18 +963,93 @@ func (r *InvoiceDpRepository) UpdateSoDtsTotalDp(tx *gorm.DB, invoiceDpDts []mod
 	childSpan := opentracing.StartSpan("InvoiceDpRepository-UpdateSoDtsTotalDp", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	for _, invoiceDpDt := range invoiceDpDts {
-		if invoiceDpDt.RefType != nil && *invoiceDpDt.RefType == "so" && invoiceDpDt.RefDtID != nil && invoiceDpDt.TotalDp != nil {
-			result := tx.Exec(`
-                UPDATE so_dts 
-                SET total_dp = ? 
-                WHERE id = ?
-            `, invoiceDpDt.TotalDp, invoiceDpDt.RefDtID)
+	var updates []struct {
+		RefDtID uint    `gorm:"column:ref_dt_id"`
+		TotalDp float64 `gorm:"column:total_dp"`
+	}
 
-			if result.Error != nil {
-				utils.LogErrors(childSpan, result.Error)
-				return tx, result.Error
-			}
+	for _, invoiceDpDt := range invoiceDpDts {
+		if invoiceDpDt.RefType != nil && *invoiceDpDt.RefType == "so" &&
+			invoiceDpDt.RefDtID != nil && invoiceDpDt.TotalDp != nil {
+			updates = append(updates, struct {
+				RefDtID uint    `gorm:"column:ref_dt_id"`
+				TotalDp float64 `gorm:"column:total_dp"`
+			}{
+				RefDtID: *invoiceDpDt.RefDtID,
+				TotalDp: *invoiceDpDt.TotalDp,
+			})
+		}
+	}
+
+	if len(updates) > 0 {
+		query := `
+        UPDATE so_dts AS s
+        SET total_dp = t.total_dp
+        FROM (
+            SELECT unnest($1::integer[]) AS ref_dt_id, 
+                   unnest($2::numeric[]) AS total_dp
+        ) t
+        WHERE s.id = t.ref_dt_id
+        `
+
+		refDtIDs := make([]uint, len(updates))
+		totalDps := make([]float64, len(updates))
+
+		for i, update := range updates {
+			refDtIDs[i] = update.RefDtID
+			totalDps[i] = update.TotalDp
+		}
+
+		if err := tx.Exec(query, pq.Array(refDtIDs), pq.Array(totalDps)).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return tx, err
+		}
+	}
+
+	return tx, nil
+}
+
+func (r *InvoiceDpRepository) ResetSoDtsTotalDp(tx *gorm.DB, deletedInvoiceDpDtIDs []uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpRepository-ResetSoDtsTotalDp", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(deletedInvoiceDpDtIDs) == 0 {
+		return tx, nil
+	}
+
+	var deletedDts []struct {
+		ID      uint     `gorm:"column:id"`
+		RefDtID *uint    `gorm:"column:ref_dt_id"`
+		RefType *string  `gorm:"column:ref_type"`
+		TotalDp *float64 `gorm:"column:total_dp"`
+	}
+
+	if err := tx.Table("invoice_dp_dts").
+		Select("id, ref_dt_id, ref_type, total_dp").
+		Where("id IN ?", deletedInvoiceDpDtIDs).
+		Find(&deletedDts).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	var soDtIDs []uint
+	for _, dt := range deletedDts {
+		if dt.RefDtID != nil && dt.RefType != nil && *dt.RefType == "so" {
+			soDtIDs = append(soDtIDs, *dt.RefDtID)
+		}
+	}
+
+	if len(soDtIDs) > 0 {
+		query := `
+        UPDATE so_dts
+        SET history_total_dp = total_dp,
+            total_dp = NULL
+        WHERE id IN (?)
+        `
+
+		if err := tx.Exec(query, soDtIDs).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return tx, err
 		}
 	}
 
