@@ -884,32 +884,32 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleApp(ctx *fiber.Ctx, req dtos
 		}
 	}
 
-	form, err := ctx.MultipartForm()
-	if err != nil {
-		defer childSpan.Finish()
-		tx.Rollback()
-		return nil
-	}
+	// form, err := ctx.MultipartForm()
+	// if err != nil {
+	// 	defer childSpan.Finish()
+	// 	tx.Rollback()
+	// 	return nil
+	// }
 
-	files := form.File["files"]
-	if len(files) > 0 {
-		// handle new files upload
-		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, req.SalesOrderID, userID, childSpan)
-		if err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return nil
-		}
+	// files := form.File["files"]
+	// if len(files) > 0 {
+	// 	// handle new files upload
+	// 	newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, req.SalesOrderID, userID, childSpan)
+	// 	if err != nil {
+	// 		defer childSpan.Finish()
+	// 		tx.Rollback()
+	// 		return nil
+	// 	}
 
-		log.Println("newFiles", newFiles)
+	// 	log.Println("newFiles", newFiles)
 
-		// create new letters
-		if tx, err = s.repo.CreateSalesOrderFiles(ctx, tx, newFiles, childSpan); err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return nil
-		}
-	}
+	// 	// create new letters
+	// 	if tx, err = s.repo.CreateSalesOrderFiles(ctx, tx, newFiles, childSpan); err != nil {
+	// 		defer childSpan.Finish()
+	// 		tx.Rollback()
+	// 		return nil
+	// 	}
+	// }
 
 	return nil
 }

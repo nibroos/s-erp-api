@@ -791,12 +791,12 @@ func MapFilterUpdateScheduleTasksApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderSc
 
 	for _, reqTask := range req.Tasks {
 		newTask := map[string]interface{}{
-			"id":          *reqTask.ID,
+			"id":          reqTask.ID,
 			"schedule_id": scheduleID,
-			"assignee_id": *reqTask.AssigneeID,
-			"title":       *reqTask.Title,
-			"remark":      *reqTask.Remark,
-			"is_checked":  *reqTask.IsChecked,
+			"assignee_id": reqTask.AssigneeID,
+			"title":       reqTask.Title,
+			"remark":      reqTask.Remark,
+			"is_checked":  reqTask.IsChecked,
 		}
 		newTask["updated_by_id"] = userID
 		newTask["updated_at"] = time.Now()
