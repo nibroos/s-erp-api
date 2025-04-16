@@ -73,7 +73,7 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND idp.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
