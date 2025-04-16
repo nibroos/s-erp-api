@@ -465,7 +465,7 @@ type GetSoDtQtyUpdateForInvoiceDTO struct {
 	SalesOrderID *uint    `json:"sales_order_id" db:"sales_order_id"`
 }
 
-type UpdateSalesOrderStatusForInvoiceRequest struct {
-	ID     uint   `json:"id"`
-	Status string `json:"status"`
-}
+// type UpdateSalesOrderStatusForInvoiceRequest struct {
+// 	ID     uint   `json:"id"`
+// 	Status string `json:"status"`
+// }

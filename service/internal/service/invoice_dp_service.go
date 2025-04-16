@@ -75,48 +75,48 @@ func (s *InvoiceDpService) CreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoic
 		return nil, tx, err
 	}
 
-	soDtIDs := utils.GetLockInvoiceDpSalesOrderIDs(req)
-	if len(soDtIDs) > 0 {
-		soDtIDsUint := make([]uint, 0)
-		for _, id := range soDtIDs {
-			if id != nil {
-				soDtIDsUint = append(soDtIDsUint, *id)
-			}
-		}
+	// soDtIDs := utils.GetLockInvoiceDpSalesOrderIDs(req)
+	// if len(soDtIDs) > 0 {
+	// 	soDtIDsUint := make([]uint, 0)
+	// 	for _, id := range soDtIDs {
+	// 		if id != nil {
+	// 			soDtIDsUint = append(soDtIDsUint, *id)
+	// 		}
+	// 	}
 
-		if len(soDtIDsUint) > 0 {
-			soDtsQtyUpdate, err := s.repo.GetSoDtQtyUpdateForInvoice(ctx, soDtIDsUint, childSpan)
-			if err != nil {
-				tx.Rollback()
-				return nil, tx, err
-			}
+	// 	if len(soDtIDsUint) > 0 {
+	// 		soDtsQtyUpdate, err := s.repo.GetSoDtQtyUpdateForInvoice(ctx, soDtIDsUint, childSpan)
+	// 		if err != nil {
+	// 			tx.Rollback()
+	// 			return nil, tx, err
+	// 		}
 
-			mapUpdateSoDtsQty := utils.MapUpdateSoDtsQtyForInvoice(soDtsQtyUpdate, req)
+	// 		mapUpdateSoDtsQty := utils.MapUpdateSoDtsQtyForInvoice(soDtsQtyUpdate, req)
 
-			if len(mapUpdateSoDtsQty) > 0 {
-				tx, err = s.repo.BulkUpdateSoDtsQty(tx, mapUpdateSoDtsQty, childSpan)
-				if err != nil {
-					tx.Rollback()
-					return nil, tx, err
-				}
-			}
+	// 		if len(mapUpdateSoDtsQty) > 0 {
+	// 			tx, err = s.repo.BulkUpdateSoDtsQty(tx, mapUpdateSoDtsQty, childSpan)
+	// 			if err != nil {
+	// 				tx.Rollback()
+	// 				return nil, tx, err
+	// 			}
+	// 		}
 
-			salesOrderIDs := make(map[uint]bool)
-			for _, soDt := range soDtsQtyUpdate {
-				if soDt.SalesOrderID != nil {
-					salesOrderIDs[*soDt.SalesOrderID] = true
-				}
-			}
+	// 		salesOrderIDs := make(map[uint]bool)
+	// 		for _, soDt := range soDtsQtyUpdate {
+	// 			if soDt.SalesOrderID != nil {
+	// 				salesOrderIDs[*soDt.SalesOrderID] = true
+	// 			}
+	// 		}
 
-			for salesOrderID := range salesOrderIDs {
-				tx, err = s.repo.UpdateSalesOrderStatus(tx, salesOrderID, "invoiced", childSpan)
-				if err != nil {
-					tx.Rollback()
-					return nil, tx, err
-				}
-			}
-		}
-	}
+	// 		for salesOrderID := range salesOrderIDs {
+	// 			tx, err = s.repo.UpdateSalesOrderStatus(tx, salesOrderID, "invoiced", childSpan)
+	// 			if err != nil {
+	// 				tx.Rollback()
+	// 				return nil, tx, err
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	return &invoiceDp, tx, nil
 }

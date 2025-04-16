@@ -944,20 +944,21 @@ func (r *InvoiceDpRepository) BulkUpdateSoDtsQty(tx *gorm.DB, soDtsQtyUpdate []m
 
 	return tx, nil
 }
-func (r *InvoiceDpRepository) UpdateSalesOrderStatus(tx *gorm.DB, salesOrderID uint, status string, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("InvoiceDpRepository-UpdateSalesOrderStatus", opentracing.ChildOf(span.Context()))
-	defer childSpan.Finish()
 
-	result := tx.Model(&models.SalesOrder{}).Where("id = ?", salesOrderID).Updates(map[string]interface{}{
-		"status": status,
-	})
-	if result.Error != nil {
-		utils.LogErrors(childSpan, result.Error)
-		return tx, result.Error
-	}
+// func (r *InvoiceDpRepository) UpdateSalesOrderStatus(tx *gorm.DB, salesOrderID uint, status string, span opentracing.Span) (*gorm.DB, error) {
+// 	childSpan := opentracing.StartSpan("InvoiceDpRepository-UpdateSalesOrderStatus", opentracing.ChildOf(span.Context()))
+// 	defer childSpan.Finish()
 
-	return tx, nil
-}
+// 	result := tx.Model(&models.SalesOrder{}).Where("id = ?", salesOrderID).Updates(map[string]interface{}{
+// 		"status": status,
+// 	})
+// 	if result.Error != nil {
+// 		utils.LogErrors(childSpan, result.Error)
+// 		return tx, result.Error
+// 	}
+
+// 	return tx, nil
+// }
 
 func (r *InvoiceDpRepository) UpdateSoDtsTotalDp(tx *gorm.DB, invoiceDpDts []models.InvoiceDpDt, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InvoiceDpRepository-UpdateSoDtsTotalDp", opentracing.ChildOf(span.Context()))

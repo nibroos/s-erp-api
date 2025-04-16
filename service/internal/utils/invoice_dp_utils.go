@@ -304,11 +304,11 @@ func MapUpdateSoDtsQtyForInvoice(soDtsQtyUpdate []dtos.GetSoDtQtyUpdateForInvoic
 	return bulkUpdateSoDts
 }
 
-func MapUpdateSalesOrderStatusForInvoice(salesOrderStatusUpdate map[string]interface{}, req dtos.CreateInvoiceDpRequest) dtos.UpdateSalesOrderStatusForInvoiceRequest {
-	params := dtos.UpdateSalesOrderStatusForInvoiceRequest{}
+// func MapUpdateSalesOrderStatusForInvoice(salesOrderStatusUpdate map[string]interface{}, req dtos.CreateInvoiceDpRequest) dtos.UpdateSalesOrderStatusForInvoiceRequest {
+// 	params := dtos.UpdateSalesOrderStatusForInvoiceRequest{}
 
-	params.ID = salesOrderStatusUpdate["id"].(uint)
-	params.Status = salesOrderStatusUpdate["status"].(string)
+// 	params.ID = salesOrderStatusUpdate["id"].(uint)
+// 	params.Status = salesOrderStatusUpdate["status"].(string)
 
-	return params
-}
+// 	return params
+// }
