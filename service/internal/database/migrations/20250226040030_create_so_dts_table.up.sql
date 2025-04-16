@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS so_dts (
   si_total_am DECIMAL(20, 5),
   sa_total_am DECIMAL(20, 5),
   total_dp DECIMAL(20, 5),
+  history_total_dp DECIMAL(20, 5),
   created_by_id INT,
   updated_by_id INT,
   deleted_by_id INT,
