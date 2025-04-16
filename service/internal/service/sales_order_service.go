@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -861,8 +860,6 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleApp(ctx *fiber.Ctx, req dtos
 	updatedSalesOrderScheduleIDs := make([]uint, 0)
 	updatedSalesOrderScheduleIDs = append(updatedSalesOrderScheduleIDs, req.SalesOrderID)
 
-	log.Println("SalesOrderService-UpdateSalesOrderScheduleApp", req)
-
 	// Bulk/Create Update Batch Tasks
 	err := s.BulkCreateUpdateScheduleTasksApp(ctx, req, req.ScheduleID, tx, childSpan)
 	if err != nil {
@@ -875,8 +872,6 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleApp(ctx *fiber.Ctx, req dtos
 	if len(req.Attachments) > 0 {
 		attachments := utils.MapUpdateSalesOrderAttachments(ctx, req.Attachments, req.SalesOrderID, userID, childSpan)
 
-		log.Println("attachments", attachments)
-
 		if tx, err := s.repo.UpdateAttachmentsDesc(ctx, tx, attachments, childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -884,32 +879,30 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleApp(ctx *fiber.Ctx, req dtos
 		}
 	}
 
-	// form, err := ctx.MultipartForm()
-	// if err != nil {
-	// 	defer childSpan.Finish()
-	// 	tx.Rollback()
-	// 	return nil
-	// }
+	form, err := ctx.MultipartForm()
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil
+	}
 
-	// files := form.File["files"]
-	// if len(files) > 0 {
-	// 	// handle new files upload
-	// 	newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, req.SalesOrderID, userID, childSpan)
-	// 	if err != nil {
-	// 		defer childSpan.Finish()
-	// 		tx.Rollback()
-	// 		return nil
-	// 	}
+	files := form.File["files"]
+	if len(files) > 0 {
+		// handle new files upload
+		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, req.SalesOrderID, userID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil
+		}
 
-	// 	log.Println("newFiles", newFiles)
-
-	// 	// create new letters
-	// 	if tx, err = s.repo.CreateSalesOrderFiles(ctx, tx, newFiles, childSpan); err != nil {
-	// 		defer childSpan.Finish()
-	// 		tx.Rollback()
-	// 		return nil
-	// 	}
-	// }
+		// create new letters
+		if tx, err = s.repo.CreateSalesOrderFiles(ctx, tx, newFiles, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil
+		}
+	}
 
 	return nil
 }
@@ -1023,8 +1016,6 @@ func (s *SalesOrderService) BulkCreateUpdateScheduleTasksApp(ctx *fiber.Ctx, req
 
 		return err
 	}
-
-	log.Println("bulkUpdateScheduleTasks", bulkUpdateScheduleTasks)
 
 	// // delete soDts that are not in the list
 	// if len(taskIDs) > 0 {

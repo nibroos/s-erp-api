@@ -1,6 +1,8 @@
 package form_requests
 
 import (
+	"encoding/json"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/validators"
@@ -37,9 +39,33 @@ func (r *ScheduleUpdateAppRequest) Validate(req *dtos.UpdateSalesOrderScheduleAp
 	customFieldNames := map[string]string{}
 
 	var requestBody map[string]interface{}
-	if err := ctx.BodyParser(&requestBody); err != nil {
-		return map[string][]string{"error": {"Invalid request body"}}, false
+
+	form := ctx.FormValue("data")
+
+	if err := json.Unmarshal([]byte(form), &requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid JSON format"}}, false
 	}
+
+	// Convert empty strings to null in the map
+	for key, value := range requestBody {
+		if str, ok := value.(string); ok && str == "" {
+			requestBody[key] = nil
+		}
+	}
+
+	requestBody = make(map[string]interface{})
+	// Parse the data string as JSON when present
+	if err := json.Unmarshal([]byte(form), &requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid JSON format"}}, false
+	}
+
+	// Convert empty strings to null in the map
+	for key, value := range requestBody {
+		if str, ok := value.(string); ok && str == "" {
+			requestBody[key] = nil
+		}
+	}
+
 	request := validators.NewRequest(rules, requestBody, customFieldNames)
 	errors, valid := request.Validate()
 

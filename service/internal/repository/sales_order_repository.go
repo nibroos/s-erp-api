@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"sync"
@@ -1996,8 +1995,6 @@ func (r *SalesOrderRepository) UpdateScheduleTasks(tx *gorm.DB, tasks []map[stri
 		return err
 	}
 
-	log.Println("SoDtRepository-UpdateScheduleTasks", tasks)
-
 	return nil
 }
 
@@ -2012,8 +2009,6 @@ func (r *SalesOrderRepository) CreateSalesOrderFiles(ctx *fiber.Ctx, tx *gorm.DB
 		return nil, err
 	}
 
-	log.Println("SalesOrderRepository-CreateSalesOrderFiles", letters)
-
 	return tx, nil
 }
 
@@ -2026,7 +2021,7 @@ func (r *SalesOrderRepository) GetAttachmentsBySalesOrderID(ctx *fiber.Ctx, tx *
 	baseQuery := `
     FROM ( 
 			SELECT DISTINCT ON (ltr.id)
-				ltr.id, ltr.ref_id, ltr.ref_type, ltr.file_type, ltr.file_url, ltr.file_name, ltr.created_at, ltr.deleted_at,
+				ltr.id, ltr.ref_id, ltr.ref_type, ltr.file_type, ltr.file_url, ltr.file_name,  ltr.remark, ltr.created_at, ltr.deleted_at,
 				-- json file_size
 				ltr.file_prop->>'file_size' as file_size,
 				ltr.file_prop->>'device_type' as device_type,
@@ -2163,8 +2158,6 @@ func (r *SalesOrderRepository) UpdateAttachmentsDesc(ctx *fiber.Ctx, tx *gorm.DB
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
-
-	log.Println("SalesOrderRepository-UpdateAttachmentsDesc", attachments)
 
 	return tx, nil
 }

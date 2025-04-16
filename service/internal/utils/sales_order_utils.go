@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"mime/multipart"
 	"strings"
 	"time"
@@ -802,10 +801,7 @@ func MapFilterUpdateScheduleTasksApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderSc
 		newTask["updated_at"] = time.Now()
 		bulkUpdateTasks = append(bulkUpdateTasks, newTask)
 
-		// log.Println("bulkUpdateTasks", *reqTask.ID, *reqTask.IsChecked, *reqTask.Remark, *reqTask.AssigneeID, *reqTask.Title)
 	}
-
-	log.Println("MapFilterUpdateScheduleTasksToSteps", bulkUpdateTasks)
 
 	return bulkUpdateTasks, nil
 }
