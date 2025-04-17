@@ -45,6 +45,8 @@ type SoDt struct {
 	TotalAm         *float64       `json:"total_am" gorm:"column:total_am"`
 	SiTotalAm       *float64       `json:"si_total_am" gorm:"column:si_total_am"`
 	SaTotalAm       *float64       `json:"sa_total_am" gorm:"column:sa_total_am"`
+	TotalDp         *float64       `json:"total_dp" gorm:"column:total_dp"`
+	HistoryTotalDp  *float64       `json:"history_total_dp" gorm:"column:history_total_dp"`
 	CreatedByID     *uint          `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID     *uint          `json:"updated_by_id" gorm:"column:updated_by_id"`
 	DeletedByID     *uint          `json:"deleted_by_id" gorm:"column:deleted_by_id"`
