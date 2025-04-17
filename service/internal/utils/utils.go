@@ -807,3 +807,10 @@ func Contains(s []string, str string) bool {
 	}
 	return false
 }
+
+func GetValueOrDefault[T comparable](ptr *T, defaultValue T) T {
+	if ptr == nil {
+		return defaultValue
+	}
+	return *ptr
+}
