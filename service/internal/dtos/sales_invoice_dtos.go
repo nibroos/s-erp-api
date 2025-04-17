@@ -401,11 +401,23 @@ type RefSalesOrderForInvoiceListDTO struct {
 	Pph23Name        *string   `json:"pph23_name" db:"pph23_name"`
 	Pph23Perc        *float64  `json:"pph23_perc" db:"pph23_perc"`
 	Pph23PercAm      *float64  `json:"pph23_perc_am" db:"pph23_perc_am"`
+	DiscAm           *float64  `json:"disc_am" db:"disc_am"`
+	DiscPerc         *float64  `json:"disc_perc" db:"disc_perc"`
+	DiscPercNum      *float64  `json:"disc_perc_num" db:"disc_perc_num"`
+	DiscPercAm       *float64  `json:"disc_perc_am" db:"disc_perc_am"`
+	DiscType         *string   `json:"disc_type" db:"disc_type"`
+	MarkupPerc       *float64  `json:"markup_perc" db:"markup_perc"`
+	MarkupPercAm     *float64  `json:"markup_perc_am" db:"markup_perc_am"`
+	IsLockMarkup     *int8     `json:"is_lock_markup" db:"is_lock_markup"`
+	IsLockPriceSell  *int8     `json:"is_lock_price_sell" db:"is_lock_price_sell"`
 	IsVat            *int8     `json:"is_vat" db:"is_vat"`
 	IsPph23          *int8     `json:"is_pph23" db:"is_pph23"`
 	QtyInvoiced      *float64  `json:"qty_invoiced" db:"qty_invoiced"`
 	Qty              *float64  `json:"qty" db:"qty"`
+	QtyOut           *float64  `json:"qty_out" db:"qty_out"`
+	PriceBuy         *float64  `json:"price_buy" db:"price_buy"`
 	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
+	SubtotalBuy      *float64  `json:"subtotal_buy" db:"subtotal_buy"`
 	SubtotalSell     *float64  `json:"subtotal_sell" db:"subtotal_sell"`
 	DiscFinal        *float64  `json:"disc_final" db:"disc_final"`
 	TotalAm          *float64  `json:"total_am" db:"total_am"`
@@ -420,25 +432,27 @@ type RefSalesOrderForInvoiceListDTO struct {
 	UpdatedAt        *string   `json:"updated_at" db:"updated_at"`
 	DeleteAt         *string   `json:"deleted_at" db:"deleted_at"`
 
-	CustomerID    *uint    `json:"customer_id" db:"customer_id"`
-	OrderTypeID   *uint    `json:"order_type_id" db:"order_type_id"`
-	CurrencyID    *uint    `json:"currency_id" db:"currency_id"`
-	HeadVatID     *uint    `json:"head_vat_id" db:"head_vat_id"`
-	HeadPph23ID   *uint    `json:"head_pph23_id" db:"head_pph23_id"`
-	HeadVatPerc   *float64 `json:"head_vat_perc" db:"head_vat_perc"`
-	HeadPph23Perc *float64 `json:"head_pph23_perc" db:"head_pph23_perc"`
-	HeadDiscAm    *float64 `json:"head_disc_am" db:"head_disc_am"`
-	HeadDiscPerc  *float64 `json:"head_disc_perc" db:"head_disc_perc"`
-	HeadRemark    *string  `json:"head_remark" db:"head_remark"`
-	ExchangeRate  *float64 `json:"exchange_rate" db:"exchange_rate"`
-	SalesOrderNo  *string  `json:"sales_order_no" db:"sales_order_no"`
-	PoBuyerNo     *string  `json:"po_buyer_no" db:"po_buyer_no"`
-	CustomerName  *string  `json:"customer_name" db:"customer_name"`
-	OrderTypeName *string  `json:"order_type_name" db:"order_type_name"`
-	OrderDate     *string  `json:"order_date" db:"order_date"`
-	ShippingDate  *string  `json:"shipping_date" db:"shipping_date"`
-	ItemSku       *string  `json:"item_sku" db:"item_sku"`
-	DueAt         *string  `json:"due_at" db:"due_at"`
+	CustomerID       *uint    `json:"customer_id" db:"customer_id"`
+	OrderTypeID      *uint    `json:"order_type_id" db:"order_type_id"`
+	CurrencyID       *uint    `json:"currency_id" db:"currency_id"`
+	HeadVatID        *uint    `json:"head_vat_id" db:"head_vat_id"`
+	HeadPph23ID      *uint    `json:"head_pph23_id" db:"head_pph23_id"`
+	HeadVatPerc      *float64 `json:"head_vat_perc" db:"head_vat_perc"`
+	HeadPph23Perc    *float64 `json:"head_pph23_perc" db:"head_pph23_perc"`
+	HeadDiscAm       *float64 `json:"head_disc_am" db:"head_disc_am"`
+	HeadDiscPerc     *float64 `json:"head_disc_perc" db:"head_disc_perc"`
+	HeadMarkupPerc   *float64 `json:"head_markup_perc" db:"head_markup_perc"`
+	HeadMarkupPercAm *float64 `json:"head_markup_perc_am" db:"head_markup_perc_am"`
+	HeadRemark       *string  `json:"head_remark" db:"head_remark"`
+	ExchangeRate     *float64 `json:"exchange_rate" db:"exchange_rate"`
+	SalesOrderNo     *string  `json:"sales_order_no" db:"sales_order_no"`
+	PoBuyerNo        *string  `json:"po_buyer_no" db:"po_buyer_no"`
+	CustomerName     *string  `json:"customer_name" db:"customer_name"`
+	OrderTypeName    *string  `json:"order_type_name" db:"order_type_name"`
+	OrderDate        *string  `json:"order_date" db:"order_date"`
+	ShippingDate     *string  `json:"shipping_date" db:"shipping_date"`
+	ItemSku          *string  `json:"item_sku" db:"item_sku"`
+	DueAt            *string  `json:"due_at" db:"due_at"`
 
 	SoDtsBoms []SalesOrderSoDtBomListDTO `json:"so_dts_boms"`
 }
