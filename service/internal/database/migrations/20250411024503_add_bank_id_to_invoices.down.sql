@@ -1,0 +1,9 @@
+BEGIN;
+
+ALTER TABLE invoice_dps
+DROP COLUMN IF EXISTS bank_id;
+
+ALTER TABLE sales_invoices
+DROP COLUMN IF EXISTS bank_id;
+
+COMMIT;

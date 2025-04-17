@@ -14,6 +14,10 @@ type CompanyProfile struct {
 	CompanyOwnerName   *string `json:"company_owner_name" gorm:"column:company_owner_name"`
 	CompanySignName    *string `json:"company_sign_name" gorm:"column:company_sign_name"`
 	CompanyName        string  `json:"company_name" gorm:"column:company_name"`
+	CompanyCity        *string `json:"company_city" gorm:"column:company_city"`
+	CompanyProvince    *string `json:"company_province" gorm:"column:company_province"`
+	CompanyDistrict    *string `json:"company_district" gorm:"column:company_district"`
+	CompanyPostalCode  *string `json:"company_postal_code" gorm:"column:company_postal_code"`
 	CompanyAddress     *string `json:"company_address" gorm:"column:company_address"`
 	CompanyPhone       *string `json:"company_phone" gorm:"column:company_phone"`
 	CompanyEmail       *string `json:"company_email" gorm:"column:company_email"`
