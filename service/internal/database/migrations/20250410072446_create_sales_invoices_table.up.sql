@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS sales_invoices (
   id SERIAL PRIMARY KEY,
   customer_id INT REFERENCES customers(id) ON DELETE RESTRICT,
@@ -49,5 +47,3 @@ CREATE INDEX idx_sales_invoices_vat_id ON sales_invoices(vat_id);
 CREATE INDEX idx_sales_invoices_pph23_id ON sales_invoices(pph23_id);
 
 CREATE INDEX idx_sales_invoices_branch_id ON sales_invoices(branch_id);
-
-COMMIT;

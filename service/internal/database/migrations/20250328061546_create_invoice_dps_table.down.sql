@@ -1,5 +1,1 @@
-BEGIN;
-
 DROP TABLE IF EXISTS invoice_dps;
-
-COMMIT;

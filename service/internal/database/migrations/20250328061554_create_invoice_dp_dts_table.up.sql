@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS invoice_dp_dts (
   id SERIAL PRIMARY KEY,
   product_uuid TEXT,
@@ -43,5 +41,3 @@ CREATE INDEX idx_invoice_dp_dts_vat_id ON invoice_dp_dts(vat_id);
 CREATE INDEX idx_invoice_dp_dts_pph23_id ON invoice_dp_dts(pph23_id);
 
 CREATE INDEX idx_invoice_dp_dts_product_id ON invoice_dp_dts(product_id);
-
-COMMIT;
