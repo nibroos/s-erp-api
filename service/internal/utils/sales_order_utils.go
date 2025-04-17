@@ -884,7 +884,7 @@ func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSal
 		// }
 
 		newFile := map[string]interface{}{
-			"id": attachment.ID,
+			"id": *attachment.ID,
 			// "file_type": attachment.FileType,
 			// "file_url":  attachment.FileUrl,
 			"file_name": attachment.FileName,

@@ -568,6 +568,7 @@ func StartSpanFromController(ctx *fiber.Ctx, tracer opentracing.Tracer, funcDesc
 		httpHeaders.Add(string(key), string(value))
 	})
 	parentSpan.LogKV("request_headers", httpHeaders)
+	parentSpan.LogKV("request_body", string(ctx.Body()))
 
 	return parentSpan
 }

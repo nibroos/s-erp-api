@@ -248,6 +248,28 @@ func (s *SalesOrderService) GetScheduleBySalesOrderID(ctx *fiber.Ctx, params *dt
 	return schedule, nil
 }
 
+// get schedule by sales order id
+func (s *SalesOrderService) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.ProjectAppDetailDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetScheduleByID", opentracing.ChildOf(span.Context()))
+
+	schedule, err := s.repo.GetScheduleByID(ctx, params, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	// scheduleIDs := []uint{uint(schedule.ID)}
+	// filters := map[string]string{}
+
+	// scheduleTasks, err := s.repo.GetScheduleTasksByScheduleID(ctx, filters, scheduleIDs, childSpan)
+	// if err != nil {
+	// 	defer childSpan.Finish()
+	// 	return nil, err
+	// }
+
+	return schedule, nil
+}
+
 func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.SalesOrder, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-UpdateSalesOrder", opentracing.ChildOf(span.Context()))
 
@@ -879,6 +901,14 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleApp(ctx *fiber.Ctx, req dtos
 		}
 	}
 
+	if len(req.DeletedFiles) > 0 {
+		if err := s.repo.DeleteSalesOrderFilesByIDs(ctx, tx, req.DeletedFiles, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil
+		}
+	}
+
 	form, err := ctx.MultipartForm()
 	if err != nil {
 		defer childSpan.Finish()
@@ -1048,4 +1078,15 @@ func (s *SalesOrderService) GetAttachmentsBySalesOrderID(ctx *fiber.Ctx, tx *gor
 	}
 
 	return attachments, nil
+}
+
+func (s *SalesOrderService) GetProjectsApp(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ProjectAppListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetProjectsApp", opentracing.ChildOf(span.Context()))
+
+	salesOrders, total, err := s.repo.GetProjectsApp(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+	return salesOrders, total, nil
 }

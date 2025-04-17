@@ -2161,3 +2161,301 @@ func (r *SalesOrderRepository) UpdateAttachmentsDesc(ctx *fiber.Ctx, tx *gorm.DB
 
 	return tx, nil
 }
+
+func (r *SalesOrderRepository) GetProjectsApp(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ProjectAppListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetProjectsApp", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	products := []dtos.ProjectAppListDTO{}
+
+	var total int
+
+	filterDBColumnKey := []string{
+		"so.po_buyer_no", "so.sales_order_no", "so.remark", "so.ship_dest",
+		"pi.name",
+		"it.name",
+		"sd.remark",
+		"sd.gen_code",
+		"sdb.remark",
+		"sdb.gen_code",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND so.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":        "so.status",
+		"customer_id":   "so.customer_id",
+		"order_type_id": "so.order_type_id",
+		"currency_id":   "so.currency_id",
+		"vat_id":        "so.vat_id",
+		"payment_id":    "so.payment_id",
+		"pph23_id":      "so.pph23_id",
+		"due_at":        "so.due_at",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":   "so.customer_id",
+		"order_type_ids": "so.order_type_id",
+		"currency_ids":   "so.currency_id",
+		"payment_ids":    "so.payment_id",
+		"pph23_ids":      "so.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	joinCondition := ""
+
+	filterKeyJoin := map[string]string{
+		"is_task_exists": "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+	}
+	for key, join := range filterKeyJoin {
+		if filters[key] == "1" {
+			joinCondition += fmt.Sprintf(" %s", join)
+		}
+	}
+
+	customCondition := ""
+	filterKeyCustom := map[string]string{
+		// "is_task_exists": " AND st.is_checked = 1",
+	}
+	for _, join := range filterKeyCustom {
+		customCondition += fmt.Sprintf("%s", join)
+	}
+
+	// ID              int     `json:"id" db:"id"`
+	// Name            *string `json:"name" db:"name"`
+	// Client          *string `json:"client" db:"client"`
+	// Status          *string `json:"status" db:"status"`
+	// StartDate       *string `json:"start_date" db:"start_date"`
+	// EndDate         *string `json:"end_date" db:"end_date"`
+	// TotalTasks      *int    `json:"total_tasks" db:"total_tasks"`
+	// CompletedTasks  *int    `json:"completed_tasks" db:"completed_tasks"`
+	// ProgressPercent *int    `json:"progress_percent" db:"progress_percent"`
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (s.id)
+					s.id,
+					s.status,
+					TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
+					TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_date,
+					TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_date,
+
+					ot.name as order_type_name,
+					c.name as client
+
+        FROM sales_orders so
+
+				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+				LEFT JOIN customers c ON so.customer_id = c.id
+				` + joinCondition + `
+				WHERE 1=1` + condition + queryGlobal + customCondition + `
+				AND so.deleted_at IS NULL
+    ) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	countQuery := `SELECT COUNT(*) as total
+		` + baseQuery
+
+	for key, value := range filters {
+		switch key {
+		case "po_buyer_no", "sales_order_no", "ship_dest", "remark":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "order_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return products, total, nil
+}
+
+func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.ProjectAppDetailDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetScheduleByID", opentracing.ChildOf(span.Context()))
+	var schedule dtos.ProjectAppDetailDTO
+
+	baseQuery := `
+    FROM ( 
+			SELECT DISTINCT ON (s.id)
+				s.id, s.assignee_id, s.sales_order_id, s.uuid, s.steps_id, s.title, s.module_type, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
+
+				TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_at,
+				TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_at,
+
+				ass.name as assignee_name,
+				cu.name as created_by_name,
+				uu.name as updated_by_name
+
+			FROM schedules s
+			LEFT JOIN sales_orders so ON s.sales_order_id = so.id
+
+			LEFT JOIN users ass ON s.assignee_id = ass.id
+			LEFT JOIN users cu ON s.created_by_id = cu.id
+			LEFT JOIN users uu ON s.updated_by_id = uu.id
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	query := `SELECT *
+		` + baseQuery
+
+	var args []interface{}
+
+	i := 1
+	query += " AND sales_order_id = $1"
+	args = append(args, params.ID)
+	i++
+
+	if err := r.sqlDB.Get(&schedule, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		childSpan.LogKV("query", query)
+		return nil, err
+	}
+
+	return &schedule, nil
+}

@@ -963,3 +963,77 @@ type UpdateScheduleTaskCheckAppRequest struct {
 // 		} // file & include
 // 	]
 // }
+
+type ProjectAppListDTO struct {
+	ID              int     `json:"id" db:"id"`
+	Name            *string `json:"name" db:"name"`
+	Client          *string `json:"client" db:"client"`
+	Status          *string `json:"status" db:"status"`
+	OrderAt         *string `json:"order_at" db:"order_at"`
+	StartDate       *string `json:"start_date" db:"start_date"`
+	EndDate         *string `json:"end_date" db:"end_date"`
+	TotalTasks      *int    `json:"total_tasks" db:"total_tasks"`
+	CompletedTasks  *int    `json:"completed_tasks" db:"completed_tasks"`
+	ProgressPercent *int    `json:"progress_percent" db:"progress_percent"`
+	OrderTypeName   *string `json:"order_type_name" db:"order_type_name"`
+}
+
+//  "id": "p-001",
+//   "name": "Project 2",
+//   "description": "PT Project 2",
+//   "status": "in_progress",
+//   "start_date": "2023-01-20",
+//   "end_date": "2023-02-20",
+//   "task_completed": 10,
+//   "task_total": 20,
+//   "tasks": [
+//     {
+//       "id": "t-001",
+//       "title": "Task 1",
+//       "notes": "",
+//       "completed_by": "Ahmad",
+//       "completed_at": "2023-10-10T10:00:00",
+//       "is_done": true
+//     },
+//     {
+//       "id": "t-002",
+//       "title": "Task 2",
+//       "notes": "",
+//       "completed_by": "Ahmad",
+//       "completed_at": "2023-10-10T10:00:00",
+//       "is_done": true
+//     }
+//   ],
+//   "attachments": [
+//     {
+//       "id": "a-001",
+//       "image_url": "https://example.com/image1.jpg",
+//       "uploaded_by": "Ahmad",
+//       "description": "Lorem ipsum dolor sit amet",
+//       "uploaded_at": "2022-10-10"
+//     },
+//     {
+//       "id": "a-002",
+//       "image_url": "https://example.com/image2.jpg",
+//       "uploaded_by": "Ahmad",
+//       "description": "Lorem ipsum dolor sit amet",
+//       "uploaded_at": "2022-10-10"
+//     }
+//   ]
+type ProjectAppDetailDTO struct {
+	ID              int     `json:"id" db:"id"`
+	SalesOrderID    *uint   `json:"sales_order_id" db:"sales_order_id"`
+	Name            *string `json:"name" db:"name"`
+	Client          *string `json:"client" db:"client"`
+	Status          *string `json:"status" db:"status"`
+	OrderAt         *string `json:"order_at" db:"order_at"`
+	StartDate       *string `json:"start_date" db:"start_date"`
+	EndDate         *string `json:"end_date" db:"end_date"`
+	TotalTasks      *int    `json:"total_tasks" db:"total_tasks"`
+	CompletedTasks  *int    `json:"completed_tasks" db:"completed_tasks"`
+	ProgressPercent *int    `json:"progress_percent" db:"progress_percent"`
+	OrderTypeName   *string `json:"order_type_name" db:"order_type_name"`
+
+	Tasks       []ScheduleTaskListDTO      `json:"tasks"`
+	Attachments []SalesOrderAttachmentsDTO `json:"attachments"`
+}
