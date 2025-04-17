@@ -22,6 +22,7 @@ type SalesOrder struct {
 	Remark        *string        `json:"remark" gorm:"column:remark"`
 	ShipDest      *string        `json:"ship_dest" gorm:"column:ship_dest"`
 	Status        string         `json:"status" gorm:"column:status"`
+	HistoryStatus *string        `json:"history_status" gorm:"column:history_status"`
 	ExchangeRate  *float64       `json:"exchange_rate" gorm:"column:exchange_rate"`
 	VatPerc       *float64       `json:"vat_perc" gorm:"column:vat_perc"`
 	Pph23Perc     *float64       `json:"pph23_perc" gorm:"column:pph23_perc"`

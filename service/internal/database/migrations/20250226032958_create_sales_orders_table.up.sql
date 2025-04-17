@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS sales_orders (
   remark TEXT,
   ship_dest TEXT,
   status TEXT DEFAULT 'PROCESS',
+  history_status TEXT,
   exchange_rate DECIMAL(20, 5),
   vat_perc DECIMAL(20, 5),
   pph23_perc DECIMAL(20, 5),
