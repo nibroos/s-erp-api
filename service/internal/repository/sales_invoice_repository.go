@@ -134,7 +134,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (si.id)
-					si.id, si.customer_id, si.currency_id, si.payment_term_id, si.vat_id, si.pph23_id, si.branch_id,
+					si.id, si.customer_id, si.currency_id, si.payment_term_id, si.vat_id, si.pph23_id, si.branch_id, si.bank_id,
 					si.invoice_no, si.remark, si.status, 
 					si.exchange_rate, si.pph23_percentage, si.vat_percentage, si.total_qty, si.subtotal, si.total_discount, si.total_pph23, si.total_vat, si.grand_total, si.created_by_id, si.updated_by_id, si.deleted_by_id, si.created_at, si.updated_at, si.deleted_at,
 					TO_CHAR(si.invoice_date, 'YYYY-MM-DD') as invoice_date,
@@ -160,6 +160,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 				LEFT JOIN mix_values vat ON si.vat_id = vat.id
 				LEFT JOIN mix_values pph ON si.pph23_id = pph.id
 				LEFT JOIN branches b ON si.branch_id = b.id
+				LEFT JOIN bank_informations bk ON si.bank_id = bk.id
 
         LEFT JOIN users cu ON si.created_by_id = cu.id
         LEFT JOIN users uu ON si.updated_by_id = uu.id
@@ -290,7 +291,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceByID(ctx *fiber.Ctx, params *dto
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (si.id)
-            si.id, si.customer_id, si.currency_id, si.payment_term_id, si.vat_id, si.pph23_id, si.branch_id,
+            si.id, si.customer_id, si.currency_id, si.payment_term_id, si.vat_id, si.pph23_id, si.branch_id, si.bank_id,
             si.invoice_no, si.remark, si.status, 
             si.exchange_rate, si.pph23_percentage, si.vat_percentage, si.total_qty, si.subtotal, si.total_discount, si.total_pph23, si.total_vat, si.grand_total, si.created_by_id, si.updated_by_id, si.deleted_by_id, si.created_at, si.updated_at, si.deleted_at,
             TO_CHAR(si.invoice_date, 'YYYY-MM-DD') as invoice_date,

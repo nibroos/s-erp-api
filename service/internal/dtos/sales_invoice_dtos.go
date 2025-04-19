@@ -51,6 +51,7 @@ type CreateSalesInvoiceRequest struct {
 	VatID                    *uint                         `json:"vat_id"`
 	Pph23ID                  *uint                         `json:"pph23_id"`
 	BranchID                 *uint                         `json:"branch_id"`
+	BankID                   *uint                         `json:"bank_id"`
 	InvoiceNo                *string                       `json:"invoice_no"`
 	InvoiceDate              *string                       `json:"invoice_date"`
 	ExchangeRate             *float64                      `json:"exchange_rate"`
@@ -110,6 +111,7 @@ type UpdateSalesInvoiceRequest struct {
 	VatID                    *uint                         `json:"vat_id"`
 	Pph23ID                  *uint                         `json:"pph23_id"`
 	BranchID                 *uint                         `json:"branch_id"`
+	BankID                   *uint                         `json:"bank_id"`
 	InvoiceNo                *string                       `json:"invoice_no"`
 	InvoiceDate              *string                       `json:"invoice_date"`
 	ExchangeRate             *float64                      `json:"exchange_rate"`
@@ -171,6 +173,7 @@ type SalesInvoiceListDTO struct {
 	VatID                    *uint    `json:"vat_id" db:"vat_id"`
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
+	BankID                   *uint    `json:"bank_id" db:"bank_id"`
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
 	Remark                   *string  `json:"remark" db:"remark"`
@@ -220,6 +223,7 @@ type SalesInvoiceDetailDTO struct {
 	VatID                    *uint    `json:"vat_id" db:"vat_id"`
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
+	BankID                   *uint    `json:"bank_id" db:"bank_id"`
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
 	Remark                   *string  `json:"remark" db:"remark"`
