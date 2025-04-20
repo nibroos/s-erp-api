@@ -1105,6 +1105,8 @@ type UnitListDTO struct {
 	CreatedAt     *string `json:"created_at" db:"created_at"`
 	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+
+	UnitID int `json:"unit_id" db:"unit_id"`
 }
 
 type UnitDetailDTO struct {
@@ -1856,7 +1858,7 @@ type CreateBomsRequest struct {
 
 type CreateProductRequest struct {
 	ItemSubGroupID uint                       `json:"item_sub_group_id"`
-	ItemUnitID     uint                       `json:"item_unit_id"`
+	ItemUnitID     *uint                      `json:"item_unit_id"`
 	Code           *string                    `json:"code"`
 	FactoryCode    *string                    `json:"factory_code"`
 	Name           string                     `json:"name"`

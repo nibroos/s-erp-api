@@ -114,7 +114,7 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 
 	product := models.Product{
 		ItemSubGroupID: req.ItemSubGroupID,
-		ItemUnitID:     &req.ItemUnitID,
+		ItemUnitID:     req.ItemUnitID,
 		Code:           req.Code,
 		FactoryCode:    req.FactoryCode,
 		Name:           req.Name,
@@ -157,17 +157,19 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 		itemUnits = append(itemUnits, itemUnit)
 	}
 
-	err = c.service.CreateItemUnits(ctx, itemUnits, createdProduct.ID, tx, parentSpan)
+	if len(itemUnits) > 0 {
+		err = c.service.CreateItemUnits(ctx, itemUnits, createdProduct.ID, tx, parentSpan)
 
-	if err != nil {
-		tx.Rollback()
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+		if err != nil {
+			tx.Rollback()
+			response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+			utils.LogResponse(apiSpan, response)
+			return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+		}
 	}
 
 	// get selected item unit id by unit id
-	paramsItemUnit := &dtos.GetProductItemUnitParams{ProductID: createdProduct.ID, UnitID: req.ItemUnitID}
+	paramsItemUnit := &dtos.GetProductItemUnitParams{ProductID: createdProduct.ID, UnitID: *req.ItemUnitID}
 	selectedItemUnit, err := c.service.GetItemUnitIDBySelectedItemID(ctx, tx, paramsItemUnit, parentSpan)
 	if err != nil {
 		tx.Rollback()
@@ -200,10 +202,12 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 		boms = append(boms, bom)
 	}
 
-	err = c.service.CreateBoms(ctx, boms, createdProduct.ID, tx, parentSpan)
+	if len(boms) > 0 {
+		err = c.service.CreateBoms(ctx, boms, createdProduct.ID, tx, parentSpan)
 
-	if err != nil {
-		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create BOM", http.StatusInternalServerError)
+		if err != nil {
+			utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create BOM", http.StatusInternalServerError)
+		}
 	}
 
 	tx.Commit()
