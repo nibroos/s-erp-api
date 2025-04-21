@@ -395,20 +395,6 @@ func (r *SalesInvoiceRepository) CreateSalesInvoice(tx *gorm.DB, salesInvoice *m
 	childSpan := opentracing.StartSpan("SalesInvoiceRepository-CreateSalesInvoice", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	if salesInvoice.InvoiceNo != nil {
-		var count int64
-		if err := tx.Model(&models.SalesInvoice{}).Where("invoice_no = ?", *salesInvoice.InvoiceNo).Count(&count).Error; err != nil {
-			utils.LogErrors(childSpan, err)
-			return tx, err
-		}
-
-		if count > 0 {
-			err := fmt.Errorf("invoice number %s already exists", *salesInvoice.InvoiceNo)
-			utils.LogErrors(childSpan, err)
-			return tx, err
-		}
-	}
-
 	result := tx.Create(&salesInvoice)
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
