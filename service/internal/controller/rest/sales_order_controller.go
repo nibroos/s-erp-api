@@ -77,13 +77,15 @@ func (c *SalesOrderController) GetSalesOrderByID(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "sales order not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
-	if req.ID == 0 {
+	ID, _ := utils.ParseInterfaceToUint(req.ID)
+
+	if ID == 0 {
 		return utils.GetResponse(ctx, nil, nil, "sales order not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
 
-	params := &dtos.GetSalesOrderParams{ID: req.ID}
+	params := &dtos.GetSalesOrderParams{ID: ID}
 	salesOrder, err := c.service.GetSalesOrderByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
@@ -579,13 +581,15 @@ func (c *SalesOrderController) GetScheduleByID(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "sales order not found", http.StatusBadRequest, err.Error(), nil)
 	}
 
-	if req.ID == 0 {
+	ID, _ := utils.ParseInterfaceToUint(req.ID)
+
+	if ID == 0 {
 		return utils.GetResponse(ctx, nil, nil, "sales order not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	tx := c.repo.BeginTransaction()
 
-	params := &dtos.GetSalesOrderParams{ID: req.ID}
+	params := &dtos.GetSalesOrderParams{ID: ID}
 	salesOrder, err := c.service.GetScheduleByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)

@@ -282,7 +282,7 @@ type UpdateSalesOrderAttachmentsDTO struct {
 }
 
 type GetSalesOrderByIDRequest struct {
-	ID uint `json:"id"`
+	ID interface{} `json:"id"`
 }
 
 type GetSalesOrderParams struct {

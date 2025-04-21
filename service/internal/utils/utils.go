@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -807,4 +808,35 @@ func Contains(s []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func ParseInterfaceToUint(value interface{}) (uint, error) {
+	log.Println("ParseInterfaceToUint", value)
+	switch v := value.(type) {
+	case string:
+		log.Println("ParseInterfaceToUint-string")
+		parsedID, err := strconv.Atoi(v)
+		if err != nil {
+			return 0, fmt.Errorf("invalid value format: %w", err)
+		}
+		return uint(parsedID), nil
+	case int, int8, int16, int32, int64:
+		log.Println("ParseInterfaceToUint-int")
+		if reflect.ValueOf(v).Int() < 0 {
+			return 0, fmt.Errorf("negative value cannot be converted to uint")
+		}
+		return uint(reflect.ValueOf(v).Int()), nil
+	case uint, uint8, uint16, uint32, uint64:
+		log.Println("ParseInterfaceToUint-uint")
+		return uint(reflect.ValueOf(v).Uint()), nil
+	case float32, float64:
+		log.Println("ParseInterfaceToUint-float")
+		floatValue := reflect.ValueOf(v).Float()
+		if floatValue < 0 {
+			return 0, fmt.Errorf("negative value cannot be converted to uint")
+		}
+		return uint(floatValue), nil
+	default:
+		return 0, fmt.Errorf("invalid value type: must be string, int, or uint")
+	}
 }
