@@ -131,7 +131,7 @@ func GenSalesInvoiceNo(ctx *fiber.Ctx, req dtos.CreateSalesInvoiceRequest, order
 		return *req.InvoiceNo
 	}
 
-	prefix := "SIV"
+	prefix := "ISL"
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
 	day := time.Now().Format("02")
@@ -144,7 +144,7 @@ func GenSalesInvoiceNo(ctx *fiber.Ctx, req dtos.CreateSalesInvoiceRequest, order
 
 func GenerateSalesInvoiceNoOnUpdate(ctx *fiber.Ctx, req dtos.UpdateSalesInvoiceRequest, revNo *int, span opentracing.Span) string {
 	if req.InvoiceNo == nil {
-		prefix := "SIV"
+		prefix := "ISL"
 		year := time.Now().Format("2006")
 		month := time.Now().Format("01")
 		day := time.Now().Format("02")
