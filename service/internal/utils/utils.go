@@ -840,3 +840,10 @@ func ParseInterfaceToUint(value interface{}) (uint, error) {
 		return 0, fmt.Errorf("invalid value type: must be string, int, or uint")
 	}
 }
+
+func GetValueOrDefault[T comparable](ptr *T, defaultValue T) T {
+	if ptr == nil {
+		return defaultValue
+	}
+	return *ptr
+}

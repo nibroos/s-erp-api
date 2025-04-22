@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS bank_informations (
   id SERIAL PRIMARY KEY,
   commpany_profile_id INT REFERENCES company_profiles(id) ON DELETE RESTRICT,
@@ -16,5 +14,3 @@ CREATE TABLE IF NOT EXISTS bank_informations (
 );
 
 CREATE INDEX idx_bank_informations_commpany_profile_id ON bank_informations(commpany_profile_id);
-
-COMMIT;
