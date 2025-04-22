@@ -139,6 +139,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	invoiceDps := version.Group("/invoice-dps")
 	SetupInvoiceDpRoutes(invoiceDps, gormDB, sqlDB, utilRepo, tracer)
 
+	salesInvoices := version.Group("/sales-invoices")
+	SetupSalesInvoiceRoutes(salesInvoices, gormDB, sqlDB, utilRepo, tracer)
+
 	// Scheduler route
 	// cron := cron.New()
 	// schedulerController := rest.NewSchedulerController(cron, gormDB, sqlDB)
