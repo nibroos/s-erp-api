@@ -377,9 +377,10 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
-					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch, m.is_pph23, m.is_vat,
+					m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id as ori_item_unit_id, m.code, m.is_all_branch, m.is_pph23, m.is_vat,
 					` + cdSelect + `
 
+					iu.unit_id as item_unit_id,
 					m.id as product_id,
 					m.prod_type,
 					u.name as unit_name,
@@ -535,6 +536,12 @@ func (r *ProductRepository) GetBomsByProductID(ctx *fiber.Ctx, productID uint, s
 	query := `SELECT b.id, b.product_id, b.product_item_id, b.item_unit_id, b.qty, b.remark, b.created_at, b.updated_at, b.deleted_at,
 		b.id as bom_id,
 		u.name as item_unit_name,
+		pi.name,
+		pi.code,
+		b.product_item_id as ref_id,
+
+		iu.price_sell,
+		iu.price_buy,
 
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
@@ -563,6 +570,40 @@ func (r *ProductRepository) GetBomsByProductID(ctx *fiber.Ctx, productID uint, s
 	return boms, nil
 }
 
+func (r *ProductRepository) GetItemUnitsByProductID(ctx *fiber.Ctx, productID uint, span opentracing.Span) ([]dtos.ItemUnitListDTO, error) {
+	childSpan := opentracing.StartSpan("ProductRepository-GetItemUnitsByProductID", opentracing.ChildOf(span.Context()))
+
+	itemUnits := []dtos.ItemUnitListDTO{}
+
+	query := `SELECT *
+    FROM ( 
+        SELECT DISTINCT ON (m.id)
+					m.product_id, m.unit_id, m.conversion, m.price_sell, m.price_buy, m.margin, m.status, m.created_at, m.updated_at, m.deleted_at,
+					p.name as product_name,
+					u.name as unit_name,
+					u.name,
+
+					m.unit_id as id,
+					m.id item_unit_id,
+
+					cu.name as created_by_name,
+					uu.name as updated_by_name
+
+        FROM item_units m
+				LEFT JOIN products p ON m.product_id = p.id
+				LEFT JOIN mix_values u ON m.unit_id = u.id
+        LEFT JOIN users cu ON m.created_by_id = cu.id
+        LEFT JOIN users uu ON m.updated_by_id = uu.id
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL AND product_id = $1`
+
+	if err := r.sqlDB.SelectContext(ctx.Context(), &itemUnits, query, productID); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return itemUnits, nil
+}
+
 func (r *ProductRepository) CreateItemUnits(tx *gorm.DB, itemUnits []*models.ItemUnit, productID uint, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("ProductRepository-CreateItemUnits", opentracing.ChildOf(span.Context()))
 	// bulk insert
@@ -572,6 +613,44 @@ func (r *ProductRepository) CreateItemUnits(tx *gorm.DB, itemUnits []*models.Ite
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
 		return result.Error
+	}
+
+	return nil
+}
+
+func (r *ProductRepository) UpdateItemUnits(tx *gorm.DB, itemUnits []map[string]interface{}, productID uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ProductRepository-CreateItemUnits", opentracing.ChildOf(span.Context()))
+	// bulk update
+
+	if err := r.utilRepo.Upsert(tx, "item_units", "id", itemUnits, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *ProductRepository) DeleteItemUnitsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, productID uint, itemUnitIDs []uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("ProductRepository-DeleteItemUnitsWhereNotIn", opentracing.ChildOf(span.Context()))
+
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	now := time.Now()
+	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
+
+	query := tx.Model(&models.ItemUnit{}).Where("product_id = ? AND deleted_at IS NULL", productID)
+
+	if len(itemUnitIDs) > 0 {
+		query = query.Where("id NOT IN (?)", itemUnitIDs)
+	}
+
+	if err := query.Updates(map[string]interface{}{
+		"deleted_by_id": userID,
+		"deleted_at":    deletedAt,
+	}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
 	}
 
 	return nil

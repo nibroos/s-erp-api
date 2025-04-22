@@ -51,8 +51,16 @@ func ErrorHandler(ctx *fiber.Ctx, err error) error {
 }
 func ConvertRequestToFilters() fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
+		if ctx.Get("Content-Type") == "application/json; charset=utf-8" {
+			ctx.Set("Content-Type", "application/json")
+		}
+
+		log.Println("ConvertRequestToFilters-Content-Type:", ctx.Get("Content-Type"))
+
 		// Check if the content type is JSON
-		if ctx.Get("Content-Type") == "application/json" {
+		// application/json or application/json; charset=utf-8
+		if strings.Contains(ctx.Get("Content-Type"), "application/json") {
+			// if ctx.Get("Content-Type") == "application/json" {
 			var requestBody map[string]interface{}
 			if err := ctx.BodyParser(&requestBody); err != nil {
 				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -151,6 +159,7 @@ func ConvertRequestToFilters() fiber.Handler {
 
 			ctx.Locals("filters", filters)
 		}
+		// else {
 
 		return ctx.Next()
 	}
@@ -161,8 +170,16 @@ func ConvertEmptyStringsToNull() fiber.Handler {
 		// Parse the request body into a map
 		var body map[string]interface{}
 
-		if ctx.Get("Content-Type") == "application/json" {
+		if strings.Contains(ctx.Get("Content-Type"), "application/json") {
+			ctx.Set("Content-Type", "application/json")
+		}
+
+		log.Println("ConvertEmptyStringsToNull-Content-Type:", ctx.Get("Content-Type"))
+
+		// if ctx.Get("Content-Type") == "application/json" {
+		if strings.Contains(ctx.Get("Content-Type"), "application/json") {
 			if err := json.Unmarshal(ctx.Body(), &body); err != nil {
+				log.Println("convertEmptyStringsToNull-Error:", err)
 				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 			}
 
@@ -234,6 +251,7 @@ func ConvertToClientTimezone() fiber.Handler {
 		// Convert start_at and end_at if they exist in the request body
 		var body map[string]interface{}
 		if err := c.BodyParser(&body); err != nil {
+			log.Println("convertToClientTimezone-Error:", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
 		}
 
@@ -302,6 +320,7 @@ func JaegerTracingMiddleware(tracer opentracing.Tracer) fiber.Handler {
 			if c.Response().Body() != nil {
 				responseBody := c.Response().Body()
 				span.LogKV("response_body", string(responseBody))
+				span.LogKV("request_body", string(c.Body()))
 			}
 
 			// Set the HTTP status code

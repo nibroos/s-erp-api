@@ -37,6 +37,9 @@ func (r *UnitRepository) GetUnits(ctx *fiber.Ctx, filters map[string]string, spa
 	query := `SELECT *
     FROM ( 
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+				
+				m.id as unit_id,
+
         cu.name as created_by_name,
         uu.name as updated_by_name
 

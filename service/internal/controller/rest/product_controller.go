@@ -114,7 +114,7 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 
 	product := models.Product{
 		ItemSubGroupID: req.ItemSubGroupID,
-		ItemUnitID:     &req.ItemUnitID,
+		ItemUnitID:     req.ItemUnitID,
 		Code:           req.Code,
 		FactoryCode:    req.FactoryCode,
 		Name:           req.Name,
@@ -157,17 +157,19 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 		itemUnits = append(itemUnits, itemUnit)
 	}
 
-	err = c.service.CreateItemUnits(ctx, itemUnits, createdProduct.ID, tx, parentSpan)
+	if len(itemUnits) > 0 {
+		err = c.service.CreateItemUnits(ctx, itemUnits, createdProduct.ID, tx, parentSpan)
 
-	if err != nil {
-		tx.Rollback()
-		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
-		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+		if err != nil {
+			tx.Rollback()
+			response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+			utils.LogResponse(apiSpan, response)
+			return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+		}
 	}
 
 	// get selected item unit id by unit id
-	paramsItemUnit := &dtos.GetProductItemUnitParams{ProductID: createdProduct.ID, UnitID: req.ItemUnitID}
+	paramsItemUnit := &dtos.GetProductItemUnitParams{ProductID: createdProduct.ID, UnitID: *req.ItemUnitID}
 	selectedItemUnit, err := c.service.GetItemUnitIDBySelectedItemID(ctx, tx, paramsItemUnit, parentSpan)
 	if err != nil {
 		tx.Rollback()
@@ -200,10 +202,12 @@ func (c *ProductController) CreateProduct(ctx *fiber.Ctx) error {
 		boms = append(boms, bom)
 	}
 
-	err = c.service.CreateBoms(ctx, boms, createdProduct.ID, tx, parentSpan)
+	if len(boms) > 0 {
+		err = c.service.CreateBoms(ctx, boms, createdProduct.ID, tx, parentSpan)
 
-	if err != nil {
-		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create BOM", http.StatusInternalServerError)
+		if err != nil {
+			utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create BOM", http.StatusInternalServerError)
+		}
 	}
 
 	tx.Commit()
@@ -258,7 +262,13 @@ func (c *ProductController) GetProductByID(ctx *fiber.Ctx) error {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
 	}
 
+	units, err := c.service.GetItemUnitsByProductID(ctx, req.ID, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
+	}
+
 	product.Boms = boms
+	product.Units = units
 
 	productArray := []interface{}{product}
 
@@ -299,38 +309,66 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"errors": err.Error(), "message": "Unauthorized", "status": fiber.StatusUnauthorized})
 	}
 	userID := uint(claims["user_id"].(float64))
+	branchID := utils.GetDefaultBranchID(ctx)
 
 	prodType := "single"
 	if len(req.Boms) > 0 {
 		prodType = "product"
 	}
 
+	tx := c.repo.BeginTransaction()
+
+	err = c.service.BulkCreateUpdateItemUnits(ctx, req, userID, branchID, tx, parentSpan)
+
+	if err != nil {
+		tx.Rollback()
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+	}
+
 	product := models.Product{
 		ID:             req.ID,
 		ItemSubGroupID: req.ItemSubGroupID,
-		ItemUnitID:     &req.ItemUnitID,
-		Code:           req.Code,
-		FactoryCode:    req.FactoryCode,
-		Name:           req.Name,
-		Sku:            req.Sku,
-		ProdType:       &prodType,
-		Barcode:        req.Barcode,
-		Specification:  req.Specification,
-		Description:    req.Description,
-		TpbCode:        req.TpbCode,
-		MinimumStock:   req.MinimumStock,
-		IsAllBranch:    req.IsAllBranch,
-		IsVat:          req.IsVat,
-		IsPph23:        req.IsPph23,
-		Remark:         req.Remark,
-		Status:         req.Status,
-		ExpiredAt:      req.ExpiredAt,
-		UpdatedByID:    &userID,
+		// ItemUnitID:     &req.ItemUnitID,
+		Code:          req.Code,
+		FactoryCode:   req.FactoryCode,
+		Name:          req.Name,
+		Sku:           req.Sku,
+		ProdType:      &prodType,
+		Barcode:       req.Barcode,
+		Specification: req.Specification,
+		Description:   req.Description,
+		TpbCode:       req.TpbCode,
+		MinimumStock:  req.MinimumStock,
+		IsAllBranch:   req.IsAllBranch,
+		IsVat:         req.IsVat,
+		IsPph23:       req.IsPph23,
+		Remark:        req.Remark,
+		Status:        req.Status,
+		ExpiredAt:     req.ExpiredAt,
+		UpdatedByID:   &userID,
 	}
 
-	tx := c.repo.BeginTransaction()
+	// get selected item unit id by unit id
+	paramsItemUnit := &dtos.GetProductItemUnitParams{ProductID: req.ID, UnitID: req.ItemUnitID}
+	selectedItemUnit, err := c.service.GetItemUnitIDBySelectedItemID(ctx, tx, paramsItemUnit, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+	}
 
+	// update product with selected item unit id
+	product.ItemUnitID = &selectedItemUnit.ID
 	updatedProduct, err := c.service.UpdateProduct(ctx, &product, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
+	}
 
 	if err != nil {
 		tx.Rollback()

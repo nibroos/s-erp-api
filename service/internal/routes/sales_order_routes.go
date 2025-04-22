@@ -16,6 +16,8 @@ func SetupSalesOrderRoutes(salesOrders fiber.Router, gormDB *gorm.DB, sqlDB *sql
 	salesOrderController := rest.NewSalesOrderController(salesOrderService, salesOrderRepo, tracer)
 
 	// salesOrders.Post("/index-sales-order", middleware.PermissionMiddleware("read_masters"), salesOrderController.GetSalesOrders)
+	salesOrders.Post("/index-project-app", salesOrderController.GetProjectsApp)
+	salesOrders.Post("/show-project-app", salesOrderController.GetSalesOrderByID)
 	salesOrders.Post("/index-sales-order", salesOrderController.GetSalesOrders)
 	salesOrders.Post("/show-sales-order", salesOrderController.GetSalesOrderByID)
 	salesOrders.Post("/create-sales-order", salesOrderController.CreateSalesOrder)
@@ -27,4 +29,5 @@ func SetupSalesOrderRoutes(salesOrders fiber.Router, gormDB *gorm.DB, sqlDB *sql
 	salesOrders.Post("/index-ref-quo-dt", salesOrderController.GetRefIndexQuoDts)
 
 	salesOrders.Post("/update-sales-order-schedule", salesOrderController.UpdateScheduleSalesOrder)
+	salesOrders.Post("/update-sales-order-schedule-app", salesOrderController.UpdateScheduleSalesOrderApp)
 }
