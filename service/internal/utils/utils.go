@@ -343,7 +343,8 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 	data := ctx.FormValue("data")
 	// fileHeader, err := ctx.FormFile("files[0]")
 
-	if ctx.Get("Content-Type") == "application/json" {
+	// if ctx.Get("Content-Type") == "application/json" {
+	if strings.Contains(ctx.Get("Content-Type"), "application/json") {
 		if err := json.Unmarshal(ctx.Body(), &body); err != nil {
 			return err
 		}

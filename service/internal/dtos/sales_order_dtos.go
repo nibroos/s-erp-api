@@ -1037,3 +1037,17 @@ type ProjectAppDetailDTO struct {
 	Tasks       []ScheduleTaskListDTO      `json:"tasks"`
 	Attachments []SalesOrderAttachmentsDTO `json:"attachments"`
 }
+
+type CalendarListDTO struct {
+	ID            *uint   `json:"id" db:"id"`
+	SalesOrderID  *uint   `json:"sales_order_id" db:"sales_order_id"`
+	Name          *string `json:"name" db:"name"`
+	CustomerName  *string `json:"customer_name" db:"customer_name"`
+	Status        *string `json:"status" db:"status"`
+	OrderAt       *string `json:"order_at" db:"order_at"`
+	Start         *string `json:"start" db:"start"`
+	End           *string `json:"end" db:"end"`
+	Title         *string `json:"title" db:"title"`
+	Color         *string `json:"color" db:"color"`
+	OrderTypeName *string `json:"order_type_name" db:"order_type_name"`
+}

@@ -483,7 +483,7 @@ func (c *SalesOrderController) UpdateScheduleSalesOrder(ctx *fiber.Ctx) error {
 // UpdateScheduleSalesOrder updates the schedule of a sales order
 func (c *SalesOrderController) UpdateScheduleSalesOrderApp(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("SalesOrderController-UpdateScheduleSalesOrder", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("SalesOrderController-UpdateScheduleSalesOrderApp", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -528,9 +528,10 @@ func (c *SalesOrderController) UpdateScheduleSalesOrderApp(ctx *fiber.Ctx) error
 	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Task updated successfully", http.StatusOK, nil, nil)
 }
 
-func (c *SalesOrderController) GetProjectsApp(ctx *fiber.Ctx) error {
+// UpdateScheduleSalesOrder updates the schedule of a sales order
+func (c *SalesOrderController) UpdateScheduleSalesOrderAppUpload(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("SalesOrderController-GetProjectsApp", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("SalesOrderController-UpdateScheduleSalesOrderAppUpload", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -538,31 +539,79 @@ func (c *SalesOrderController) GetProjectsApp(ctx *fiber.Ctx) error {
 			defer parentSpan.Finish()
 		}
 	}()
+	// defer apiSpan.Finish()
+	// defer parentSpan.Finish()
 
-	log.Println("filters2", ctx.Locals("filters"))
-	filters, ok := ctx.Locals("filters").(map[string]string)
+	var req dtos.UpdateSalesOrderScheduleAppRequest
 
-	log.Println("filters", filters)
-
-	if !ok {
-		apiSpan.LogKV("response_body", string("SalesOrderController-GetProjectsApp: Invalid filters"))
-		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
 	}
 
-	salesOrders, total, err := c.service.GetProjectsApp(ctx, filters, parentSpan)
+	// // Validate the request
+	// reqValidator, isValid := form_requests.NewScheduleUpdateAppUploadRequest().Validate(&req, ctx)
+	// if !isValid {
+	// 	utils.LogResponse(apiSpan, reqValidator)
+	// 	return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
+	// }
+
+	// Extract user ID from JWT
+	claims := utils.GetClaims(ctx, parentSpan)
+	userID := uint(claims["user_id"].(float64))
+	branchID := utils.GetDefaultBranchID(ctx)
+
+	tx := c.repo.BeginTransaction()
+	err := c.service.UpdateSalesOrderScheduleAppUpload(ctx, req, userID, branchID, tx, parentSpan)
+
 	if err != nil {
-		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to update task", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	salesOrderIDs := make([]uint, 0)
-	for _, salesOrder := range salesOrders {
-		salesOrderIDs = append(salesOrderIDs, uint(salesOrder.ID))
-	}
+	tx.Commit()
 
-	paginationMeta := utils.CreatePaginationMeta(filters, total)
+	filters := make(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, salesOrders, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Task updated successfully", http.StatusOK, nil, nil)
 }
+
+// func (c *SalesOrderController) GetProjectsApp(ctx *fiber.Ctx) error {
+// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+// 	parentSpan := opentracing.StartSpan("SalesOrderController-GetProjectsApp", opentracing.ChildOf(apiSpan.Context()))
+// 	defer func() {
+// 		// If no error, delete span
+// 		if utils.FilterOtel(ctx) {
+// 			defer apiSpan.Finish()
+// 			defer parentSpan.Finish()
+// 		}
+// 	}()
+
+// 	log.Println("filters2", ctx.Locals("filters"))
+// 	filters, ok := ctx.Locals("filters").(map[string]string)
+
+// 	log.Println("filters", filters)
+
+// 	if !ok {
+// 		apiSpan.LogKV("response_body", string("SalesOrderController-GetProjectsApp: Invalid filters"))
+// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+// 	}
+
+// 	salesOrders, total, err := c.service.GetProjectsApp(ctx, filters, parentSpan)
+// 	if err != nil {
+// 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
+// 	}
+
+// 	salesOrderIDs := make([]uint, 0)
+// 	for _, salesOrder := range salesOrders {
+// 		salesOrderIDs = append(salesOrderIDs, uint(salesOrder.ID))
+// 	}
+
+// 	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+// 	return utils.GetResponse(ctx, salesOrders, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, nil)
+// }
 
 func (c *SalesOrderController) GetScheduleByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
@@ -614,4 +663,35 @@ func (c *SalesOrderController) GetScheduleByID(ctx *fiber.Ctx) error {
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
 	return utils.GetResponse(ctx, salesOrderArray, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, nil)
+}
+
+func (c *SalesOrderController) GetCalendars(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("SalesOrderController-GetCalendars", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	log.Println("filters2", ctx.Locals("filters"))
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	log.Println("filters", filters)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("SalesOrderController-GetCalendars: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	salesOrders, total, err := c.service.GetCalendars(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, salesOrders, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, nil)
 }
