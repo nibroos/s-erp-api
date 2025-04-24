@@ -146,12 +146,17 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	joinCondition := ""
 
 	filterKeyJoin := map[string]string{
-		"is_task_exists": "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+		"is_task_exists":         "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+		"is_schedule_not_exists": "LEFT JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL",
 	}
 	for key, join := range filterKeyJoin {
 		if filters[key] == "1" {
 			joinCondition += fmt.Sprintf(" %s", join)
 		}
+	}
+
+	if filters["is_schedule_not_exists"] == "1" {
+		condition += " AND s.id IS NULL"
 	}
 
 	customCondition := ""
