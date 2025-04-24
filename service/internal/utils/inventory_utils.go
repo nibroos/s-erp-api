@@ -36,15 +36,15 @@ func GetInvIDs(req dtos.UpdateInventoryRequest) ([]*uint, []*uint, []*uint) {
 }
 
 func GetLockInventoryQuoIDs(req dtos.CreateInventoryRequest) []*uint {
-	quoDtIDs := []*uint{}
+	soDtIDs := []*uint{}
 
 	for _, reqInvDt := range req.InvDts {
-		if reqInvDt.RefType != nil && *reqInvDt.RefType == "quotations" && reqInvDt.RefID != nil && *reqInvDt.RefID > 0 {
-			quoDtIDs = append(quoDtIDs, reqInvDt.RefID)
+		if reqInvDt.RefType == "so" && reqInvDt.RefID > 0 {
+			soDtIDs = append(soDtIDs, &reqInvDt.RefID)
 		}
 	}
 
-	return quoDtIDs
+	return soDtIDs
 }
 
 func MapCreateInvDts(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, createdInventory *models.Inventory, userID uint, span opentracing.Span) ([]models.InvDt, error) {
@@ -53,45 +53,33 @@ func MapCreateInvDts(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, createdInv
 	for _, soDt := range req.InvDts {
 		genCode := "-"
 		itemJson := "{}"
-		refJSON := "{}"
 
 		soDtModel := models.InvDt{
-			ProductUuid:     soDt.ProductUuid,
-			InventoryID:     &createdInventory.ID,
-			ItemUnitID:      soDt.ItemUnitID,
-			VatID:           soDt.VatID,
-			Pph23ID:         soDt.Pph23ID,
-			RefID:           soDt.RefID,
-			ItemID:          soDt.ItemID,
-			RefType:         soDt.RefType,
-			ItemType:        soDt.ItemType,
-			RefJSON:         &refJSON,
-			ItemJSON:        &itemJson,
-			GenCode:         &genCode,
-			Remark:          soDt.Remark,
-			VatPerc:         soDt.VatPerc,
-			VatPercAm:       soDt.VatPercAm,
-			Pph23Perc:       soDt.Pph23Perc,
-			Pph23PercAm:     soDt.Pph23PercAm,
-			MarkupPerc:      soDt.MarkupPerc,
-			MarkupPercAm:    soDt.MarkupPercAm,
-			IsVat:           soDt.IsVat,
-			IsPph23:         soDt.IsPph23,
-			IsLockMarkup:    soDt.IsLockMarkup,
-			IsLockPriceSell: soDt.IsLockPriceSell,
-			Qty:             soDt.Qty,
-			PriceSell:       soDt.PriceSell,
-			PriceBuy:        soDt.PriceBuy,
-			SubtotalSell:    soDt.SubtotalSell,
-			SubtotalBuy:     soDt.SubtotalBuy,
-			DiscAm:          soDt.DiscAm,
-			DiscPerc:        soDt.DiscPerc,
-			DiscPercNum:     soDt.DiscPercNum,
-			DiscPercAm:      soDt.DiscPercAm,
-			DiscFinal:       soDt.DiscFinal,
-			DiscType:        soDt.DiscType,
-			TotalAm:         soDt.TotalAm,
-			CreatedByID:     &userID,
+			ProductUuid:  soDt.ProductUuid,
+			InventoryID:  createdInventory.ID,
+			ItemUnitID:   soDt.ItemUnitID,
+			VatID:        soDt.VatID,
+			Pph23ID:      soDt.Pph23ID,
+			RefID:        soDt.RefID,
+			ItemID:       soDt.ItemID,
+			RefType:      soDt.RefType,
+			ItemType:     soDt.ItemType,
+			ItemJSON:     &itemJson,
+			GenCode:      &genCode,
+			Remark:       soDt.Remark,
+			VatPerc:      soDt.VatPerc,
+			VatPercAm:    soDt.VatPercAm,
+			Pph23Perc:    soDt.Pph23Perc,
+			Pph23PercAm:  soDt.Pph23PercAm,
+			IsVat:        soDt.IsVat,
+			IsPph23:      soDt.IsPph23,
+			Qty:          soDt.Qty,
+			PriceSell:    soDt.PriceSell,
+			PriceBuy:     soDt.PriceBuy,
+			SubtotalSell: soDt.SubtotalSell,
+			SubtotalBuy:  soDt.SubtotalBuy,
+			TotalAm:      soDt.TotalAm,
+			CreatedByID:  &userID,
 		}
 		soDtsModel = append(soDtsModel, soDtModel)
 
@@ -100,47 +88,10 @@ func MapCreateInvDts(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, createdInv
 	return soDtsModel, nil
 }
 
-func MapCreateInvDtBoms(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, createdInvDts []models.InvDt, userID uint, span opentracing.Span) []map[string]interface{} {
-	soDtBomsModel := make([]map[string]interface{}, 0)
-
-	for _, reqInvDt := range req.InvDts {
-		for _, reqInvDtBom := range reqInvDt.InvDtsBoms {
-			for _, createdInvDt := range createdInvDts {
-				if reqInvDtBom.ProductUuid == createdInvDt.ProductUuid {
-					genCode := "-"
-					itemJson := "{}"
-					soDtBomsModel = append(soDtBomsModel, map[string]interface{}{
-						"id":             0,
-						"product_uuid":   reqInvDtBom.ProductUuid,
-						"sales_order_id": createdInvDt.InventoryID,
-						"so_dt_id":       createdInvDt.ID,
-						"product_id":     reqInvDtBom.ProductID,
-						"item_id":        reqInvDtBom.ItemID,
-						"item_unit_id":   reqInvDtBom.ItemUnitID,
-						"remark":         reqInvDtBom.Remark,
-						"qty":            reqInvDtBom.Qty,
-						"price_sell":     reqInvDtBom.PriceSell,
-						"price_buy":      reqInvDtBom.PriceBuy,
-						"subtotal_sell":  reqInvDtBom.SubtotalSell,
-						"subtotal_buy":   reqInvDtBom.SubtotalBuy,
-						"gen_code":       &genCode,
-						"item_json":      &itemJson,
-						"created_by_id":  userID,
-					})
-				}
-
-			}
-		}
-	}
-
-	return soDtBomsModel
-}
-
 func MapUpdateInvDts(ctx *fiber.Ctx, req dtos.UpdateInventoryRequest, updatedInventory *models.Inventory, userID uint, span opentracing.Span) ([]models.InvDt, error) {
 
 	soDtsModel := []models.InvDt{}
 
-	refJson := "{}"
 	itemJson := "{}"
 
 	for _, reqInvDt := range req.InvDts {
@@ -150,43 +101,32 @@ func MapUpdateInvDts(ctx *fiber.Ctx, req dtos.UpdateInventoryRequest, updatedInv
 		}
 
 		soDtModel := models.InvDt{
-			ID:              soDtID,
-			ProductUuid:     reqInvDt.ProductUuid,
-			InventoryID:     &updatedInventory.ID,
-			ItemUnitID:      reqInvDt.ItemUnitID,
-			VatID:           reqInvDt.VatID,
-			Pph23ID:         reqInvDt.Pph23ID,
-			RefID:           reqInvDt.RefID,
-			ItemID:          reqInvDt.ItemID,
-			RefType:         reqInvDt.RefType,
-			ItemType:        reqInvDt.ItemType,
-			RefJSON:         &refJson,
-			ItemJSON:        &itemJson,
-			GenCode:         reqInvDt.GenCode,
-			Remark:          reqInvDt.Remark,
-			VatPerc:         reqInvDt.VatPerc,
-			VatPercAm:       reqInvDt.VatPercAm,
-			Pph23Perc:       reqInvDt.Pph23Perc,
-			Pph23PercAm:     reqInvDt.Pph23PercAm,
-			MarkupPerc:      reqInvDt.MarkupPerc,
-			MarkupPercAm:    reqInvDt.MarkupPercAm,
-			IsVat:           reqInvDt.IsVat,
-			IsPph23:         reqInvDt.IsPph23,
-			IsLockMarkup:    reqInvDt.IsLockMarkup,
-			IsLockPriceSell: reqInvDt.IsLockPriceSell,
-			Qty:             reqInvDt.Qty,
-			PriceSell:       reqInvDt.PriceSell,
-			PriceBuy:        reqInvDt.PriceBuy,
-			SubtotalSell:    reqInvDt.SubtotalSell,
-			SubtotalBuy:     reqInvDt.SubtotalBuy,
-			DiscAm:          reqInvDt.DiscAm,
-			DiscPerc:        reqInvDt.DiscPerc,
-			DiscPercNum:     reqInvDt.DiscPercNum,
-			DiscPercAm:      reqInvDt.DiscPercAm,
-			DiscFinal:       reqInvDt.DiscFinal,
-			DiscType:        reqInvDt.DiscType,
-			TotalAm:         reqInvDt.TotalAm,
-			CreatedByID:     &userID,
+			ID:           soDtID,
+			ProductUuid:  reqInvDt.ProductUuid,
+			InventoryID:  updatedInventory.ID,
+			ItemUnitID:   reqInvDt.ItemUnitID,
+			VatID:        reqInvDt.VatID,
+			Pph23ID:      reqInvDt.Pph23ID,
+			RefID:        reqInvDt.RefID,
+			ItemID:       reqInvDt.ItemID,
+			RefType:      reqInvDt.RefType,
+			ItemType:     reqInvDt.ItemType,
+			ItemJSON:     &itemJson,
+			GenCode:      reqInvDt.GenCode,
+			Remark:       reqInvDt.Remark,
+			VatPerc:      reqInvDt.VatPerc,
+			VatPercAm:    reqInvDt.VatPercAm,
+			Pph23Perc:    reqInvDt.Pph23Perc,
+			Pph23PercAm:  reqInvDt.Pph23PercAm,
+			IsVat:        reqInvDt.IsVat,
+			IsPph23:      reqInvDt.IsPph23,
+			Qty:          reqInvDt.Qty,
+			PriceSell:    reqInvDt.PriceSell,
+			PriceBuy:     reqInvDt.PriceBuy,
+			SubtotalSell: reqInvDt.SubtotalSell,
+			SubtotalBuy:  reqInvDt.SubtotalBuy,
+			TotalAm:      reqInvDt.TotalAm,
+			CreatedByID:  &userID,
 		}
 		soDtsModel = append(soDtsModel, soDtModel)
 
@@ -196,8 +136,8 @@ func MapUpdateInvDts(ctx *fiber.Ctx, req dtos.UpdateInventoryRequest, updatedInv
 }
 
 func GenInventoryNo(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, orderedNumber int, span opentracing.Span) string {
-	if req.PoBuyerNo != nil {
-		return *req.PoBuyerNo
+	if req.InventoryNo != nil {
+		return *req.InventoryNo
 	}
 
 	// SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
@@ -207,7 +147,7 @@ func GenInventoryNo(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, orderedNumb
 	order := fmt.Sprintf("%d", orderedNumber)
 
 	// str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
-	str := fmt.Sprintf("SO/%s/%s-%s-%s", order, surname, year, month)
+	str := fmt.Sprintf("IVT/%s/%s-%s-%s", order, surname, year, month)
 
 	return str
 }
@@ -216,44 +156,39 @@ func MapCreateInventory(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, userID 
 	// order := 1
 	customerInvCreatedThisMonthNumber++
 
-	orderNo := GenInventoryNo(ctx, req, customerInvCreatedThisMonthNumber, span)
-	poBuyerNo := GeneratePoBuyerNoNoOnCreateInventory(ctx, req, customerInvCreatedThisMonthNumber, span)
+	// orderNo := GenInventoryNo(ctx, req, customerInvCreatedThisMonthNumber, span)
+	inventoryNo := GeneratePoBuyerNoNoOnCreateInventory(ctx, req, customerInvCreatedThisMonthNumber, span)
 
 	salesOrder := models.Inventory{
-		CustomerID:    req.CustomerID,
-		OrderTypeID:   req.OrderTypeID,
-		CurrencyID:    req.CurrencyID,
-		VatID:         req.VatID,
-		PaymentID:     req.PaymentID,
-		Pph23ID:       req.Pph23ID,
-		WarehouseID:   req.WarehouseID,
-		PoBuyerNo:     poBuyerNo,
-		PoBuyerNoOri:  &poBuyerNo,
-		InventoryNo:   &orderNo,
-		ShipDest:      req.ShipDest,
-		Remark:        req.Remark,
-		Status:        req.Status,
-		ExchangeRate:  req.ExchangeRate,
-		VatPerc:       req.VatPerc,
-		Pph23Perc:     req.Pph23Perc,
-		MarkupPerc:    req.MarkupPerc,
-		TotalQty:      req.TotalQty,
-		DiscAm:        req.DiscAm,
-		DiscPerc:      req.DiscPerc,
-		DiscPercAm:    req.DiscPercAm,
-		DiscFinal:     req.DiscFinal,
-		DiscType:      req.DiscType,
-		Subtotal:      req.Subtotal,
-		TotalDiscount: req.TotalDiscount,
-		TotalPph23:    req.TotalPph23,
-		TotalVat:      req.TotalVat,
-		GrandTotal:    req.GrandTotal,
-		OrderAt:       req.OrderAt,
-		ShippingAt:    req.ShippingAt,
-		AgreeAt:       req.AgreeAt,
-		DueAt:         req.DueAt,
-		BranchID:      &branchID,
-		CreatedByID:   &userID,
+		CustomerID:     req.CustomerID,
+		CurrencyID:     req.CurrencyID,
+		IOTypeID:       req.IoTypeID,
+		PaymentTermID:  req.PaymentTermID,
+		VatID:          req.VatID,
+		Pph23ID:        req.Pph23ID,
+		WarehouseID:    req.WarehouseID,
+		InventoryNo:    &inventoryNo,
+		InventoryNoOri: &inventoryNo,
+		DoNo:           req.DoNo,
+		SuratJalanNo:   req.SuratJalanNo,
+		InvoiceNo:      req.InvoiceNo,
+		ShipDest:       req.ShipDest,
+		Remark:         req.Remark,
+		Status:         req.Status,
+		ExchangeRate:   req.ExchangeRate,
+		IsVat:          req.IsVat,
+		VatPerc:        req.VatPerc,
+		Pph23Perc:      req.Pph23Perc,
+		TotalQty:       req.TotalQty,
+		Subtotal:       req.Subtotal,
+		TotalPph23:     req.TotalPph23,
+		TotalVat:       req.TotalVat,
+		GrandTotal:     req.GrandTotal,
+		DoAt:           req.DoAt,
+		IngoingAt:      req.IngoingAt,
+		InvoiceAt:      req.InvoiceAt,
+		BranchID:       &branchID,
+		CreatedByID:    &userID,
 	}
 
 	return salesOrder, nil
@@ -266,46 +201,40 @@ func MapUpdateInventory(ctx *fiber.Ctx, req dtos.UpdateInventoryRequest, userID 
 	}
 	revNo++
 
-	salesOrderNo := GenerateInvNoOnUpdateSo(ctx, req, req.InventoryNo, revNo, span)
-	poBuyerNo := GenerateInvNoOnUpdateSo(ctx, req, req.PoBuyerNo, revNo, span)
+	// salesOrderNo := GenerateInvNoOnUpdateSo(ctx, req, req.InventoryNo, revNo, span)
+	inventoryNo := GenerateInvNoOnUpdateSo(ctx, req, req.InventoryNo, revNo, span)
 
 	salesOrder := models.Inventory{
-		ID:            req.ID,
-		CustomerID:    req.CustomerID,
-		OrderTypeID:   req.OrderTypeID,
-		CurrencyID:    req.CurrencyID,
-		VatID:         req.VatID,
-		PaymentID:     req.PaymentID,
-		Pph23ID:       req.Pph23ID,
-		WarehouseID:   req.WarehouseID,
-		RevNo:         &revNo,
-		PoBuyerNo:     poBuyerNo,
-		PoBuyerNoOri:  req.PoBuyerNoOri,
-		InventoryNo:   &salesOrderNo,
-		ShipDest:      req.ShipDest,
-		Remark:        req.Remark,
-		Status:        req.Status,
-		ExchangeRate:  req.ExchangeRate,
-		VatPerc:       req.VatPerc,
-		Pph23Perc:     req.Pph23Perc,
-		MarkupPerc:    req.MarkupPerc,
-		TotalQty:      req.TotalQty,
-		DiscAm:        req.DiscAm,
-		DiscPerc:      req.DiscPerc,
-		DiscPercAm:    req.DiscPercAm,
-		DiscFinal:     req.DiscFinal,
-		DiscType:      req.DiscType,
-		Subtotal:      req.Subtotal,
-		TotalDiscount: req.TotalDiscount,
-		TotalPph23:    req.TotalPph23,
-		TotalVat:      req.TotalVat,
-		GrandTotal:    req.GrandTotal,
-		OrderAt:       req.OrderAt,
-		ShippingAt:    req.ShippingAt,
-		AgreeAt:       req.AgreeAt,
-		DueAt:         req.DueAt,
-		BranchID:      &branchID,
-		CreatedByID:   &userID,
+		ID:             *req.ID,
+		CustomerID:     req.CustomerID,
+		CurrencyID:     req.CurrencyID,
+		IOTypeID:       req.IoTypeID,
+		PaymentTermID:  req.PaymentTermID,
+		VatID:          req.VatID,
+		Pph23ID:        req.Pph23ID,
+		WarehouseID:    req.WarehouseID,
+		InventoryNo:    &inventoryNo,
+		InventoryNoOri: &inventoryNo,
+		DoNo:           req.DoNo,
+		SuratJalanNo:   req.SuratJalanNo,
+		InvoiceNo:      req.InvoiceNo,
+		ShipDest:       req.ShipDest,
+		Remark:         req.Remark,
+		Status:         req.Status,
+		ExchangeRate:   req.ExchangeRate,
+		IsVat:          req.IsVat,
+		VatPerc:        req.VatPerc,
+		Pph23Perc:      req.Pph23Perc,
+		TotalQty:       req.TotalQty,
+		Subtotal:       req.Subtotal,
+		TotalPph23:     req.TotalPph23,
+		TotalVat:       req.TotalVat,
+		GrandTotal:     req.GrandTotal,
+		DoAt:           req.DoAt,
+		IngoingAt:      req.IngoingAt,
+		InvoiceAt:      req.InvoiceAt,
+		BranchID:       &branchID,
+		UpdatedByID:    &userID,
 	}
 
 	return salesOrder, nil
@@ -328,8 +257,8 @@ func GenerateInvNoOnUpdateSo(ctx *fiber.Ctx, req dtos.UpdateInventoryRequest, in
 }
 
 func GeneratePoBuyerNoNoOnCreateInventory(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, orderedNumber int, span opentracing.Span) string {
-	if req.PoBuyerNo != nil {
-		return *req.PoBuyerNo
+	if req.InventoryNo != nil {
+		return *req.InventoryNo
 	}
 
 	// SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
@@ -350,18 +279,16 @@ func MapUpdateInvSoDtsQty(soDtsQtyUpdate []dtos.GetQuoDtQtyUpdateDTO, req dtos.C
 
 	for _, reqInvDt := range req.InvDts {
 		for _, soDts := range soDtsQtyUpdate {
-			if reqInvDt.RefID != nil && soDts.QuoDtID != nil && *reqInvDt.RefID == *soDts.QuoDtID {
 
-				if soDts.QtySO == nil {
-					soDts.QtySO = new(float64)
-				}
-
-				newQuoDt := map[string]interface{}{
-					"id":      soDts.QuoDtID,
-					"qty_out": (*reqInvDt.Qty + *soDts.QtySO),
-				}
-				bulkUpdateQuoDts = append(bulkUpdateQuoDts, newQuoDt)
+			if soDts.QtySO == nil {
+				soDts.QtySO = new(float64)
 			}
+
+			newQuoDt := map[string]interface{}{
+				"id":      soDts.QuoDtID,
+				"qty_out": (*reqInvDt.Qty + *soDts.QtySO),
+			}
+			bulkUpdateQuoDts = append(bulkUpdateQuoDts, newQuoDt)
 		}
 	}
 

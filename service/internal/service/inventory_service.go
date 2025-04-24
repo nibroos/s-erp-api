@@ -405,12 +405,10 @@ func (s *InventoryService) MapUpdateInvDts(ctx *fiber.Ctx, req dtos.UpdateInvent
 func (s *InventoryService) LockInventoryTable(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdateInventoryRequest, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-LockInventoryTable", opentracing.ChildOf(span.Context()))
 
-	if req.ID > 0 {
-		if err := s.repo.LockInventoryHeader(ctx, tx, req, childSpan); err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return nil, err
-		}
+	if err := s.repo.LockInventoryHeader(ctx, tx, req, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
 	}
 
 	soDtIDs, productIDs, itemUnitIDs := utils.GetInvIDs(req)
@@ -447,11 +445,11 @@ func (s *InventoryService) LockInventoryTable(ctx *fiber.Ctx, tx *gorm.DB, req d
 func (s *InventoryService) LockCreateInventoryTable(ctx *fiber.Ctx, tx *gorm.DB, req dtos.CreateInventoryRequest, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-LockCreateInventoryTable", opentracing.ChildOf(span.Context()))
 
-	quoDtIDs := utils.GetLockInventoryQuoIDs(req)
+	soDtIDs := utils.GetLockInventoryQuoIDs(req)
 
-	if len(quoDtIDs) > 0 {
+	if len(soDtIDs) > 0 {
 		var err error
-		if tx, err = s.utilRepo.LockRowTable(ctx, tx, quoDtIDs, "quo_dts", childSpan); err != nil {
+		if tx, err = s.utilRepo.LockRowTable(ctx, tx, soDtIDs, "so_dts", childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
 			return nil, err

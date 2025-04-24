@@ -523,33 +523,23 @@ func (r *InventoryRepository) UpdateInvDts(tx *gorm.DB, invDts []models.InvDt, s
 			"ref_type":       invDt.RefType,
 			// "ref_json":      invDt.RefJSON,
 			// "item_json":     invDt.ItemJSON,
-			"gen_code":           invDt.GenCode,
-			"remark":             invDt.Remark,
-			"vat_perc":           invDt.VatPerc,
-			"vat_perc_am":        invDt.VatPercAm,
-			"pph23_perc":         invDt.Pph23Perc,
-			"pph23_perc_am":      invDt.Pph23PercAm,
-			"markup_perc":        invDt.MarkupPerc,
-			"markup_perc_am":     invDt.MarkupPercAm,
-			"is_vat":             invDt.IsVat,
-			"is_pph23":           invDt.IsPph23,
-			"is_lock_markup":     invDt.IsLockMarkup,
-			"is_lock_price_sell": invDt.IsLockPriceSell,
-			"qty_out":            invDt.QtyOut,
-			"qty":                invDt.Qty,
-			"price_sell":         invDt.PriceSell,
-			"price_buy":          invDt.PriceBuy,
-			"subtotal_sell":      invDt.SubtotalSell,
-			"subtotal_buy":       invDt.SubtotalBuy,
-			"disc_am":            invDt.DiscAm,
-			"disc_perc":          invDt.DiscPerc,
-			"disc_perc_num":      invDt.DiscPercNum,
-			"disc_perc_am":       invDt.DiscPercAm,
-			"disc_final":         invDt.DiscFinal,
-			"disc_type":          invDt.DiscType,
-			"total_am":           invDt.TotalAm,
-			"updated_by_id":      invDt.UpdatedByID,
-			"updated_at":         time.Now(),
+			"gen_code":      invDt.GenCode,
+			"remark":        invDt.Remark,
+			"vat_perc":      invDt.VatPerc,
+			"vat_perc_am":   invDt.VatPercAm,
+			"pph23_perc":    invDt.Pph23Perc,
+			"pph23_perc_am": invDt.Pph23PercAm,
+			"is_vat":        invDt.IsVat,
+			"is_pph23":      invDt.IsPph23,
+			"qty_out":       invDt.QtyOut,
+			"qty":           invDt.Qty,
+			"price_sell":    invDt.PriceSell,
+			"price_buy":     invDt.PriceBuy,
+			"subtotal_sell": invDt.SubtotalSell,
+			"subtotal_buy":  invDt.SubtotalBuy,
+			"total_am":      invDt.TotalAm,
+			"updated_by_id": invDt.UpdatedByID,
+			"updated_at":    time.Now(),
 		})
 	}
 
@@ -624,8 +614,8 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 	LEFT JOIN users cu ON sd.created_by_id = cu.id
 	LEFT JOIN users uu ON sd.updated_by_id = uu.id
-	LEFT JOIN quo_dts qd ON qd.id = sd.ref_id AND sd.ref_type = 'quotations'
-	LEFT JOIN quotations q ON q.id = qd.quotation_id
+	LEFT JOIN so_dts sd ON sd.id = sd.ref_id AND sd.ref_type = 'quotations'
+	LEFT JOIN quotations q ON q.id = sd.quotation_id
 	WHERE sd.deleted_at IS NULL`
 
 	var args []interface{}
@@ -730,7 +720,7 @@ func (r *InventoryRepository) DeleteInvDtsByInventoryID(tx *gorm.DB, params *dto
 func (r *InventoryRepository) LockInventoryHeader(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdateInventoryRequest, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("InventoryRepository-LockInventoryHeader", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", []uint{req.ID}).Find(&models.Inventory{}).Error; err != nil {
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", []uint{*req.ID}).Find(&models.Inventory{}).Error; err != nil {
 		tx.Rollback()
 		utils.LogErrors(childSpan, err)
 
@@ -770,8 +760,8 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 		"q.quo_no", "q.title", "q.remark",
 		"pi.name",
 		"it.name",
-		"qd.remark",
-		"qd.gen_code",
+		"sd.remark",
+		"sd.gen_code",
 		"qdb.remark",
 		"qdb.gen_code",
 	}
@@ -809,7 +799,7 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 		"vat_id":        "q.vat_id",
 		"payment_id":    "q.payment_id",
 		"pph23_id":      "q.pph23_id",
-		"product_id":    "qd.item_id",
+		"product_id":    "sd.item_id",
 		"expired_at":    "q.expired_at",
 		"due_at":        "q.due_at",
 	}
@@ -828,7 +818,7 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 		"currency_ids":       "q.currency_id",
 		"payment_ids":        "q.payment_id",
 		"pph23_ids":          "q.pph23_id",
-		"product_ids":        "qd.item_id",
+		"product_ids":        "sd.item_id",
 		"quotation_ids":      "q.id",
 		"item_group_ids":     "ig.id",
 		"item_sub_group_ids": "pi.item_sub_group_id",
@@ -851,7 +841,7 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+		"vat_ids": []string{"q.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -885,30 +875,30 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (qd.id)
-					qd.id, qd.quotation_id, qd.product_uuid,
-					qd.item_unit_id, qd.vat_id, qd.ref_id, qd.item_id, qd.item_unit_id, qd.ref_type, qd.item_type, qd.gen_code, qd.remark, qd.vat_perc, qd.qty_so, qd.qty, qd.price_sell, qd.price_buy, qd.subtotal_sell, qd.subtotal_buy, qd.disc_am, qd.disc_perc, qd.disc_perc_num, qd.disc_perc_am, qd.disc_final, qd.disc_type, qd.total_am, qd.created_by_id, qd.updated_by_id, qd.deleted_by_id,
-					qd.vat_perc, qd.vat_perc_am, qd.pph23_perc, qd.pph23_perc_am, qd.markup_perc, qd.markup_perc_am, qd.is_vat, qd.is_pph23, qd.is_lock_price_sell, qd.is_lock_markup,
-					qd.created_at, qd.updated_at, qd.deleted_at,
-					q.vat_id as head_vat_id,
-					q.pph23_id as head_pph23_id,
-					q.vat_perc as head_vat_perc,
-					q.pph23_perc as head_pph23_perc,
-					q.disc_am as head_disc_am,
-					q.disc_perc as head_disc_perc,
-					q.markup_perc as head_markup_perc,
-					q.remark as head_remark,
-					q.is_vat as head_is_vat,
-					q.quo_no as ref_num,
+        SELECT DISTINCT ON (sd.id)
+					sd.id, sd.quotation_id, sd.product_uuid,
+					sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.item_unit_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_so, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id,
+					sd.vat_perc, sd.vat_perc_am, sd.pph23_perc, sd.pph23_perc_am, sd.markup_perc, sd.markup_perc_am, sd.is_vat, sd.is_pph23, sd.is_lock_price_sell, sd.is_lock_markup,
+					sd.created_at, sd.updated_at, sd.deleted_at,
+					so.vat_id as head_vat_id,
+					so.pph23_id as head_pph23_id,
+					so.vat_perc as head_vat_perc,
+					so.pph23_perc as head_pph23_perc,
+					so.disc_am as head_disc_am,
+					so.disc_perc as head_disc_perc,
+					so.markup_perc as head_markup_perc,
+					so.remark as head_remark,
+					so.is_vat as head_is_vat,
+					so.quo_no as ref_num,
 
-					q.quo_no,
-					q.due_at,
-					q.customer_id,
-					q.order_type_id,
-					q.currency_id,
-					q.exchange_rate,
+					so.quo_no,
+					so.due_at,
+					so.customer_id,
+					so.order_type_id,
+					so.currency_id,
+					so.exchange_rate,
 
-					qd.id as quo_dt_id,
+					sd.id as so_dt_id,
 					isg.id as item_sub_group_id,
 					ig.id as item_group_id,
 					isg.name as item_sub_group_name,
@@ -922,14 +912,14 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-				FROM quo_dts qd
-				LEFT JOIN quotations q ON qd.quotation_id = q.id
-				LEFT JOIN products pi ON qd.item_id = pi.id
-				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
-				LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
+				FROM so_dts sd
+				LEFT JOIN sales_orders so ON sd.quotation_id = q.id
+				LEFT JOIN products pi ON sd.item_id = pi.id
+				LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
+				LEFT JOIN so_dt_boms qdb ON qdb.so_dt_id = sd.id
 				LEFT JOIN products it ON qdb.item_id = it.id
 				LEFT JOIN customers c ON q.customer_id = c.id
-				LEFT JOIN so_dts sd ON qd.id = sd.ref_id AND sd.ref_type = 'quotations'
+				LEFT JOIN inv_dts sd ON sd.id = sd.ref_id AND sd.ref_type = 'so'
 
 				LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
@@ -984,7 +974,7 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "quo_no")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "ingoing_at")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
@@ -1040,8 +1030,8 @@ func (r *InventoryRepository) GetRefSoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters m
 		"q.quo_no", "q.title", "q.remark",
 		"pi.name",
 		"it.name",
-		"qd.remark",
-		"qd.gen_code",
+		"sd.remark",
+		"sd.gen_code",
 		"qdb.remark",
 		"qdb.gen_code",
 	}
@@ -1092,13 +1082,13 @@ func (r *InventoryRepository) GetRefSoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters m
 	}
 
 	filterIDsKey := map[string]string{
-		"customer_ids":        "q.customer_id",
-		"order_type_ids":      "q.order_type_id",
-		"currency_ids":        "q.currency_id",
-		"payment_ids":         "q.payment_id",
-		"pph23_ids":           "q.pph23_id",
-		"quo_dt_ref_ids":      "qd.ref_id",
-		"quo_dt_bom_item_ids": "qdb.item_id",
+		"customer_ids":       "q.customer_id",
+		"order_type_ids":     "q.order_type_id",
+		"currency_ids":       "q.currency_id",
+		"payment_ids":        "q.payment_id",
+		"pph23_ids":          "q.pph23_id",
+		"so_dt_ref_ids":      "sd.ref_id",
+		"so_dt_bom_item_ids": "qdb.item_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -1118,7 +1108,7 @@ func (r *InventoryRepository) GetRefSoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters m
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+		"vat_ids": []string{"q.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1160,8 +1150,8 @@ func (r *InventoryRepository) GetRefSoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters m
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (qdb.id)
-					qdb.id, qdb.product_uuid, qdb.quotation_id, qdb.quo_dt_id, qdb.product_id, qdb.item_id, qdb.item_unit_id, qdb.gen_code, qdb.remark, qdb.qty, qdb.price_sell, qdb.price_buy, qdb.subtotal_sell, qdb.subtotal_buy, qdb.created_by_id, qdb.updated_by_id, qdb.deleted_by_id, qdb.created_at, qdb.updated_at, qdb.deleted_at,
-					qdb.id as quo_dt_bom_id,
+					qdb.id, qdb.product_uuid, qdb.quotation_id, qdb.so_dt_id, qdb.product_id, qdb.item_id, qdb.item_unit_id, qdb.gen_code, qdb.remark, qdb.qty, qdb.price_sell, qdb.price_buy, qdb.subtotal_sell, qdb.subtotal_buy, qdb.created_by_id, qdb.updated_by_id, qdb.deleted_by_id, qdb.created_at, qdb.updated_at, qdb.deleted_at,
+					qdb.id as so_dt_bom_id,
 					it.name as item_name,
 					it.code as item_code,
 					it.barcode as item_barcode,
@@ -1177,11 +1167,11 @@ func (r *InventoryRepository) GetRefSoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters m
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM quo_dt_boms qdb
-				LEFT JOIN quo_dts qd ON qd.id = qdb.quo_dt_id
-				LEFT JOIN quotations q ON q.id = qd.quotation_id
-				LEFT JOIN products pi ON qd.item_id = pi.id
-				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
+        FROM so_dt_boms qdb
+				LEFT JOIN so_dts sd ON sd.id = qdb.so_dt_id
+				LEFT JOIN quotations q ON q.id = sd.quotation_id
+				LEFT JOIN products pi ON sd.item_id = pi.id
+				LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN products it ON qdb.item_id = it.id
 				LEFT JOIN mix_values isg ON it.item_sub_group_id = isg.id
@@ -1247,16 +1237,16 @@ func (r *InventoryRepository) GetQuoDtQtyUpdate(ctx *fiber.Ctx, tx *gorm.DB, fil
 	// i := 1
 	condition := ""
 
-	condition += fmt.Sprintf(" AND qd.id IN (%s)", filters["ids"])
+	condition += fmt.Sprintf(" AND sd.id IN (%s)", filters["ids"])
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (qd.id)
-					qd.id, qd.id as quo_dt_id, qd.qty_so,
+        SELECT DISTINCT ON (sd.id)
+					sd.id, sd.id as so_dt_id, sd.qty_so,
 					q.id as quotation_id
 
-				FROM quo_dts qd
-				LEFT JOIN quotations q ON qd.quotation_id = q.id
+				FROM so_dts sd
+				LEFT JOIN quotations q ON sd.quotation_id = q.id
 				WHERE 1=1` + condition + `
     ) AS alias WHERE 1=1`
 
@@ -1328,8 +1318,8 @@ func (r *InventoryRepository) GetSoIDByInventoryID(ctx *fiber.Ctx, tx *gorm.DB, 
 			SELECT DISTINCT ON (q.id)
 				q.id
 			FROM quotations q
-			LEFT JOIN quo_dts qd ON q.id = qd.quotation_id
-			LEFT JOIN so_dts sd ON qd.id = sd.ref_id AND sd.ref_type = 'quotations'
+			LEFT JOIN so_dts sd ON q.id = sd.quotation_id
+			LEFT JOIN so_dts sd ON sd.id = sd.ref_id AND sd.ref_type = 'quotations'
 			LEFT JOIN sales_orders so ON sd.sales_order_id = so.id
 			WHERE so.id = $1
 		) AS alias WHERE 1=1`
