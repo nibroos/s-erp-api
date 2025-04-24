@@ -146,12 +146,17 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	joinCondition := ""
 
 	filterKeyJoin := map[string]string{
-		"is_task_exists": "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+		"is_task_exists":         "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+		"is_schedule_not_exists": "LEFT JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL",
 	}
 	for key, join := range filterKeyJoin {
 		if filters[key] == "1" {
 			joinCondition += fmt.Sprintf(" %s", join)
 		}
+	}
+
+	if filters["is_schedule_not_exists"] == "1" {
+		condition += " AND s.id IS NULL"
 	}
 
 	customCondition := ""
@@ -2162,15 +2167,15 @@ func (r *SalesOrderRepository) UpdateAttachmentsDesc(ctx *fiber.Ctx, tx *gorm.DB
 	return tx, nil
 }
 
-func (r *SalesOrderRepository) GetProjectsApp(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ProjectAppListDTO, int, error) {
-	childSpan := opentracing.StartSpan("SalesOrderRepository-GetProjectsApp", opentracing.ChildOf(span.Context()))
+func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CalendarListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetCalendars", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
 
 	isAdmin := utils.IsAdmin(ctx)
 
-	products := []dtos.ProjectAppListDTO{}
+	calendars := []dtos.CalendarListDTO{}
 
 	var total int
 
@@ -2227,6 +2232,13 @@ func (r *SalesOrderRepository) GetProjectsApp(ctx *fiber.Ctx, filters map[string
 			i++
 		}
 	}
+
+	// // date_type, start_at, end_at
+	// if filters["start_at"] != "" && filters["end_at"] != "" {
+	// 	condition += fmt.Sprintf(" AND (s.start_at BETWEEN $%d AND $%d) OR (s.end_at BETWEEN $%d AND $%d)", i, i+1, i, i+1)
+	// 	args = append(args, filters["start_at"], filters["end_at"])
+	// 	i += 2
+	// }
 
 	filterIDsKey := map[string]string{
 		"customer_ids":   "so.customer_id",
@@ -2302,16 +2314,21 @@ func (r *SalesOrderRepository) GetProjectsApp(ctx *fiber.Ctx, filters map[string
     FROM ( 
         SELECT DISTINCT ON (s.id)
 					s.id,
+					s.sales_order_id,
 					s.status,
+					s.title,
+					s.color,
 					TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
-					TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_date,
-					TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_date,
+					
+					-- IF NULL THEN TODAY
+					TO_CHAR(COALESCE(s.start_at, CURRENT_DATE), 'YYYY-MM-DD') as start,
+					TO_CHAR(COALESCE(s.end_at, CURRENT_DATE), 'YYYY-MM-DD') as end,
 
 					ot.name as order_type_name,
-					c.name as client
+					c.name as customer_name
 
-        FROM sales_orders so
-
+				FROM schedules s
+				JOIN sales_orders so ON s.sales_order_id = so.id
 				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
 				LEFT JOIN customers c ON so.customer_id = c.id
 				` + joinCondition + `
@@ -2379,20 +2396,12 @@ func (r *SalesOrderRepository) GetProjectsApp(ctx *fiber.Ctx, filters map[string
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
-	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
-	currentPage := utils.GetIntOrDefault(filters["page"], 1)
-
-	if filters["is_csv"] != "1" {
-		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
-		args = append(args, perPage, (currentPage-1)*perPage)
-	}
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &calendars, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -2414,7 +2423,7 @@ func (r *SalesOrderRepository) GetProjectsApp(ctx *fiber.Ctx, filters map[string
 		return nil, 0, selectErr
 	}
 
-	return products, total, nil
+	return calendars, total, nil
 }
 
 func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.ProjectAppDetailDTO, error) {

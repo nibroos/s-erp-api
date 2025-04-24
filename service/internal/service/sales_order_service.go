@@ -909,6 +909,37 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleApp(ctx *fiber.Ctx, req dtos
 		}
 	}
 
+	// form, err := ctx.MultipartForm()
+	// if err != nil {
+	// 	defer childSpan.Finish()
+	// 	tx.Rollback()
+	// 	return nil
+	// }
+
+	// files := form.File["files"]
+	// if len(files) > 0 {
+	// 	// handle new files upload
+	// 	newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, req.SalesOrderID, userID, childSpan)
+	// 	if err != nil {
+	// 		defer childSpan.Finish()
+	// 		tx.Rollback()
+	// 		return nil
+	// 	}
+
+	// 	// create new letters
+	// 	if tx, err = s.repo.CreateSalesOrderFiles(ctx, tx, newFiles, childSpan); err != nil {
+	// 		defer childSpan.Finish()
+	// 		tx.Rollback()
+	// 		return nil
+	// 	}
+	// }
+
+	return nil
+}
+
+func (s *SalesOrderService) UpdateSalesOrderScheduleAppUpload(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderService-UpdateSalesOrderScheduleAppUpload", opentracing.ChildOf(span.Context()))
+
 	form, err := ctx.MultipartForm()
 	if err != nil {
 		defer childSpan.Finish()
@@ -1080,10 +1111,10 @@ func (s *SalesOrderService) GetAttachmentsBySalesOrderID(ctx *fiber.Ctx, tx *gor
 	return attachments, nil
 }
 
-func (s *SalesOrderService) GetProjectsApp(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ProjectAppListDTO, int, error) {
-	childSpan := opentracing.StartSpan("SalesOrderService-GetProjectsApp", opentracing.ChildOf(span.Context()))
+func (s *SalesOrderService) GetCalendars(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CalendarListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetCalendars", opentracing.ChildOf(span.Context()))
 
-	salesOrders, total, err := s.repo.GetProjectsApp(ctx, filters, childSpan)
+	salesOrders, total, err := s.repo.GetCalendars(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
