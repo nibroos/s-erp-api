@@ -592,86 +592,37 @@ type UpdateInvSalesOrderStatusRequest struct {
 }
 
 type RefInvIndexSoDtListDTO struct {
-	ID               *uint     `json:"id" db:"id"`
-	QuoDtID          *uint     `json:"quo_dt_id" db:"quo_dt_id"`
-	ProductUuid      *string   `json:"product_uuid" db:"product_uuid"`
-	QuotationID      *uint     `json:"quotation_id" db:"quotation_id"`
-	ItemUnitID       *uint     `json:"item_unit_id" db:"item_unit_id"`
-	VatID            *uint     `json:"vat_id" db:"vat_id"`
-	Pph23ID          *uint     `json:"pph23_id" db:"pph23_id"`
-	RefID            *uint     `json:"ref_id" db:"ref_id"`
-	ItemID           *uint     `json:"item_id" db:"item_id"`
-	ItemSubGroupID   *uint     `json:"item_sub_group_id" db:"item_sub_group_id"`
-	ItemGroupID      *uint     `json:"item_group_id" db:"item_group_id"`
-	ItemSubGroupName *string   `json:"item_sub_group_name" db:"item_sub_group_name"`
-	ItemGroupName    *string   `json:"item_group_name" db:"item_group_name"`
-	ItemName         *string   `json:"item_name" db:"item_name"`
-	ItemCode         *string   `json:"item_code" db:"item_code"`
-	UnitName         *string   `json:"unit_name" db:"unit_name"`
-	RefJSON          *string   `json:"ref_json" db:"ref_json"`
-	RefType          *string   `json:"ref_type" db:"ref_type"`
-	ItemType         *string   `json:"item_type" db:"item_type"`
-	GenCode          *string   `json:"gen_code" db:"gen_code"`
-	Remark           *string   `json:"remark" db:"remark"`
-	VatPerc          *float64  `json:"vat_perc" db:"vat_perc"`
-	VatPercAm        *float64  `json:"vat_perc_am" db:"vat_perc_am"`
-	Pph23Perc        *float64  `json:"pph23_perc" db:"pph23_perc"`
-	Pph23PercAm      *float64  `json:"pph23_perc_am" db:"pph23_perc_am"`
-	MarkupPerc       *float64  `json:"markup_perc" db:"markup_perc"`
-	MarkupPercAm     *float64  `json:"markup_perc_am" db:"markup_perc_am"`
-	IsVat            *int8     `json:"is_vat" db:"is_vat"`
-	IsPph23          *int8     `json:"is_pph23" db:"is_pph23"`
-	IsLockMarkup     *int8     `json:"is_lock_markup" db:"is_lock_markup"`
-	IsLockPriceSell  *int8     `json:"is_lock_price_sell" db:"is_lock_price_sell"`
-	QtySO            *float64  `json:"qty_so" db:"qty_so"`
-	Qty              *float64  `json:"qty" db:"qty"`
-	PriceSell        *float64  `json:"price_sell" db:"price_sell"`
-	PriceBuy         *float64  `json:"price_buy" db:"price_buy"`
-	SubtotalSell     *float64  `json:"subtotal_sell" db:"subtotal_sell"`
-	SubtotalBuy      *float64  `json:"subtotal_buy" db:"subtotal_buy"`
-	DiscAm           *float64  `json:"disc_am" db:"disc_am"`
-	DiscPerc         *float64  `json:"disc_perc" db:"disc_perc"`
-	DiscPercNum      *float64  `json:"disc_perc_num" db:"disc_perc_num"`
-	DiscPercAm       *float64  `json:"disc_perc_am" db:"disc_perc_am"`
-	DiscFinal        *float64  `json:"disc_final" db:"disc_final"`
-	DiscType         *string   `json:"disc_type" db:"disc_type"`
-	TotalAm          *float64  `json:"total_am" db:"total_am"`
-	CreatedByName    *string   `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName    *string   `json:"updated_by_name" db:"updated_by_name"`
-	CreatedByID      *uint     `json:"created_by_id" db:"created_by_id"`
-	UpdatedByID      *uint     `json:"updated_by_id" db:"updated_by_id"`
-	DeletedByID      *uint     `json:"deleted_by_id" db:"deleted_by_id"`
-	CreatedAt        time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt        *string   `json:"updated_at" db:"updated_at"`
-	DeleteAt         *string   `json:"deleted_at" db:"deleted_at"`
+	ID               *uint    `json:"id" db:"id"`
+	ProductUuid      *string  `json:"product_uuid" db:"product_uuid"`
+	SalesOrderID     *uint    `json:"sales_order_id" db:"sales_order_id"`
+	ItemUnitID       *uint    `json:"item_unit_id" db:"item_unit_id"`
+	ItemID           *uint    `json:"item_id" db:"item_id"`
+	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string  `json:"item_group_name" db:"item_group_name"`
+	ItemName         *string  `json:"item_name" db:"item_name"`
+	ItemCode         *string  `json:"item_code" db:"item_code"`
+	UnitName         *string  `json:"unit_name" db:"unit_name"`
+	GenCode          *string  `json:"gen_code" db:"gen_code"`
+	Remark           *string  `json:"remark" db:"remark"`
+	QtyOut           *float64 `json:"qty_out" db:"qty_out"`
+	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy         *float64 `json:"price_buy" db:"price_buy"`
+	SubtotalSell     *float64 `json:"subtotal_sell" db:"subtotal_sell"`
+	SubtotalBuy      *float64 `json:"subtotal_buy" db:"subtotal_buy"`
 
-	CustomerID     *uint    `json:"customer_id" db:"customer_id"`
-	OrderTypeID    *uint    `json:"order_type_id" db:"order_type_id"`
-	CurrencyID     *uint    `json:"currency_id" db:"currency_id"`
-	HeadVatID      *uint    `json:"head_vat_id" db:"head_vat_id"`
-	HeadPph23ID    *uint    `json:"head_pph23_id" db:"head_pph23_id"`
-	HeadVatPerc    *float64 `json:"head_vat_perc" db:"head_vat_perc"`
-	HeadPph23Perc  *float64 `json:"head_pph23_perc" db:"head_pph23_perc"`
-	HeadDiscAm     *float64 `json:"head_disc_am" db:"head_disc_am"`
-	HeadDiscPerc   *float64 `json:"head_disc_perc" db:"head_disc_perc"`
-	HeadMarkupPerc *float64 `json:"head_markup_perc" db:"head_markup_perc"`
-	HeadRemark     *string  `json:"head_remark" db:"head_remark"`
-	RefNum         *string  `json:"ref_num" db:"ref_num"`
-	HeadIsVat      *int     `json:"head_is_vat" db:"head_is_vat"`
-	ExchangeRate   *float64 `json:"exchange_rate" db:"exchange_rate"`
-	QuoNo          *string  `json:"quo_no" db:"quo_no"`
-	CustomerName   *string  `json:"customer_name" db:"customer_name"`
-	ItemSku        *string  `json:"item_sku" db:"item_sku"`
-	DueAt          *string  `json:"due_at" db:"due_at"`
-
-	QuoDtsBoms []InvSalesOrderQuoDtBomListDTO `json:"quo_dts_boms"`
+	CustomerName *string  `json:"customer_name" db:"customer_name"`
+	RefNum       *string  `json:"ref_num" db:"ref_num"`
+	OrderAt      *string  `json:"order_at" db:"order_at"`
+	ItemSku      *string  `json:"item_sku" db:"item_sku"`
+	RefQty       *float64 `json:"ref_qty" db:"ref_qty"`
+	Balance      *float64 `json:"balance" db:"balance"`
 }
 
-type InvSalesOrderQuoDtBomListDTO struct {
+type InvSalesOrderSoDtBomListDTO struct {
 	ID                *uint   `json:"id" db:"id"`
-	QuoDtBomID        *uint   `json:"quo_dt_bom_id" db:"quo_dt_bom_id"`
-	QuotationID       *uint   `json:"quotation_id" db:"quotation_id"`
-	QuoDtID           *uint   `json:"quo_dt_id" db:"quo_dt_id"`
+	SoDtBomID         *uint   `json:"so_dt_bom_id" db:"so_dt_bom_id"`
+	SalesOrderID      *uint   `json:"sales_order_id" db:"sales_order_id"`
+	SoDtID            *uint   `json:"so_dt_id" db:"so_dt_id"`
 	ProductID         uint    `json:"product_id" db:"product_id"`
 	ProductUuid       string  `json:"product_uuid" db:"product_uuid"`
 	ItemID            uint    `json:"item_id" db:"item_id"`

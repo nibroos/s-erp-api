@@ -295,31 +295,31 @@ func MapUpdateInvSoDtsQty(soDtsQtyUpdate []dtos.GetQuoDtQtyUpdateDTO, req dtos.C
 	return bulkUpdateQuoDts
 }
 
-func GetInvSoDtIDs(quoDts []dtos.RefInvIndexSoDtListDTO) []uint {
+func GetInvSoDtIDs(soDts []dtos.RefInvIndexSoDtListDTO) []uint {
 	quotationIDs := []uint{}
 
-	for _, quoDt := range quoDts {
-		quotationIDs = append(quotationIDs, *quoDt.QuotationID)
+	for _, soDt := range soDts {
+		quotationIDs = append(quotationIDs, *soDt.SalesOrderID)
 	}
 
 	return quotationIDs
 }
 
-func MapInvRefSoDtBomsToQuoDts(quoDtBoms []dtos.InvSalesOrderQuoDtBomListDTO, quoDts []dtos.RefInvIndexSoDtListDTO) []dtos.RefInvIndexSoDtListDTO {
-	combinedQuoDts := []dtos.RefInvIndexSoDtListDTO{}
+// func MapInvRefSoDtBomsToQuoDts(quoDtBoms []dtos.InvSalesOrderQuoDtBomListDTO, quoDts []dtos.RefInvIndexSoDtListDTO) []dtos.RefInvIndexSoDtListDTO {
+// 	combinedQuoDts := []dtos.RefInvIndexSoDtListDTO{}
 
-	for _, quoDt := range quoDts {
-		newQuoDtBoms := make([]dtos.InvSalesOrderQuoDtBomListDTO, 0)
-		for _, quoDtBom := range quoDtBoms {
-			if *quoDtBom.QuoDtID == *quoDt.ID {
-				quoDtBoms = append(quoDtBoms, quoDtBom)
-				newQuoDtBoms = append(newQuoDtBoms, quoDtBom)
-			}
-		}
+// 	for _, quoDt := range quoDts {
+// 		newQuoDtBoms := make([]dtos.InvSalesOrderQuoDtBomListDTO, 0)
+// 		for _, quoDtBom := range quoDtBoms {
+// 			if *quoDtBom.QuoDtID == *quoDt.ID {
+// 				quoDtBoms = append(quoDtBoms, quoDtBom)
+// 				newQuoDtBoms = append(newQuoDtBoms, quoDtBom)
+// 			}
+// 		}
 
-		quoDt.QuoDtsBoms = newQuoDtBoms
-		combinedQuoDts = append(combinedQuoDts, quoDt)
-	}
+// 		quoDt.QuoDtsBoms = newQuoDtBoms
+// 		combinedQuoDts = append(combinedQuoDts, quoDt)
+// 	}
 
-	return combinedQuoDts
-}
+// 	return combinedQuoDts
+// }

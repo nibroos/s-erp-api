@@ -468,21 +468,21 @@ func (s *InventoryService) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[string]s
 		return nil, 0, err
 	}
 
-	soIDs := utils.GetInvSoDtIDs(soDts)
+	// soIDs := utils.GetInvSoDtIDs(soDts)
 
-	var soDtBoms []dtos.InvSalesOrderQuoDtBomListDTO
-	if len(soIDs) > 0 {
-		soDtBoms, err = s.repo.GetRefSoDtsBomByQuoDtIDs(ctx, filters, soIDs, childSpan)
+	// var soDtBoms []dtos.InvSalesOrderQuoDtBomListDTO
+	// if len(soIDs) > 0 {
+	// 	soDtBoms, err = s.repo.GetRefSoDtsBomByQuoDtIDs(ctx, filters, soIDs, childSpan)
 
-		if err != nil {
-			defer childSpan.Finish()
-			return nil, 0, err
-		}
-	}
+	// 	if err != nil {
+	// 		defer childSpan.Finish()
+	// 		return nil, 0, err
+	// 	}
+	// }
 
-	if len(soDtBoms) > 0 {
-		soDts = utils.MapInvRefSoDtBomsToQuoDts(soDtBoms, soDts)
-	}
+	// if len(soDtBoms) > 0 {
+	// 	soDts = utils.MapInvRefSoDtBomsToQuoDts(soDtBoms, soDts)
+	// }
 
 	return soDts, total, nil
 }
