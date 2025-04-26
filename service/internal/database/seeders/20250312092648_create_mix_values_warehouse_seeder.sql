@@ -2,6 +2,7 @@ BEGIN;
 
 INSERT INTO
   mix_values (
+    branch_id,
     group_id,
     name,
     description,
@@ -12,6 +13,7 @@ INSERT INTO
   )
 VALUES
   (
+    1,
     (
       SELECT
         id
@@ -21,15 +23,11 @@ VALUES
         name = 'warehouses'
       LIMIT
         1
-    ), 
-    'GUDANG UTAMA', 
-    'Gudang Utama', 
-    1, 
-    '{"code": "WH001"}',
-    CURRENT_TIMESTAMP,
+    ), 'GUDANG UTAMA', 'Gudang Utama', 1, '{"code": "WH001"}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   ),
   (
+    1,
     (
       SELECT
         id
@@ -39,12 +37,7 @@ VALUES
         name = 'warehouses'
       LIMIT
         1
-    ), 
-    'GUDANG TRANSIT', 
-    'Gudang Transit', 
-    1,
-    '{"code": "WH002"}',
-    CURRENT_TIMESTAMP,
+    ), 'GUDANG TRANSIT', 'Gudang Transit', 1, '{"code": "WH002"}', CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
   );
 

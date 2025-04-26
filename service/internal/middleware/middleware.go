@@ -174,6 +174,8 @@ func ConvertEmptyStringsToNull() fiber.Handler {
 			ctx.Set("Content-Type", "application/json")
 		}
 
+		log.Println("ctxBody", ctx.Body())
+
 		log.Println("ConvertEmptyStringsToNull-Content-Type:", ctx.Get("Content-Type"))
 
 		// if ctx.Get("Content-Type") == "application/json" {

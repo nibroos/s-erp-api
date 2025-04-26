@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS inv_dts (
   item_unit_id BIGINT REFERENCES item_units(id) ON DELETE RESTRICT,
   vat_id BIGINT REFERENCES mix_values(id) ON DELETE RESTRICT,
   pph23_id BIGINT REFERENCES mix_values(id) ON DELETE RESTRICT,
-  ref_id BIGINT,
+  ref_id TEXT,
   item_id BIGINT,
   product_uuid TEXT,
   ref_type TEXT,

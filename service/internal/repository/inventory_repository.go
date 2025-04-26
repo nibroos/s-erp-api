@@ -871,7 +871,8 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 	baseQuery := `
     FROM ( 
 					SELECT
-						sd.id, 
+						-- sd.id, 
+						CAST(CONCAT(sd.id::text, '-', '0') as text) as ref_id,
 						sd.sales_order_id, 
 						sd.product_uuid,
 						sd.item_id, 
@@ -888,14 +889,13 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 						COALESCE(sd.qty, 0) - COALESCE(sd.qty_out, 0) as balance, 
 						sd.remark
 					FROM so_dts sd
-					LEFT JOIN inv_dts id ON sd.id = id.ref_id AND id.ref_type = 'so'
-					LEFT JOIN sales_orders so ON sd.sales_order_id = so.id
 					WHERE sd.item_type = 'item'
 
 					UNION ALL
 
 					SELECT 
-						sdb.id,
+						-- sdb.id,
+						CAST(CONCAT(sdb.id::text, '-', sdb.so_dt_id::text) as text) as ref_id,
 						sdb.sales_order_id,
 						sdb.product_uuid,
 						sdb.item_id,
@@ -922,7 +922,7 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 		LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
 		LEFT JOIN mix_values ig ON isg.parent_id = ig.id
 		LEFT JOIN mix_values u ON iu.unit_id = u.id
-		WHERE 1=1 `
+		WHERE 1=1 AND COALESCE(sd.balance, 0) > 0`
 
 	query := `SELECT sd.*,
 			TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
@@ -933,7 +933,8 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 			c.name as customer_name,
 			pi.name as item_name,
 			pi.code as item_code,
-			pi.sku as item_sku
+			pi.sku as item_sku,
+			'so' as ref_type
 		` + baseQuery + condition + queryGlobal
 
 	countQuery := `SELECT COUNT(*) as total
@@ -977,8 +978,28 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "id")
-	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
+	columnIDsKey := map[string]string{
+		"ref_num":       "so.po_buyer_no",
+		"order_at":      "so.order_at",
+		"customer_name": "c.name",
+		"item_code":     "pi.code",
+		"item_name":     "pi.name",
+		"item_sku":      "pi.sku",
+		"unit_name":     "u.name",
+		"ref_qty":       "sd.ref_qty",
+		"balance":       "sd.balance",
+		"qty_out":       "sd.qty_out",
+		"remark":        "sd.remark",
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "so.order_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	for key, valueID := range columnIDsKey {
+		if value, ok := filters["order_column"]; ok && value != "" && key == value {
+			orderColumn = valueID
+		}
+	}
+
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)

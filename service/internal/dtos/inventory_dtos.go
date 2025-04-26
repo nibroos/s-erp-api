@@ -592,7 +592,7 @@ type UpdateInvSalesOrderStatusRequest struct {
 }
 
 type RefInvIndexSoDtListDTO struct {
-	ID               *uint    `json:"id" db:"id"`
+	// ID               *uint    `json:"id" db:"id"`
 	ProductUuid      *string  `json:"product_uuid" db:"product_uuid"`
 	SalesOrderID     *uint    `json:"sales_order_id" db:"sales_order_id"`
 	ItemUnitID       *uint    `json:"item_unit_id" db:"item_unit_id"`
@@ -611,6 +611,8 @@ type RefInvIndexSoDtListDTO struct {
 	SubtotalBuy      *float64 `json:"subtotal_buy" db:"subtotal_buy"`
 
 	CustomerName *string  `json:"customer_name" db:"customer_name"`
+	RefType      *string  `json:"ref_type" db:"ref_type"`
+	RefID        *string  `json:"ref_id" db:"ref_id"`
 	RefNum       *string  `json:"ref_num" db:"ref_num"`
 	OrderAt      *string  `json:"order_at" db:"order_at"`
 	ItemSku      *string  `json:"item_sku" db:"item_sku"`

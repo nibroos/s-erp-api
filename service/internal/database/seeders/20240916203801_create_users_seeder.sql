@@ -16,7 +16,7 @@ INSERT INTO
   )
 VALUES
   (
-    NULL,
+    1,
     'admin',
     'admin@yubipro.com',
     'Admin',

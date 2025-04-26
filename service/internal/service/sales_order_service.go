@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -948,7 +949,9 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleAppUpload(ctx *fiber.Ctx, re
 	}
 
 	files := form.File["files"]
+	log.Println("files 1", files)
 	if len(files) > 0 {
+		log.Println("files > 0", files, req)
 		// handle new files upload
 		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, req.SalesOrderID, userID, childSpan)
 		if err != nil {

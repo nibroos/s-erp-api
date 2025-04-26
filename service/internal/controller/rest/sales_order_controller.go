@@ -559,6 +559,7 @@ func (c *SalesOrderController) UpdateScheduleSalesOrderAppUpload(ctx *fiber.Ctx)
 	claims := utils.GetClaims(ctx, parentSpan)
 	userID := uint(claims["user_id"].(float64))
 	branchID := utils.GetDefaultBranchID(ctx)
+	log.Println("OrderController-GetProjectsApp: Invalid filters", userID, branchID)
 
 	tx := c.repo.BeginTransaction()
 	err := c.service.UpdateSalesOrderScheduleAppUpload(ctx, req, userID, branchID, tx, parentSpan)

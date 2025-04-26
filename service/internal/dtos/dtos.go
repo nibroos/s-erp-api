@@ -73,6 +73,7 @@ type UserDetailDTO struct {
 	Roles       []string `json:"roles"`
 	Permissions []string `json:"permissions"`
 	CreatedAt   *string  `json:"created_at"`
+	WarehouseID *uint    `json:"warehouse_id" db:"warehouse_id"`
 }
 type GetUsersResult struct {
 	Users []UserListDTO

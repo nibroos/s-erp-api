@@ -286,9 +286,11 @@ func (r *UserRepository) GetUserByEmail(ctx *fiber.Ctx, email string) (*dtos.Use
 	query := `SELECT 
 		u.branch_id,
 		u.id, u.username, u.name, u.email, u.password, u.address,
+		wh.id as warehouse_id,
 		b.name as branch_name
 	FROM users u
 	LEFT JOIN branches b ON u.branch_id = b.id
+	LEFT JOIN mix_values wh ON u.branch_id = wh.branch_id AND wh.is_main = 1
 	WHERE u.deleted_at IS NULL AND (u.email = $1 OR u.username = $1)`
 	if err := r.sqlDB.GetContext(ctx.Context(), &user, query, email); err != nil {
 		return nil, err
