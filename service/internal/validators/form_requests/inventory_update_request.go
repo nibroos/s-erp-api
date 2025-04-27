@@ -19,7 +19,7 @@ func NewInventoryUpdateRequest() *InventoryUpdateRequest {
 }
 
 // Validate validates the RegisterRequest.
-func (r *InventoryUpdateRequest) Validate(req *dtos.UpdateInventoryRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+func (r *InventoryUpdateRequest) Validate(req *dtos.FormInventoryRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
 		"id":                []string{"required", "exists:sales_orders,id"},
 		"customer_id":       []string{"required", "exists:customers,id"},

@@ -47,7 +47,7 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 	var total int
 
 	filterDBColumnKey := []string{
-		"so.po_buyer_no", "so.sales_order_no", "so.remark", "so.ship_dest",
+		"iv.inventory_no", "iv.do_no", "iv.surat_jalan_no", "iv.invoice_no", "iv.remark", "iv.ship_dest",
 		"pi.name",
 		"it.name",
 		"sd.remark",
@@ -78,18 +78,22 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND so.id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND iv.id IN (%s)", filters["ids"])
+	}
+
+	if filters["io_type"] != "" {
+		condition += fmt.Sprintf(" AND ot.options_json->>'io_type' = '%s'", filters["io_type"])
 	}
 
 	filterKey := map[string]string{
-		"status":        "so.status",
-		"customer_id":   "so.customer_id",
-		"order_type_id": "so.order_type_id",
-		"currency_id":   "so.currency_id",
-		"vat_id":        "so.vat_id",
-		"payment_id":    "so.payment_id",
-		"pph23_id":      "so.pph23_id",
-		"due_at":        "so.due_at",
+		"status":          "iv.status",
+		"customer_id":     "iv.customer_id",
+		"io_type_id":      "iv.io_type_id",
+		"currency_id":     "iv.currency_id",
+		"vat_id":          "iv.vat_id",
+		"payment_term_id": "iv.payment_term_id",
+		"pph23_id":        "iv.pph23_id",
+		"due_at":          "iv.due_at",
 	}
 
 	for key, col := range filterKey {
@@ -101,11 +105,11 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 	}
 
 	filterIDsKey := map[string]string{
-		"customer_ids":   "so.customer_id",
-		"order_type_ids": "so.order_type_id",
-		"currency_ids":   "so.currency_id",
-		"payment_ids":    "so.payment_id",
-		"pph23_ids":      "so.pph23_id",
+		"customer_ids":     "iv.customer_id",
+		"io_type_ids":      "iv.io_type_id",
+		"currency_ids":     "iv.currency_id",
+		"payment_term_ids": "iv.payment_term_id",
+		"pph23_ids":        "iv.pph23_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -125,7 +129,7 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -144,16 +148,6 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 
 	joinCondition := ""
 
-	filterKeyJoin := map[string]string{
-		"is_task_exists":         "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
-		"is_schedule_not_exists": "LEFT JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL",
-	}
-	for key, join := range filterKeyJoin {
-		if filters[key] == "1" {
-			joinCondition += fmt.Sprintf(" %s", join)
-		}
-	}
-
 	if filters["is_schedule_not_exists"] == "1" {
 		condition += " AND s.id IS NULL"
 	}
@@ -168,52 +162,34 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (so.id)
-					so.id, so.customer_id, so.order_type_id, so.currency_id, so.vat_id, so.payment_id, so.pph23_id, so.branch_id,
-					so.po_buyer_no, so.sales_order_no, so.ship_dest, so.remark, 
-					so.status, so.exchange_rate, so.pph23_perc, so.markup_perc, so.total_qty, so.subtotal, so.total_discount, so.total_pph23, so.total_vat, so.grand_total, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
-					TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
-					TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
-					TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
-					TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
-					so.vat_perc, so.disc_am, so.disc_perc, so.disc_perc_am, so.disc_final, so.disc_type, so.qty_out, so.si_total_am, so.sa_total_am,
+        SELECT DISTINCT ON (iv.id)
+					iv.id, iv.customer_id, iv.io_type_id, iv.currency_id, iv.vat_id, iv.payment_term_id, iv.pph23_id, iv.warehouse_id, iv.branch_id,
+					iv.inventory_no, iv.surat_jalan_no, iv.do_no, iv.invoice_no, iv.ship_dest, iv.remark, 
+					iv.status, iv.exchange_rate, iv.pph23_perc, iv.total_qty, iv.subtotal, iv.total_pph23, iv.total_vat, iv.grand_total, iv.created_by_id, iv.updated_by_id, iv.deleted_by_id, iv.created_at, iv.updated_at, iv.deleted_at,
+					TO_CHAR(iv.ingoing_at, 'YYYY-MM-DD') as ingoing_at,
+					TO_CHAR(iv.do_at, 'YYYY-MM-DD') as do_at,
+					TO_CHAR(iv.invoice_at, 'YYYY-MM-DD') as invoice_at,
 
-					pi.id as product_id,
-					it.id as item_id,
-					sd.vat_id as so_dt_vat_id,
-
-					pi.name as product_name,
-					it.name as item_name,
-					cur.name as currency_name,
-					vat.name as vat_name,
-					pph.name as pph23_name,
-
-					ot.name as order_type_name,
+					ot.name as io_type_name,
 					c.name as customer_name,
-
-					sd.remark as so_dt_remark,
-					sd.gen_code as so_dt_gen_code,
-					sdb.remark as so_dt_bom_remark,
-					sdb.gen_code as so_dt_bom_gen_code,
+					cur.name as currency_name,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM sales_orders so
-				LEFT JOIN so_dts sd ON sd.sales_order_id = so.id
-				LEFT JOIN products pi ON sd.item_id = pi.id
-				LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
-				LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sd.id
-				LEFT JOIN products it ON sdb.item_id = it.id
+        FROM inventories iv
+				LEFT JOIN inv_dts ivd ON ivd.inventory_id = iv.id
+				LEFT JOIN products pi ON ivd.item_id = pi.id
+				LEFT JOIN item_units iu ON ivd.item_unit_id = iu.id
 
-				LEFT JOIN mix_values cur ON so.currency_id = cur.id
-				LEFT JOIN mix_values vat ON so.vat_id = vat.id
-				LEFT JOIN mix_values pph ON so.pph23_id = pph.id
-				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
-				LEFT JOIN customers c ON so.customer_id = c.id
+				LEFT JOIN mix_values cur ON iv.currency_id = cur.id
+				LEFT JOIN mix_values vat ON iv.vat_id = vat.id
+				LEFT JOIN mix_values pph ON iv.pph23_id = pph.id
+				LEFT JOIN mix_values ot ON iv.io_type_id = ot.id
+				LEFT JOIN customers c ON iv.customer_id = c.id
 
-        LEFT JOIN users cu ON so.created_by_id = cu.id
-        LEFT JOIN users uu ON so.updated_by_id = uu.id
+        LEFT JOIN users cu ON iv.created_by_id = cu.id
+        LEFT JOIN users uu ON iv.updated_by_id = uu.id
 				` + joinCondition + `
 				WHERE 1=1` + condition + queryGlobal + customCondition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
@@ -274,7 +250,7 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "order_at")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "ingoing_at")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
@@ -327,35 +303,30 @@ func (r *InventoryRepository) GetInventoryByID(ctx *fiber.Ctx, params *dtos.GetI
 
 	baseQuery := `
     FROM ( 
-			SELECT DISTINCT ON (so.id)
-				so.id, so.customer_id, so.order_type_id, so.currency_id, so.vat_id, so.payment_id, so.pph23_id, so.branch_id,
-				so.po_buyer_no, so.po_buyer_no_ori, so.sales_order_no, so.ship_dest, so.remark, 
-				so.status, so.exchange_rate, so.pph23_perc, so.markup_perc, so.total_qty, so.subtotal, so.total_discount, so.total_pph23, so.total_vat, so.grand_total, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
-				TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
-				TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
-				TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
-				TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
-				so.vat_perc, so.disc_am, so.disc_perc, so.disc_perc_am, so.disc_final, so.disc_type, so.qty_out, so.si_total_am, so.sa_total_am,
-				so.rev_no,
+			SELECT DISTINCT ON (iv.id)
+				iv.id, iv.customer_id, iv.io_type_id, iv.currency_id, iv.vat_id, iv.payment_term_id, iv.pph23_id, iv.warehouse_id, iv.branch_id,
+				iv.inventory_no, iv.surat_jalan_no, iv.do_no, iv.invoice_no, iv.ship_dest, iv.remark, 
+				iv.status, iv.exchange_rate, iv.pph23_perc, iv.total_qty, iv.subtotal, iv.total_pph23, iv.total_vat, iv.grand_total, iv.created_by_id, iv.updated_by_id, iv.deleted_by_id, iv.created_at, iv.updated_at, iv.deleted_at,
+				TO_CHAR(iv.ingoing_at, 'YYYY-MM-DD') as ingoing_at,
+				TO_CHAR(iv.do_at, 'YYYY-MM-DD') as do_at,
+				TO_CHAR(iv.invoice_at, 'YYYY-MM-DD') as invoice_at,
 
 				cu.name as created_by_name,
 				uu.name as updated_by_name
 
-			FROM sales_orders so
-			LEFT JOIN so_dts sd ON sd.sales_order_id = so.id
-			LEFT JOIN products pi ON sd.item_id = pi.id
-			LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
-			LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sd.id
-			LEFT JOIN products it ON sdb.item_id = it.id
+			FROM inventories iv
+			LEFT JOIN inv_dts ivd ON ivd.inventory_id = iv.id
+			LEFT JOIN products pi ON ivd.item_id = pi.id
+			LEFT JOIN item_units iu ON ivd.item_unit_id = iu.id
 
-			LEFT JOIN mix_values cur ON so.currency_id = cur.id
-			LEFT JOIN mix_values vat ON so.vat_id = vat.id
-			LEFT JOIN mix_values pph ON so.pph23_id = pph.id
-			LEFT JOIN mix_values ot ON so.order_type_id = ot.id
-			LEFT JOIN customers c ON so.customer_id = c.id
+			LEFT JOIN mix_values cur ON iv.currency_id = cur.id
+			LEFT JOIN mix_values vat ON iv.vat_id = vat.id
+			LEFT JOIN mix_values pph ON iv.pph23_id = pph.id
+			LEFT JOIN mix_values ot ON iv.io_type_id = ot.id
+			LEFT JOIN customers c ON iv.customer_id = c.id
 
-			LEFT JOIN users cu ON so.created_by_id = cu.id
-			LEFT JOIN users uu ON so.updated_by_id = uu.id
+			LEFT JOIN users cu ON iv.created_by_id = cu.id
+			LEFT JOIN users uu ON iv.updated_by_id = uu.id
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
@@ -512,15 +483,20 @@ func (r *InventoryRepository) UpdateInvDts(tx *gorm.DB, invDts []models.InvDt, s
 	data := make([]map[string]interface{}, 0)
 	for _, invDt := range invDts {
 		data = append(data, map[string]interface{}{
-			"id":             invDt.ID,
-			"product_uuid":   invDt.ProductUuid,
-			"sales_order_id": invDt.InventoryID,
-			"item_unit_id":   invDt.ItemUnitID,
-			"vat_id":         invDt.VatID,
-			"ref_id":         invDt.RefID,
-			"item_id":        invDt.ItemID,
-			"item_type":      invDt.ItemType,
-			"ref_type":       invDt.RefType,
+			"id":               invDt.ID,
+			"product_uuid":     invDt.ProductUuid,
+			"sales_order_id":   invDt.InventoryID,
+			"item_unit_id":     invDt.ItemUnitID,
+			"vat_id":           invDt.VatID,
+			"ref_inv_dt_id":    invDt.RefInvDtID,
+			"ref_so_dt_id":     invDt.RefSoDtID,
+			"ref_so_dt_bom_id": invDt.RefSoDtBomID,
+			"ref_po_dt_id":     invDt.RefPoDtID,
+			"ref_po_dt_bom_id": invDt.RefPoDtBomID,
+			"ref_product_id":   invDt.RefProductID,
+			"item_id":          invDt.ItemID,
+			"item_type":        invDt.ItemType,
+			"ref_type":         invDt.RefType,
 			// "ref_json":      invDt.RefJSON,
 			// "item_json":     invDt.ItemJSON,
 			"gen_code":      invDt.GenCode,
@@ -579,19 +555,20 @@ func (r *InventoryRepository) DeleteInvDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB
 }
 
 // func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, salesOrderIDs uint, span opentracing.Span) ([]dtos.InventoryInvDtListDTO, error) {
-func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) ([]dtos.InventoryInvDtListDTO, error) {
+func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.DB, inventoryIDs []uint, span opentracing.Span) ([]dtos.InventoryInvDtListDTO, error) {
 	childSpan := opentracing.StartSpan("InventoryRepository-GetInvDtsByInventoryIDs", opentracing.ChildOf(span.Context()))
 
 	invDts := []dtos.InventoryInvDtListDTO{}
 
-	query := `SELECT sd.id, sd.sales_order_id, sd.product_uuid,
-		sd.item_unit_id, sd.vat_id, sd.ref_id, sd.item_id, sd.ref_type, sd.item_type, sd.gen_code, sd.remark, sd.vat_perc, sd.qty_out, sd.qty, sd.price_sell, sd.price_buy, sd.subtotal_sell, sd.subtotal_buy, sd.disc_am, sd.disc_perc, sd.disc_perc_num, sd.disc_perc_am, sd.disc_final, sd.disc_type, sd.total_am, sd.created_by_id, sd.updated_by_id, sd.deleted_by_id, sd.created_at, sd.updated_at, sd.deleted_at,
-		sd.vat_perc, sd.vat_perc_am, sd.pph23_perc, sd.pph23_perc_am, sd.markup_perc, sd.markup_perc_am, sd.is_vat, sd.is_pph23, sd.is_lock_price_sell, sd.is_lock_markup,
-		sd.created_at, sd.updated_at, sd.deleted_at,
+	query := `SELECT ivd.id, ivd.inventory_id, ivd.product_uuid,
+		ivd.item_unit_id, ivd.vat_id, ivd.item_id, ivd.ref_type, ivd.item_type, ivd.gen_code, ivd.remark, ivd.vat_perc, ivd.qty_out, ivd.qty_invoice, ivd.qty, ivd.price_sell, ivd.price_buy, ivd.subtotal_sell, ivd.subtotal_buy, ivd.created_by_id, ivd.updated_by_id, ivd.deleted_by_id, ivd.created_at, ivd.updated_at, ivd.deleted_at,
+		ivd.vat_perc, ivd.vat_perc_am, ivd.pph23_perc, ivd.pph23_perc_am, ivd.is_vat, ivd.is_pph23,
+		ivd.created_at, ivd.updated_at, ivd.deleted_at,
+		TO_CHAR(ivd.expired_at, 'YYYY-MM-DD') as expired_at,
 
 		p.customer_id,
 
-		sd.id as so_dt_id,
+		ivd.id as inv_dt_id,
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
 		isg.name as item_sub_group_name,
@@ -600,30 +577,28 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 		pi.name as item_name,
 		pi.code as item_code,
 
-		q.quo_no as ref_num,
+		-- q.quo_no as ref_num,
 
 		cu.name as created_by_name,
 		uu.name as updated_by_name
 
-	FROM so_dts sd
-	LEFT JOIN sales_orders p ON sd.sales_order_id = p.id
-	LEFT JOIN products pi ON sd.item_id = pi.id
-	LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
+	FROM inv_dts ivd
+	LEFT JOIN inventories p ON ivd.inventory_id = p.id
+	LEFT JOIN products pi ON ivd.item_id = pi.id
+	LEFT JOIN item_units iu ON ivd.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
 	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN users cu ON sd.created_by_id = cu.id
-	LEFT JOIN users uu ON sd.updated_by_id = uu.id
-	LEFT JOIN so_dts sd ON sd.id = sd.ref_id AND sd.ref_type = 'quotations'
-	LEFT JOIN quotations q ON q.id = sd.quotation_id
-	WHERE sd.deleted_at IS NULL`
+	LEFT JOIN users cu ON ivd.created_by_id = cu.id
+	LEFT JOIN users uu ON ivd.updated_by_id = uu.id
+	WHERE ivd.deleted_at IS NULL`
 
 	var args []interface{}
 	i := 1
 
-	if len(salesOrderIDs) > 0 {
-		query += " AND sd.sales_order_id = ANY($1)"
-		args = append(args, pq.Array(salesOrderIDs))
+	if len(inventoryIDs) > 0 {
+		query += " AND ivd.inventory_id = ANY($1)"
+		args = append(args, pq.Array(inventoryIDs))
 		i++
 
 	}
@@ -717,7 +692,7 @@ func (r *InventoryRepository) DeleteInvDtsByInventoryID(tx *gorm.DB, params *dto
 }
 
 // Lock Inventory Header
-func (r *InventoryRepository) LockInventoryHeader(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdateInventoryRequest, span opentracing.Span) error {
+func (r *InventoryRepository) LockInventoryHeader(ctx *fiber.Ctx, tx *gorm.DB, req dtos.FormInventoryRequest, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("InventoryRepository-LockInventoryHeader", opentracing.ChildOf(span.Context()))
 
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", []uint{*req.ID}).Find(&models.Inventory{}).Error; err != nil {
@@ -872,7 +847,9 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
     FROM ( 
 					SELECT
 						-- sd.id, 
-						CAST(CONCAT(sd.id::text, '-', '0') as text) as ref_id,
+						sd.id as ref_so_dt_id,
+						null as ref_so_dt_bom_id,
+						'item' as item_type,
 						sd.sales_order_id, 
 						sd.product_uuid,
 						sd.item_id, 
@@ -884,6 +861,12 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 						sd.subtotal_sell, 
 						sd.subtotal_buy,
 						sd.gen_code, 
+						sd.vat_perc,
+						sd.vat_perc_am,
+						sd.pph23_perc,
+						sd.pph23_perc_am,
+						sd.is_vat,
+						sd.is_pph23,
 						COALESCE(sd.qty, 0) * COALESCE(sd.price_buy, 0) as subtotal_buy, 
 						COALESCE(sd.qty, 0) * COALESCE(sd.price_sell, 0) as subtotal_sell, 
 						COALESCE(sd.qty, 0) - COALESCE(sd.qty_out, 0) as balance, 
@@ -895,7 +878,9 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 
 					SELECT 
 						-- sdb.id,
-						CAST(CONCAT(sdb.id::text, '-', sdb.so_dt_id::text) as text) as ref_id,
+						null as ref_so_dt_id,
+						sdb.id as ref_so_dt_bom_id,
+						'bom' as item_type,
 						sdb.sales_order_id,
 						sdb.product_uuid,
 						sdb.item_id,
@@ -907,11 +892,18 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 						sdb.subtotal_sell,
 						sdb.subtotal_buy,
 						sdb.gen_code,
+						sd1.vat_perc,
+						sd1.vat_perc_am,
+						sd1.pph23_perc,
+						sd1.pph23_perc_am,
+						sd1.is_vat,
+						sd1.is_pph23,
 						COALESCE(sdb.qty, 0) * COALESCE(sdb.price_buy, 0) as subtotal_buy, 
 						COALESCE(sdb.qty, 0) * COALESCE(sdb.price_sell, 0) as subtotal_sell, 
 						COALESCE(sdb.qty, 0) - COALESCE(sdb.qty_out, 0) as balance, 
 						sdb.remark
 					FROM so_dt_boms sdb
+					LEFT JOIN so_dts sd1 ON sd1.id = sdb.so_dt_id
 					WHERE sdb.deleted_at IS NULL
     ) AS sd 
 		LEFT JOIN sales_orders so ON sd.sales_order_id = so.id
@@ -926,6 +918,7 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 
 	query := `SELECT sd.*,
 			TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
+			so.customer_id as customer_id,
 			so.po_buyer_no as ref_num,
 			isg.name as item_sub_group_name,
 			ig.name as item_group_name,
@@ -1247,11 +1240,11 @@ func (r *InventoryRepository) GetRefSoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters m
 	return quoDtBoms, nil
 }
 
-func (r *InventoryRepository) GetQuoDtQtyUpdate(ctx *fiber.Ctx, tx *gorm.DB, filters map[string]string, span opentracing.Span) ([]dtos.GetQuoDtQtyUpdateDTO, error) {
+func (r *InventoryRepository) GetSoDtQtyUpdate(ctx *fiber.Ctx, tx *gorm.DB, filters map[string]string, span opentracing.Span) ([]dtos.GetInvSoDtQtyUpdateDTO, error) {
 
-	childSpan := opentracing.StartSpan("InventoryRepository-GetQuoDtQtyUpdate", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("InventoryRepository-GetSoDtQtyUpdate", opentracing.ChildOf(span.Context()))
 
-	products := []dtos.GetQuoDtQtyUpdateDTO{}
+	products := []dtos.GetInvSoDtQtyUpdateDTO{}
 
 	var args []interface{}
 
@@ -1263,12 +1256,62 @@ func (r *InventoryRepository) GetQuoDtQtyUpdate(ctx *fiber.Ctx, tx *gorm.DB, fil
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (sd.id)
-					sd.id, sd.id as so_dt_id, sd.qty_so,
-					q.id as quotation_id
+					sd.id, sd.id as so_dt_id, sd.qty_out,
+					sd.sales_order_id as sales_order_id
 
 				FROM so_dts sd
-				LEFT JOIN quotations q ON sd.quotation_id = q.id
-				WHERE 1=1` + condition + `
+				WHERE sd.deleted_at IS NULL` + condition + `
+    ) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	var wg sync.WaitGroup
+	var selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if selectErr != nil {
+		return nil, selectErr
+	}
+
+	return products, nil
+}
+
+func (r *InventoryRepository) GetSoDtBomQtyUpdate(ctx *fiber.Ctx, tx *gorm.DB, filters map[string]string, span opentracing.Span) ([]dtos.GetInvSoDtQtyUpdateDTO, error) {
+
+	childSpan := opentracing.StartSpan("InventoryRepository-GetSoDtBomQtyUpdate", opentracing.ChildOf(span.Context()))
+
+	products := []dtos.GetInvSoDtQtyUpdateDTO{}
+
+	var args []interface{}
+
+	// i := 1
+	condition := ""
+
+	condition += fmt.Sprintf(" AND sdb.id IN (%s)", filters["ids"])
+
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (sdb.id)
+					sdb.id, sdb.id as so_dt_bom_id, sdb.qty_out,
+					sdb.sales_order_id as sales_order_id
+
+				FROM so_dt_boms sdb
+				WHERE sdb.deleted_at IS NULL ` + condition + `
     ) AS alias WHERE 1=1`
 
 	query := `SELECT *
@@ -1300,9 +1343,20 @@ func (r *InventoryRepository) GetQuoDtQtyUpdate(ctx *fiber.Ctx, tx *gorm.DB, fil
 }
 
 func (r *InventoryRepository) BulkUpdateInvSoDtsQty(ctx *fiber.Ctx, tx *gorm.DB, soDts []map[string]interface{}, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("InventoryRepository-BulkUpdateQuoDtsQty", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("InventoryRepository-BulkUpdateInvSoDtsQty", opentracing.ChildOf(span.Context()))
 
 	if err := r.utilRepo.Upsert(tx, "so_dts", "id", soDts, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *InventoryRepository) BulkUpdateInvSoDtBomsQty(ctx *fiber.Ctx, tx *gorm.DB, soDts []map[string]interface{}, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InventoryRepository-BulkUpdateInvSoDtBomsQty", opentracing.ChildOf(span.Context()))
+
+	if err := r.utilRepo.Upsert(tx, "so_dt_boms", "id", soDts, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -1366,9 +1420,9 @@ func (r *InventoryRepository) GetCustomerInventoryCreatedThisMonth(ctx *fiber.Ct
 	baseQuery := `
 		FROM (
 			SELECT COUNT(*) as total
-			FROM sales_orders so
-			WHERE so.customer_id = $1 AND so.created_at >= date_trunc('month', CURRENT_DATE)
-			AND so.deleted_at IS NULL
+			FROM inventories invs
+			WHERE invs.customer_id = $1 AND invs.created_at >= date_trunc('month', CURRENT_DATE)
+			AND invs.deleted_at IS NULL
 		) AS alias WHERE 1=1`
 
 	query := `SELECT *

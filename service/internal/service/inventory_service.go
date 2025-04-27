@@ -39,7 +39,7 @@ func (s *InventoryService) GetInventories(ctx *fiber.Ctx, filters map[string]str
 	return inventories, total, nil
 }
 
-func (s *InventoryService) CreateInventory(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Inventory, *gorm.DB, error) {
+func (s *InventoryService) CreateInventory(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Inventory, *gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-CreateInventory", opentracing.ChildOf(span.Context()))
 
 	customerInvCreatedThisMonthNumber, err := s.repo.GetCustomerInventoryCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
@@ -56,8 +56,8 @@ func (s *InventoryService) CreateInventory(ctx *fiber.Ctx, req dtos.CreateInvent
 		return nil, tx, err
 	}
 
+	// log.Println("sebelum InvDts", req.InvDts)
 	if len(req.InvDts) > 0 {
-		// bulk create item soDts ref ms items / product->boms
 		tx, err = s.CreateInvDts(ctx, req, userID, &inventory, tx, childSpan)
 
 		if err != nil {
@@ -66,43 +66,37 @@ func (s *InventoryService) CreateInventory(ctx *fiber.Ctx, req dtos.CreateInvent
 			return nil, tx, err
 		}
 
-		quoDtIDs := utils.GetLockInventoryQuoIDs(req)
-		quoDtIDsString := utils.JoinUintPtrsToString(quoDtIDs, ",")
-		filters := map[string]string{"ids": quoDtIDsString}
-		getQuoDtsQtyUpdate, err := s.repo.GetQuoDtQtyUpdate(ctx, tx, filters, childSpan)
+		soDtIDs, soDtBomIDs := utils.GetLockInventorySoIDs(req)
+		soDtIDsString := utils.JoinUintPtrsToString(soDtIDs, ",")
+		soDtBomIDsString := utils.JoinUintPtrsToString(soDtBomIDs, ",")
+		filters := map[string]string{"ids": soDtIDsString}
+		getSoDtsQtyUpdate, err := s.repo.GetSoDtQtyUpdate(ctx, tx, filters, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, tx, err
+		}
+		filters = map[string]string{"ids": soDtBomIDsString}
+		getSoDtBomsQtyUpdate, err := s.repo.GetSoDtBomQtyUpdate(ctx, tx, filters, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
 			return nil, tx, err
 		}
 
-		mapUpdateInvSoDtsQty := utils.MapUpdateInvSoDtsQty(getQuoDtsQtyUpdate, req)
+		mapUpdateInvSoDtsQty := utils.MapUpdateInvSoDtsQty(getSoDtsQtyUpdate, req)
+		mapUpdateInvSoDtBomsQty := utils.MapUpdateInvSoDtBomsQty(getSoDtBomsQtyUpdate, req)
 
-		// bulk update so dts qty_so = qty_so - qty
+		// bulk update so dts qty_out = qty_out - qty
 		if len(mapUpdateInvSoDtsQty) > 0 {
 			if err := s.repo.BulkUpdateInvSoDtsQty(ctx, tx, mapUpdateInvSoDtsQty, childSpan); err != nil {
 				defer childSpan.Finish()
 				tx.Rollback()
 				return nil, tx, err
 			}
-
-			paramSalesOrder := map[string]string{"sales_order_id": fmt.Sprintf("%d", inventory.ID)}
-			// get quotation_id
-			soID, err := s.repo.GetSoIDByInventoryID(ctx, tx, paramSalesOrder, childSpan)
-			if err != nil {
-				defer childSpan.Finish()
-				tx.Rollback()
-				return nil, tx, err
-			}
-
-			// params dtos.UpdateSalesOrderStatusRequest
-			updateSoParams := dtos.UpdateInvSalesOrderStatusRequest{
-				ID:     soID,
-				Status: "APPROVED",
-			}
-
-			// update status header quotations
-			if err := s.repo.UpdateSoStatus(ctx, tx, updateSoParams, childSpan); err != nil {
+		}
+		if len(mapUpdateInvSoDtBomsQty) > 0 {
+			if err := s.repo.BulkUpdateInvSoDtBomsQty(ctx, tx, mapUpdateInvSoDtBomsQty, childSpan); err != nil {
 				defer childSpan.Finish()
 				tx.Rollback()
 				return nil, tx, err
@@ -125,7 +119,7 @@ func (s *InventoryService) GetInventoryByID(ctx *fiber.Ctx, params *dtos.GetInve
 	return inventory, nil
 }
 
-func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.UpdateInventoryRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Inventory, error) {
+func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Inventory, error) {
 	childSpan := opentracing.StartSpan("InventoryService-UpdateInventory", opentracing.ChildOf(span.Context()))
 
 	inventory, err := utils.MapUpdateInventory(ctx, req, userID, branchID, childSpan)
@@ -263,7 +257,7 @@ func (s *InventoryService) CsvGetInventories(ctx *fiber.Ctx, filters map[string]
 }
 
 // quotation *models.Inventory
-func (s *InventoryService) CreateInvDts(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, userID uint, createdInventory *models.Inventory, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *InventoryService) CreateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID uint, createdInventory *models.Inventory, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-CreateInvDts", opentracing.ChildOf(span.Context()))
 
 	soDts, err := s.MapCreateInvDts(ctx, req, createdInventory, userID, childSpan)
@@ -284,7 +278,7 @@ func (s *InventoryService) CreateInvDts(ctx *fiber.Ctx, req dtos.CreateInventory
 }
 
 // bulk create/update boms for a quotation
-func (s *InventoryService) BulkCreateUpdateInvDts(ctx *fiber.Ctx, req dtos.UpdateInventoryRequest, updatedInventory *models.Inventory, userID uint, soDts []models.InvDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *InventoryService) BulkCreateUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, updatedInventory *models.Inventory, userID uint, soDts []models.InvDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-BulkCreateUpdateInvDts", opentracing.ChildOf(span.Context()))
 
 	// Bulk/Create Update Batch InvDts
@@ -364,7 +358,7 @@ func (s *InventoryService) GetUpdatedInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *go
 	return soDts, nil
 }
 
-func (s *InventoryService) MapCreateInvDts(ctx *fiber.Ctx, req dtos.CreateInventoryRequest, createdInventory *models.Inventory, userID uint, span opentracing.Span) ([]models.InvDt, error) {
+func (s *InventoryService) MapCreateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, createdInventory *models.Inventory, userID uint, span opentracing.Span) ([]models.InvDt, error) {
 	childSpan := opentracing.StartSpan("InventoryService-MapCreateInvDts", opentracing.ChildOf(span.Context()))
 
 	soDtsModel, err := utils.MapCreateInvDts(ctx, req, createdInventory, userID, childSpan)
@@ -388,7 +382,7 @@ func (s *InventoryService) DeleteInvDtsByInventoryID(ctx *fiber.Ctx, params *dto
 	return nil
 }
 
-func (s *InventoryService) MapUpdateInvDts(ctx *fiber.Ctx, req dtos.UpdateInventoryRequest, updatedInventory *models.Inventory, userID uint, span opentracing.Span) ([]models.InvDt, error) {
+func (s *InventoryService) MapUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, updatedInventory *models.Inventory, userID uint, span opentracing.Span) ([]models.InvDt, error) {
 	childSpan := opentracing.StartSpan("InventoryService-MapUpdateInvDts", opentracing.ChildOf(span.Context()))
 
 	soDtsModel, err := utils.MapUpdateInvDts(ctx, req, updatedInventory, userID, span)
@@ -402,7 +396,7 @@ func (s *InventoryService) MapUpdateInvDts(ctx *fiber.Ctx, req dtos.UpdateInvent
 }
 
 // Lock all quotation table update
-func (s *InventoryService) LockInventoryTable(ctx *fiber.Ctx, tx *gorm.DB, req dtos.UpdateInventoryRequest, span opentracing.Span) (*gorm.DB, error) {
+func (s *InventoryService) LockInventoryTable(ctx *fiber.Ctx, tx *gorm.DB, req dtos.FormInventoryRequest, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-LockInventoryTable", opentracing.ChildOf(span.Context()))
 
 	if err := s.repo.LockInventoryHeader(ctx, tx, req, childSpan); err != nil {
@@ -442,14 +436,23 @@ func (s *InventoryService) LockInventoryTable(ctx *fiber.Ctx, tx *gorm.DB, req d
 	return tx, nil
 }
 
-func (s *InventoryService) LockCreateInventoryTable(ctx *fiber.Ctx, tx *gorm.DB, req dtos.CreateInventoryRequest, span opentracing.Span) (*gorm.DB, error) {
+func (s *InventoryService) LockCreateInventoryTable(ctx *fiber.Ctx, tx *gorm.DB, req dtos.FormInventoryRequest, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-LockCreateInventoryTable", opentracing.ChildOf(span.Context()))
 
-	soDtIDs := utils.GetLockInventoryQuoIDs(req)
+	soDtIDs, soDtBomIDs := utils.GetLockInventorySoIDs(req)
 
 	if len(soDtIDs) > 0 {
 		var err error
 		if tx, err = s.utilRepo.LockRowTable(ctx, tx, soDtIDs, "so_dts", childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(soDtBomIDs) > 0 {
+		var err error
+		if tx, err = s.utilRepo.LockRowTable(ctx, tx, soDtBomIDs, "so_dt_boms", childSpan); err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
 			return nil, err

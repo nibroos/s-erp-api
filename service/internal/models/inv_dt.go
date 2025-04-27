@@ -11,7 +11,12 @@ type InvDt struct {
 	ItemUnitID   uint     `json:"item_unit_id" gorm:"column:item_unit_id"`
 	VatID        *uint    `json:"vat_id" gorm:"column:vat_id"`
 	Pph23ID      *uint    `json:"pph23_id" gorm:"column:pph23_id"`
-	RefID        uint     `json:"ref_id" gorm:"column:ref_id"`
+	RefSoDtID    *uint    `json:"ref_so_dt_id" gorm:"column:ref_so_dt_id"`
+	RefSoDtBomID *uint    `json:"ref_so_dt_bom_id" gorm:"column:ref_so_dt_bom_id"`
+	RefPoDtID    *uint    `json:"ref_po_dt_id" gorm:"column:ref_po_dt_id"`
+	RefPoDtBomID *uint    `json:"ref_po_dt_bom_id" gorm:"column:ref_po_dt_bom_id"`
+	RefInvDtID   *uint    `json:"ref_inv_dt_id" gorm:"column:ref_inv_dt_id"`
+	RefProductID *uint    `json:"ref_product_id" gorm:"column:ref_product_id"`
 	ItemID       uint     `json:"item_id" gorm:"column:item_id"`
 	ProductUuid  string   `json:"product_uuid" gorm:"column:product_uuid"`
 	RefType      string   `json:"ref_type" gorm:"column:ref_type"`
@@ -33,8 +38,12 @@ type InvDt struct {
 	SubtotalBuy  *float64 `json:"subtotal_buy" gorm:"column:subtotal_buy"`
 	TotalAm      *float64 `json:"total_am" gorm:"column:total_am"`
 	ExpiredAt    *string  `json:"expired_at" gorm:"column:expired_at"`
-	ItemJSON     *string  `json:"item_json" gorm:"column:item_json"`
+	ItemJSON     string   `json:"item_json" gorm:"column:item_json"`
 	CreatedByID  *uint    `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID  *uint    `json:"updated_by_id" gorm:"column:updated_by_id"`
 	DeletedByID  *uint    `json:"deleted_by_id" gorm:"column:deleted_by_id"`
+}
+
+func (InvDt) TableName() string {
+	return "inv_dts"
 }

@@ -122,7 +122,7 @@ func (c *InventoryController) CreateInventory(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.CreateInventoryRequest
+	var req dtos.FormInventoryRequest
 
 	// Use the utility function to parse the request body
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
@@ -180,7 +180,7 @@ func (c *InventoryController) UpdateInventory(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.UpdateInventoryRequest
+	var req dtos.FormInventoryRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
