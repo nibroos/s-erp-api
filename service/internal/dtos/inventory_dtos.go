@@ -57,7 +57,7 @@ type FormInvDtsRequest struct {
 	PriceBuy     *float64 `json:"price_buy"`
 	SubtotalSell *float64 `json:"subtotal_sell"`
 	SubtotalBuy  *float64 `json:"subtotal_buy"`
-	// TotalAm      *float64 `json:"total_am"`
+	TotalAm      *float64 `json:"total_am"`
 
 	ItemName *string `json:"item_name"`
 	ItemCode *string `json:"item_code"`
@@ -72,6 +72,7 @@ type FormInventoryRequest struct {
 	VatID          *uint    `json:"vat_id"`
 	Pph23ID        *uint    `json:"pph23_id"`
 	BranchID       *uint    `json:"branch_id"`
+	IoType         string   `json:"io_type"`
 	InventoryNo    *string  `json:"sales_order_no"`
 	InventoryNoOri *string  `json:"sales_order_no_ori"`
 	RevNo          *int     `json:"rev_no"`
@@ -253,8 +254,10 @@ type InventoryInvDtListDTO struct {
 	PriceBuy         *float64 `json:"price_buy" db:"price_buy"`
 	SubtotalSell     *float64 `json:"subtotal_sell" db:"subtotal_sell"`
 	SubtotalBuy      *float64 `json:"subtotal_buy" db:"subtotal_buy"`
+	TotalAm          *float64 `json:"total_am" db:"total_am"`
 	ExpiredAt        *string  `json:"expired_at" db:"expired_at"`
 
+	RefQty        *float64  `json:"ref_qty" db:"ref_qty"`
 	CreatedByName *string   `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string   `json:"updated_by_name" db:"updated_by_name"`
 	CreatedByID   *uint     `json:"created_by_id" db:"created_by_id"`
@@ -425,4 +428,25 @@ type GetInvSoDtQtyUpdateDTO struct {
 	SoDtBomID    *uint    `json:"so_dt_bom_id" db:"so_dt_bom_id"`
 	QtyOut       *float64 `json:"qty_out" db:"qty_out"`
 	SalesOrderID *uint    `json:"sales_order_id" db:"sales_order_id"`
+}
+
+type StockListDTO struct {
+	ID            int      `json:"id" db:"id"`
+	ItemID        *uint    `json:"item_id" db:"item_id"`
+	WarehouseID   *uint    `json:"warehouse_id" db:"warehouse_id"`
+	BranchID      *uint    `json:"branch_id" db:"branch_id"`
+	Qty           *float64 `json:"qty" db:"qty"`
+	CreatedByID   *uint    `json:"crweated_by_id" db:"created_by_id"`
+	UpdatedByID   *uint    `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint    `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string  `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string  `json:"created_at" db:"created_at"`
+	UpdatedAt     *string  `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string  `json:"deleted_at" db:"deleted_at"`
+
+	WarehouseName *string `json:"warehouse_name" db:"warehouse_name"`
+	ItemName      *string `json:"item_name" db:"item_name"`
+	UnitName      *string `json:"unit_name" db:"unit_name"`
+	BranchName    *string `json:"branch_name" db:"branch_name"`
 }

@@ -152,14 +152,32 @@ func MapUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, updatedInven
 			ExpiredAt:    reqInvDt.ExpiredAt,
 			QtyOut:       reqInvDt.QtyOut,
 			QtyInvoice:   reqInvDt.QtyInvoice,
-			// TotalAm:      reqInvDt.TotalAm,
-			CreatedByID: &userID,
+			TotalAm:      reqInvDt.TotalAm,
+			CreatedByID:  &userID,
 		}
 		invDtsModel = append(invDtsModel, invDtModel)
 
 	}
 
 	return invDtsModel, nil
+}
+
+func MapOldUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID uint, span opentracing.Span) ([]uint, []uint, []uint, []uint, []uint, error) {
+	refSoDtID := []uint{}
+	refSoDtBomDtID := []uint{}
+	refPoDtID := []uint{}
+	refPoDtBomID := []uint{}
+	refInvDtID := []uint{}
+
+	for _, reqInvDt := range req.InvDts {
+		refSoDtID = append(refSoDtID, *reqInvDt.RefSoDtID)
+		refSoDtBomDtID = append(refSoDtBomDtID, *reqInvDt.RefSoDtBomID)
+		refPoDtID = append(refPoDtID, *reqInvDt.RefPoDtID)
+		refPoDtBomID = append(refPoDtBomID, *reqInvDt.RefPoDtBomID)
+		refInvDtID = append(refInvDtID, *reqInvDt.RefInvDtID)
+	}
+
+	return refSoDtID, refSoDtBomDtID, refPoDtID, refPoDtBomID, refInvDtID, nil
 }
 
 func GenInventoryNo(ctx *fiber.Ctx, req dtos.FormInventoryRequest, orderedNumber int, span opentracing.Span) string {
@@ -262,6 +280,7 @@ func MapUpdateInventory(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID ui
 		InvoiceAt:      req.InvoiceAt,
 		BranchID:       &branchID,
 		UpdatedByID:    &userID,
+		RevNo:          &revNo,
 	}
 
 	return salesOrder, nil

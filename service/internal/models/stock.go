@@ -14,3 +14,7 @@ type Stock struct {
 
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
+
+func (Stock) TableName() string {
+	return "stocks"
+}
