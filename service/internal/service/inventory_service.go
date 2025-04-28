@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -68,7 +67,6 @@ func (s *InventoryService) CreateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 		return nil, tx, err
 	}
 
-	// log.Println("sebelum InvDts", req.InvDts)
 	if len(req.InvDts) > 0 {
 		tx, err = s.CreateInvDts(ctx, req, userID, &inventory, tx, childSpan)
 
@@ -98,36 +96,43 @@ func (s *InventoryService) CreateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 		soDtIDsString := utils.JoinUintPtrsToString(soDtIDs, ",")
 		soDtBomIDsString := utils.JoinUintPtrsToString(soDtBomIDs, ",")
 		filters := map[string]string{"ids": soDtIDsString}
-		getSoDtsQtyUpdate, err := s.repo.GetSoDtQtyUpdate(ctx, tx, filters, childSpan)
-		if err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return nil, tx, err
-		}
-		filters = map[string]string{"ids": soDtBomIDsString}
-		getSoDtBomsQtyUpdate, err := s.repo.GetSoDtBomQtyUpdate(ctx, tx, filters, childSpan)
-		if err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return nil, tx, err
-		}
 
-		mapUpdateInvSoDtsQty := utils.MapUpdateInvSoDtsQty(getSoDtsQtyUpdate, req)
-		mapUpdateInvSoDtBomsQty := utils.MapUpdateInvSoDtBomsQty(getSoDtBomsQtyUpdate, req)
-
-		// bulk update so dts qty_out = qty_out - qty
-		if len(mapUpdateInvSoDtsQty) > 0 {
-			if err := s.repo.BulkUpdateInvSoDtsQty(ctx, tx, mapUpdateInvSoDtsQty, childSpan); err != nil {
+		if len(soDtIDs) > 0 {
+			getSoDtsQtyUpdate, err := s.repo.GetSoDtQtyUpdate(ctx, tx, filters, childSpan)
+			if err != nil {
 				defer childSpan.Finish()
 				tx.Rollback()
 				return nil, tx, err
 			}
+
+			mapUpdateInvSoDtsQty := utils.MapUpdateInvSoDtsQty(getSoDtsQtyUpdate, req)
+
+			// bulk update so dts qty_out = qty_out - qty
+			if len(mapUpdateInvSoDtsQty) > 0 {
+				if err := s.repo.BulkUpdateInvSoDtsQty(ctx, tx, mapUpdateInvSoDtsQty, childSpan); err != nil {
+					defer childSpan.Finish()
+					tx.Rollback()
+					return nil, tx, err
+				}
+			}
 		}
-		if len(mapUpdateInvSoDtBomsQty) > 0 {
-			if err := s.repo.BulkUpdateInvSoDtBomsQty(ctx, tx, mapUpdateInvSoDtBomsQty, childSpan); err != nil {
+
+		if len(soDtBomIDs) > 0 {
+			filters = map[string]string{"ids": soDtBomIDsString}
+			getSoDtBomsQtyUpdate, err := s.repo.GetSoDtBomQtyUpdate(ctx, tx, filters, childSpan)
+			if err != nil {
 				defer childSpan.Finish()
 				tx.Rollback()
 				return nil, tx, err
+			}
+			mapUpdateInvSoDtBomsQty := utils.MapUpdateInvSoDtBomsQty(getSoDtBomsQtyUpdate, req)
+
+			if len(mapUpdateInvSoDtBomsQty) > 0 {
+				if err := s.repo.BulkUpdateInvSoDtBomsQty(ctx, tx, mapUpdateInvSoDtBomsQty, childSpan); err != nil {
+					defer childSpan.Finish()
+					tx.Rollback()
+					return nil, tx, err
+				}
 			}
 		}
 	}
@@ -328,12 +333,6 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, req dtos.For
 	if len(invDt) > 0 {
 
 	}
-
-	log.Println("soDt", soDt)
-	log.Println("soDtBom", soDtBom)
-	log.Println("poDt", poDt)
-	log.Println("poDtBom", poDtBom)
-	log.Println("invDt", invDt)
 
 	// err = s.repo.ResetCreateOrUpdateStockOut(ctx, tx, req, oldInvDts, childSpan)
 	// if err != nil {

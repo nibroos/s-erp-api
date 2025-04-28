@@ -11,7 +11,7 @@ type Inventory struct {
 	IOTypeID       *uint    `json:"io_type_id" gorm:"column:io_type_id"`
 	CurrencyID     *uint    `json:"currency_id" gorm:"column:currency_id"`
 	PaymentTermID  *uint    `json:"payment_term_id" gorm:"column:payment_term_id"`
-	WarehouseID    *uint    `json:"warehouse_id" gorm:"column:warehouse_id"`
+	WarehouseID    uint     `json:"warehouse_id" gorm:"column:warehouse_id"`
 	VatID          *uint    `json:"vat_id" gorm:"column:vat_id"`
 	Pph23ID        *uint    `json:"pph23_id" gorm:"column:pph23_id"`
 	BranchID       *uint    `json:"branch_id" gorm:"column:branch_id"`

@@ -68,7 +68,7 @@ type FormInventoryRequest struct {
 	IoTypeID       *uint    `json:"io_type_id"`
 	CurrencyID     *uint    `json:"currency_id"`
 	PaymentTermID  *uint    `json:"payment_term_id"`
-	WarehouseID    *uint    `json:"warehouse_id"`
+	WarehouseID    uint     `json:"warehouse_id"`
 	VatID          *uint    `json:"vat_id"`
 	Pph23ID        *uint    `json:"pph23_id"`
 	BranchID       *uint    `json:"branch_id"`
@@ -229,7 +229,7 @@ type InventoryInvDtListDTO struct {
 	VatID            *uint    `json:"vat_id" db:"vat_id"`
 	Pph23ID          *uint    `json:"pph23_id" db:"pph23_id"`
 	RefID            *uint    `json:"ref_id" db:"ref_id"`
-	ItemID           *uint    `json:"item_id" db:"item_id"`
+	ItemID           uint     `json:"item_id" db:"item_id"`
 	ItemSubGroupID   *uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
 	ItemGroupID      *uint    `json:"item_group_id" db:"item_group_id"`
 	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`

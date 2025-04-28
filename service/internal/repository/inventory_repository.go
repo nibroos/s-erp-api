@@ -656,10 +656,9 @@ func (s *InventoryRepository) RestoreInventory(tx *gorm.DB, params *dtos.GetInve
 func (r *InventoryRepository) CreateInvDts(tx *gorm.DB, invDts []models.InvDt, salesOrderID uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InvDtRepository-CreateInvDts", opentracing.ChildOf(span.Context()))
 
-	tx = tx.Create(&invDts)
-	if tx.Error != nil {
-		utils.LogErrors(childSpan, tx.Error)
-		tx.Rollback()
+	if err := tx.Create(&invDts).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
 	}
 
 	return tx, nil
@@ -1575,38 +1574,54 @@ func (r *InventoryRepository) CreateOrUpdateStockOut(ctx *fiber.Ctx, tx *gorm.DB
 
 	branchID := utils.GetDefaultBranchID(ctx)
 
-	log.Println("CreateOrUpdateStockOut-masuk")
-
 	for _, invDt := range req.InvDts {
 		// First try to find existing stock
 		var stock models.Stock
-		result := tx.Where(&models.Stock{
+		// result := tx.Where(&models.Stock{
+		// 	WarehouseID: req.WarehouseID,
+		// 	ItemID:      invDt.ItemID,
+		// 	BranchID:    branchID,
+		// }).First(&stock)
+		stockQuery := tx.Model(&models.Stock{}).Where(&models.Stock{
 			WarehouseID: req.WarehouseID,
-			ItemID:      &invDt.ItemID,
-			BranchID:    &branchID,
-		}).First(&stock)
+			ItemID:      invDt.ItemID,
+			BranchID:    branchID,
+		})
+
+		result := stockQuery.First(&stock)
+
+		log.Println("result.Error", result.Error)
 
 		if result.Error != nil {
+			log.Println("result.Error != nil")
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				log.Println("gorm.ErrRecordNotFound")
 				// Create new stock if not found
 				qty := -(*invDt.Qty)
-				stock := models.Stock{
+				stock = models.Stock{
 					WarehouseID: req.WarehouseID,
-					ItemID:      &invDt.ItemID,
-					BranchID:    &branchID,
+					ItemID:      invDt.ItemID,
+					BranchID:    branchID,
 					Qty:         &qty,
 				}
-				if err := tx.Create(&stock).Error; err != nil {
+				log.Println("gorm.ErrRecordNotFound 2")
+				if err := tx.Model(&models.Stock{}).Create(&stock).Error; err != nil {
+					log.Println("Create err", err)
 					utils.LogErrors(childSpan, err)
 					return err
 				}
+				log.Println("gorm.ErrRecordNotFound 3")
 
 				continue
 				// return &newStock, nil
-			} else {
-				utils.LogErrors(childSpan, result.Error)
-				return result.Error
 			}
+			log.Println("other error", result.Error)
+			utils.LogErrors(childSpan, result.Error)
+			return result.Error
+			//  else {
+			// 	utils.LogErrors(childSpan, result.Error)
+			// 	return result.Error
+			// }
 		}
 
 		// Update existing stock qty
@@ -1618,7 +1633,8 @@ func (r *InventoryRepository) CreateOrUpdateStockOut(ctx *fiber.Ctx, tx *gorm.DB
 		}
 		stock.Qty = &qty
 
-		if err := tx.Save(&stock).Error; err != nil {
+		if err := tx.Model(&models.Stock{}).Where("id = ?", stock.ID).Save(&stock).Error; err != nil {
+			log.Println("Update err", err)
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -1638,8 +1654,8 @@ func (r *InventoryRepository) CreateOrUpdateStockIn(ctx *fiber.Ctx, tx *gorm.DB,
 		var stock models.Stock
 		result := tx.Where(&models.Stock{
 			WarehouseID: req.WarehouseID,
-			ItemID:      &invDt.ItemID,
-			BranchID:    &branchID,
+			ItemID:      invDt.ItemID,
+			BranchID:    branchID,
 		}).First(&stock)
 
 		if result.Error != nil {
@@ -1648,8 +1664,8 @@ func (r *InventoryRepository) CreateOrUpdateStockIn(ctx *fiber.Ctx, tx *gorm.DB,
 				qty := invDt.Qty
 				stock := models.Stock{
 					WarehouseID: req.WarehouseID,
-					ItemID:      &invDt.ItemID,
-					BranchID:    &branchID,
+					ItemID:      invDt.ItemID,
+					BranchID:    branchID,
 					Qty:         qty,
 				}
 				if err := tx.Create(&stock).Error; err != nil {
@@ -1695,7 +1711,7 @@ func (r *InventoryRepository) ResetCreateOrUpdateStockOut(ctx *fiber.Ctx, tx *go
 		result := tx.Where(&models.Stock{
 			WarehouseID: req.WarehouseID,
 			ItemID:      invDt.ItemID,
-			BranchID:    &branchID,
+			BranchID:    branchID,
 		}).First(&stock)
 
 		if result.Error != nil {
@@ -1705,7 +1721,7 @@ func (r *InventoryRepository) ResetCreateOrUpdateStockOut(ctx *fiber.Ctx, tx *go
 				stock := models.Stock{
 					WarehouseID: req.WarehouseID,
 					ItemID:      invDt.ItemID,
-					BranchID:    &branchID,
+					BranchID:    branchID,
 					Qty:         &qty,
 				}
 				if err := tx.Create(&stock).Error; err != nil {
@@ -1751,7 +1767,7 @@ func (r *InventoryRepository) ResetCreateOrUpdateStockIn(ctx *fiber.Ctx, tx *gor
 		result := tx.Where(&models.Stock{
 			WarehouseID: req.WarehouseID,
 			ItemID:      invDt.ItemID,
-			BranchID:    &branchID,
+			BranchID:    branchID,
 		}).First(&stock)
 
 		if result.Error != nil {
@@ -1761,7 +1777,7 @@ func (r *InventoryRepository) ResetCreateOrUpdateStockIn(ctx *fiber.Ctx, tx *gor
 				stock := models.Stock{
 					WarehouseID: req.WarehouseID,
 					ItemID:      invDt.ItemID,
-					BranchID:    &branchID,
+					BranchID:    branchID,
 					Qty:         qty,
 				}
 				if err := tx.Create(&stock).Error; err != nil {
