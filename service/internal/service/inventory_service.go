@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -208,8 +209,7 @@ func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 		return nil, err
 	}
 
-	utils.LogErrors(childSpan, fmt.Errorf("simulated error"))
-	return &inventory, err
+	return &inventory, nil
 
 	// return &inventory, nil
 }
@@ -313,6 +313,8 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, req dtos.For
 			return nil, err
 		}
 	}
+
+	log.Println("updateRefReverseQtyInOut-soDt", soDt, "soDtBom", soDtBom, "poDt", poDt, "poDtBom", poDtBom, "invDt", invDt)
 
 	if len(soDt) > 0 {
 

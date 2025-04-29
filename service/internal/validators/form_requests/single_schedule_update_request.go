@@ -6,18 +6,18 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
-// ScheduleUpdateRequest handles the validation for the RegisterRequest.
-type ScheduleUpdateRequest struct {
+// SingleScheduleUpdateRequest handles the validation for the RegisterRequest.
+type SingleScheduleUpdateRequest struct {
 }
 
-// NewRegisterUpdateRequest creates a new instance of ScheduleUpdateRequest.
-func NewScheduleUpdateRequest() *ScheduleUpdateRequest {
+// NewRegisterUpdateRequest creates a new instance of SingleScheduleUpdateRequest.
+func NewSingleScheduleUpdateRequest() *SingleScheduleUpdateRequest {
 
-	return &ScheduleUpdateRequest{}
+	return &SingleScheduleUpdateRequest{}
 }
 
 // Validate validates the RegisterRequest.
-func (r *ScheduleUpdateRequest) Validate(req *dtos.UpdateSalesOrderScheduleRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+func (r *SingleScheduleUpdateRequest) Validate(req *dtos.UpdateScheduleRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 
 	rules := map[string][]string{
 		// "id":             []string{"required", "exists:schedules,id"},

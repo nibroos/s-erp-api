@@ -73,8 +73,8 @@ type FormInventoryRequest struct {
 	Pph23ID        *uint    `json:"pph23_id"`
 	BranchID       *uint    `json:"branch_id"`
 	IoType         string   `json:"io_type"`
-	InventoryNo    *string  `json:"sales_order_no"`
-	InventoryNoOri *string  `json:"sales_order_no_ori"`
+	InventoryNo    *string  `json:"inventory_no"`
+	InventoryNoOri *string  `json:"inventory_no_ori"`
 	RevNo          *int     `json:"rev_no"`
 	DoNo           *string  `json:"do_no"`
 	SuratJalanNo   *string  `json:"surat_jalan_no"`

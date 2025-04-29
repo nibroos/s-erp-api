@@ -404,7 +404,7 @@ func (r *SalesOrderRepository) GetScheduleBySalesOrderID(ctx *fiber.Ctx, params 
 	baseQuery := `
     FROM ( 
 			SELECT DISTINCT ON (s.id)
-				s.id, s.assignee_id, s.sales_order_id, s.uuid, s.steps_id, s.title, s.module_type, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
+				s.id, s.assignee_id, so.customer_id, s.sales_order_id, s.uuid, s.steps_id, s.title, s.module_type, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
 
 				TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_at,
 				TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_at,
@@ -2061,6 +2061,50 @@ func (r *SalesOrderRepository) GetAttachmentsBySalesOrderID(ctx *fiber.Ctx, tx *
 	return attachments, nil
 }
 
+// GetAttachmentsBySalesOrderID
+func (r *SalesOrderRepository) GetAttachmentsByScheduleID(ctx *fiber.Ctx, tx *gorm.DB, scheduleID uint, span opentracing.Span) ([]dtos.ScheduleAttachmentsDTO, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetAttachmentsByScheduleID", opentracing.ChildOf(span.Context()))
+
+	attachments := []dtos.ScheduleAttachmentsDTO{}
+
+	baseQuery := `
+    FROM ( 
+			SELECT DISTINCT ON (ltr.id)
+				ltr.id, ltr.ref_id, ltr.ref_type, ltr.file_type, ltr.file_url, ltr.file_name,  ltr.remark, ltr.created_at, ltr.deleted_at,
+				
+				ltr.file_prop->>'file_size' as file_size,
+				ltr.file_prop->>'device_type' as device_type,
+
+				TO_CHAR(ltr.created_at, 'YYYY-MM-DD') as created_at,
+
+				cu.name as created_by_name,
+				uu.name as updated_by_name
+
+			FROM letters ltr
+			JOIN schedules so ON ltr.ref_id = so.id AND ltr.ref_type = 'schedules'
+
+			LEFT JOIN users cu ON ltr.created_by_id = cu.id
+			LEFT JOIN users uu ON ltr.updated_by_id = uu.id
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	query := `SELECT *
+		` + baseQuery
+
+	var args []interface{}
+
+	i := 1
+	query += " AND ref_id = $1"
+	args = append(args, scheduleID)
+	i++
+
+	if err := r.sqlDB.SelectContext(ctx.Context(), &attachments, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return attachments, nil
+}
+
 // DeleteSalesOrderFilesByIDs: Delete database & file record
 func (r *SalesOrderRepository) DeleteSalesOrderFilesByIDs(ctx *fiber.Ctx, tx *gorm.DB, letterIDs []uint, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-DeleteSalesOrderFilesByIDs", opentracing.ChildOf(span.Context()))
@@ -2318,6 +2362,9 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 					s.status,
 					s.title,
 					s.color,
+					s.total_task_step_4_done,
+					s.total_all_tasks_done,
+					s.total_tasks,
 					TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
 					
 					-- IF NULL THEN TODAY
@@ -2328,12 +2375,12 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 					c.name as customer_name
 
 				FROM schedules s
-				JOIN sales_orders so ON s.sales_order_id = so.id
+				LEFT JOIN sales_orders so ON s.sales_order_id = so.id AND so.deleted_at IS NULL
 				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
 				LEFT JOIN customers c ON so.customer_id = c.id
 				` + joinCondition + `
 				WHERE 1=1` + condition + queryGlobal + customCondition + `
-				AND so.deleted_at IS NULL
+				AND s.deleted_at IS NULL
     ) AS alias WHERE 1=1`
 
 	query := `SELECT *
@@ -2426,14 +2473,14 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 	return calendars, total, nil
 }
 
-func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.ProjectAppDetailDTO, error) {
+func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) (*dtos.ScheduleSingleDetailDTO, error) {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-GetScheduleByID", opentracing.ChildOf(span.Context()))
-	var schedule dtos.ProjectAppDetailDTO
+	var schedule dtos.ScheduleSingleDetailDTO
 
 	baseQuery := `
     FROM ( 
 			SELECT DISTINCT ON (s.id)
-				s.id, s.assignee_id, s.sales_order_id, s.uuid, s.steps_id, s.title, s.module_type, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
+				s.id, s.assignee_id, s.customer_id, s.sales_order_id, s.uuid, s.title, s.module_type, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
 
 				TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_at,
 				TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_at,
@@ -2443,8 +2490,6 @@ func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetS
 				uu.name as updated_by_name
 
 			FROM schedules s
-			LEFT JOIN sales_orders so ON s.sales_order_id = so.id
-
 			LEFT JOIN users ass ON s.assignee_id = ass.id
 			LEFT JOIN users cu ON s.created_by_id = cu.id
 			LEFT JOIN users uu ON s.updated_by_id = uu.id
@@ -2456,7 +2501,7 @@ func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetS
 	var args []interface{}
 
 	i := 1
-	query += " AND sales_order_id = $1"
+	query += " AND id = $1"
 	args = append(args, params.ID)
 	i++
 

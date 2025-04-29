@@ -170,11 +170,25 @@ func MapOldUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID ui
 	refInvDtID := []uint{}
 
 	for _, reqInvDt := range req.InvDts {
-		refSoDtID = append(refSoDtID, *reqInvDt.RefSoDtID)
-		refSoDtBomDtID = append(refSoDtBomDtID, *reqInvDt.RefSoDtBomID)
-		refPoDtID = append(refPoDtID, *reqInvDt.RefPoDtID)
-		refPoDtBomID = append(refPoDtBomID, *reqInvDt.RefPoDtBomID)
-		refInvDtID = append(refInvDtID, *reqInvDt.RefInvDtID)
+		if reqInvDt.RefSoDtID != nil {
+			refSoDtID = append(refSoDtID, *reqInvDt.RefSoDtID)
+		}
+
+		if reqInvDt.RefSoDtBomID != nil {
+			refSoDtBomDtID = append(refSoDtBomDtID, *reqInvDt.RefSoDtBomID)
+		}
+
+		if reqInvDt.RefPoDtID != nil {
+			refPoDtID = append(refPoDtID, *reqInvDt.RefPoDtID)
+		}
+
+		if reqInvDt.RefPoDtBomID != nil {
+			refPoDtBomID = append(refPoDtBomID, *reqInvDt.RefPoDtBomID)
+		}
+
+		if reqInvDt.RefInvDtID != nil {
+			refInvDtID = append(refInvDtID, *reqInvDt.RefInvDtID)
+		}
 	}
 
 	return refSoDtID, refSoDtBomDtID, refPoDtID, refPoDtBomID, refInvDtID, nil

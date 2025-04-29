@@ -3,7 +3,6 @@ package repository
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -1570,18 +1569,13 @@ func (r *InventoryRepository) GetCustomerInventoryCreatedThisMonth(ctx *fiber.Ct
 
 // create/update stock
 func (r *InventoryRepository) CreateOrUpdateStockOut(ctx *fiber.Ctx, tx *gorm.DB, req dtos.FormInventoryRequest, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("InventoryRepository-CreateOrUpdateStock", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("InventoryRepository-CreateOrUpdateStockOut", opentracing.ChildOf(span.Context()))
 
 	branchID := utils.GetDefaultBranchID(ctx)
 
 	for _, invDt := range req.InvDts {
 		// First try to find existing stock
 		var stock models.Stock
-		// result := tx.Where(&models.Stock{
-		// 	WarehouseID: req.WarehouseID,
-		// 	ItemID:      invDt.ItemID,
-		// 	BranchID:    branchID,
-		// }).First(&stock)
 		stockQuery := tx.Model(&models.Stock{}).Where(&models.Stock{
 			WarehouseID: req.WarehouseID,
 			ItemID:      invDt.ItemID,
@@ -1590,12 +1584,8 @@ func (r *InventoryRepository) CreateOrUpdateStockOut(ctx *fiber.Ctx, tx *gorm.DB
 
 		result := stockQuery.First(&stock)
 
-		log.Println("result.Error", result.Error)
-
 		if result.Error != nil {
-			log.Println("result.Error != nil")
 			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				log.Println("gorm.ErrRecordNotFound")
 				// Create new stock if not found
 				qty := -(*invDt.Qty)
 				stock = models.Stock{
@@ -1604,24 +1594,16 @@ func (r *InventoryRepository) CreateOrUpdateStockOut(ctx *fiber.Ctx, tx *gorm.DB
 					BranchID:    branchID,
 					Qty:         &qty,
 				}
-				log.Println("gorm.ErrRecordNotFound 2")
 				if err := tx.Model(&models.Stock{}).Create(&stock).Error; err != nil {
-					log.Println("Create err", err)
 					utils.LogErrors(childSpan, err)
 					return err
 				}
-				log.Println("gorm.ErrRecordNotFound 3")
 
 				continue
 				// return &newStock, nil
 			}
-			log.Println("other error", result.Error)
 			utils.LogErrors(childSpan, result.Error)
 			return result.Error
-			//  else {
-			// 	utils.LogErrors(childSpan, result.Error)
-			// 	return result.Error
-			// }
 		}
 
 		// Update existing stock qty
@@ -1634,7 +1616,6 @@ func (r *InventoryRepository) CreateOrUpdateStockOut(ctx *fiber.Ctx, tx *gorm.DB
 		stock.Qty = &qty
 
 		if err := tx.Model(&models.Stock{}).Where("id = ?", stock.ID).Save(&stock).Error; err != nil {
-			log.Println("Update err", err)
 			utils.LogErrors(childSpan, err)
 			return err
 		}
@@ -1645,7 +1626,7 @@ func (r *InventoryRepository) CreateOrUpdateStockOut(ctx *fiber.Ctx, tx *gorm.DB
 
 // create/update stock
 func (r *InventoryRepository) CreateOrUpdateStockIn(ctx *fiber.Ctx, tx *gorm.DB, req dtos.FormInventoryRequest, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("InventoryRepository-CreateOrUpdateStock", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("InventoryRepository-CreateOrUpdateStockIn", opentracing.ChildOf(span.Context()))
 
 	branchID := utils.GetDefaultBranchID(ctx)
 
@@ -1701,7 +1682,7 @@ func (r *InventoryRepository) CreateOrUpdateStockIn(ctx *fiber.Ctx, tx *gorm.DB,
 
 // create/update stock
 func (r *InventoryRepository) ResetCreateOrUpdateStockOut(ctx *fiber.Ctx, tx *gorm.DB, req dtos.FormInventoryRequest, oldInvDts []dtos.InventoryInvDtListDTO, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("InventoryRepository-CreateOrUpdateStock", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("InventoryRepository-ResetCreateOrUpdateStockOut", opentracing.ChildOf(span.Context()))
 
 	branchID := utils.GetDefaultBranchID(ctx)
 
@@ -1757,7 +1738,7 @@ func (r *InventoryRepository) ResetCreateOrUpdateStockOut(ctx *fiber.Ctx, tx *go
 
 // create/update stock
 func (r *InventoryRepository) ResetCreateOrUpdateStockIn(ctx *fiber.Ctx, tx *gorm.DB, req dtos.FormInventoryRequest, oldInvDts []dtos.InventoryInvDtListDTO, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("InventoryRepository-CreateOrUpdateStock", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("InventoryRepository-ResetCreateOrUpdateStockIn", opentracing.ChildOf(span.Context()))
 
 	branchID := utils.GetDefaultBranchID(ctx)
 
