@@ -1074,7 +1074,7 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleAppUpload(ctx *fiber.Ctx, re
 	if len(files) > 0 {
 		log.Println("files > 0", files, req)
 		// handle new files upload
-		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, req.ScheduleID, userID, childSpan)
+		newFiles, err := utils.MapNewSalesOrderFilesApp(ctx, files, req, req.ScheduleID, userID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()

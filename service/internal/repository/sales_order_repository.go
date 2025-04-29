@@ -2327,13 +2327,20 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 	}
 
 	joinCondition := ""
+	selectJoinCondition := ""
 
 	filterKeyJoin := map[string]string{
-		"is_task_exists": "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+		// "is_task_exists": "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+		"is_task_exists": "JOIN schedule_tasks st ON st.schedule_id = s.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks' AND st.order_item = 3",
+	}
+	filterKeySelectJoin := map[string]string{
+		// "is_task_exists": "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+		"is_task_exists": "st.title as task_title,",
 	}
 	for key, join := range filterKeyJoin {
 		if filters[key] == "1" {
 			joinCondition += fmt.Sprintf(" %s", join)
+			selectJoinCondition += fmt.Sprintf(" %s", filterKeySelectJoin[key])
 		}
 	}
 
@@ -2345,21 +2352,12 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 		customCondition += fmt.Sprintf("%s", join)
 	}
 
-	// ID              int     `json:"id" db:"id"`
-	// Name            *string `json:"name" db:"name"`
-	// Client          *string `json:"client" db:"client"`
-	// Status          *string `json:"status" db:"status"`
-	// StartDate       *string `json:"start_date" db:"start_date"`
-	// EndDate         *string `json:"end_date" db:"end_date"`
-	// TotalTasks      *int    `json:"total_tasks" db:"total_tasks"`
-	// CompletedTasks  *int    `json:"completed_tasks" db:"completed_tasks"`
-	// ProgressPercent *int    `json:"progress_percent" db:"progress_percent"`
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (s.id)
 					s.id,
 					s.sales_order_id,
-					s.status,
+					-- s.status,
 					s.title,
 					s.color,
 					s.total_task_step_4_done,
@@ -2370,6 +2368,7 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 					-- IF NULL THEN TODAY
 					TO_CHAR(COALESCE(s.start_at, CURRENT_DATE), 'YYYY-MM-DD') as start,
 					TO_CHAR(COALESCE(s.end_at, CURRENT_DATE), 'YYYY-MM-DD') as end,
+					` + selectJoinCondition + `
 
 					ot.name as order_type_name,
 					c.name as customer_name
@@ -2439,7 +2438,7 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "order_at")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "start")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
@@ -2480,7 +2479,10 @@ func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetS
 	baseQuery := `
     FROM ( 
 			SELECT DISTINCT ON (s.id)
-				s.id, s.assignee_id, s.customer_id, s.sales_order_id, s.uuid, s.title, s.module_type, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
+				s.id, s.assignee_id, s.customer_id, s.sales_order_id, s.title, s.module_type, s.color,
+					s.total_task_step_4_done,
+					s.total_all_tasks_done,
+					s.total_tasks,
 
 				TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_at,
 				TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_at,
@@ -2493,7 +2495,8 @@ func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetS
 			LEFT JOIN users ass ON s.assignee_id = ass.id
 			LEFT JOIN users cu ON s.created_by_id = cu.id
 			LEFT JOIN users uu ON s.updated_by_id = uu.id
-    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+			WHERE s.deleted_at IS NULL
+    ) AS alias WHERE 1=1`
 
 	query := `SELECT *
 		` + baseQuery

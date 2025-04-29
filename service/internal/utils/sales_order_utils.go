@@ -491,6 +491,7 @@ func MapCreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, userID ui
 	totalTaskStep4Done := 0
 	totalAllTasksDone := 0
 	totalTasks := 0
+	totalTasks4 := 0
 
 	for iStep, reqStep := range req.Steps {
 		for _, reqTask := range reqStep.Tasks {
@@ -498,6 +499,10 @@ func MapCreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, userID ui
 
 			if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
 				totalAllTasksDone += 1
+			}
+
+			if iStep == 3 {
+				totalTasks4 += 1
 			}
 
 			if iStep == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
@@ -522,6 +527,7 @@ func MapCreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, userID ui
 		TotalTaskStep4Done: &totalTaskStep4Done,
 		TotalAllTasksDone:  &totalAllTasksDone,
 		TotalTasks:         &totalTasks,
+		TotalTasks4:        &totalTasks4,
 	}
 
 	return scheduleTask, nil
@@ -531,6 +537,7 @@ func MapCreateScheduleNoRef(ctx *fiber.Ctx, req dtos.CreateScheduleNoRefRequest,
 	totalTaskStep4Done := 0
 	totalAllTasksDone := 0
 	totalTasks := 0
+	totalTasks4 := 0
 
 	for iStep, reqStep := range req.Steps {
 		for _, reqTask := range reqStep.Tasks {
@@ -538,6 +545,10 @@ func MapCreateScheduleNoRef(ctx *fiber.Ctx, req dtos.CreateScheduleNoRefRequest,
 
 			if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
 				totalAllTasksDone += 1
+			}
+
+			if iStep == 3 {
+				totalTasks4 += 1
 			}
 
 			if iStep == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
@@ -561,6 +572,7 @@ func MapCreateScheduleNoRef(ctx *fiber.Ctx, req dtos.CreateScheduleNoRefRequest,
 		TotalTaskStep4Done: &totalTaskStep4Done,
 		TotalAllTasksDone:  &totalAllTasksDone,
 		TotalTasks:         &totalTasks,
+		TotalTasks4:        &totalTasks4,
 	}
 
 	return scheduleTask, nil
@@ -684,6 +696,7 @@ func MapUpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderSchedu
 	totalTaskStep4Done := 0
 	totalAllTasksDone := 0
 	totalTasks := 0
+	totalTasks4 := 0
 
 	log.Println("totalTaskStep4Done, totalAllTasksDone, totalTasks", totalTaskStep4Done, totalAllTasksDone, totalTasks)
 	for iStep, reqStep := range req.Steps {
@@ -694,12 +707,15 @@ func MapUpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderSchedu
 				totalAllTasksDone += 1
 			}
 
+			if iStep == 3 {
+				totalTasks4 += 1
+			}
+
 			if iStep == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
 				totalTaskStep4Done += 1
 			}
 		}
 	}
-	log.Println("2totalTaskStep4Done, totalAllTasksDone, totalTasks", totalTaskStep4Done, totalAllTasksDone, totalTasks)
 
 	scheduleTask := models.Schedule{
 		ID:                 &req.ID,
@@ -718,6 +734,7 @@ func MapUpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderSchedu
 		TotalTaskStep4Done: &totalTaskStep4Done,
 		TotalAllTasksDone:  &totalAllTasksDone,
 		TotalTasks:         &totalTasks,
+		TotalTasks4:        &totalTasks4,
 	}
 
 	return scheduleTask, nil
@@ -728,6 +745,7 @@ func MapUpdateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, userID ui
 	totalTaskStep4Done := 0
 	totalAllTasksDone := 0
 	totalTasks := 0
+	totalTasks4 := 0
 
 	for iStep, reqStep := range req.Steps {
 		for _, reqTask := range reqStep.Tasks {
@@ -735,6 +753,10 @@ func MapUpdateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, userID ui
 
 			if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
 				totalAllTasksDone += 1
+			}
+
+			if iStep == 3 {
+				totalTasks4 += 1
 			}
 
 			if iStep == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
@@ -760,6 +782,7 @@ func MapUpdateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, userID ui
 		TotalTaskStep4Done: &totalTaskStep4Done,
 		TotalAllTasksDone:  &totalAllTasksDone,
 		TotalTasks:         &totalTasks,
+		TotalTasks4:        &totalTasks4,
 	}
 
 	return scheduleTask, nil
@@ -1022,6 +1045,54 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, refID 
 		// push device type
 		deviceType = append(deviceType, ctx.FormValue("device_type"))
 	}
+
+	// newFiles := []map[string]interface{}{}
+	newFiles := []*models.Letter{}
+
+	for _, file := range files {
+		// fileName := file.Filename
+
+		newFilePath, err := HandleFileUpload(ctx, file, userID, span)
+		if err != nil {
+			defer childSpan.Finish()
+			return nil, err
+		}
+
+		fileProp := map[string]interface{}{
+			"file_size":   file.Size,
+			"device_type": deviceType,
+			"original":    file.Filename,
+		}
+
+		filePropJSON, err := json.Marshal(fileProp)
+		if err != nil {
+			defer childSpan.Finish()
+			return nil, err
+		}
+
+		newFile := &models.Letter{
+			RefID: &refID,
+			// RefType:     ctx.FormValue("ref_type", "sales_orders"),
+			RefType:     ctx.FormValue("ref_type", "schedules"),
+			FileType:    file.Header.Get("Content-Type"),
+			FileUrl:     newFilePath,
+			FileName:    file.Filename,
+			CreatedByID: &userID,
+			FileProp:    string(filePropJSON),
+		}
+
+		newFiles = append(newFiles, newFile)
+	}
+
+	return newFiles, nil
+}
+
+// MapNewFiles
+func MapNewSalesOrderFilesApp(ctx *fiber.Ctx, files []*multipart.FileHeader, req dtos.UpdateSalesOrderScheduleAppRequest, refID uint, userID uint, span opentracing.Span) ([]*models.Letter, error) {
+	childSpan := opentracing.StartSpan("MapNewSalesOrderFiles", opentracing.ChildOf(span.Context()))
+
+	deviceType := []string{"web"}
+	deviceType = append(deviceType, ctx.FormValue("device_type", req.DeviceType))
 
 	// newFiles := []map[string]interface{}{}
 	newFiles := []*models.Letter{}

@@ -174,7 +174,7 @@ func ConvertEmptyStringsToNull() fiber.Handler {
 			ctx.Set("Content-Type", "application/json")
 		}
 
-		log.Println("ctxBody", ctx.Body())
+		// log.Println("ctxBody", ctx.Body())
 
 		log.Println("ConvertEmptyStringsToNull-Content-Type:", ctx.Get("Content-Type"))
 
@@ -182,7 +182,7 @@ func ConvertEmptyStringsToNull() fiber.Handler {
 		if strings.Contains(ctx.Get("Content-Type"), "application/json") {
 			if err := json.Unmarshal(ctx.Body(), &body); err != nil {
 				log.Println("convertEmptyStringsToNull-Error:", err)
-				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+				return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body, application/json"})
 			}
 
 			// Convert empty strings to null
@@ -195,7 +195,7 @@ func ConvertEmptyStringsToNull() fiber.Handler {
 			// Marshal the modified body back to JSON
 			modifiedBody, err := json.Marshal(body)
 			if err != nil {
-				return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process request body"})
+				return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process request body, application/json"})
 			}
 
 			// Replace the request body with the modified body
@@ -221,7 +221,7 @@ func ConvertEmptyStringsToNull() fiber.Handler {
 			// Marshal the modified body back to JSON
 			modifiedBody, err := json.Marshal(body)
 			if err != nil {
-				return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process request body"})
+				return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process request body, multipart/form-data"})
 			}
 
 			// Replace the request body with the modified body
