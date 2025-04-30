@@ -31,6 +31,7 @@ func SetupSalesOrderRoutes(salesOrders fiber.Router, gormDB *gorm.DB, sqlDB *sql
 	salesOrders.Post("/index-schedule-app", salesOrderController.GetCalendars)
 	salesOrders.Post("/create-schedule", salesOrderController.CreateScheduleSingle)
 	salesOrders.Post("/show-schedule", salesOrderController.GetScheduleByID)
+	salesOrders.Post("/delete-schedule", salesOrderController.DeleteSchedule)
 	salesOrders.Post("/show-sales-order", salesOrderController.GetSalesOrderByID)
 	salesOrders.Post("/show-schedule-app", salesOrderController.GetScheduleAppByID)
 	salesOrders.Post("/update-schedule", salesOrderController.UpdateScheduleSalesOrder)

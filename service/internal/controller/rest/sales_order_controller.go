@@ -533,6 +533,53 @@ func (c *SalesOrderController) UpdateSchedule(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Schedule updated successfully", http.StatusOK, nil, nil)
 }
 
+// delete salesOrder
+func (c *SalesOrderController) DeleteSchedule(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("SalesOrderController-DeleteSchedule", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.DeleteSalesOrderRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Schedule not found", http.StatusBadRequest, err.Error(), nil)
+	}
+
+	if req.ID == 0 {
+		return utils.GetResponse(ctx, nil, nil, "Schedule not found", http.StatusBadRequest, "ID is required", nil)
+	}
+
+	// Transaction handling
+	tx := c.repo.BeginTransaction()
+
+	params := &dtos.GetSalesOrderParams{ID: req.ID}
+
+	// DELETE soDts by SalesOrder ID
+	err := c.service.DeleteScheduleTasksByScheduleID(ctx, params, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Schedule", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	err = c.service.DeleteScheduleByID(ctx, params, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Schedule", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	tx.Commit()
+
+	return utils.GetResponse(ctx, nil, nil, "Schedule deleted successfully", http.StatusOK, nil, nil)
+}
+
 // UpdateScheduleSalesOrder updates the schedule of a sales order
 func (c *SalesOrderController) UpdateScheduleSalesOrderApp(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())

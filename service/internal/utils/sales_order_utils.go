@@ -788,6 +788,40 @@ func MapUpdateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, userID ui
 	return scheduleTask, nil
 }
 
+func MapUpdateScheduleApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRequest, scheduleTask []dtos.ListScheduleTaskByScheduleID, span opentracing.Span) (map[string]interface{}, error) {
+
+	totalTaskStep4Done := 0
+	totalAllTasksDone := 0
+	totalTasks := 0
+	totalTasks4 := 0
+
+	for _, reqTask := range scheduleTask {
+		totalTasks += 1
+
+		if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+			totalAllTasksDone += 1
+		}
+
+		if *reqTask.StepOrderItem == 3 {
+			totalTasks4 += 1
+		}
+
+		if *reqTask.StepOrderItem == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+			totalTaskStep4Done += 1
+		}
+	}
+
+	schedule := map[string]interface{}{
+		"id":                     req.ScheduleID,
+		"total_task_step_4_done": totalTaskStep4Done,
+		"total_all_tasks_done":   totalAllTasksDone,
+		"total_tasks":            totalTasks,
+		"total_tasks_4":          totalTasks4,
+	}
+
+	return schedule, nil
+}
+
 func MapUpdateScheduleSteps(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest, userID uint, scheduleID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
 	scheduleTask := []*models.ScheduleTask{}
 	for _, reqStep := range req {
@@ -1168,7 +1202,7 @@ func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSal
 			// "file_url":  attachment.FileUrl,
 			"file_name": attachment.FileName,
 			// "ref_type":  attachment.RefType,
-			"ref_id": &salesOrderID,
+			"ref_id": salesOrderID,
 			"remark": attachment.Remark,
 			// FileProp:    string(filePropJSON),
 			"updated_by_id": &userID,

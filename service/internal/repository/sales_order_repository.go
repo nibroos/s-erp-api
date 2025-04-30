@@ -483,6 +483,28 @@ func (r *SalesOrderRepository) DeleteSalesOrder(tx *gorm.DB, params *dtos.GetSal
 
 }
 
+func (r *SalesOrderRepository) DeleteScheduleTasksByScheduleID(tx *gorm.DB, params *dtos.GetSalesOrderParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-DeleteScheduleTasksByScheduleID", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Model(&models.ScheduleTask{}).Where("schedule_id = ?", params.ID).Delete(&models.ScheduleTask{}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
+}
+
+func (r *SalesOrderRepository) DeleteScheduleByID(tx *gorm.DB, params *dtos.GetSalesOrderParams, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-DeleteScheduleByID", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Model(&models.Schedule{}).Where("id = ?", params.ID).Delete(&models.Schedule{}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+
+}
+
 func (s *SalesOrderRepository) RestoreSalesOrder(tx *gorm.DB, params *dtos.GetSalesOrderParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-RestoreSalesOrder", opentracing.ChildOf(span.Context()))
 
@@ -2363,6 +2385,7 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 					s.total_task_step_4_done,
 					s.total_all_tasks_done,
 					s.total_tasks,
+					COALESCE(s.total_tasks_4, 0) as total_tasks_4,
 					TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
 					
 					-- IF NULL THEN TODAY
@@ -2442,6 +2465,14 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -2483,15 +2514,18 @@ func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetS
 					s.total_task_step_4_done,
 					s.total_all_tasks_done,
 					s.total_tasks,
+					COALESCE(s.total_tasks_4, 0) as total_tasks_4,
 
 				TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_at,
 				TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_at,
 
+				c.name as customer_name,
 				ass.name as assignee_name,
 				cu.name as created_by_name,
 				uu.name as updated_by_name
 
 			FROM schedules s
+			LEFT JOIN customers c ON s.customer_id = c.id
 			LEFT JOIN users ass ON s.assignee_id = ass.id
 			LEFT JOIN users cu ON s.created_by_id = cu.id
 			LEFT JOIN users uu ON s.updated_by_id = uu.id
@@ -2515,4 +2549,41 @@ func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetS
 	}
 
 	return &schedule, nil
+}
+
+func (r *SalesOrderRepository) GetScheduleTaskTotalDoneByID(ctx *fiber.Ctx, tx *gorm.DB, scheduleID uint, span opentracing.Span) ([]dtos.ListScheduleTaskByScheduleID, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetScheduleTaskTotalDoneByID", opentracing.ChildOf(span.Context()))
+	var schedule []dtos.ListScheduleTaskByScheduleID
+
+	baseQuery := `
+    FROM ( 
+			SELECT DISTINCT ON (s.id)
+				s.id,
+				s.schedule_id,
+				ststep.order_item as step_order_item,
+				s.is_checked
+
+			FROM schedule_tasks st
+			LEFT JOIN schedules s ON st.schedule_id = s.id AND s.deleted_at IS NULL
+			LEFT JOIN schedule_tasks ststep ON st.parent_id = ststep.id AND ststep.deleted_at IS NULL AND ststep.entity_type = 'steps'
+			WHERE s.deleted_at IS NULL AND st.deleted_at IS NULL AND st.entity_type = 'tasks'
+    ) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	var args []interface{}
+
+	i := 1
+	query += " AND schedule_id = $1"
+	args = append(args, scheduleID)
+	i++
+
+	if err := r.sqlDB.Get(&schedule, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		childSpan.LogKV("query", query)
+		return schedule, err
+	}
+
+	return schedule, nil
 }

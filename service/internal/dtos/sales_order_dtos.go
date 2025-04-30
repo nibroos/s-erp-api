@@ -883,7 +883,9 @@ type UpdateSalesOrderScheduleRequest struct {
 	DeletedByID  *uint   `json:"deleted_by_id"`
 	IsDelete     *int    `json:"is_delete"`
 
-	Steps []UpdateScheduleStepRequest `json:"steps"`
+	Steps        []UpdateScheduleStepRequest      `json:"steps"`
+	Attachments  []UpdateSalesOrderAttachmentsDTO `json:"attachments"`
+	DeletedFiles []uint                           `json:"deleted_files"`
 }
 
 type UpdateScheduleRequest struct {
@@ -906,6 +908,13 @@ type UpdateScheduleRequest struct {
 	IsDelete     *int    `json:"is_delete"`
 
 	Steps []UpdateScheduleStepRequest `json:"steps"`
+}
+
+type ListScheduleTaskByScheduleID struct {
+	ID            *uint `json:"id" db:"id"`
+	ScheduleID    *uint `json:"schedule_id" db:"schedule_id"`
+	StepOrderItem *int  `json:"step_order_item" db:"step_order_item"`
+	IsChecked     *int  `json:"is_checked" db:"is_checked"`
 }
 
 type UpdateSalesOrderScheduleAppRequest struct {
@@ -1096,12 +1105,14 @@ type ScheduleSingleDetailDTO struct {
 	SalesOrderID       *uint   `json:"sales_order_id" db:"sales_order_id"`
 	Title              string  `json:"title" db:"title"`
 	ModuleType         *string `json:"module_type" db:"module_type"`
+	CustomerName       *string `json:"customer_name" db:"customer_name"`
 	StartAt            *string `json:"start_at" db:"start_at"`
 	EndAt              *string `json:"end_at" db:"end_at"`
 	Color              *string `json:"color" db:"color"`
 	TotalTaskStep4Done *int    `json:"total_task_step_4_done" db:"total_task_step_4_done"`
 	TotalAllTasksDone  *int    `json:"total_all_tasks_done" db:"total_all_tasks_done"`
 	TotalTasks         *int    `json:"total_tasks" db:"total_tasks"`
+	TotalTasks4        *int    `json:"total_tasks_4" db:"total_tasks_4"`
 	CreatedByName      *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName      *string `json:"updated_by_name" db:"updated_by_name"`
 
@@ -1124,6 +1135,7 @@ type CalendarListDTO struct {
 	TotalTaskStep4Done *int    `json:"total_task_step_4_done" db:"total_task_step_4_done"`
 	TotalAllTasksDone  *int    `json:"total_all_tasks_done" db:"total_all_tasks_done"`
 	TotalTasks         *int    `json:"total_tasks" db:"total_tasks"`
+	TotalTasks4        *int    `json:"total_tasks_4" db:"total_tasks_4"`
 	OrderTypeName      *string `json:"order_type_name" db:"order_type_name"`
 }
 
