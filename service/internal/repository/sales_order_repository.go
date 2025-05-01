@@ -558,7 +558,6 @@ func (r *SalesOrderRepository) UpdateSoDts(tx *gorm.DB, soDts []models.SoDt, spa
 			"is_pph23":           soDt.IsPph23,
 			"is_lock_markup":     soDt.IsLockMarkup,
 			"is_lock_price_sell": soDt.IsLockPriceSell,
-			"qty_out":            soDt.QtyOut,
 			"qty":                soDt.Qty,
 			"price_sell":         soDt.PriceSell,
 			"price_buy":          soDt.PriceBuy,

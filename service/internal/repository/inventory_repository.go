@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -50,11 +51,8 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 	filterDBColumnKey := []string{
 		"iv.inventory_no", "iv.do_no", "iv.surat_jalan_no", "iv.invoice_no", "iv.remark", "iv.ship_dest",
 		"pi.name",
-		"it.name",
-		"sd.remark",
-		"sd.gen_code",
-		"sdb.remark",
-		"sdb.gen_code",
+		"so.po_buyer_no",
+		"so.sales_order_no",
 	}
 
 	var args []interface{}
@@ -188,6 +186,8 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 				LEFT JOIN mix_values pph ON iv.pph23_id = pph.id
 				LEFT JOIN mix_values ot ON iv.io_type_id = ot.id
 				LEFT JOIN customers c ON iv.customer_id = c.id
+				LEFT JOIN so_dts sd ON ivd.ref_so_dt_id = sd.id
+				LEFT JOIN sales_orders so ON sd.sales_order_id = so.id
 
         LEFT JOIN users cu ON iv.created_by_id = cu.id
         LEFT JOIN users uu ON iv.updated_by_id = uu.id
@@ -203,7 +203,7 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 
 	for key, value := range filters {
 		switch key {
-		case "po_buyer_no", "sales_order_no", "ship_dest", "remark":
+		case "do_no", "invoice_no", "surat_jalan_no", "inventory_no":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -211,6 +211,14 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 				i++
 			}
 		}
+	}
+
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+		query += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
+		countQuery += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
 	}
 
 	if !isAdmin && branchID != nil {
@@ -306,13 +314,7 @@ func (r *InventoryRepository) GetStocks(ctx *fiber.Ctx, filters map[string]strin
 	var total int
 
 	filterDBColumnKey := []string{
-		"iv.inventory_no", "iv.do_no", "iv.surat_jalan_no", "iv.invoice_no", "iv.remark", "iv.ship_dest",
 		"pi.name",
-		"it.name",
-		"sd.remark",
-		"sd.gen_code",
-		"sdb.remark",
-		"sdb.gen_code",
 	}
 
 	var args []interface{}
@@ -655,7 +657,7 @@ func (s *InventoryRepository) RestoreInventory(tx *gorm.DB, params *dtos.GetInve
 func (r *InventoryRepository) CreateInvDts(tx *gorm.DB, invDts []models.InvDt, salesOrderID uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InvDtRepository-CreateInvDts", opentracing.ChildOf(span.Context()))
 
-	if err := tx.Create(&invDts).Error; err != nil {
+	if err := tx.Model(&models.InvDt{}).Create(&invDts).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return tx, err
 	}
@@ -717,7 +719,7 @@ func (r *InventoryRepository) UpdateInvDts(tx *gorm.DB, invDts []models.InvDt, s
 	return tx, nil
 }
 
-func (r *InventoryRepository) DeleteInvDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, salesOrderID uint, invDtIDs []uint, span opentracing.Span) (*gorm.DB, error) {
+func (r *InventoryRepository) DeleteInvDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, inventoryID uint, invDtIDs []uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InvDtRepository-DeleteInvDtsWhereNotIn", opentracing.ChildOf(span.Context()))
 
 	claims := utils.GetClaims(ctx, childSpan)
@@ -726,7 +728,7 @@ func (r *InventoryRepository) DeleteInvDtsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB
 	now := time.Now()
 	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
 
-	query := tx.Model(&models.InvDt{}).Where("inventory_id = ? AND deleted_at IS NULL", salesOrderID)
+	query := tx.Model(&models.InvDt{}).Where("inventory_id = ? AND deleted_at IS NULL", inventoryID)
 
 	if len(invDtIDs) > 0 {
 		query = query.Where("id NOT IN (?)", invDtIDs)
@@ -754,6 +756,8 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 		ivd.vat_perc, ivd.vat_perc_am, ivd.pph23_perc, ivd.pph23_perc_am, ivd.is_vat, ivd.is_pph23,
 		ivd.created_at, ivd.updated_at, ivd.deleted_at,
 		TO_CHAR(ivd.expired_at, 'YYYY-MM-DD') as expired_at,
+
+		ivd.ref_so_dt_id, ivd.ref_so_dt_bom_id, ivd.ref_po_dt_id, ivd.ref_po_dt_bom_id, ivd.ref_inv_dt_id, ivd.ref_product_id,
 
 		p.customer_id,
 
@@ -1483,6 +1487,17 @@ func (r *InventoryRepository) BulkUpdateInvSoDtsQty(ctx *fiber.Ctx, tx *gorm.DB,
 	return nil
 }
 
+func (r *InventoryRepository) BulkUpdateReverseInvRefDtsQty(ctx *fiber.Ctx, tx *gorm.DB, refDts []map[string]interface{}, tableName string, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InventoryRepository-BulkUpdateReverseInvRefDtsQty", opentracing.ChildOf(span.Context()))
+
+	if err := r.utilRepo.Upsert(tx, tableName, "id", refDts, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
 func (r *InventoryRepository) BulkUpdateInvSoDtBomsQty(ctx *fiber.Ctx, tx *gorm.DB, soDts []map[string]interface{}, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("InventoryRepository-BulkUpdateInvSoDtBomsQty", opentracing.ChildOf(span.Context()))
 
@@ -1792,7 +1807,7 @@ func (r *InventoryRepository) ResetCreateOrUpdateStockIn(ctx *fiber.Ctx, tx *gor
 	return nil
 }
 
-func (r *InventoryRepository) GetRefOutDtBySoDtID(ctx *fiber.Ctx, tx *gorm.DB, tableName string, parentColumnName string, detailIDs []uint, span opentracing.Span) ([]map[string]interface{}, error) {
+func (r *InventoryRepository) GetRefOutDtByRefDtID(ctx *fiber.Ctx, tx *gorm.DB, tableName string, parentColumnName string, detailIDs []uint, span opentracing.Span) ([]map[string]interface{}, error) {
 	childSpan := opentracing.StartSpan("InventoryRepository-GetRefOutDtBySoDtID", opentracing.ChildOf(span.Context()))
 
 	var details []map[string]interface{}
@@ -1811,10 +1826,13 @@ func (r *InventoryRepository) GetRefOutDtBySoDtID(ctx *fiber.Ctx, tx *gorm.DB, t
 	i := 1
 
 	if len(detailIDs) > 0 {
-		query += fmt.Sprintf(" AND %s = ANY($1)", parentColumnName)
+		query += fmt.Sprintf(" AND id = ANY($1)")
 		args = append(args, pq.Array(detailIDs))
 		i++
 	}
+
+	log.Println("GetRefOutDtBySoDtID-query", query)
+	log.Println("GetRefOutDtBySoDtID-parentColumnName", parentColumnName, tableName)
 
 	err := tx.Raw(query, args...).Scan(&details).Error
 	if err != nil {
@@ -1825,7 +1843,7 @@ func (r *InventoryRepository) GetRefOutDtBySoDtID(ctx *fiber.Ctx, tx *gorm.DB, t
 	return details, nil
 }
 
-func (r *InventoryRepository) GetRefInDtBySoDtID(ctx *fiber.Ctx, tx *gorm.DB, tableName string, parentColumnName string, detailIDs []uint, span opentracing.Span) ([]map[string]interface{}, error) {
+func (r *InventoryRepository) GetRefInDtByRefDtID(ctx *fiber.Ctx, tx *gorm.DB, tableName string, parentColumnName string, detailIDs []uint, span opentracing.Span) ([]map[string]interface{}, error) {
 	childSpan := opentracing.StartSpan("InventoryRepository-GetRefOutDtBySoDtID", opentracing.ChildOf(span.Context()))
 
 	var details []map[string]interface{}

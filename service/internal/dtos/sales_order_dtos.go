@@ -210,6 +210,7 @@ type UpdateSoDtsRequest struct {
 	IsLockMarkup    *int8                     `json:"is_lock_markup"`
 	IsLockPriceSell *int8                     `json:"is_lock_price_sell"`
 	Qty             *float64                  `json:"qty"`
+	QtyOut          *float64                  `json:"qty_out"`
 	PriceSell       *float64                  `json:"price_sell"`
 	PriceBuy        *float64                  `json:"price_buy"`
 	SubtotalSell    *float64                  `json:"subtotal_sell"`
@@ -236,6 +237,7 @@ type UpdateSoDtsBomsRequest struct {
 	GenCode      *string `json:"gen_code"`
 	Remark       *string `json:"remark"`
 	Qty          float64 `json:"qty"`
+	QtyOut       float64 `json:"qty_out"`
 	PriceSell    float64 `json:"price_sell"`
 	PriceBuy     float64 `json:"price_buy"`
 	SubtotalSell float64 `json:"subtotal_sell"`

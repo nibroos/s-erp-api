@@ -230,6 +230,12 @@ type InventoryInvDtListDTO struct {
 	Pph23ID          *uint    `json:"pph23_id" db:"pph23_id"`
 	RefID            *uint    `json:"ref_id" db:"ref_id"`
 	ItemID           uint     `json:"item_id" db:"item_id"`
+	RefSoDtID        *uint    `json:"ref_so_dt_id" db:"ref_so_dt_id"`
+	RefSoDtBomID     *uint    `json:"ref_so_dt_bom_id" db:"ref_so_dt_bom_id"`
+	RefPoDtID        *uint    `json:"ref_po_dt_id" db:"ref_po_dt_id"`
+	RefPoDtBomID     *uint    `json:"ref_po_dt_bom_id" db:"ref_po_dt_bom_id"`
+	RefInvDtID       *uint    `json:"ref_inv_dt_id" db:"ref_inv_dt_id"`
+	RefProductID     *uint    `json:"ref_product_id" db:"ref_product_id"`
 	ItemSubGroupID   *uint    `json:"item_sub_group_id" db:"item_sub_group_id"`
 	ItemGroupID      *uint    `json:"item_group_id" db:"item_group_id"`
 	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
