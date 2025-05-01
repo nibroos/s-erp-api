@@ -788,7 +788,7 @@ func MapUpdateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, userID ui
 	return scheduleTask, nil
 }
 
-func MapUpdateScheduleApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRequest, scheduleTask []dtos.ListScheduleTaskByScheduleID, span opentracing.Span) (map[string]interface{}, error) {
+func MapUpdateScheduleApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRequest, scheduleTask []dtos.ListScheduleTaskByScheduleID, span opentracing.Span) ([]map[string]interface{}, error) {
 
 	totalTaskStep4Done := 0
 	totalAllTasksDone := 0
@@ -796,6 +796,7 @@ func MapUpdateScheduleApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRe
 	totalTasks4 := 0
 
 	for _, reqTask := range scheduleTask {
+		log.Println("reqTask", *reqTask.IsChecked, *reqTask.StepOrderItem, *reqTask.StepOrderItem)
 		totalTasks += 1
 
 		if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
@@ -811,13 +812,14 @@ func MapUpdateScheduleApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRe
 		}
 	}
 
-	schedule := map[string]interface{}{
+	schedule := []map[string]interface{}{}
+	schedule = append(schedule, map[string]interface{}{
 		"id":                     req.ScheduleID,
 		"total_task_step_4_done": totalTaskStep4Done,
 		"total_all_tasks_done":   totalAllTasksDone,
 		"total_tasks":            totalTasks,
 		"total_tasks_4":          totalTasks4,
-	}
+	})
 
 	return schedule, nil
 }
@@ -1179,7 +1181,7 @@ func MapNewSalesOrderFilesApp(ctx *fiber.Ctx, files []*multipart.FileHeader, req
 // 	Remark   *string `json:"remark" db:"remark"`
 // }
 
-func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSalesOrderAttachmentsDTO, salesOrderID uint, userID uint, span opentracing.Span) []map[string]interface{} {
+func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSalesOrderAttachmentsDTO, refID uint, userID uint, span opentracing.Span) []map[string]interface{} {
 	// newFiles := []map[string]interface{}{}
 	updatedAttachments := []map[string]interface{}{}
 
@@ -1202,7 +1204,7 @@ func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSal
 			// "file_url":  attachment.FileUrl,
 			"file_name": attachment.FileName,
 			// "ref_type":  attachment.RefType,
-			"ref_id": salesOrderID,
+			"ref_id": refID,
 			"remark": attachment.Remark,
 			// FileProp:    string(filePropJSON),
 			"updated_by_id": &userID,

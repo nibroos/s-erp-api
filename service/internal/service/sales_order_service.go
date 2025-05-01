@@ -1412,27 +1412,25 @@ func (s *SalesOrderService) BulkCreateUpdateScheduleTasksApp(ctx *fiber.Ctx, req
 		}
 	}
 
-	// scheduleTask, err := s.repo.GetScheduleTaskTotalDoneByID(ctx, tx, req.ScheduleID, childSpan)
-	// if err != nil {
-	// 	defer childSpan.Finish()
-	// 	return err
-	// }
+	scheduleTask, err := s.repo.GetScheduleTaskTotalDoneByID(ctx, tx, req.ScheduleID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return err
+	}
 
-	// // // update schedule total done
-	// schedule, err := utils.MapUpdateScheduleApp(ctx, req, scheduleTask, childSpan)
-	// if err != nil {
-	// 	defer childSpan.Finish()
-	// 	tx.Rollback()
-	// 	return err
-	// }
+	// // update schedule total done
+	schedule, err := utils.MapUpdateScheduleApp(ctx, req, scheduleTask, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
 
-	// if schedule.ID != nil && *schedule.ID > 0 {
-	// 	if err := s.repo.UpdateSalesOrderSchedule(tx, &schedule, childSpan); err != nil {
-	// 		defer childSpan.Finish()
-	// 		tx.Rollback()
-	// 		return err
-	// 	}
-	// }
+	if tx, err := s.repo.UpdateSalesOrderScheduleApp(tx, schedule, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
 
 	return nil
 }

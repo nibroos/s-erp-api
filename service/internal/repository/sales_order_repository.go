@@ -2557,11 +2557,11 @@ func (r *SalesOrderRepository) GetScheduleTaskTotalDoneByID(ctx *fiber.Ctx, tx *
 
 	baseQuery := `
     FROM ( 
-			SELECT DISTINCT ON (s.id)
-				s.id,
-				s.schedule_id,
+			SELECT DISTINCT ON (st.id)
+				st.id,
+				st.schedule_id,
 				ststep.order_item as step_order_item,
-				s.is_checked
+				st.is_checked
 
 			FROM schedule_tasks st
 			LEFT JOIN schedules s ON st.schedule_id = s.id AND s.deleted_at IS NULL
@@ -2579,11 +2579,23 @@ func (r *SalesOrderRepository) GetScheduleTaskTotalDoneByID(ctx *fiber.Ctx, tx *
 	args = append(args, scheduleID)
 	i++
 
-	if err := r.sqlDB.Get(&schedule, query, args...); err != nil {
+	if err := tx.Raw(query, args...).Scan(&schedule).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		childSpan.LogKV("query", query)
 		return schedule, err
 	}
 
 	return schedule, nil
+}
+
+// bulk/batch update soDts
+func (r *SalesOrderRepository) UpdateSalesOrderScheduleApp(tx *gorm.DB, schedule []map[string]interface{}, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SoDtRepository-UpdateSoDts", opentracing.ChildOf(span.Context()))
+
+	if err := r.utilRepo.Upsert(tx, "schedules", "id", schedule, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return tx, nil
 }
