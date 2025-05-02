@@ -21,7 +21,7 @@ func (r *InventoryStoreRequest) Validate(req *dtos.FormInventoryRequest, ctx *fi
 
 	rules := map[string][]string{
 		"customer_id":        []string{"exists:customers,id"},
-		"currency_id":        []string{"required", "exists:mix_values,id"},
+		"currency_id":        []string{"exists:mix_values,id"},
 		"warehouse_id":       []string{"required", "exists:mix_values,id"},
 		"io_type_id":         []string{"required", "exists:mix_values,id"},
 		"status":             []string{"required"},

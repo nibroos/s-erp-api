@@ -152,10 +152,10 @@ func MapUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, updatedInven
 			SubtotalSell: reqInvDt.SubtotalSell,
 			SubtotalBuy:  reqInvDt.SubtotalBuy,
 			ExpiredAt:    reqInvDt.ExpiredAt,
-			QtyOut:       reqInvDt.QtyOut,
-			QtyInvoice:   reqInvDt.QtyInvoice,
-			TotalAm:      reqInvDt.TotalAm,
-			CreatedByID:  &userID,
+			// QtyOut:       reqInvDt.QtyOut,
+			QtyInvoice:  reqInvDt.QtyInvoice,
+			TotalAm:     reqInvDt.TotalAm,
+			CreatedByID: &userID,
 		}
 		invDtsModel = append(invDtsModel, invDtModel)
 
@@ -289,9 +289,11 @@ func MapNewUpdatedReverseRefs(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtLis
 
 		if reqInvDt.RefInvDtID != nil && *reqInvDt.RefInvDtID > 0 {
 			for _, invDt := range invDts {
-				if id, ok := invDt["id"].(int32); ok {
-					if *reqInvDt.RefInvDtID == uint(id) {
-						invDt["qty_out"] = invDt["qty_out"].(float64) - *reqInvDt.Qty
+				if id, ok := ParseMapIDToUint(invDt["id"]); ok {
+					if *reqInvDt.RefInvDtID == id {
+						// invDt["qty_out"] = invDt["qty_out"].(float64) - *reqInvDt.Qty
+						currentQty := ParseMapQtyToFloat64(invDt["qty_out"])
+						invDt["qty_out"] = currentQty - *reqInvDt.Qty
 						refInvDt = append(refInvDt, invDt)
 						break
 					}
@@ -380,13 +382,18 @@ func MapNewUpdatedRefs(ctx *fiber.Ctx, req dtos.FormInventoryRequest, soDts []ma
 
 		if reqInvDt.RefInvDtID != nil && *reqInvDt.RefInvDtID > 0 {
 			for _, invDt := range invDts {
-				if id, ok := invDt["id"].(int32); ok {
+				// if id, ok := invDt["id"].(int32); ok {
+				if id, ok := ParseMapIDToUint(invDt["id"]); ok {
 					if *reqInvDt.RefInvDtID == uint(id) {
 
 						if invDt["qty_out"] == nil {
-							invDt["qty_out"] = *new(float64)
+							invDt["qty_out"] = 0.0
 						}
-						invDt["qty_out"] = invDt["qty_out"].(float64) + *reqInvDt.Qty
+
+						currentQty := ParseMapQtyToFloat64(invDt["qty_out"])
+						newQty := currentQty + *reqInvDt.Qty
+						invDt["qty_out"] = newQty
+
 						refInvDt = append(refInvDt, invDt)
 						break
 					}

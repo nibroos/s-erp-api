@@ -252,19 +252,22 @@ func (c *InventoryController) DeleteInventory(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Inventory not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
+	claims := utils.GetClaims(ctx, parentSpan)
+	userID := uint(claims["user_id"].(float64))
+
 	// Transaction handling
 	tx := c.repo.BeginTransaction()
 
 	params := &dtos.GetInventoryParams{ID: req.ID}
 	// GET inventory by ID
-	_, err := c.service.GetInventoryByID(ctx, params, tx, parentSpan)
+	inventory, err := c.service.GetInventoryByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Inventory not found", http.StatusNotFound, err.Error(), nil)
 	}
 
 	// DELETE soDts by Inventory ID
-	err = c.service.DeleteInvDtsByInventoryID(ctx, params, tx, parentSpan)
+	err = c.service.DeleteInvDtsByInventoryID(ctx, params, tx, inventory, userID, parentSpan)
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
@@ -398,6 +401,34 @@ func (c *InventoryController) GetRefIndexSoDts(ctx *fiber.Ctx) error {
 	}
 
 	quoDts, total, err := c.service.GetRefIndexSoDts(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch sales order", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, quoDts, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)
+}
+
+func (c *InventoryController) GetRefIndexInvDts(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InventoryController-GetRefIndexInvDts", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("InventoryController-GetRefIndexInvDts: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	quoDts, total, err := c.service.GetRefIndexInvDts(ctx, filters, parentSpan)
 	if err != nil {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch sales order", http.StatusInternalServerError)
 	}

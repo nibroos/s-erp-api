@@ -24,6 +24,7 @@ func SetupInventoryRoutes(inventories fiber.Router, gormDB *gorm.DB, sqlDB *sqlx
 	inventories.Post("/excel-inventory", inventoryController.ExcelGetInventories)
 	inventories.Post("/csv-inventory", inventoryController.CsvGetInventories)
 	inventories.Post("/index-ref-so-dt", inventoryController.GetRefIndexSoDts)
+	inventories.Post("/index-ref-inv-dt", inventoryController.GetRefIndexInvDts)
 
 	inventories.Post("/stocks/index-stock", inventoryController.GetStocks)
 }
