@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"strings"
 	"time"
@@ -159,6 +160,7 @@ func MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSal
 			IsLockMarkup:    soDt.IsLockMarkup,
 			IsLockPriceSell: soDt.IsLockPriceSell,
 			Qty:             soDt.Qty,
+			QtyOut:          new(float64),
 			PriceSell:       soDt.PriceSell,
 			PriceBuy:        soDt.PriceBuy,
 			SubtotalSell:    soDt.SubtotalSell,
@@ -198,6 +200,7 @@ func MapCreateSoDtBoms(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, created
 						"item_unit_id":   reqSoDtBom.ItemUnitID,
 						"remark":         reqSoDtBom.Remark,
 						"qty":            reqSoDtBom.Qty,
+						"qty_out":        new(float64),
 						"price_sell":     reqSoDtBom.PriceSell,
 						"price_buy":      reqSoDtBom.PriceBuy,
 						"subtotal_sell":  reqSoDtBom.SubtotalSell,
@@ -487,18 +490,91 @@ func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesO
 }
 
 func MapCreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, userID uint, salesOrder *models.SalesOrder, span opentracing.Span) (models.Schedule, error) {
+	totalTaskStep4Done := 0
+	totalAllTasksDone := 0
+	totalTasks := 0
+	totalTasks4 := 0
+
+	for iStep, reqStep := range req.Steps {
+		for _, reqTask := range reqStep.Tasks {
+			totalTasks += 1
+
+			if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+				totalAllTasksDone += 1
+			}
+
+			if iStep == 3 {
+				totalTasks4 += 1
+			}
+
+			if iStep == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+				totalTaskStep4Done += 1
+			}
+		}
+	}
+
 	scheduleTask := models.Schedule{
-		AssigneeID:   req.AssigneeID,
-		SalesOrderID: salesOrder.ID,
-		UUID:         req.UUID,
-		Title:        req.Title,
-		ModuleType:   req.ModuleType,
-		Remark:       req.Remark,
-		Status:       "WAITING",
-		StartAt:      req.StartAt,
-		EndAt:        req.EndAt,
-		Color:        req.Color,
-		CreatedByID:  &userID,
+		AssigneeID:         req.AssigneeID,
+		SalesOrderID:       salesOrder.ID,
+		CustomerID:         salesOrder.CustomerID,
+		UUID:               req.UUID,
+		Title:              req.Title,
+		ModuleType:         req.ModuleType,
+		Remark:             req.Remark,
+		Status:             "WAITING",
+		StartAt:            req.StartAt,
+		EndAt:              req.EndAt,
+		Color:              req.Color,
+		CreatedByID:        &userID,
+		TotalTaskStep4Done: &totalTaskStep4Done,
+		TotalAllTasksDone:  &totalAllTasksDone,
+		TotalTasks:         &totalTasks,
+		TotalTasks4:        &totalTasks4,
+	}
+
+	return scheduleTask, nil
+}
+
+func MapCreateScheduleNoRef(ctx *fiber.Ctx, req dtos.CreateScheduleNoRefRequest, userID uint, span opentracing.Span) (models.Schedule, error) {
+	totalTaskStep4Done := 0
+	totalAllTasksDone := 0
+	totalTasks := 0
+	totalTasks4 := 0
+
+	for iStep, reqStep := range req.Steps {
+		for _, reqTask := range reqStep.Tasks {
+			totalTasks += 1
+
+			if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+				totalAllTasksDone += 1
+			}
+
+			if iStep == 3 {
+				totalTasks4 += 1
+			}
+
+			if iStep == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+				totalTaskStep4Done += 1
+			}
+		}
+	}
+
+	scheduleTask := models.Schedule{
+		AssigneeID:         req.AssigneeID,
+		CustomerID:         req.CustomerID,
+		UUID:               req.UUID,
+		Title:              req.Title,
+		ModuleType:         req.ModuleType,
+		Remark:             req.Remark,
+		Status:             "WAITING",
+		StartAt:            req.StartAt,
+		EndAt:              req.EndAt,
+		Color:              req.Color,
+		CreatedByID:        &userID,
+		TotalTaskStep4Done: &totalTaskStep4Done,
+		TotalAllTasksDone:  &totalAllTasksDone,
+		TotalTasks:         &totalTasks,
+		TotalTasks4:        &totalTasks4,
 	}
 
 	return scheduleTask, nil
@@ -619,22 +695,135 @@ func MapGetScheduleStepsTasks(ctx *fiber.Ctx, scheduleSteps []dtos.ScheduleTaskL
 }
 
 func MapUpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, userID uint, span opentracing.Span) (models.Schedule, error) {
+	totalTaskStep4Done := 0
+	totalAllTasksDone := 0
+	totalTasks := 0
+	totalTasks4 := 0
+
+	log.Println("totalTaskStep4Done, totalAllTasksDone, totalTasks", totalTaskStep4Done, totalAllTasksDone, totalTasks)
+	for iStep, reqStep := range req.Steps {
+		for _, reqTask := range reqStep.Tasks {
+			totalTasks += 1
+
+			if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+				totalAllTasksDone += 1
+			}
+
+			if iStep == 3 {
+				totalTasks4 += 1
+			}
+
+			if iStep == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+				totalTaskStep4Done += 1
+			}
+		}
+	}
+
 	scheduleTask := models.Schedule{
-		ID:           &req.ID,
-		AssigneeID:   req.AssigneeID,
-		SalesOrderID: req.SalesOrderID,
-		UUID:         req.UUID,
-		Title:        req.Title,
-		ModuleType:   req.ModuleType,
-		Remark:       req.Remark,
-		Status:       "WAITING",
-		StartAt:      req.StartAt,
-		EndAt:        req.EndAt,
-		Color:        req.Color,
-		CreatedByID:  &userID,
+		ID:                 &req.ID,
+		AssigneeID:         req.AssigneeID,
+		SalesOrderID:       req.SalesOrderID,
+		CustomerID:         req.CustomerID,
+		UUID:               req.UUID,
+		Title:              req.Title,
+		ModuleType:         req.ModuleType,
+		Remark:             req.Remark,
+		Status:             "WAITING",
+		StartAt:            req.StartAt,
+		EndAt:              req.EndAt,
+		Color:              req.Color,
+		CreatedByID:        &userID,
+		TotalTaskStep4Done: &totalTaskStep4Done,
+		TotalAllTasksDone:  &totalAllTasksDone,
+		TotalTasks:         &totalTasks,
+		TotalTasks4:        &totalTasks4,
 	}
 
 	return scheduleTask, nil
+}
+
+func MapUpdateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, userID uint, span opentracing.Span) (models.Schedule, error) {
+
+	totalTaskStep4Done := 0
+	totalAllTasksDone := 0
+	totalTasks := 0
+	totalTasks4 := 0
+
+	for iStep, reqStep := range req.Steps {
+		for _, reqTask := range reqStep.Tasks {
+			totalTasks += 1
+
+			if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+				totalAllTasksDone += 1
+			}
+
+			if iStep == 3 {
+				totalTasks4 += 1
+			}
+
+			if iStep == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+				totalTaskStep4Done += 1
+			}
+		}
+	}
+
+	scheduleTask := models.Schedule{
+		ID:                 &req.ID,
+		AssigneeID:         req.AssigneeID,
+		SalesOrderID:       *req.SalesOrderID,
+		CustomerID:         req.CustomerID,
+		UUID:               req.UUID,
+		Title:              req.Title,
+		ModuleType:         req.ModuleType,
+		Remark:             req.Remark,
+		Status:             "WAITING",
+		StartAt:            req.StartAt,
+		EndAt:              req.EndAt,
+		Color:              req.Color,
+		CreatedByID:        &userID,
+		TotalTaskStep4Done: &totalTaskStep4Done,
+		TotalAllTasksDone:  &totalAllTasksDone,
+		TotalTasks:         &totalTasks,
+		TotalTasks4:        &totalTasks4,
+	}
+
+	return scheduleTask, nil
+}
+
+func MapUpdateScheduleApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRequest, scheduleTask []dtos.ListScheduleTaskByScheduleID, span opentracing.Span) ([]map[string]interface{}, error) {
+
+	totalTaskStep4Done := 0
+	totalAllTasksDone := 0
+	totalTasks := 0
+	totalTasks4 := 0
+
+	for _, reqTask := range scheduleTask {
+		log.Println("reqTask", *reqTask.IsChecked, *reqTask.StepOrderItem, *reqTask.StepOrderItem)
+		totalTasks += 1
+
+		if reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+			totalAllTasksDone += 1
+		}
+
+		if *reqTask.StepOrderItem == 3 {
+			totalTasks4 += 1
+		}
+
+		if *reqTask.StepOrderItem == 3 && reqTask.IsChecked != nil && *reqTask.IsChecked == 1 {
+			totalTaskStep4Done += 1
+		}
+	}
+
+	schedule := []map[string]interface{}{}
+	schedule = append(schedule, map[string]interface{}{
+		"id":                     req.ScheduleID,
+		"total_task_step_4_done": totalTaskStep4Done,
+		"total_all_tasks_done":   totalAllTasksDone,
+		"total_tasks":            totalTasks,
+		"total_tasks_4":          totalTasks4,
+	})
+
+	return schedule, nil
 }
 
 func MapUpdateScheduleSteps(ctx *fiber.Ctx, req []dtos.UpdateScheduleStepRequest, userID uint, scheduleID uint, span opentracing.Span) ([]*models.ScheduleTask, error) {
@@ -780,6 +969,85 @@ func MapFilterUpdateScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.UpdatedSch
 }
 
 // func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtListDTO, req dtos.UpdateSalesOrderRequest, salesOrderID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
+func MapFilterUpdateSingleScheduleTasksToSteps(ctx *fiber.Ctx, steps []dtos.UpdatedScheduleStepListDTO, req dtos.UpdateScheduleRequest, scheduleID uint, span opentracing.Span) ([]*models.ScheduleTask, []map[string]interface{}, []uint, error) {
+	childSpan := span.Tracer().StartSpan("MapFilterUpdateScheduleTasksToSteps", opentracing.ChildOf(span.Context()))
+
+	// filter without ID to bulk create
+	// bulkCreateTasks := []map[string]interface{}{}
+	bulkCreateTasks := []*models.ScheduleTask{}
+	// filter with ID to bulk update
+	bulkUpdateTasks := []map[string]interface{}{}
+	// get all ids
+	taskIDs := []uint{}
+
+	claims := GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	for _, reqStep := range req.Steps {
+		for _, reqTask := range reqStep.Tasks {
+			for _, step := range steps {
+				if *reqTask.ParentUUID == *step.Uuid {
+					taskID := uint(0)
+					if reqTask.ID != nil && *reqTask.ID > 0 {
+						taskID = *reqTask.ID
+					}
+
+					if reqTask.ID == nil {
+						// newTask["created_by_id"] = userID
+						// newTask["created_at"] = time.Now()
+						// bulkCreateTasks = append(bulkCreateTasks, newTask)
+						newTask := &models.ScheduleTask{
+							ScheduleID:  scheduleID,
+							AssigneeID:  reqTask.AssigneeID,
+							ParentID:    step.ID,
+							EntityID:    reqTask.EntityID,
+							EntityType:  reqTask.EntityType,
+							UUID:        reqTask.UUID,
+							ParentUUID:  reqTask.ParentUUID,
+							Title:       reqTask.Title,
+							Remark:      reqTask.Remark,
+							OrderItem:   reqTask.OrderItem,
+							Color:       reqTask.Color,
+							IsChecked:   reqTask.IsChecked,
+							StartAt:     reqTask.StartAt,
+							EndAt:       reqTask.EndAt,
+							CreatedByID: &userID,
+						}
+
+						bulkCreateTasks = append(bulkCreateTasks, newTask)
+					} else if reqTask.ID != nil && *reqTask.ID > 0 {
+						newTask := map[string]interface{}{
+							"id":          taskID,
+							"schedule_id": scheduleID,
+							"assignee_id": reqTask.AssigneeID,
+							"parent_id":   step.ID,
+							"entity_id":   reqTask.EntityID,
+							"entity_type": reqTask.EntityType,
+							"uuid":        reqTask.UUID,
+							"parent_uuid": reqTask.ParentUUID,
+							"title":       reqTask.Title,
+							"remark":      reqTask.Remark,
+							"order_item":  reqTask.OrderItem,
+							"color":       reqTask.Color,
+							"is_checked":  reqTask.IsChecked,
+							"start_at":    reqTask.StartAt,
+							"end_at":      reqTask.EndAt,
+						}
+						newTask["updated_by_id"] = userID
+						newTask["updated_at"] = time.Now()
+						bulkUpdateTasks = append(bulkUpdateTasks, newTask)
+						taskIDs = append(taskIDs, *reqTask.ID)
+
+					}
+				}
+			}
+		}
+	}
+
+	return bulkCreateTasks, bulkUpdateTasks, taskIDs, nil
+}
+
+// func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtListDTO, req dtos.UpdateSalesOrderRequest, salesOrderID uint, span opentracing.Span) ([]map[string]interface{}, []map[string]interface{}, []uint, error) {
 func MapFilterUpdateScheduleTasksApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleAppRequest, scheduleID uint, span opentracing.Span) ([]map[string]interface{}, error) {
 	childSpan := span.Tracer().StartSpan("MapFilterUpdateScheduleTasksToSteps", opentracing.ChildOf(span.Context()))
 
@@ -807,7 +1075,7 @@ func MapFilterUpdateScheduleTasksApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderSc
 }
 
 // MapNewFiles
-func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesOrderID uint, userID uint, span opentracing.Span) ([]*models.Letter, error) {
+func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, refID uint, userID uint, span opentracing.Span) ([]*models.Letter, error) {
 	childSpan := opentracing.StartSpan("MapNewSalesOrderFiles", opentracing.ChildOf(span.Context()))
 
 	deviceType := []string{"web"}
@@ -841,8 +1109,57 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesO
 		}
 
 		newFile := &models.Letter{
-			RefID:       &salesOrderID,
-			RefType:     ctx.FormValue("ref_type", "sales_orders"),
+			RefID: &refID,
+			// RefType:     ctx.FormValue("ref_type", "sales_orders"),
+			RefType:     ctx.FormValue("ref_type", "schedules"),
+			FileType:    file.Header.Get("Content-Type"),
+			FileUrl:     newFilePath,
+			FileName:    file.Filename,
+			CreatedByID: &userID,
+			FileProp:    string(filePropJSON),
+		}
+
+		newFiles = append(newFiles, newFile)
+	}
+
+	return newFiles, nil
+}
+
+// MapNewFiles
+func MapNewSalesOrderFilesApp(ctx *fiber.Ctx, files []*multipart.FileHeader, req dtos.UpdateSalesOrderScheduleAppRequest, refID uint, userID uint, span opentracing.Span) ([]*models.Letter, error) {
+	childSpan := opentracing.StartSpan("MapNewSalesOrderFiles", opentracing.ChildOf(span.Context()))
+
+	deviceType := []string{"web"}
+	deviceType = append(deviceType, ctx.FormValue("device_type", req.DeviceType))
+
+	// newFiles := []map[string]interface{}{}
+	newFiles := []*models.Letter{}
+
+	for _, file := range files {
+		// fileName := file.Filename
+
+		newFilePath, err := HandleFileUpload(ctx, file, userID, span)
+		if err != nil {
+			defer childSpan.Finish()
+			return nil, err
+		}
+
+		fileProp := map[string]interface{}{
+			"file_size":   file.Size,
+			"device_type": deviceType,
+			"original":    file.Filename,
+		}
+
+		filePropJSON, err := json.Marshal(fileProp)
+		if err != nil {
+			defer childSpan.Finish()
+			return nil, err
+		}
+
+		newFile := &models.Letter{
+			RefID: &refID,
+			// RefType:     ctx.FormValue("ref_type", "sales_orders"),
+			RefType:     ctx.FormValue("ref_type", "schedules"),
 			FileType:    file.Header.Get("Content-Type"),
 			FileUrl:     newFilePath,
 			FileName:    file.Filename,
@@ -866,7 +1183,7 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, salesO
 // 	Remark   *string `json:"remark" db:"remark"`
 // }
 
-func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSalesOrderAttachmentsDTO, salesOrderID uint, userID uint, span opentracing.Span) []map[string]interface{} {
+func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSalesOrderAttachmentsDTO, refID uint, userID uint, span opentracing.Span) []map[string]interface{} {
 	// newFiles := []map[string]interface{}{}
 	updatedAttachments := []map[string]interface{}{}
 
@@ -889,7 +1206,7 @@ func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSal
 			// "file_url":  attachment.FileUrl,
 			"file_name": attachment.FileName,
 			// "ref_type":  attachment.RefType,
-			"ref_id": &salesOrderID,
+			"ref_id": refID,
 			"remark": attachment.Remark,
 			// FileProp:    string(filePropJSON),
 			"updated_by_id": &userID,
@@ -899,4 +1216,27 @@ func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSal
 	}
 
 	return updatedAttachments
+}
+
+func MapAttachmentsScheduleToAttachments(reqAttachments []dtos.ScheduleAttachmentsDTO) []dtos.SalesOrderAttachmentsDTO {
+	attachments := []dtos.SalesOrderAttachmentsDTO{}
+	for _, attachment := range reqAttachments {
+		attachments = append(attachments, dtos.SalesOrderAttachmentsDTO{
+			ID:            attachment.ID,
+			RefID:         attachment.RefID,
+			RefType:       attachment.RefType,
+			FileType:      attachment.FileType,
+			FileUrl:       attachment.FileUrl,
+			FileName:      attachment.FileName,
+			Remark:        attachment.Remark,
+			FileSize:      attachment.FileSize,
+			DeviceType:    attachment.DeviceType,
+			CreatedAt:     attachment.CreatedAt,
+			DeletedAt:     attachment.DeletedAt,
+			CreatedByName: attachment.CreatedByName,
+			UpdatedByName: attachment.UpdatedByName,
+		})
+	}
+
+	return attachments
 }

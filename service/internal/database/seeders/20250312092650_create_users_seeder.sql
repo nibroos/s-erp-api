@@ -13,7 +13,7 @@ INSERT INTO
   )
 VALUES
   (
-    NULL,
+    1,
     'cs',
     'cs@yubipro.com',
     'Customer Service User',
@@ -24,7 +24,7 @@ VALUES
   ),
   -- technician
   (
-    NULL,
+    1,
     'tech',
     'tech@yubipro.com',
     'Technician User',
@@ -35,7 +35,7 @@ VALUES
   ),
   -- DEVELOPER
   (
-    NULL,
+    1,
     'dev',
     'dev@yubipro.com',
     'Developer User',

@@ -1,0 +1,6 @@
+ALTER TABLE
+  so_dts
+ALTER COLUMN
+  qty_out
+SET
+  DEFAULT NULL;

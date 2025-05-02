@@ -20,7 +20,7 @@ func NewScheduleUpdateAppRequest() *ScheduleUpdateAppRequest {
 func (r *ScheduleUpdateAppRequest) Validate(req *dtos.UpdateSalesOrderScheduleAppRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 
 	rules := map[string][]string{
-		"sales_order_id":       []string{"exists:sales_orders,id"},
+		"schedule_id":          []string{"required", "exists:schedules,id"},
 		"tasks":                []string{"array"},
 		"tasks.*.id":           []string{"required", "exists:schedule_tasks,id"},
 		"tasks.*.assignee_id":  []string{"exists:users,id"},

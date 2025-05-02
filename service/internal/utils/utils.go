@@ -341,6 +341,9 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 
 	// "data" is used for JSON data in multipart/form-data
 	data := ctx.FormValue("data")
+	fields := ctx.FormValue("fields")
+	log.Println("data1", data)
+	log.Println("fields", fields)
 	// fileHeader, err := ctx.FormFile("files[0]")
 
 	// if ctx.Get("Content-Type") == "application/json" {
@@ -376,6 +379,20 @@ func BodyParserWithNull(ctx *fiber.Ctx, out interface{}) error {
 	} else if data != "" {
 		// Parse the data string as JSON when present
 		if err := json.Unmarshal([]byte(data), &body); err != nil {
+			log.Println("bodyerr", data, err)
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to parse data JSON"})
+		}
+
+		// Convert empty strings to null in the map
+		for key, value := range body {
+			if str, ok := value.(string); ok && str == "" {
+				body[key] = nil
+			}
+		}
+	} else if fields != "" {
+		// Parse the fields string as JSON when present
+		if err := json.Unmarshal([]byte(fields), &body); err != nil {
+			log.Println("bodyerr", fields, err)
 			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Failed to parse data JSON"})
 		}
 
@@ -847,4 +864,55 @@ func GetValueOrDefault[T comparable](ptr *T, defaultValue T) T {
 		return defaultValue
 	}
 	return *ptr
+}
+
+func ParseMapIDToUint(value interface{}) (uint, bool) {
+	switch v := value.(type) {
+	case int32:
+		return uint(v), true
+	case int64:
+		return uint(v), true
+	case int:
+		return uint(v), true
+	case float64:
+		return uint(v), true
+	case float32:
+		return uint(v), true
+	case uint:
+		return v, true
+	case uint32:
+		return uint(v), true
+	case uint64:
+		return uint(v), true
+	default:
+		return 0, false
+	}
+}
+
+func ParseMapQtyToFloat64(value interface{}) float64 {
+	if value == nil {
+		return 0.0
+	}
+
+	switch v := value.(type) {
+	case float64:
+		return v
+	case float32:
+		return float64(v)
+	case int:
+		return float64(v)
+	case int32:
+		return float64(v)
+	case int64:
+		return float64(v)
+	case string:
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f
+		}
+	case json.Number:
+		if f, err := v.Float64(); err == nil {
+			return f
+		}
+	}
+	return 0.0
 }

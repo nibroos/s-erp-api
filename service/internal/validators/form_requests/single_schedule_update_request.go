@@ -1,31 +1,29 @@
 package form_requests
 
 import (
-	"encoding/json"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/validators"
 )
 
-// ScheduleUpdateRequest handles the validation for the RegisterRequest.
-type ScheduleUpdateRequest struct {
+// SingleScheduleUpdateRequest handles the validation for the RegisterRequest.
+type SingleScheduleUpdateRequest struct {
 }
 
-// NewRegisterUpdateRequest creates a new instance of ScheduleUpdateRequest.
-func NewScheduleUpdateRequest() *ScheduleUpdateRequest {
+// NewRegisterUpdateRequest creates a new instance of SingleScheduleUpdateRequest.
+func NewSingleScheduleUpdateRequest() *SingleScheduleUpdateRequest {
 
-	return &ScheduleUpdateRequest{}
+	return &SingleScheduleUpdateRequest{}
 }
 
 // Validate validates the RegisterRequest.
-func (r *ScheduleUpdateRequest) Validate(req *dtos.UpdateSalesOrderScheduleRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+func (r *SingleScheduleUpdateRequest) Validate(req *dtos.UpdateScheduleRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 
 	rules := map[string][]string{
 		// "id":             []string{"required", "exists:schedules,id"},
 		"assignee_id":    []string{"exists:users,id"},
 		"customer_id":    []string{"exists:customers,id"},
-		"sales_order_id": []string{},
+		"sales_order_id": []string{"exists:sales_orders,id"},
 		"uuid":           []string{},
 		"steps_id":       []string{},
 		"title":          []string{},
@@ -55,33 +53,9 @@ func (r *ScheduleUpdateRequest) Validate(req *dtos.UpdateSalesOrderScheduleReque
 	customFieldNames := map[string]string{}
 
 	var requestBody map[string]interface{}
-
-	form := ctx.FormValue("data")
-
-	if err := json.Unmarshal([]byte(form), &requestBody); err != nil {
-		return map[string][]string{"error": {"Invalid JSON format"}}, false
+	if err := ctx.BodyParser(&requestBody); err != nil {
+		return map[string][]string{"error": {"Invalid request body"}}, false
 	}
-
-	// Convert empty strings to null in the map
-	for key, value := range requestBody {
-		if str, ok := value.(string); ok && str == "" {
-			requestBody[key] = nil
-		}
-	}
-
-	requestBody = make(map[string]interface{})
-	// Parse the data string as JSON when present
-	if err := json.Unmarshal([]byte(form), &requestBody); err != nil {
-		return map[string][]string{"error": {"Invalid JSON format"}}, false
-	}
-
-	// Convert empty strings to null in the map
-	for key, value := range requestBody {
-		if str, ok := value.(string); ok && str == "" {
-			requestBody[key] = nil
-		}
-	}
-
 	request := validators.NewRequest(rules, requestBody, customFieldNames)
 	errors, valid := request.Validate()
 

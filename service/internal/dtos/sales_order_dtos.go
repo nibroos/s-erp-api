@@ -132,6 +132,23 @@ type CreateScheduleRequest struct {
 	Steps []UpdateScheduleStepRequest `json:"steps"`
 }
 
+type CreateScheduleNoRefRequest struct {
+	AssigneeID *uint `json:"assignee_id"`
+	// SalesOrderID  uint    `json:"sales_order_id"`
+	CustomerID *uint   `json:"customer_id"`
+	UUID       *string `json:"uuid"`
+	StepsID    *uint   `json:"steps_id"`
+	Title      string  `json:"title"`
+	ModuleType string  `json:"module_type"`
+	Remark     *string `json:"remark"`
+	// Status        string  `json:"status"`
+	StartAt *string `json:"start_at"`
+	EndAt   *string `json:"end_at"`
+	Color   *string `json:"color"`
+
+	Steps []UpdateScheduleStepRequest `json:"steps"`
+}
+
 type CreateScheduleStepRequest struct {
 	AssigneeID *uint   `json:"assignee_id"`
 	ParentID   *uint   `json:"parent_id"`
@@ -193,6 +210,7 @@ type UpdateSoDtsRequest struct {
 	IsLockMarkup    *int8                     `json:"is_lock_markup"`
 	IsLockPriceSell *int8                     `json:"is_lock_price_sell"`
 	Qty             *float64                  `json:"qty"`
+	QtyOut          *float64                  `json:"qty_out"`
 	PriceSell       *float64                  `json:"price_sell"`
 	PriceBuy        *float64                  `json:"price_buy"`
 	SubtotalSell    *float64                  `json:"subtotal_sell"`
@@ -219,6 +237,7 @@ type UpdateSoDtsBomsRequest struct {
 	GenCode      *string `json:"gen_code"`
 	Remark       *string `json:"remark"`
 	Qty          float64 `json:"qty"`
+	QtyOut       float64 `json:"qty_out"`
 	PriceSell    float64 `json:"price_sell"`
 	PriceBuy     float64 `json:"price_buy"`
 	SubtotalSell float64 `json:"subtotal_sell"`
@@ -429,6 +448,12 @@ type SalesOrderDetailDTO struct {
 	Attachments   []SalesOrderAttachmentsDTO `json:"attachments"`
 }
 
+type AppScheduleDetailDTO struct {
+	ID          uint                     `json:"id" db:"id"`
+	Schedule    *ScheduleSingleDetailDTO `json:"schedule"`
+	Attachments []ScheduleAttachmentsDTO `json:"attachments"`
+}
+
 type SalesOrderAttachmentsDTO struct {
 	ID         *uint   `json:"id" db:"id"`
 	RefID      *uint   `json:"ref_id" db:"ref_id"`
@@ -447,26 +472,30 @@ type SalesOrderAttachmentsDTO struct {
 }
 
 type ScheduleDetailDTO struct {
-	ID            uint    `json:"id" db:"id"`
-	AssigneeID    *uint   `json:"assignee_id" db:"assignee_id"`
-	SalesOrderID  uint    `json:"sales_order_id" db:"sales_order_id"`
-	StepsID       *uint   `json:"steps_id" db:"steps_id"`
-	UUID          *string `json:"uuid" db:"uuid"`
-	Title         string  `json:"title" db:"title"`
-	ModuleType    *string `json:"module_type" db:"module_type"`
-	Remark        *string `json:"remark" db:"remark"`
-	Status        string  `json:"status" db:"status"`
-	StartAt       *string `json:"start_at" db:"start_at"`
-	EndAt         *string `json:"end_at" db:"end_at"`
-	Color         *string `json:"color" db:"color"`
-	CreatedByID   *uint   `json:"created_by_id" db:"created_by_id"`
-	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`
-	DeletedByID   *uint   `json:"deleted_by_id" db:"deleted_by_id"`
-	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
-	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
-	CreatedAt     *string `json:"created_at" db:"created_at"`
-	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
-	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+	ID                 uint    `json:"id" db:"id"`
+	AssigneeID         *uint   `json:"assignee_id" db:"assignee_id"`
+	CustomerID         *uint   `json:"customer_id" db:"customer_id"`
+	SalesOrderID       uint    `json:"sales_order_id" db:"sales_order_id"`
+	StepsID            *uint   `json:"steps_id" db:"steps_id"`
+	UUID               *string `json:"uuid" db:"uuid"`
+	Title              string  `json:"title" db:"title"`
+	ModuleType         *string `json:"module_type" db:"module_type"`
+	Remark             *string `json:"remark" db:"remark"`
+	Status             string  `json:"status" db:"status"`
+	StartAt            *string `json:"start_at" db:"start_at"`
+	EndAt              *string `json:"end_at" db:"end_at"`
+	Color              *string `json:"color" db:"color"`
+	TotalTaskStep4Done *int    `json:"total_task_step_4_done" db:"total_task_step_4_done"`
+	TotalAllTasksDone  *int    `json:"total_all_tasks_done" db:"total_all_tasks_done"`
+	TotalTasks         *int    `json:"total_tasks" db:"total_tasks"`
+	CreatedByID        *uint   `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID        *uint   `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID        *uint   `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName      *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName      *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt          *string `json:"created_at" db:"created_at"`
+	UpdatedAt          *string `json:"updated_at" db:"updated_at"`
+	DeleteAt           *string `json:"deleted_at" db:"deleted_at"`
 
 	AssigneeName *string `json:"assignee_name" db:"assignee_name"`
 
@@ -840,7 +869,32 @@ type UpdateQuotationStatusRequest struct {
 type UpdateSalesOrderScheduleRequest struct {
 	ID           uint    `json:"id"`
 	AssigneeID   *uint   `json:"assignee_id"`
+	CustomerID   *uint   `json:"customer_id"`
 	SalesOrderID uint    `json:"sales_order_id"`
+	StepsID      *uint   `json:"steps_id"`
+	UUID         *string `json:"uuid"`
+	Title        string  `json:"title"`
+	ModuleType   string  `json:"module_type"`
+	Remark       *string `json:"remark"`
+	Status       string  `json:"status"`
+	StartAt      *string `json:"start_at"`
+	EndAt        *string `json:"end_at"`
+	Color        *string `json:"color"`
+	CreatedByID  *uint   `json:"created_by_id"`
+	UpdatedByID  *uint   `json:"updated_by_id"`
+	DeletedByID  *uint   `json:"deleted_by_id"`
+	IsDelete     *int    `json:"is_delete"`
+
+	Steps        []UpdateScheduleStepRequest      `json:"steps"`
+	Attachments  []UpdateSalesOrderAttachmentsDTO `json:"attachments"`
+	DeletedFiles []uint                           `json:"deleted_files"`
+}
+
+type UpdateScheduleRequest struct {
+	ID           uint    `json:"id"`
+	AssigneeID   *uint   `json:"assignee_id"`
+	CustomerID   *uint   `json:"customer_id"`
+	SalesOrderID *uint   `json:"sales_order_id"`
 	StepsID      *uint   `json:"steps_id"`
 	UUID         *string `json:"uuid"`
 	Title        string  `json:"title"`
@@ -858,10 +912,17 @@ type UpdateSalesOrderScheduleRequest struct {
 	Steps []UpdateScheduleStepRequest `json:"steps"`
 }
 
+type ListScheduleTaskByScheduleID struct {
+	ID            *uint `json:"id" db:"id"`
+	ScheduleID    *uint `json:"schedule_id" db:"schedule_id"`
+	StepOrderItem *int  `json:"step_order_item" db:"step_order_item"`
+	IsChecked     *int  `json:"is_checked" db:"is_checked"`
+}
+
 type UpdateSalesOrderScheduleAppRequest struct {
 	// sales_orders | feedbacks
 	RefType      string                                   `json:"ref_type"`
-	SalesOrderID uint                                     `json:"sales_order_id"`
+	SalesOrderID *uint                                    `json:"sales_order_id"`
 	ScheduleID   uint                                     `json:"schedule_id"`
 	DeviceType   string                                   `json:"device_type"`
 	DeletedFiles []uint                                   `json:"deleted_files"`
@@ -978,48 +1039,49 @@ type ProjectAppListDTO struct {
 	OrderTypeName   *string `json:"order_type_name" db:"order_type_name"`
 }
 
-//  "id": "p-001",
-//   "name": "Project 2",
-//   "description": "PT Project 2",
-//   "status": "in_progress",
-//   "start_date": "2023-01-20",
-//   "end_date": "2023-02-20",
-//   "task_completed": 10,
-//   "task_total": 20,
-//   "tasks": [
-//     {
-//       "id": "t-001",
-//       "title": "Task 1",
-//       "notes": "",
-//       "completed_by": "Ahmad",
-//       "completed_at": "2023-10-10T10:00:00",
-//       "is_done": true
-//     },
-//     {
-//       "id": "t-002",
-//       "title": "Task 2",
-//       "notes": "",
-//       "completed_by": "Ahmad",
-//       "completed_at": "2023-10-10T10:00:00",
-//       "is_done": true
-//     }
-//   ],
-//   "attachments": [
-//     {
-//       "id": "a-001",
-//       "image_url": "https://example.com/image1.jpg",
-//       "uploaded_by": "Ahmad",
-//       "description": "Lorem ipsum dolor sit amet",
-//       "uploaded_at": "2022-10-10"
-//     },
-//     {
-//       "id": "a-002",
-//       "image_url": "https://example.com/image2.jpg",
-//       "uploaded_by": "Ahmad",
-//       "description": "Lorem ipsum dolor sit amet",
-//       "uploaded_at": "2022-10-10"
-//     }
-//   ]
+// "id": "p-001",
+//
+//	"name": "Project 2",
+//	"description": "PT Project 2",
+//	"status": "in_progress",
+//	"start_date": "2023-01-20",
+//	"end_date": "2023-02-20",
+//	"task_completed": 10,
+//	"task_total": 20,
+//	"tasks": [
+//	  {
+//	    "id": "t-001",
+//	    "title": "Task 1",
+//	    "notes": "",
+//	    "completed_by": "Ahmad",
+//	    "completed_at": "2023-10-10T10:00:00",
+//	    "is_done": true
+//	  },
+//	  {
+//	    "id": "t-002",
+//	    "title": "Task 2",
+//	    "notes": "",
+//	    "completed_by": "Ahmad",
+//	    "completed_at": "2023-10-10T10:00:00",
+//	    "is_done": true
+//	  }
+//	],
+//	"attachments": [
+//	  {
+//	    "id": "a-001",
+//	    "image_url": "https://example.com/image1.jpg",
+//	    "uploaded_by": "Ahmad",
+//	    "description": "Lorem ipsum dolor sit amet",
+//	    "uploaded_at": "2022-10-10"
+//	  },
+//	  {
+//	    "id": "a-002",
+//	    "image_url": "https://example.com/image2.jpg",
+//	    "uploaded_by": "Ahmad",
+//	    "description": "Lorem ipsum dolor sit amet",
+//	    "uploaded_at": "2022-10-10"
+//	  }
+//	]
 type ProjectAppDetailDTO struct {
 	ID              int     `json:"id" db:"id"`
 	SalesOrderID    *uint   `json:"sales_order_id" db:"sales_order_id"`
@@ -1038,16 +1100,60 @@ type ProjectAppDetailDTO struct {
 	Attachments []SalesOrderAttachmentsDTO `json:"attachments"`
 }
 
+type ScheduleSingleDetailDTO struct {
+	ID                 uint    `json:"id" db:"id"`
+	AssigneeID         *uint   `json:"assignee_id" db:"assignee_id"`
+	CustomerID         *uint   `json:"customer_id" db:"customer_id"`
+	SalesOrderID       *uint   `json:"sales_order_id" db:"sales_order_id"`
+	Title              string  `json:"title" db:"title"`
+	ModuleType         *string `json:"module_type" db:"module_type"`
+	CustomerName       *string `json:"customer_name" db:"customer_name"`
+	StartAt            *string `json:"start_at" db:"start_at"`
+	EndAt              *string `json:"end_at" db:"end_at"`
+	Color              *string `json:"color" db:"color"`
+	TotalTaskStep4Done *int    `json:"total_task_step_4_done" db:"total_task_step_4_done"`
+	TotalAllTasksDone  *int    `json:"total_all_tasks_done" db:"total_all_tasks_done"`
+	TotalTasks         *int    `json:"total_tasks" db:"total_tasks"`
+	TotalTasks4        *int    `json:"total_tasks_4" db:"total_tasks_4"`
+	CreatedByName      *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName      *string `json:"updated_by_name" db:"updated_by_name"`
+
+	AssigneeName *string `json:"assignee_name" db:"assignee_name"`
+
+	Steps       []ScheduleStepListDTO    `json:"steps"`
+	Attachments []ScheduleAttachmentsDTO `json:"attachments"`
+}
+
 type CalendarListDTO struct {
-	ID            *uint   `json:"id" db:"id"`
-	SalesOrderID  *uint   `json:"sales_order_id" db:"sales_order_id"`
-	Name          *string `json:"name" db:"name"`
-	CustomerName  *string `json:"customer_name" db:"customer_name"`
-	Status        *string `json:"status" db:"status"`
-	OrderAt       *string `json:"order_at" db:"order_at"`
-	Start         *string `json:"start" db:"start"`
-	End           *string `json:"end" db:"end"`
-	Title         *string `json:"title" db:"title"`
-	Color         *string `json:"color" db:"color"`
-	OrderTypeName *string `json:"order_type_name" db:"order_type_name"`
+	ID                 *uint   `json:"id" db:"id"`
+	SalesOrderID       *uint   `json:"sales_order_id" db:"sales_order_id"`
+	CustomerName       *string `json:"customer_name" db:"customer_name"`
+	OrderAt            *string `json:"order_at" db:"order_at"`
+	Start              *string `json:"start" db:"start"`
+	End                *string `json:"end" db:"end"`
+	Title              *string `json:"title" db:"title"`
+	Color              *string `json:"color" db:"color"`
+	TaskTitle          *string `json:"task_title" db:"task_title"`
+	TotalTaskStep4Done *int    `json:"total_task_step_4_done" db:"total_task_step_4_done"`
+	TotalAllTasksDone  *int    `json:"total_all_tasks_done" db:"total_all_tasks_done"`
+	TotalTasks         *int    `json:"total_tasks" db:"total_tasks"`
+	TotalTasks4        *int    `json:"total_tasks_4" db:"total_tasks_4"`
+	OrderTypeName      *string `json:"order_type_name" db:"order_type_name"`
+}
+
+type ScheduleAttachmentsDTO struct {
+	ID         *uint   `json:"id" db:"id"`
+	RefID      *uint   `json:"ref_id" db:"ref_id"`
+	RefType    *string `json:"ref_type" db:"ref_type"`
+	FileType   *string `json:"file_type" db:"file_type"`
+	FileUrl    *string `json:"file_url" db:"file_url"`
+	FileName   *string `json:"file_name" db:"file_name"`
+	Remark     *string `json:"remark" db:"remark"`
+	FileSize   *int64  `json:"file_size" db:"file_size"`
+	DeviceType *string `json:"device_type" db:"device_type"`
+	CreatedAt  *string `json:"created_at" db:"created_at"`
+	DeletedAt  *string `json:"deleted_at" db:"deleted_at"`
+
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
 }

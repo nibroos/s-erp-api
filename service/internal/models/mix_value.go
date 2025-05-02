@@ -9,12 +9,14 @@ type MixValue struct {
 	ID          uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	GroupID     uint           `json:"group_id" gorm:"column:group_id"`
 	ParentID    *uint          `json:"parent_id" gorm:"column:parent_id"`
+	BranchID    *uint          `json:"branch_id" gorm:"column:branch_id"`
 	Name        string         `json:"name" gorm:"column:name"`
 	Description *string        `json:"description" gorm:"column:description"`
 	Remark      *string        `json:"remark" gorm:"column:remark"`
 	Num         float64        `json:"num" gorm:"column:num"`
 	OrderItem   *float64       `json:"order_item" gorm:"column:order_item"`
 	Status      int8           `json:"status" gorm:"column:status"`
+	IsMain      int8           `json:"is_main" gorm:"column:is_main"`
 	OptionsJSON string         `json:"options_json" gorm:"column:options_json"`
 	CreatedByID *uint          `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID *uint          `json:"updated_by_id" gorm:"column:updated_by_id"`
