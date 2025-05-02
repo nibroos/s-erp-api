@@ -1147,6 +1147,7 @@ type ScheduleAttachmentsDTO struct {
 	RefType    *string `json:"ref_type" db:"ref_type"`
 	FileType   *string `json:"file_type" db:"file_type"`
 	FileUrl    *string `json:"file_url" db:"file_url"`
+	FileUrlApp *string `json:"file_url_app" db:"file_url_app"`
 	FileName   *string `json:"file_name" db:"file_name"`
 	Remark     *string `json:"remark" db:"remark"`
 	FileSize   *int64  `json:"file_size" db:"file_size"`

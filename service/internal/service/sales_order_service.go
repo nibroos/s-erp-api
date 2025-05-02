@@ -1508,5 +1508,7 @@ func (s *SalesOrderService) GetAttachmentsByScheduleID(ctx *fiber.Ctx, tx *gorm.
 		return nil, err
 	}
 
+	attachments = utils.MapAttachmentsToURL(attachments)
+
 	return attachments, nil
 }

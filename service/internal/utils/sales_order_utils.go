@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"mime/multipart"
+	"os"
 	"strings"
 	"time"
 
@@ -1236,6 +1237,21 @@ func MapAttachmentsScheduleToAttachments(reqAttachments []dtos.ScheduleAttachmen
 			CreatedByName: attachment.CreatedByName,
 			UpdatedByName: attachment.UpdatedByName,
 		})
+	}
+
+	return attachments
+}
+
+// add url before path file by env
+func MapAttachmentsToURL(attachments []dtos.ScheduleAttachmentsDTO) []dtos.ScheduleAttachmentsDTO {
+	// attachments := []dtos.SalesOrderAttachmentsDTO{}
+	for i, attachment := range attachments {
+		if attachment.FileUrl != nil {
+			// remove first letter from file url
+			newFileUrl := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), (*attachment.FileUrl)[1:])
+			// newFileUrl := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), *attachment.FileUrl)
+			attachments[i].FileUrlApp = &newFileUrl
+		}
 	}
 
 	return attachments
