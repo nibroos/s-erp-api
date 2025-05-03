@@ -1982,6 +1982,8 @@ type ProductListDTO struct {
 	Margin           *float64 `json:"margin" db:"margin"`
 	ExpiredAt        *string  `json:"expired_at" db:"expired_at"`
 	Status           int8     `json:"status" db:"status"`
+	CreatedByID      *uint    `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID      *uint    `json:"updated_by_id" db:"updated_by_id"`
 	CreatedByName    *string  `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string  `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt        *string  `json:"created_at" db:"created_at"`

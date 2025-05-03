@@ -560,3 +560,53 @@ func (c *ProductController) CsvGetProducts(ctx *fiber.Ctx) error {
 
 	return ctx.Send(products)
 }
+
+func (c *ProductController) GetProductBom(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("ProductController-GetProducts", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("ProductController-GetProducts: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	products, total, err := c.service.GetProductBom(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
+	}
+
+	productIDs := make([]uint, 0)
+	for _, product := range products {
+		productIDs = append(productIDs, uint(product.ID))
+	}
+
+	// get all boms
+	boms, err := c.service.GetBomsByProductIDs(ctx, filters, productIDs, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Master product", http.StatusInternalServerError)
+	}
+
+	// map bom to product
+	for i, product := range products {
+		productBoms := make([]dtos.ProductBomListDTO, 0)
+		for _, bom := range boms {
+			if bom.ProductID == uint(product.ID) {
+				productBoms = append(productBoms, bom)
+			}
+		}
+		products[i].Boms = productBoms
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, products, paginationMeta, "Master product fetched successfully", http.StatusOK, nil, nil)
+}

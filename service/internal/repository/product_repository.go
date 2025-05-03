@@ -827,3 +827,342 @@ func (r *ProductRepository) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[stri
 
 	return boms, nil
 }
+
+func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ProductListDTO, int, error) {
+	// Create a child span for the controller
+	childSpan := opentracing.StartSpan("ProductRepository-GetProductBom", opentracing.ChildOf(span.Context()))
+
+	// Simulate an error for testing Jaeger tracing
+	if filters["simulate_error"] == "true" {
+		utils.LogErrors(childSpan, fmt.Errorf("simulated error"))
+
+		return nil, 0, fmt.Errorf("simulated error")
+	}
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	products := []dtos.ProductListDTO{}
+
+	var total int
+
+	// select column
+	cdSelect := `mp.name, mp.specification, mp.description, mp.tpb_code, iu.price_sell, iu.price_buy, mp.minimum_stock,`
+	if branchID != nil && !isAdmin {
+
+		cdSelect = `
+		COALESCE(bi.name, mp.name) as name,
+		COALESCE(bi.factory_code, mp.factory_code) as factory_code,
+		COALESCE(bi.sku, mp.sku) as sku,
+		COALESCE(bi.barcode, mp.barcode) as barcode,
+		COALESCE(bi.specification, mp.specification) as specification,
+		COALESCE(bi.description, mp.description) as description,
+		COALESCE(bi.remark, mp.remark) as remark,
+		COALESCE(bi.tpb_code, mp.tpb_code) as tpb_code,
+		COALESCE(bi.qty_stock, mp.qty_stock) as qty_stock,
+		COALESCE(bi.minimum_stock, mp.minimum_stock) as minimum_stock,
+		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
+		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
+		COALESCE(bi.margin, iu.margin) as margin,
+		COALESCE(bi.status, mp.status) as status,
+		COALESCE(bi.expired_at, mp.expired_at) as expired_at,
+		COALESCE(bi.created_at, mp.created_at) as created_at,
+		COALESCE(bi.updated_at, mp.updated_at) as updated_at,
+		COALESCE(bi.deleted_at, mp.deleted_at) as deleted_at,
+
+		bi.id as branch_item_id,
+		`
+	} else {
+		cdSelect = `
+			mp.name, mp.factory_code, mp.sku, mp.barcode, mp.specification, mp.description, mp.remark, mp.tpb_code, mp.minimum_stock, iu.price_sell, iu.price_buy, iu.margin, mp.status, mp.expired_at, mp.created_at, mp.updated_at, mp.deleted_at,
+		`
+	}
+
+	// "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
+	filterDBColumnKey := []string{
+		"mp.name",
+		"mp.code",
+		"mp.factory_code",
+		"mp.sku",
+		"mp.barcode",
+		"mp.specification",
+		"mp.description",
+		"mp.remark",
+		"mp.tpb_code",
+		"pi.name",
+		"pi.code",
+		"pi.factory_code",
+		"pi.sku",
+		"pi.barcode",
+		"pi.specification",
+		"pi.description",
+		"pi.remark",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+
+	if value, ok := filters["global"]; ok && value != "" {
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND m.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"unit_id":           "iu.unit_id",
+		"status":            "m.status",
+		"prod_type":         "m.prod_type",
+		"item_sub_group_id": "m.item_sub_group_id",
+		"item_group_id":     "isg.item_group_id",
+	}
+
+	for key, _ := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", value, i)
+			// countQuery += fmt.Sprintf(" AND %s = $%d", value, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"item_sub_group_ids": "m.item_sub_group_id",
+		"item_group_ids":     "isg.item_group_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+		}
+	}
+
+	baseQuery := `
+    FROM ( 
+        SELECT
+					m.id, m.item_sub_group_id, m.item_unit_id,
+					m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.tpb_code, m.minimum_stock, m.status, m.expired_at,
+
+					m.id as product_id,
+					m.id as ref_id,
+					m.is_pph23,
+					m.is_vat,
+					m.created_by_id,
+					m.updated_by_id,
+					m.is_all_branch,
+					m.created_at,
+					m.updated_at, 
+					m.deleted_at,
+
+					'products' as prod_type
+        FROM products m
+
+				UNION ALL
+
+				SELECT
+					b.id, i.item_sub_group_id, b.item_unit_id,
+					i.code, i.factory_code, i.name, i.sku, i.barcode, i.specification, i.description, i.remark, i.tpb_code, i.minimum_stock, i.status, i.expired_at,
+					
+					i.id as product_id,
+					i.id as ref_id,
+					i.is_pph23,
+					i.is_vat,
+					i.created_by_id,
+					i.updated_by_id,
+					i.is_all_branch,
+					i.created_at,
+					i.updated_at,
+					i.deleted_at,
+
+					'bom' as prod_type
+				FROM boms b
+				LEFT JOIN products i ON b.product_item_id = i.id
+
+    ) AS mp
+		LEFT JOIN boms bo ON mp.id = bo.product_id
+		LEFT JOIN products pi ON bo.product_item_id = pi.id
+		LEFT JOIN mix_values isg ON mp.item_sub_group_id = isg.id
+		LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+		LEFT JOIN item_units iu ON iu.id = mp.item_unit_id
+		LEFT JOIN mix_values u ON iu.unit_id = u.id
+		LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
+		LEFT JOIN branches b ON bi.branch_id = b.id
+		LEFT JOIN users cu ON mp.created_by_id = cu.id
+		LEFT JOIN users uu ON mp.updated_by_id = uu.id`
+
+	query := `SELECT mp.*,
+			` + cdSelect + `
+			isg.parent_id as item_group_id, 
+			pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
+
+			u.name as unit_name,
+			isg.name as item_sub_group_name,
+			ig.name as item_group_name,
+			'products' as ref_type,
+
+			cu.name as created_by_name,
+			uu.name as updated_by_name
+			` + baseQuery + `
+			WHERE 1=1 AND mp.deleted_at IS NULL ` + queryGlobal + condition
+
+	countQuery := `SELECT COUNT(*) ` + baseQuery + `
+			WHERE 1=1 AND mp.deleted_at IS NULL`
+
+	// countQuery := `SELECT COUNT(*) FROM (
+	//       SELECT DISTINCT ON (m.id)
+	// 				m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
+	// 				` + cdSelect + `
+	// 				pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
+
+	// 				m.id as product_id,
+	// 				m.id as ref_id,
+	// 				m.prod_type,
+	// 				u.name as unit_name,
+	// 				isg.name as item_sub_group_name,
+	// 				ig.name as item_group_name,
+	// 				'products' as ref_type,
+
+	// 				cu.name as created_by_name,
+	// 				uu.name as updated_by_name
+
+	//       FROM products m
+	// 			LEFT JOIN boms bo ON m.id = bo.product_id
+	// 			LEFT JOIN products pi ON bo.product_item_id = pi.id
+	// 			LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
+	// 			LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+	// 			LEFT JOIN item_units iu ON iu.id = m.item_unit_id
+	// 			LEFT JOIN mix_values u ON iu.unit_id = u.id
+	// 			LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
+	// 			LEFT JOIN branches b ON bi.branch_id = b.id
+	//       LEFT JOIN users cu ON m.created_by_id = cu.id
+	//       LEFT JOIN users uu ON m.updated_by_id = uu.id
+	// 			WHERE 1=1` + queryGlobal + condition + `
+	//   ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	for key, value := range filters {
+		switch key {
+		case "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "tpb_code", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	// Goroutine for count query
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			// Create a span for the count query
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "updated_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	// another order col & dir
+	orderColumns := map[string]string{
+		"updated_at": "desc",
+		"created_at": "desc",
+		"name":       "asc",
+	}
+
+	for key, value := range orderColumns {
+		if filters[key] != "" {
+			query += fmt.Sprintf(", %s %s", key, value)
+		}
+	}
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	// if is_csv
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	// Goroutine for select query
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Create a span for the select query
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	// Wait for both goroutines to finish
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return products, total, nil
+}

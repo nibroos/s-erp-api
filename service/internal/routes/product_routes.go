@@ -17,6 +17,7 @@ func SetupProductRoutes(products fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, 
 
 	// products.Post("/index-product", middleware.PermissionMiddleware("read_masters"), productController.GetProducts)
 	products.Post("/index-product", productController.GetProducts)
+	products.Post("/index-product-bom", productController.GetProductBom)
 	products.Post("/show-product", productController.GetProductByID)
 	products.Post("/create-product", productController.CreateProduct)
 	products.Post("/update-product", productController.UpdateProduct)
