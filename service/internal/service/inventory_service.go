@@ -290,7 +290,7 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 	}
 
 	if len(refPoDtID) > 0 {
-		poDt, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "po_dts", "purchase_order_id", refPoDtID, childSpan)
+		poDt, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "purchase_order_dts", "purchase_order_id", refPoDtID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -405,7 +405,7 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 	}
 
 	if len(refPoDtID) > 0 {
-		poDt, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "po_dts", "purchase_order_id", refPoDtID, childSpan)
+		poDt, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "purchase_order_dts", "purchase_order_id", refPoDtID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()

@@ -187,6 +187,7 @@ func MapCreatePoDts(ctx *fiber.Ctx, req dtos.CreatePurchaseOrderRequest, created
 			Remark:                   poDt.Remark,
 			NeedQty:                  poDt.NeedQty,
 			Qty:                      poDt.Qty,
+			QtyIn:                    new(float64),
 			Price:                    poDt.Price,
 			Subtotal:                 poDt.Subtotal,
 			DiscountAmount:           poDt.DiscountAmount,

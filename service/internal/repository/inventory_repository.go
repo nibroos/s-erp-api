@@ -844,7 +844,7 @@ func (r *InventoryRepository) LockInvDts(ctx *fiber.Ctx, tx *gorm.DB, invDtIDs [
 
 func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefInvIndexSoDtListDTO, int, error) {
 
-	childSpan := opentracing.StartSpan("InventoryRepository-GetRefIndexQuoDts", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("InventoryRepository-GetRefIndexSoDts", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]

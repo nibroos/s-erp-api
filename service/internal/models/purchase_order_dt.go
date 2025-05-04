@@ -34,6 +34,7 @@ type PoDt struct {
 	Remark                   *string          `json:"remark" gorm:"column:remark"`
 	NeedQty                  *float64         `json:"need_qty" gorm:"column:need_qty"`
 	Qty                      *float64         `json:"qty" gorm:"column:qty"`
+	QtyIn                    *float64         `json:"qty_in" gorm:"column:qty_in"`
 	Price                    *float64         `json:"price" gorm:"column:price"`
 	Subtotal                 *float64         `json:"subtotal" gorm:"column:subtotal"`
 	DiscountAmount           *float64         `json:"discount_amount" gorm:"column:discount_amount"`

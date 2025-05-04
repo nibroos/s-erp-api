@@ -389,10 +389,23 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderPoDts(ctx *fiber.Ctx, params *
 		p.name as product_name,
 		p.code as product_code,
 		mv.name as unit_name,
+
+		COALESCE(
+		 sd.qty_po, 0
+		) as qty_po,
+		COALESCE(
+		 sd.qty, 0
+		) as ref_qty,
 		
+		COALESCE(
+			so.po_buyer_no, NULL
+		) as ref_num,
+
 		cu.name as created_by_name,
 		uu.name as updated_by_name
 	FROM purchase_order_dts pd
+	LEFT JOIN so_dts sd ON sd.id = pd.ref_so_dt_id AND pd.ref_type = 'so'
+	LEFT JOIN sales_orders so ON (so.id = sd.sales_order_id)
 	LEFT JOIN products p ON pd.product_id = p.id
 	LEFT JOIN item_units iu ON pd.item_unit_id = iu.id
 	LEFT JOIN mix_values mv ON iu.unit_id = mv.id
@@ -904,4 +917,329 @@ func (r *PurchaseOrderRepository) GetCustomerPurchaseOrderCreatedThisMonth(ctx *
 	}
 
 	return total, nil
+}
+
+func (r *PurchaseOrderRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefPoIndexSoDtListDTO, int, error) {
+
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetRefIndexSoDts", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	products := []dtos.RefPoIndexSoDtListDTO{}
+
+	var total int
+
+	filterDBColumnKey := []string{
+		"so.po_buyer_no",
+		"pi.name",
+		"sd.remark",
+		"sd.gen_code",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND so.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":        "so.status",
+		"customer_id":   "so.customer_id",
+		"order_type_id": "so.order_type_id",
+		"currency_id":   "so.currency_id",
+		"vat_id":        "so.vat_id",
+		"payment_id":    "so.payment_id",
+		"pph23_id":      "so.pph23_id",
+		"product_id":    "sd.item_id",
+		"expired_at":    "so.expired_at",
+		"due_at":        "so.due_at",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":       "so.customer_id",
+		"order_type_ids":     "so.order_type_id",
+		"currency_ids":       "so.currency_id",
+		"payment_ids":        "so.payment_id",
+		"pph23_ids":          "so.pph23_id",
+		"product_ids":        "sd.item_id",
+		"quotation_ids":      "so.id",
+		"item_group_ids":     "ig.id",
+		"item_sub_group_ids": "pi.item_sub_group_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	filterKeyLike := map[string]string{
+		"po_buyer_no": "so.po_buyer_no",
+	}
+
+	for key, valColumn := range filterKeyLike {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s ILIKE $%d", valColumn, i)
+			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+	}
+
+	baseQuery := `
+    FROM ( 
+					SELECT
+						-- sd.id, 
+						sd.id as ref_so_dt_id,
+						null as ref_so_dt_bom_id,
+						'item' as item_type,
+						sd.sales_order_id, 
+						sd.product_uuid,
+						sd.item_id, 
+						sd.item_unit_id, 
+						sd.qty_po,
+						sd.qty AS ref_qty, 
+						sd.price_sell, 
+						sd.price_buy, 
+						sd.subtotal_sell, 
+						sd.subtotal_buy,
+						sd.gen_code, 
+						sd.vat_perc,
+						sd.vat_perc_am,
+						sd.pph23_perc,
+						sd.pph23_perc_am,
+						sd.is_vat,
+						sd.is_pph23,
+						COALESCE(sd.qty, 0) * COALESCE(sd.price_buy, 0) as subtotal_buy, 
+						COALESCE(sd.qty, 0) * COALESCE(sd.price_sell, 0) as subtotal_sell, 
+						COALESCE(sd.qty, 0) - COALESCE(sd.qty_po, 0) as balance, 
+						sd.remark
+					FROM so_dts sd
+					WHERE sd.item_type = 'item'
+
+					UNION ALL
+
+					SELECT 
+						-- sdb.id,
+						null as ref_so_dt_id,
+						sdb.id as ref_so_dt_bom_id,
+						'bom' as item_type,
+						sdb.sales_order_id,
+						sdb.product_uuid,
+						sdb.item_id,
+						sdb.item_unit_id,
+						sdb.qty_po,
+						sdb.qty AS ref_qty,
+						sdb.price_sell,
+						sdb.price_buy,
+						sdb.subtotal_sell,
+						sdb.subtotal_buy,
+						sdb.gen_code,
+						sd1.vat_perc,
+						sd1.vat_perc_am,
+						sd1.pph23_perc,
+						sd1.pph23_perc_am,
+						sd1.is_vat,
+						sd1.is_pph23,
+						COALESCE(sdb.qty, 0) * COALESCE(sdb.price_buy, 0) as subtotal_buy, 
+						COALESCE(sdb.qty, 0) * COALESCE(sdb.price_sell, 0) as subtotal_sell, 
+						COALESCE(sdb.qty, 0) - COALESCE(sdb.qty_po, 0) as balance, 
+						sdb.remark
+					FROM so_dt_boms sdb
+					LEFT JOIN so_dts sd1 ON sd1.id = sdb.so_dt_id
+					WHERE sdb.deleted_at IS NULL
+    ) AS sd 
+		LEFT JOIN sales_orders so ON sd.sales_order_id = so.id
+		LEFT JOIN products pi ON sd.item_id = pi.id
+		LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
+		LEFT JOIN customers c ON so.customer_id = c.id
+
+		LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
+		LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+		LEFT JOIN mix_values u ON iu.unit_id = u.id
+		WHERE 1=1 AND COALESCE(sd.balance, 0) > 0`
+
+	query := `SELECT sd.*,
+			TO_CHAR(so.order_at, 'YYYY-MM-DD') as order_at,
+			TO_CHAR(so.shipping_at, 'YYYY-MM-DD') as shipping_at,
+			TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
+			TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
+			so.customer_id as customer_id,
+			so.po_buyer_no as ref_num,
+			isg.name as item_sub_group_name,
+			ig.name as item_group_name,
+			u.name as unit_name,
+			c.name as customer_name,
+			pi.name as item_name,
+			pi.code as item_code,
+			pi.sku as item_sku,
+			'so' as ref_type
+		` + baseQuery + condition + queryGlobal
+
+	countQuery := `SELECT COUNT(*) as total
+		` + baseQuery + condition + queryGlobal
+
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+		query += fmt.Sprintf(" AND (so.%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
+		countQuery += fmt.Sprintf(" AND (so.%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	columnIDsKey := map[string]string{
+		"ref_num":       "so.po_buyer_no",
+		"order_at":      "so.order_at",
+		"customer_name": "c.name",
+		"item_code":     "pi.code",
+		"item_name":     "pi.name",
+		"item_sku":      "pi.sku",
+		"unit_name":     "u.name",
+		"ref_qty":       "sd.ref_qty",
+		"balance":       "sd.balance",
+		"qty_out":       "sd.qty_out",
+		"remark":        "sd.remark",
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "so.order_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	for key, valueID := range columnIDsKey {
+		if value, ok := filters["order_column"]; ok && value != "" && key == value {
+			orderColumn = valueID
+		}
+	}
+
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return products, total, nil
 }

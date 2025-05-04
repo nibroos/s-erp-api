@@ -151,3 +151,15 @@ func (s *PurchaseOrderService) GetWidgetPurchaseOrders(ctx *fiber.Ctx, filters m
 	}
 	return purchaseOrders, total, nil
 }
+
+func (s *PurchaseOrderService) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefPoIndexSoDtListDTO, int, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderService-GetRefIndexSoDts", opentracing.ChildOf(span.Context()))
+
+	soDts, total, err := s.repo.GetRefIndexSoDts(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	return soDts, total, nil
+}
