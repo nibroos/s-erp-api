@@ -1512,3 +1512,14 @@ func (s *SalesOrderService) GetAttachmentsByScheduleID(ctx *fiber.Ctx, tx *gorm.
 
 	return attachments, nil
 }
+
+func (s *SalesOrderService) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetWidgetSalesOrders", opentracing.ChildOf(span.Context()))
+
+	salesOrders, total, err := s.repo.GetWidgetSalesOrders(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+	return salesOrders, total, nil
+}
