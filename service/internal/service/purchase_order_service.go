@@ -39,7 +39,9 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx *fiber.Ctx, req dtos.Crea
 	childSpan := opentracing.StartSpan("PurchaseOrderService-CreatePurchaseOrder", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	purchaseOrder, err := utils.MapCreatePurchaseOrder(ctx, req, userID, branchID, childSpan)
+	customerSoCreatedThisMonthNumber, err := s.repo.GetCustomerPurchaseOrderCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+
+	purchaseOrder, err := utils.MapCreatePurchaseOrder(ctx, req, userID, branchID, customerSoCreatedThisMonthNumber, childSpan)
 	if err != nil {
 		return nil, err
 	}
@@ -137,4 +139,15 @@ func (s *PurchaseOrderService) RestorePurchaseOrder(ctx *fiber.Ctx, params *dtos
 	}
 
 	return nil
+}
+
+func (s *PurchaseOrderService) GetWidgetPurchaseOrders(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.PurchaseOrderStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderService-GetWidgetPurchaseOrders", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	purchaseOrders, total, err := s.repo.GetWidgetPurchaseOrders(ctx, filters, childSpan)
+	if err != nil {
+		return nil, 0, err
+	}
+	return purchaseOrders, total, nil
 }

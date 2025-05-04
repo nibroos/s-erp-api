@@ -145,20 +145,6 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 		}
 	}
 
-	joinCondition := ""
-
-	if filters["is_schedule_not_exists"] == "1" {
-		condition += " AND s.id IS NULL"
-	}
-
-	customCondition := ""
-	filterKeyCustom := map[string]string{
-		// "is_task_exists": " AND st.is_checked = 1",
-	}
-	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
-	}
-
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (iv.id)
@@ -191,8 +177,7 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 
         LEFT JOIN users cu ON iv.created_by_id = cu.id
         LEFT JOIN users uu ON iv.updated_by_id = uu.id
-				` + joinCondition + `
-				WHERE 1=1` + condition + queryGlobal + customCondition + `
+				WHERE 1=1` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *

@@ -346,6 +346,7 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 				TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
 				so.vat_perc, so.disc_am, so.disc_perc, so.disc_perc_am, so.disc_final, so.disc_type, so.qty_out, so.si_total_am, so.sa_total_am,
 				so.rev_no,
+				so.is_vat,
 
 				cu.name as created_by_name,
 				uu.name as updated_by_name

@@ -294,3 +294,30 @@ func (c *PurchaseOrderController) RestorePurchaseOrder(ctx *fiber.Ctx) error {
 
 	return utils.GetResponse(ctx, nil, nil, "Purchase order restored successfully", http.StatusOK, nil, nil)
 }
+
+func (c *PurchaseOrderController) GetWidgetPurchaseOrders(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("PurchaseOrderController-GetWidgetPurchaseOrders", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("PurchaseOrderController-GetWidgetPurchaseOrders: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	purchaseOrders, total, err := c.service.GetWidgetPurchaseOrders(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch purchase orders", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, purchaseOrders, paginationMeta, "Purchase orders fetched successfully", http.StatusOK, nil, nil)
+}

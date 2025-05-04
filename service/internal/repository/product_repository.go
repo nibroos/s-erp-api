@@ -82,6 +82,10 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 			m.name, m.factory_code, m.sku, m.barcode, m.specification, m.description, m.remark, m.tpb_code, m.minimum_stock, iu.price_sell, iu.price_buy, iu.margin, m.status, m.expired_at, m.created_at, m.updated_at, m.deleted_at,
 		`
 	}
+	// if product_bom_ids filled add cdSelect
+	if filters["product_bom_ids"] != "" {
+		cdSelect += `p2.name as product_bom_name,`
+	}
 
 	// "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
 	filterDBColumnKey := []string{
@@ -137,9 +141,9 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		"item_group_id":     "isg.item_group_id",
 	}
 
-	for key, _ := range filterKey {
+	for key, columnName := range filterKey {
 		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s = $%d", value, i)
+			condition += fmt.Sprintf(" AND %s = $%d", columnName, i)
 			// countQuery += fmt.Sprintf(" AND %s = $%d", value, i)
 			args = append(args, value)
 			i++
@@ -149,11 +153,25 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	filterIDsKey := map[string]string{
 		"item_sub_group_ids": "m.item_sub_group_id",
 		"item_group_ids":     "isg.item_group_id",
+		"product_bom_ids":    "bo2.product_id",
 	}
 
 	for key, valueID := range filterIDsKey {
 		if value, ok := filters[key]; ok && value != "" {
+			// log.Println("product_bom_ids", value)
 			condition += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+		}
+	}
+
+	joinCondition := ""
+
+	filterKeyJoin := map[string]string{
+		// "is_task_exists":         "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
+		"product_bom_ids": "JOIN boms bo2 ON m.id = bo2.product_item_id AND bo2.deleted_at IS NULL JOIN products p2 ON bo2.product_id = p2.id AND p2.deleted_at IS NULL",
+	}
+	for key, join := range filterKeyJoin {
+		if filters[key] != "" {
+			joinCondition += fmt.Sprintf(" %s", join)
 		}
 	}
 
@@ -166,6 +184,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 
 					m.id as product_id,
 					m.id as ref_id,
+					m.id as ref_product_id,
 					m.is_pph23,
 					m.is_vat,
 					m.prod_type,
@@ -188,6 +207,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 				LEFT JOIN branches b ON bi.branch_id = b.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
+				` + joinCondition + `
 				WHERE 1=1` + queryGlobal + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
@@ -219,6 +239,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 				LEFT JOIN branches b ON bi.branch_id = b.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
+				` + joinCondition + `
 				WHERE 1=1` + queryGlobal + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
@@ -849,39 +870,40 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 	var total int
 
 	// select column
-	cdSelect := `mp.name, mp.specification, mp.description, mp.tpb_code, iu.price_sell, iu.price_buy, mp.minimum_stock,`
-	if branchID != nil && !isAdmin {
+	// cdSelect := `mp.name, mp.specification, mp.description, mp.tpb_code, iu.price_sell, iu.price_buy, mp.minimum_stock,`
+	// if branchID != nil && !isAdmin {
 
-		cdSelect = `
-		COALESCE(bi.name, mp.name) as name,
-		COALESCE(bi.factory_code, mp.factory_code) as factory_code,
-		COALESCE(bi.sku, mp.sku) as sku,
-		COALESCE(bi.barcode, mp.barcode) as barcode,
-		COALESCE(bi.specification, mp.specification) as specification,
-		COALESCE(bi.description, mp.description) as description,
-		COALESCE(bi.remark, mp.remark) as remark,
-		COALESCE(bi.tpb_code, mp.tpb_code) as tpb_code,
-		COALESCE(bi.qty_stock, mp.qty_stock) as qty_stock,
-		COALESCE(bi.minimum_stock, mp.minimum_stock) as minimum_stock,
-		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
-		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
-		COALESCE(bi.margin, iu.margin) as margin,
-		COALESCE(bi.status, mp.status) as status,
-		COALESCE(bi.expired_at, mp.expired_at) as expired_at,
-		COALESCE(bi.created_at, mp.created_at) as created_at,
-		COALESCE(bi.updated_at, mp.updated_at) as updated_at,
-		COALESCE(bi.deleted_at, mp.deleted_at) as deleted_at,
+	// 	cdSelect = `
+	// 	COALESCE(bi.name, mp.name) as name,
+	// 	COALESCE(bi.factory_code, mp.factory_code) as factory_code,
+	// 	COALESCE(bi.sku, mp.sku) as sku,
+	// 	COALESCE(bi.barcode, mp.barcode) as barcode,
+	// 	COALESCE(bi.specification, mp.specification) as specification,
+	// 	COALESCE(bi.description, mp.description) as description,
+	// 	COALESCE(bi.remark, mp.remark) as remark,
+	// 	COALESCE(bi.tpb_code, mp.tpb_code) as tpb_code,
+	// 	COALESCE(bi.qty_stock, mp.qty_stock) as qty_stock,
+	// 	COALESCE(bi.minimum_stock, mp.minimum_stock) as minimum_stock,
+	// 	COALESCE(bi.price_sell, iu.price_sell) as price_sell,
+	// 	COALESCE(bi.price_buy, iu.price_buy) as price_buy,
+	// 	COALESCE(bi.margin, iu.margin) as margin,
+	// 	COALESCE(bi.status, mp.status) as status,
+	// 	COALESCE(bi.expired_at, mp.expired_at) as expired_at,
+	// 	COALESCE(bi.created_at, mp.created_at) as created_at,
+	// 	COALESCE(bi.updated_at, mp.updated_at) as updated_at,
+	// 	COALESCE(bi.deleted_at, mp.deleted_at) as deleted_at,
 
-		bi.id as branch_item_id,
-		`
-	} else {
-		cdSelect = `
-			mp.name, mp.factory_code, mp.sku, mp.barcode, mp.specification, mp.description, mp.remark, mp.tpb_code, mp.minimum_stock, iu.price_sell, iu.price_buy, iu.margin, mp.status, mp.expired_at, mp.created_at, mp.updated_at, mp.deleted_at,
-		`
-	}
+	// 	bi.id as branch_item_id,
+	// 	`
+	// } else {
+	// 	cdSelect = `
+	// 		mp.name, mp.factory_code, mp.sku, mp.barcode, mp.specification, mp.description, mp.remark, mp.tpb_code, mp.minimum_stock, iu.price_sell, iu.price_buy, iu.margin, mp.status, mp.expired_at, mp.created_at, mp.updated_at, mp.deleted_at,
+	// 	`
+	// }
 
 	// "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":
 	filterDBColumnKey := []string{
+		"mp.product_bom_name",
 		"mp.name",
 		"mp.code",
 		"mp.factory_code",
@@ -891,14 +913,6 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 		"mp.description",
 		"mp.remark",
 		"mp.tpb_code",
-		"pi.name",
-		"pi.code",
-		"pi.factory_code",
-		"pi.sku",
-		"pi.barcode",
-		"pi.specification",
-		"pi.description",
-		"pi.remark",
 	}
 
 	var args []interface{}
@@ -946,6 +960,7 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 	filterIDsKey := map[string]string{
 		"item_sub_group_ids": "m.item_sub_group_id",
 		"item_group_ids":     "isg.item_group_id",
+		"product_bom_ids":    "bo.product_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -955,107 +970,83 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 	}
 
 	baseQuery := `
-    FROM ( 
-        SELECT
-					m.id, m.item_sub_group_id, m.item_unit_id,
-					m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, m.description, m.remark, m.tpb_code, m.minimum_stock, m.status, m.expired_at,
+    FROM (
+        SELECT DISTINCT ON (combined.id, combined.item_type) 
+            combined.*,
+            isg.parent_id as item_group_id,
+            u.name as unit_name,
+            isg.name as item_sub_group_name,
+            ig.name as item_group_name,
+            cu.name as created_by_name,
+            uu.name as updated_by_name
+        FROM (
+            SELECT
+                m.id, m.item_sub_group_id, m.item_unit_id,
+                m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, 
+                m.description, m.remark, m.tpb_code, m.minimum_stock, m.status, m.expired_at,
+                m.id as product_id,
+                m.id as ref_id,
+                m.is_pph23,
+                m.is_vat,
+                m.created_by_id,
+                m.updated_by_id,
+                m.is_all_branch,
+                m.created_at,
+                m.updated_at,
+                m.deleted_at,
+                '' as product_bom_name,
+                'item' as item_type
+            FROM products m
+						LEFT JOIN boms bo ON m.id = bo.product_item_id
+            WHERE m.prod_type = 'single' AND m.deleted_at IS NULL
+        ) combined
+        LEFT JOIN mix_values isg ON combined.item_sub_group_id = isg.id
+        LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+        LEFT JOIN item_units iu ON iu.id = combined.item_unit_id
+        LEFT JOIN mix_values u ON iu.unit_id = u.id
+        LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
+        LEFT JOIN branches b ON bi.branch_id = b.id
+        LEFT JOIN users cu ON combined.created_by_id = cu.id
+        LEFT JOIN users uu ON combined.updated_by_id = uu.id
+        ORDER BY combined.id, combined.item_type, combined.updated_at DESC
+    ) AS mp`
 
-					m.id as product_id,
-					m.id as ref_id,
-					m.is_pph23,
-					m.is_vat,
-					m.created_by_id,
-					m.updated_by_id,
-					m.is_all_branch,
-					m.created_at,
-					m.updated_at, 
-					m.deleted_at,
+	// UNION ALL
 
-					'products' as prod_type
-        FROM products m
-
-				UNION ALL
-
-				SELECT
-					b.id, i.item_sub_group_id, b.item_unit_id,
-					i.code, i.factory_code, i.name, i.sku, i.barcode, i.specification, i.description, i.remark, i.tpb_code, i.minimum_stock, i.status, i.expired_at,
-					
-					i.id as product_id,
-					i.id as ref_id,
-					i.is_pph23,
-					i.is_vat,
-					i.created_by_id,
-					i.updated_by_id,
-					i.is_all_branch,
-					i.created_at,
-					i.updated_at,
-					i.deleted_at,
-
-					'bom' as prod_type
-				FROM boms b
-				LEFT JOIN products i ON b.product_item_id = i.id
-
-    ) AS mp
-		LEFT JOIN boms bo ON mp.id = bo.product_id
-		LEFT JOIN products pi ON bo.product_item_id = pi.id
-		LEFT JOIN mix_values isg ON mp.item_sub_group_id = isg.id
-		LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-		LEFT JOIN item_units iu ON iu.id = mp.item_unit_id
-		LEFT JOIN mix_values u ON iu.unit_id = u.id
-		LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
-		LEFT JOIN branches b ON bi.branch_id = b.id
-		LEFT JOIN users cu ON mp.created_by_id = cu.id
-		LEFT JOIN users uu ON mp.updated_by_id = uu.id`
-
-	query := `SELECT mp.*,
-			` + cdSelect + `
-			isg.parent_id as item_group_id, 
-			pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
-
-			u.name as unit_name,
-			isg.name as item_sub_group_name,
-			ig.name as item_group_name,
-			'products' as ref_type,
-
-			cu.name as created_by_name,
-			uu.name as updated_by_name
-			` + baseQuery + `
-			WHERE 1=1 AND mp.deleted_at IS NULL ` + queryGlobal + condition
+	// SELECT
+	//     b.id, i.item_sub_group_id, b.item_unit_id,
+	//     i.code, i.factory_code, i.name, i.sku, i.barcode, i.specification,
+	//     i.description, i.remark, i.tpb_code, i.minimum_stock, i.status, i.expired_at,
+	//     i.id as product_id,
+	//     i.id as ref_id,
+	//     i.is_pph23,
+	//     i.is_vat,
+	//     i.created_by_id,
+	//     i.updated_by_id,
+	//     i.is_all_branch,
+	//     i.created_at,
+	//     i.updated_at,
+	//     i.deleted_at,
+	//     p.name as product_bom_name,
+	//     'bom' as item_type
+	// FROM boms b
+	// LEFT JOIN products i ON b.product_item_id = i.id
+	// LEFT JOIN products p ON b.product_id = p.id
+	// WHERE b.deleted_at IS NULL
+	query := `SELECT 
+    mp.*,
+    mp.item_group_id,
+    mp.unit_name,
+    mp.item_sub_group_name,
+    mp.item_group_name,
+    'products' as ref_type,
+    mp.created_by_name,
+    mp.updated_by_name
+    ` + baseQuery + `
+    WHERE 1=1 AND mp.deleted_at IS NULL ` + queryGlobal + condition
 
 	countQuery := `SELECT COUNT(*) ` + baseQuery + `
-			WHERE 1=1 AND mp.deleted_at IS NULL`
-
-	// countQuery := `SELECT COUNT(*) FROM (
-	//       SELECT DISTINCT ON (m.id)
-	// 				m.id, m.item_sub_group_id, isg.parent_id as item_group_id, m.item_unit_id, m.code, m.is_all_branch,
-	// 				` + cdSelect + `
-	// 				pi.name as item_name, pi.code as item_code, pi.factory_code as item_factory_code, pi.sku as item_sku, pi.barcode as item_barcode, pi.specification as item_specification, pi.description as item_description, pi.remark as item_remark, pi.tpb_code as item_tpb_code,
-
-	// 				m.id as product_id,
-	// 				m.id as ref_id,
-	// 				m.prod_type,
-	// 				u.name as unit_name,
-	// 				isg.name as item_sub_group_name,
-	// 				ig.name as item_group_name,
-	// 				'products' as ref_type,
-
-	// 				cu.name as created_by_name,
-	// 				uu.name as updated_by_name
-
-	//       FROM products m
-	// 			LEFT JOIN boms bo ON m.id = bo.product_id
-	// 			LEFT JOIN products pi ON bo.product_item_id = pi.id
-	// 			LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
-	// 			LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	// 			LEFT JOIN item_units iu ON iu.id = m.item_unit_id
-	// 			LEFT JOIN mix_values u ON iu.unit_id = u.id
-	// 			LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
-	// 			LEFT JOIN branches b ON bi.branch_id = b.id
-	//       LEFT JOIN users cu ON m.created_by_id = cu.id
-	//       LEFT JOIN users uu ON m.updated_by_id = uu.id
-	// 			WHERE 1=1` + queryGlobal + condition + `
-	//   ) AS alias WHERE 1=1 AND deleted_at IS NULL`
-
+    WHERE 1=1 AND mp.deleted_at IS NULL ` + queryGlobal + condition
 	for key, value := range filters {
 		switch key {
 		case "name", "code", "factory_code", "sku", "barcode", "specification", "description", "remark", "tpb_code", "item_name", "item_code", "item_factory_code", "item_sku", "item_barcode", "item_specification", "item_description", "item_remark":

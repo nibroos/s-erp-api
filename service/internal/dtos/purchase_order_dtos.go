@@ -30,6 +30,9 @@ type CreatePoDtsRequest struct {
 	VatID                    *uint    `json:"vat_id"`
 	Pph23ID                  *uint    `json:"pph23_id"`
 	RefID                    *uint    `json:"ref_id"`
+	RefSoDtID                *uint    `json:"ref_so_dt_id"`
+	RefSoDtBomID             *uint    `json:"ref_so_dt_bom_id"`
+	RefProductID             *uint    `json:"ref_product_id"`
 	ProductID                uint     `json:"product_id"`
 	BomID                    *uint    `json:"bom_id"`
 	ProductType              *string  `json:"product_type"`
@@ -48,6 +51,10 @@ type CreatePoDtsRequest struct {
 	DiscountPercentageAmount *float64 `json:"discount_percentage_amount"`
 	DiscountFinal            *float64 `json:"discount_final"`
 	DiscountType             *string  `json:"discount_type"`
+	VatPerc                  *float64 `json:"vat_perc"`
+	VatPercAm                *float64 `json:"vat_perc_am"`
+	Pph23Perc                *float64 `json:"pph23_perc"`
+	Pph23PercAm              *float64 `json:"pph23_perc_am"`
 	IsVat                    *int8    `json:"is_vat"`
 	IsPph23                  *int8    `json:"is_pph23"`
 	TotalAmount              *float64 `json:"total_amount"`
@@ -62,7 +69,8 @@ type CreatePurchaseOrderRequest struct {
 	ShippingTermID           *uint                `json:"shipping_term_id"`
 	Pph23ID                  *uint                `json:"pph23_id"`
 	BranchID                 *uint                `json:"branch_id"`
-	PoNo                     string               `json:"po_no"`
+	IsVat                    *int                 `json:"is_vat"`
+	PoNo                     *string              `json:"po_no"`
 	PoDate                   *string              `json:"po_date"`
 	DeliveryDate             *string              `json:"delivery_date"`
 	ShippingDestination      *string              `json:"shipping_destination"`
@@ -85,6 +93,8 @@ type CreatePurchaseOrderRequest struct {
 	TotalVat                 *float64             `json:"total_vat"`
 	GrandTotal               *float64             `json:"grand_total"`
 	PoDts                    []CreatePoDtsRequest `json:"po_dts"`
+
+	CustomerCode string `json:"customer_code"`
 }
 
 type UpdatePoDtsRequest struct {
@@ -96,6 +106,9 @@ type UpdatePoDtsRequest struct {
 	VatID                    *uint    `json:"vat_id"`
 	Pph23ID                  *uint    `json:"pph23_id"`
 	RefID                    *uint    `json:"ref_id"`
+	RefSoDtID                *uint    `json:"ref_so_dt_id"`
+	RefSoDtBomID             *uint    `json:"ref_so_dt_bom_id"`
+	RefProductID             *uint    `json:"ref_product_id"`
 	ProductID                uint     `json:"product_id"`
 	BomID                    *uint    `json:"bom_id"`
 	ProductType              *string  `json:"product_type"`
@@ -114,6 +127,10 @@ type UpdatePoDtsRequest struct {
 	DiscountPercentageAmount *float64 `json:"discount_percentage_amount"`
 	DiscountFinal            *float64 `json:"discount_final"`
 	DiscountType             *string  `json:"discount_type"`
+	VatPerc                  *float64 `json:"vat_perc"`
+	VatPercAm                *float64 `json:"vat_perc_am"`
+	Pph23Perc                *float64 `json:"pph23_perc"`
+	Pph23PercAm              *float64 `json:"pph23_perc_am"`
 	IsVat                    *int8    `json:"is_vat"`
 	IsPph23                  *int8    `json:"is_pph23"`
 	TotalAmount              *float64 `json:"total_amount"`
@@ -130,7 +147,10 @@ type UpdatePurchaseOrderRequest struct {
 	ShippingTermID           *uint                `json:"shipping_term_id"`
 	Pph23ID                  *uint                `json:"pph23_id"`
 	BranchID                 *uint                `json:"branch_id"`
+	IsVat                    *int                 `json:"is_vat"`
+	RevNo                    *int                 `json:"rev_no"`
 	PoNo                     string               `json:"po_no"`
+	PoNoOri                  *string              `json:"po_no_ori"`
 	PoDate                   *string              `json:"po_date"`
 	DeliveryDate             *string              `json:"delivery_date"`
 	ShippingDestination      *string              `json:"shipping_destination"`
@@ -153,6 +173,8 @@ type UpdatePurchaseOrderRequest struct {
 	TotalVat                 *float64             `json:"total_vat"`
 	GrandTotal               *float64             `json:"grand_total"`
 	PoDts                    []UpdatePoDtsRequest `json:"po_dts"`
+
+	CustomerCode string `json:"customer_code"`
 }
 
 type GetPurchaseOrderByIDRequest struct {
@@ -249,7 +271,10 @@ type PurchaseOrderDetailDTO struct {
 	ShippingTermID           *uint    `json:"shipping_term_id" db:"shipping_term_id"`
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
+	IsVat                    *int     `json:"is_vat" db:"is_vat"`
+	RevNo                    *int     `json:"rev_no" db:"rev_no"`
 	PoNo                     *string  `json:"po_no" db:"po_no"`
+	PoNoOri                  *string  `json:"po_no_ori" db:"po_no_ori"`
 	PoDate                   *string  `json:"po_date" db:"po_date"`
 	DeliveryDate             *string  `json:"delivery_date" db:"delivery_date"`
 	ShippingDestination      *string  `json:"shipping_destination" db:"shipping_destination"`
@@ -295,6 +320,9 @@ type PurchaseOrderPoDtListDTO struct {
 	RefID                    *uint    `json:"ref_id" db:"ref_id"`
 	ProductID                *uint    `json:"product_id" db:"product_id"`
 	BomID                    *uint    `json:"bom_id" db:"bom_id"`
+	RefSoDtID                *uint    `json:"ref_so_dt_id" db:"ref_so_dt_id"`
+	RefSoDtBomID             *uint    `json:"ref_so_dt_bom_id" db:"ref_so_dt_bom_id"`
+	RefProductID             *uint    `json:"ref_product_id" db:"ref_product_id"`
 	ProductType              *string  `json:"product_type" db:"product_type"`
 	ProductJSON              *string  `json:"product_json" db:"product_json"`
 	RefType                  *string  `json:"ref_type" db:"ref_type"`
@@ -384,4 +412,11 @@ type GetPurchaseOrdersResult struct {
 type UpdatePurchaseOrderStatusRequest struct {
 	ID     uint   `json:"id"`
 	Status string `json:"status"`
+}
+
+type PurchaseOrderStatusWidget struct {
+	Status     string  `json:"status" db:"status"`
+	OrderCount int     `json:"order_count" db:"order_count"`
+	TotalQty   float64 `json:"total_qty" db:"total_qty"`
+	GrandTotal float64 `json:"grand_total" db:"grand_total"`
 }

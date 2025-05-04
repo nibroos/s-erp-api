@@ -307,11 +307,12 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderByID(ctx *fiber.Ctx, params *d
     FROM ( 
 			SELECT DISTINCT ON (po.id)
 				po.id, po.customer_id, po.purchase_type_id, po.currency_id, po.vat_id, po.payment_term_id, po.shipping_term_id, po.pph23_id, po.branch_id,
-				po.po_no, po.shipping_destination, po.remark, 
+				po.po_no, po.po_no_ori, po.rev_no, po.shipping_destination, po.remark, 
 				po.status, po.exchange_rate, po.pph23_percentage, po.vat_percentage, po.total_qty, po.subtotal, po.total_discount, po.total_pph23, po.total_vat, po.grand_total, po.created_by_id, po.updated_by_id, po.deleted_by_id, po.created_at, po.updated_at, po.deleted_at,
 				TO_CHAR(po.po_date, 'YYYY-MM-DD') as po_date,
 				TO_CHAR(po.delivery_date, 'YYYY-MM-DD') as delivery_date,
 				po.discount_amount, po.discount_percentage, po.discount_percentage_amount, po.discount_final_header, po.discount_amount_product, po.discount_type, po.total_amount_products,
+				po.is_vat,
 
 				cu.name as created_by_name,
 				uu.name as updated_by_name
@@ -379,7 +380,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderPoDts(ctx *fiber.Ctx, params *
 
 	query := `
 	SELECT 
-		pd.id, pd.product_uuid, pd.po_id, pd.item_unit_id, pd.vat_id, pd.pph23_id, pd.ref_id, pd.product_id, pd.bom_id,
+		pd.id, pd.product_uuid, pd.po_id, pd.item_unit_id, pd.vat_id, pd.pph23_id, pd.ref_id, pd.product_id, pd.bom_id, pd.ref_so_dt_id, pd.ref_so_dt_bom_id, pd.ref_product_id,
 		pd.product_type, pd.product_json, pd.ref_type, pd.ref_json, pd.gen_code, pd.remark,
 		pd.need_qty, pd.qty, pd.price, pd.subtotal, pd.discount_amount, pd.discount_percentage, pd.discount_percentage_num,
 		pd.discount_percentage_amount, pd.discount_final, pd.discount_type, pd.is_vat, pd.is_pph23, pd.total_amount,
@@ -460,10 +461,13 @@ func (r *PurchaseOrderRepository) UpdatePurchaseOrder(tx *gorm.DB, purchaseOrder
 		"purchase_type_id":           purchaseOrder.PurchaseTypeID,
 		"currency_id":                purchaseOrder.CurrencyID,
 		"vat_id":                     purchaseOrder.VatID,
+		"is_vat":                     purchaseOrder.IsVat,
 		"payment_term_id":            purchaseOrder.PaymentTermID,
 		"shipping_term_id":           purchaseOrder.ShippingTermID,
 		"pph23_id":                   purchaseOrder.Pph23ID,
 		"po_no":                      purchaseOrder.PoNo,
+		"rev_no":                     purchaseOrder.RevNo,
+		"po_no_ori":                  purchaseOrder.PoNoOri,
 		"po_date":                    purchaseOrder.PoDate,
 		"delivery_date":              purchaseOrder.DeliveryDate,
 		"shipping_destination":       purchaseOrder.ShippingDestination,
@@ -537,6 +541,9 @@ func (r *PurchaseOrderRepository) UpdatePoDts(tx *gorm.DB, poDts []models.PoDt, 
 				"vat_id":                     poDt.VatID,
 				"pph23_id":                   poDt.Pph23ID,
 				"ref_id":                     poDt.RefID,
+				"ref_so_dt_id":               poDt.RefSoDtID,
+				"ref_so_dt_bom_id":           poDt.RefSoDtBomID,
+				"ref_product_id":             poDt.RefProductID,
 				"product_id":                 poDt.ProductID,
 				"bom_id":                     poDt.BomID,
 				"product_type":               poDt.ProductType,
@@ -555,6 +562,10 @@ func (r *PurchaseOrderRepository) UpdatePoDts(tx *gorm.DB, poDts []models.PoDt, 
 				"discount_percentage_amount": poDt.DiscountPercentageAmount,
 				"discount_final":             poDt.DiscountFinal,
 				"discount_type":              poDt.DiscountType,
+				"vat_perc":                   poDt.VatPerc,
+				"vat_perc_am":                poDt.VatPercAm,
+				"pph23_perc":                 poDt.Pph23Perc,
+				"pph23_perc_am":              poDt.Pph23PercAm,
 				"is_vat":                     poDt.IsVat,
 				"is_pph23":                   poDt.IsPph23,
 				"total_amount":               poDt.TotalAmount,
@@ -659,4 +670,238 @@ func (r *PurchaseOrderRepository) RestorePurchaseOrder(tx *gorm.DB, params *dtos
 	}
 
 	return nil
+}
+
+func (r *PurchaseOrderRepository) GetWidgetPurchaseOrders(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.PurchaseOrderStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetWidgetPurchaseOrders", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	purchaseOrders := []dtos.PurchaseOrderStatusWidget{}
+
+	var total int
+
+	filterDBColumnKey := []string{
+		"po.po_no", "po.remark", "po.shipping_destination",
+		"pi.name",
+		"pd.remark",
+		"pd.gen_code",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":           "po.status",
+		"customer_id":      "po.customer_id",
+		"purchase_type_id": "po.purchase_type_id",
+		"currency_id":      "po.currency_id",
+		"vat_id":           "po.vat_id",
+		"payment_term_id":  "po.payment_term_id",
+		"shipping_term_id": "po.shipping_term_id",
+		"pph23_id":         "po.pph23_id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":      "po.customer_id",
+		"purchase_type_ids": "po.purchase_type_id",
+		"currency_ids":      "po.currency_id",
+		"payment_term_ids":  "po.payment_term_id",
+		"shipping_term_ids": "po.shipping_term_id",
+		"pph23_ids":         "po.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs))
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"po.vat_id", "pd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+		dateColumn := ""
+		switch filters["date_type"] {
+		case "1":
+			dateColumn = "po.po_date"
+		case "2":
+			dateColumn = "po.delivery_date"
+		default:
+			dateColumn = "po.po_date"
+		}
+
+		condition += fmt.Sprintf(" AND %s BETWEEN $%d AND $%d", dateColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	query := `
+	WITH status_values AS (
+        SELECT status, row_number() over () as status_order
+        FROM (VALUES 
+            ('TOTAL', 0),      -- Set TOTAL with order 0 to appear first
+            ('PROCESS', 1),
+            ('FINISH', 2),
+            ('PARTIAL', 3),
+            ('CANCELED', 4)
+        ) AS s(status)
+    ),
+    filtered_orders AS (
+        SELECT 
+            po.id,             
+            po.status as po_status,
+            po.total_qty,
+            po.grand_total
+        FROM purchase_orders po
+        LEFT JOIN purchase_order_dts pd ON pd.po_id = po.id
+        LEFT JOIN products pi ON pd.product_id = pi.id
+        LEFT JOIN item_units iu ON pd.item_unit_id = iu.id
+        WHERE po.deleted_at IS NULL
+        ` + condition + queryGlobal + `
+    ),
+    purchase_order_stats AS (
+        SELECT 
+            sv.status,
+            sv.status_order,
+            COUNT(DISTINCT fo.id) as order_count,
+            COALESCE(SUM(fo.total_qty), 0) as total_qty,
+            COALESCE(SUM(fo.grand_total), 0) as grand_total
+        FROM status_values sv
+        LEFT JOIN filtered_orders fo ON sv.status = fo.po_status OR sv.status = 'TOTAL'
+        GROUP BY sv.status, sv.status_order
+    )
+    SELECT 
+        sv.status,
+        order_count,
+        total_qty,
+        grand_total
+    FROM purchase_order_stats sv
+    ORDER BY status_order`
+
+	for key, value := range filters {
+		switch key {
+		case "po_no", "shipping_destination", "remark":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	var selectErr error
+	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+	err := r.sqlDB.SelectContext(ctx.Context(), &purchaseOrders, query, args...)
+	if err != nil {
+		selectSpan.LogKV("query", query)
+		utils.LogErrors(selectSpan, err)
+		selectErr = err
+	}
+
+	if selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return purchaseOrders, total, nil
+}
+
+// GetCustomerSalesOrderCreatedThisMonth
+func (r *PurchaseOrderRepository) GetCustomerPurchaseOrderCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetCustomerSalesOrderCreatedThisMonth", opentracing.ChildOf(span.Context()))
+
+	var total int
+
+	baseQuery := `
+		FROM (
+			SELECT COUNT(*) as total
+			FROM purchase_orders po
+			WHERE po.customer_id = $1 AND po.created_at >= date_trunc('month', CURRENT_DATE)
+			AND po.deleted_at IS NULL
+		) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	err := tx.Raw(query, customerID).Scan(&total).Error
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return 0, err
+	}
+
+	return total, nil
 }

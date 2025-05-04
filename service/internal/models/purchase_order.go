@@ -15,7 +15,10 @@ type PurchaseOrder struct {
 	PaymentTermID            *uint          `json:"payment_term_id" gorm:"column:payment_term_id"`
 	ShippingTermID           *uint          `json:"shipping_term_id" gorm:"column:shipping_term_id"`
 	BranchID                 *uint          `json:"branch_id" gorm:"column:branch_id"`
+	IsVat                    *int           `json:"is_vat" gorm:"column:is_vat"`
+	RevNo                    *int           `json:"rev_no" gorm:"column:rev_no"`
 	PoNo                     *string        `json:"po_no" gorm:"column:po_no"`
+	PoNoOri                  *string        `json:"po_no_ori" gorm:"column:po_no_ori"`
 	PoDate                   *string        `json:"po_date" gorm:"column:po_date"`
 	DeliveryDate             *string        `json:"delivery_date" gorm:"column:delivery_date"`
 	ShippingDestination      *string        `json:"shipping_destination" gorm:"column:shipping_destination"`

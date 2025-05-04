@@ -410,6 +410,7 @@ type SalesOrderDetailDTO struct {
 	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	Remark        *string  `json:"remark" db:"remark"`
 	RevNo         *int     `json:"rev_no" db:"rev_no"`
+	IsVat         *int     `json:"is_vat" db:"is_vat"`
 	Status        string   `json:"status" db:"status"`
 	ExchangeRate  float64  `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`

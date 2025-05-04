@@ -15,6 +15,9 @@ type PoDt struct {
 	VatID                    *uint            `json:"vat_id" gorm:"column:vat_id"`
 	Pph23ID                  *uint            `json:"pph23_id" gorm:"column:pph23_id"`
 	RefID                    *uint            `json:"ref_id" gorm:"column:ref_id"`
+	RefSoDtID                *uint            `json:"ref_so_dt_id" gorm:"column:ref_so_dt_id"`
+	RefSoDtBomID             *uint            `json:"ref_so_dt_bom_id" gorm:"column:ref_so_dt_bom_id"`
+	RefProductID             *uint            `json:"ref_product_id" gorm:"column:ref_product_id"`
 	ProductID                *uint            `json:"product_id" gorm:"column:product_id"`
 	BomID                    *uint            `json:"bom_id" gorm:"column:bom_id"`
 	ProductType              *string          `json:"product_type" gorm:"column:product_type"`
@@ -22,6 +25,10 @@ type PoDt struct {
 	RefType                  *string          `json:"ref_type" gorm:"column:ref_type"`
 	RefJSON                  *json.RawMessage `json:"ref_json" gorm:"column:ref_json"`
 	GenCode                  *string          `json:"gen_code" gorm:"column:gen_code"`
+	VatPerc                  *float64         `json:"vat_perc" gorm:"column:vat_perc"`
+	VatPercAm                *float64         `json:"vat_perc_am" gorm:"column:vat_perc_am"`
+	Pph23Perc                *float64         `json:"pph23_perc" gorm:"column:pph23_perc"`
+	Pph23PercAm              *float64         `json:"pph23_perc_am" gorm:"column:pph23_perc_am"`
 	IsVat                    *uint            `json:"is_vat" gorm:"column:is_vat"`
 	IsPph23                  *uint            `json:"is_pph23" gorm:"column:is_pph23"`
 	Remark                   *string          `json:"remark" gorm:"column:remark"`
