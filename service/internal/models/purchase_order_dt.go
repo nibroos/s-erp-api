@@ -18,6 +18,7 @@ type PoDt struct {
 	RefSoDtID                *uint            `json:"ref_so_dt_id" gorm:"column:ref_so_dt_id"`
 	RefSoDtBomID             *uint            `json:"ref_so_dt_bom_id" gorm:"column:ref_so_dt_bom_id"`
 	RefProductID             *uint            `json:"ref_product_id" gorm:"column:ref_product_id"`
+	RefProductBomID          *uint            `json:"ref_product_bom_id" gorm:"column:ref_product_bom_id"`
 	ProductID                *uint            `json:"product_id" gorm:"column:product_id"`
 	BomID                    *uint            `json:"bom_id" gorm:"column:bom_id"`
 	ProductType              *string          `json:"product_type" gorm:"column:product_type"`

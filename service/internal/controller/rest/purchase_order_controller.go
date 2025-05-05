@@ -100,7 +100,7 @@ func (c *PurchaseOrderController) CreatePurchaseOrder(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.CreatePurchaseOrderRequest
+	var req dtos.FormPurchaseOrderRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
@@ -148,7 +148,7 @@ func (c *PurchaseOrderController) UpdatePurchaseOrder(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.UpdatePurchaseOrderRequest
+	var req dtos.FormPurchaseOrderRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
@@ -208,11 +208,15 @@ func (c *PurchaseOrderController) DeletePurchaseOrder(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	err := c.service.DeletePurchaseOrder(ctx, req.ID, parentSpan)
+	tx := c.repo.BeginTransaction()
+
+	err := c.service.DeletePurchaseOrder(ctx, tx, req.ID, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete purchase order", http.StatusInternalServerError, err.Error(), nil)
 	}
+
+	tx.Commit()
 
 	return utils.GetResponse(ctx, nil, nil, "Purchase order deleted successfully", http.StatusOK, nil, nil)
 }

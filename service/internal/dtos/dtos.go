@@ -1991,7 +1991,10 @@ type ProductListDTO struct {
 	UpdatedAt        *string  `json:"updated_at" db:"updated_at"`
 	DeleteAt         *string  `json:"deleted_at" db:"deleted_at"`
 
+	ItemID            *uint   `json:"item_id" db:"item_id"`
 	RefProductID      *uint   `json:"ref_product_id" db:"ref_product_id"`
+	RefProductBomID   *uint   `json:"ref_product_bom_id" db:"ref_product_bom_id"`
+	ProductBomID      *uint   `json:"product_bom_id" db:"product_bom_id"`
 	ItemName          *string `json:"item_name" db:"item_name"`
 	ProductBomName    *string `json:"product_bom_name" db:"product_bom_name"`
 	ItemCode          *string `json:"item_code" db:"item_code"`

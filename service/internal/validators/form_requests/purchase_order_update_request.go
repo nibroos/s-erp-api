@@ -13,7 +13,7 @@ func NewPurchaseOrderUpdateRequest() *PurchaseOrderUpdateRequest {
 	return &PurchaseOrderUpdateRequest{}
 }
 
-func (r *PurchaseOrderUpdateRequest) Validate(req *dtos.UpdatePurchaseOrderRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+func (r *PurchaseOrderUpdateRequest) Validate(req *dtos.FormPurchaseOrderRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
 		"id":                  []string{"required", "exists:purchase_orders,id"},
 		"purchase_type_id":    []string{"required", "exists:mix_values,id"},

@@ -16,7 +16,7 @@ func GenPurchaseOrderNo() string {
 	return "PO-" + time.Now().Format("20060102-150405")
 }
 
-func MapCreatePurchaseOrder(ctx *fiber.Ctx, req dtos.CreatePurchaseOrderRequest, userID uint, branchID uint, customerSoCreatedThisMonthNumber int, span opentracing.Span) (models.PurchaseOrder, error) {
+func MapCreatePurchaseOrder(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, userID uint, branchID uint, customerSoCreatedThisMonthNumber int, span opentracing.Span) (models.PurchaseOrder, error) {
 
 	poNo := GeneratePurchaseOrderNoOnCreatePurchaseOrder(ctx, req, customerSoCreatedThisMonthNumber, span)
 
@@ -59,7 +59,7 @@ func MapCreatePurchaseOrder(ctx *fiber.Ctx, req dtos.CreatePurchaseOrderRequest,
 	return purchaseOrder, nil
 }
 
-func GeneratePurchaseOrderNoOnCreatePurchaseOrder(ctx *fiber.Ctx, req dtos.CreatePurchaseOrderRequest, orderedNumber int, span opentracing.Span) string {
+func GeneratePurchaseOrderNoOnCreatePurchaseOrder(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, orderedNumber int, span opentracing.Span) string {
 	if req.PoNo != nil {
 		return *req.PoNo
 	}
@@ -77,7 +77,7 @@ func GeneratePurchaseOrderNoOnCreatePurchaseOrder(ctx *fiber.Ctx, req dtos.Creat
 	return str
 }
 
-func GeneratePurchaseOrderNoOnUpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.UpdatePurchaseOrderRequest, purchaseOrderNo *string, revNo int, span opentracing.Span) string {
+func GeneratePurchaseOrderNoOnUpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, purchaseOrderNo *string, revNo int, span opentracing.Span) string {
 
 	// get before REV-number, full string is SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1 or SURNAME-2001-12-20
 	// check if "REV" string exist (random), if not add "REV-1" else replace REV-1 change the number to increment REV-revNo
@@ -93,17 +93,17 @@ func GeneratePurchaseOrderNoOnUpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.Updat
 	return *purchaseOrderNo
 }
 
-func MapUpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.UpdatePurchaseOrderRequest, userID uint, branchID uint, span opentracing.Span) (models.PurchaseOrder, error) {
+func MapUpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, userID uint, branchID uint, span opentracing.Span) (models.PurchaseOrder, error) {
 	revNo := 0
 	if req.RevNo != nil {
 		revNo = *req.RevNo
 	}
 	revNo++
 
-	poNo := GeneratePurchaseOrderNoOnUpdatePurchaseOrder(ctx, req, &req.PoNo, revNo, span)
+	poNo := GeneratePurchaseOrderNoOnUpdatePurchaseOrder(ctx, req, req.PoNo, revNo, span)
 
 	purchaseOrder := models.PurchaseOrder{
-		ID:                       req.ID,
+		ID:                       *req.ID,
 		CustomerID:               req.CustomerID,
 		PurchaseTypeID:           req.PurchaseTypeID,
 		CurrencyID:               req.CurrencyID,
@@ -143,7 +143,7 @@ func MapUpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.UpdatePurchaseOrderRequest,
 	return purchaseOrder, nil
 }
 
-func MapCreatePoDts(ctx *fiber.Ctx, req dtos.CreatePurchaseOrderRequest, createdPurchaseOrder *models.PurchaseOrder, userID uint, span opentracing.Span) ([]models.PoDt, error) {
+func MapCreatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, createdPurchaseOrder *models.PurchaseOrder, userID uint, span opentracing.Span) ([]models.PoDt, error) {
 	poDtsModel := []models.PoDt{}
 
 	for _, poDt := range req.PoDts {
@@ -177,6 +177,7 @@ func MapCreatePoDts(ctx *fiber.Ctx, req dtos.CreatePurchaseOrderRequest, created
 			RefSoDtID:                poDt.RefSoDtID,
 			RefSoDtBomID:             poDt.RefSoDtBomID,
 			RefProductID:             poDt.RefProductID,
+			RefProductBomID:          poDt.RefProductBomID,
 			ProductID:                &productID,
 			BomID:                    poDt.BomID,
 			ProductType:              poDt.ProductType,
@@ -211,7 +212,7 @@ func MapCreatePoDts(ctx *fiber.Ctx, req dtos.CreatePurchaseOrderRequest, created
 	return poDtsModel, nil
 }
 
-func MapUpdatePoDts(ctx *fiber.Ctx, req dtos.UpdatePurchaseOrderRequest, updatedPurchaseOrder *models.PurchaseOrder, userID uint, span opentracing.Span) ([]models.PoDt, error) {
+func MapUpdatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, updatedPurchaseOrder *models.PurchaseOrder, userID uint, span opentracing.Span) ([]models.PoDt, error) {
 	poDtsModel := []models.PoDt{}
 
 	for _, reqPoDt := range req.PoDts {
@@ -249,6 +250,7 @@ func MapUpdatePoDts(ctx *fiber.Ctx, req dtos.UpdatePurchaseOrderRequest, updated
 			RefSoDtID:                reqPoDt.RefSoDtID,
 			RefSoDtBomID:             reqPoDt.RefSoDtBomID,
 			RefProductID:             reqPoDt.RefProductID,
+			RefProductBomID:          reqPoDt.RefProductBomID,
 			ProductID:                &productID,
 			BomID:                    reqPoDt.BomID,
 			ProductType:              reqPoDt.ProductType,
@@ -282,7 +284,7 @@ func MapUpdatePoDts(ctx *fiber.Ctx, req dtos.UpdatePurchaseOrderRequest, updated
 	return poDtsModel, nil
 }
 
-func GetPoIDs(req dtos.UpdatePurchaseOrderRequest) ([]*uint, []*uint) {
+func GetPoIDs(req dtos.FormPurchaseOrderRequest) ([]*uint, []*uint) {
 	poDtIDs := []*uint{}
 	productIDs := []*uint{}
 
@@ -308,4 +310,199 @@ func MapFilterPoDts(poDts []dtos.PurchaseOrderPoDtListDTO) []dtos.PurchaseOrderP
 	}
 
 	return combinedPoDts
+}
+
+func MapNewUpdatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, userID uint, span opentracing.Span) ([]uint, []uint, []uint, []uint, error) {
+	refSoDtID := []uint{}
+	refSoDtBomDtID := []uint{}
+	refRoDtID := []uint{}
+	refRoDtBomID := []uint{}
+
+	for _, reqPoDt := range req.PoDts {
+		if reqPoDt.RefSoDtID != nil {
+			refSoDtID = append(refSoDtID, *reqPoDt.RefSoDtID)
+		}
+
+		if reqPoDt.RefSoDtBomID != nil {
+			refSoDtBomDtID = append(refSoDtBomDtID, *reqPoDt.RefSoDtBomID)
+		}
+
+		// if reqPoDt.RefRoDtID != nil {
+		// 	refRoDtID = append(refRoDtID, *reqPoDt.RefRoDtID)
+		// }
+
+		// if reqPoDt.RefRoDtBomID != nil {
+		// 	refRoDtBomID = append(refRoDtBomID, *reqPoDt.RefRoDtBomID)
+		// }
+	}
+
+	return refSoDtID, refSoDtBomDtID, refRoDtID, refRoDtBomID, nil
+}
+
+func MapNewUpdatedReverseRefsPo(ctx *fiber.Ctx, oldInvDts []dtos.PurchaseOrderPoDtListDTO, soDts []map[string]interface{}, soDtBoms []map[string]interface{}, poDts []map[string]interface{}, poDtBoms []map[string]interface{}) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, error) {
+	refSoDt := []map[string]interface{}{}
+	refSoDtBomDt := []map[string]interface{}{}
+	refRoDt := []map[string]interface{}{}
+	refRoDtBom := []map[string]interface{}{}
+
+	for _, reqPoDt := range oldInvDts {
+		if reqPoDt.RefSoDtID != nil && *reqPoDt.RefSoDtID > 0 {
+			for _, soDt := range soDts {
+				// log.Printf("soDt[\"id\"] value: %v, type: %T\n", soDt["id"], soDt["id"])
+
+				if id, ok := soDt["id"].(int32); ok {
+					// if *reqPoDt.RefSoDtID == soDt["id"] {
+					if *reqPoDt.RefSoDtID == uint(id) {
+						soDt["qty_po"] = soDt["qty_po"].(float64) - *reqPoDt.Qty
+						refSoDt = append(refSoDt, soDt)
+						break
+					}
+				}
+			}
+		}
+
+		if reqPoDt.RefSoDtBomID != nil && *reqPoDt.RefSoDtBomID > 0 {
+			for _, soDtBom := range soDtBoms {
+				if id, ok := soDtBom["id"].(int32); ok {
+					if *reqPoDt.RefSoDtBomID == uint(id) {
+						soDtBom["qty_po"] = soDtBom["qty_po"].(float64) - *reqPoDt.Qty
+						refSoDtBomDt = append(refSoDtBomDt, soDtBom)
+						break
+					}
+				}
+			}
+		}
+
+		if reqPoDt.RefRoDtID != nil && *reqPoDt.RefRoDtID > 0 {
+			for _, poDt := range poDts {
+				if id, ok := poDt["id"].(int32); ok {
+					if *reqPoDt.RefRoDtID == uint(id) {
+						poDt["qty_in"] = poDt["qty_in"].(float64) - *reqPoDt.Qty
+						refRoDt = append(refRoDt, poDt)
+						break
+					}
+				}
+			}
+		}
+
+		if reqPoDt.RefRoDtBomID != nil && *reqPoDt.RefRoDtBomID > 0 {
+			for _, poDtBom := range poDtBoms {
+				if id, ok := poDtBom["id"].(int32); ok {
+					if *reqPoDt.RefRoDtBomID == uint(id) {
+						poDtBom["qty_in"] = poDtBom["qty_in"].(float64) - *reqPoDt.Qty
+						refRoDtBom = append(refRoDtBom, poDtBom)
+						break
+					}
+				}
+			}
+		}
+	}
+
+	return refSoDt, refSoDtBomDt, refRoDt, refRoDtBom, nil
+}
+
+func MapNewUpdatedRefsPo(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, soDts []map[string]interface{}, soDtBoms []map[string]interface{}, poDts []map[string]interface{}, poDtBoms []map[string]interface{}) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, error) {
+	refSoDt := []map[string]interface{}{}
+	refSoDtBomDt := []map[string]interface{}{}
+	refRoDt := []map[string]interface{}{}
+	refRoDtBom := []map[string]interface{}{}
+
+	for _, reqPoDt := range req.PoDts {
+		if reqPoDt.RefSoDtID != nil && *reqPoDt.RefSoDtID > 0 {
+			for _, soDt := range soDts {
+				// log.Printf("soDt[\"id\"] value: %v, type: %T\n", soDt["id"], soDt["id"])
+
+				if id, ok := soDt["id"].(int32); ok {
+					// if *reqPoDt.RefSoDtID == soDt["id"] {
+					if *reqPoDt.RefSoDtID == uint(id) {
+
+						if soDt["qty_po"] == nil {
+							soDt["qty_po"] = *new(float64)
+						}
+						soDt["qty_po"] = soDt["qty_po"].(float64) + *reqPoDt.Qty
+						refSoDt = append(refSoDt, soDt)
+						break
+					}
+				}
+			}
+		}
+
+		if reqPoDt.RefSoDtBomID != nil && *reqPoDt.RefSoDtBomID > 0 {
+			for _, soDtBom := range soDtBoms {
+				if id, ok := soDtBom["id"].(int32); ok {
+					if *reqPoDt.RefSoDtBomID == uint(id) {
+
+						if soDtBom["qty_po"] == nil {
+							soDtBom["qty_po"] = *new(float64)
+						}
+						soDtBom["qty_po"] = soDtBom["qty_po"].(float64) + *reqPoDt.Qty
+						refSoDtBomDt = append(refSoDtBomDt, soDtBom)
+						break
+					}
+				}
+			}
+		}
+
+		// if reqPoDt.RefRoDtID != nil && *reqPoDt.RefRoDtID > 0 {
+		// 	for _, poDt := range poDts {
+		// 		if id, ok := poDt["id"].(int32); ok {
+		// 			if *reqPoDt.RefRoDtID == uint(id) {
+
+		// 				if poDt["qty_in"] == nil {
+		// 					poDt["qty_in"] = *new(float64)
+		// 				}
+		// 				poDt["qty_in"] = poDt["qty_in"].(float64) + *reqPoDt.Qty
+		// 				refRoDt = append(refRoDt, poDt)
+		// 				break
+		// 			}
+		// 		}
+		// 	}
+		// }
+
+		// if reqPoDt.RefRoDtBomID != nil && *reqPoDt.RefRoDtBomID > 0 {
+		// 	for _, poDtBom := range poDtBoms {
+		// 		if id, ok := poDtBom["id"].(int32); ok {
+		// 			if *reqPoDt.RefRoDtBomID == uint(id) {
+
+		// 				if poDtBom["qty_in"] == nil {
+		// 					poDtBom["qty_in"] = *new(float64)
+		// 				}
+		// 				poDtBom["qty_in"] = poDtBom["qty_in"].(float64) + *reqPoDt.Qty
+		// 				refRoDtBom = append(refRoDtBom, poDtBom)
+		// 				break
+		// 			}
+		// 		}
+		// 	}
+		// }
+	}
+
+	return refSoDt, refSoDtBomDt, refRoDt, refRoDtBom, nil
+}
+
+func MapOldUpdatePoDts(ctx *fiber.Ctx, oldInvDts []dtos.PurchaseOrderPoDtListDTO, userID uint, span opentracing.Span) ([]uint, []uint, []uint, []uint, error) {
+	refSoDtID := []uint{}
+	refSoDtBomDtID := []uint{}
+	refRoDtID := []uint{}
+	refRoDtBomID := []uint{}
+
+	for _, reqInvDt := range oldInvDts {
+		if reqInvDt.RefSoDtID != nil {
+			refSoDtID = append(refSoDtID, *reqInvDt.RefSoDtID)
+		}
+
+		if reqInvDt.RefSoDtBomID != nil {
+			refSoDtBomDtID = append(refSoDtBomDtID, *reqInvDt.RefSoDtBomID)
+		}
+
+		if reqInvDt.RefRoDtID != nil {
+			refRoDtID = append(refRoDtID, *reqInvDt.RefRoDtID)
+		}
+
+		if reqInvDt.RefRoDtBomID != nil {
+			refRoDtBomID = append(refRoDtBomID, *reqInvDt.RefRoDtBomID)
+		}
+
+	}
+
+	return refSoDtID, refSoDtBomDtID, refRoDtID, refRoDtBomID, nil
 }

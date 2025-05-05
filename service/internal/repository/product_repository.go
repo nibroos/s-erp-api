@@ -134,9 +134,9 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 	}
 
 	filterKey := map[string]string{
-		"unit_id":           "iu.unit_id",
-		"status":            "m.status",
-		"prod_type":         "m.prod_type",
+		"unit_id": "iu.unit_id",
+		"status":  "m.status",
+		// "prod_type":         "m.prod_type",
 		"item_sub_group_id": "m.item_sub_group_id",
 		"item_group_id":     "isg.item_group_id",
 	}
@@ -935,22 +935,23 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 	}
 
 	condition := ""
+	conditionCombine := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND m.id IN (%s)", filters["ids"])
+		conditionCombine += fmt.Sprintf(" AND combined.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
-		"unit_id":           "iu.unit_id",
-		"status":            "m.status",
-		"prod_type":         "m.prod_type",
+		"unit_id": "iu.unit_id",
+		"status":  "combined.status",
+		// "prod_type":         "m.prod_type",
 		"item_sub_group_id": "m.item_sub_group_id",
 		"item_group_id":     "isg.item_group_id",
 	}
 
 	for key, _ := range filterKey {
 		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s = $%d", value, i)
+			conditionCombine += fmt.Sprintf(" AND %s = $%d", value, i)
 			// countQuery += fmt.Sprintf(" AND %s = $%d", value, i)
 			args = append(args, value)
 			i++
@@ -958,16 +959,22 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 	}
 
 	filterIDsKey := map[string]string{
-		"item_sub_group_ids": "m.item_sub_group_id",
-		"item_group_ids":     "isg.item_group_id",
-		"product_bom_ids":    "bo.product_id",
+		"item_sub_group_ids": "combined.item_sub_group_id",
+		"item_group_ids":     "ig.id",
+		"product_bom_ids":    "combined.product_bom_id",
 	}
 
 	for key, valueID := range filterIDsKey {
 		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+			conditionCombine += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
 		}
 	}
+
+	cdSelect := ``
+	// // if product_bom_ids filled add cdSelect
+	// if filters["product_bom_ids"] != "" {
+	// 	cdSelect += `p2.name as product_bom_name,`
+	// }
 
 	baseQuery := `
     FROM (
@@ -976,6 +983,8 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
             isg.parent_id as item_group_id,
             u.name as unit_name,
             isg.name as item_sub_group_name,
+						COALESCE(bi.price_sell, iu.price_sell) as price_sell,
+						COALESCE(bi.price_buy, iu.price_buy) as price_buy,
             ig.name as item_group_name,
             cu.name as created_by_name,
             uu.name as updated_by_name
@@ -986,6 +995,9 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
                 m.description, m.remark, m.tpb_code, m.minimum_stock, m.status, m.expired_at,
                 m.id as product_id,
                 m.id as ref_id,
+								m.id as ref_product_id,
+								NULL as ref_product_bom_id,
+								NULL as product_bom_id,
                 m.is_pph23,
                 m.is_vat,
                 m.created_by_id,
@@ -999,6 +1011,32 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
             FROM products m
 						LEFT JOIN boms bo ON m.id = bo.product_item_id
             WHERE m.prod_type = 'single' AND m.deleted_at IS NULL
+
+						UNION ALL
+
+						SELECT
+								b.id, i.item_sub_group_id, b.item_unit_id,
+								i.code, i.factory_code, i.name, i.sku, i.barcode, i.specification,
+								i.description, i.remark, i.tpb_code, i.minimum_stock, i.status, i.expired_at,
+								i.id as product_id,
+								b.id as ref_id,
+								NULL as ref_product_id,
+								b.id as ref_product_bom_id,
+								b.product_id as product_bom_id,
+								i.is_pph23,
+								i.is_vat,
+								i.created_by_id,
+								i.updated_by_id,
+								i.is_all_branch,
+								i.created_at,
+								i.updated_at,
+								i.deleted_at,
+								p.name as product_bom_name,
+								'bom' as item_type
+						FROM boms b
+						LEFT JOIN products i ON b.product_item_id = i.id
+						LEFT JOIN products p ON b.product_id = p.id
+						WHERE b.deleted_at IS NULL
         ) combined
         LEFT JOIN mix_values isg ON combined.item_sub_group_id = isg.id
         LEFT JOIN mix_values ig ON isg.parent_id = ig.id
@@ -1008,6 +1046,7 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
         LEFT JOIN branches b ON bi.branch_id = b.id
         LEFT JOIN users cu ON combined.created_by_id = cu.id
         LEFT JOIN users uu ON combined.updated_by_id = uu.id
+				WHERE combined.deleted_at IS NULL AND combined.status = 1 ` + conditionCombine + `
         ORDER BY combined.id, combined.item_type, combined.updated_at DESC
     ) AS mp`
 
@@ -1033,9 +1072,12 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 	// LEFT JOIN products i ON b.product_item_id = i.id
 	// LEFT JOIN products p ON b.product_id = p.id
 	// WHERE b.deleted_at IS NULL
+
 	query := `SELECT 
     mp.*,
+		` + cdSelect + `
     mp.item_group_id,
+		mp.product_id as item_id,
     mp.unit_name,
     mp.item_sub_group_name,
     mp.item_group_name,

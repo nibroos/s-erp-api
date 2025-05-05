@@ -358,7 +358,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderByID(ctx *fiber.Ctx, params *d
 		return nil, err
 	}
 
-	poDts, err := r.GetPurchaseOrderPoDts(ctx, &dtos.GetPurchaseOrderPoDtParams{
+	poDts, err := r.GetPurchaseOrderPoDts(ctx, tx, &dtos.GetPurchaseOrderPoDtParams{
 		PurchaseOrderID: purchaseOrder.ID,
 		IsDeleted:       params.IsDeleted,
 	}, span)
@@ -372,7 +372,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderByID(ctx *fiber.Ctx, params *d
 	return &purchaseOrder, nil
 }
 
-func (r *PurchaseOrderRepository) GetPurchaseOrderPoDts(ctx *fiber.Ctx, params *dtos.GetPurchaseOrderPoDtParams, span opentracing.Span) ([]dtos.PurchaseOrderPoDtListDTO, error) {
+func (r *PurchaseOrderRepository) GetPurchaseOrderPoDts(ctx *fiber.Ctx, tx *gorm.DB, params *dtos.GetPurchaseOrderPoDtParams, span opentracing.Span) ([]dtos.PurchaseOrderPoDtListDTO, error) {
 	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetPurchaseOrderPoDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
@@ -380,7 +380,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderPoDts(ctx *fiber.Ctx, params *
 
 	query := `
 	SELECT 
-		pd.id, pd.product_uuid, pd.po_id, pd.item_unit_id, pd.vat_id, pd.pph23_id, pd.ref_id, pd.product_id, pd.bom_id, pd.ref_so_dt_id, pd.ref_so_dt_bom_id, pd.ref_product_id,
+		pd.id, pd.product_uuid, pd.po_id, pd.item_unit_id, pd.vat_id, pd.pph23_id, pd.ref_id, pd.product_id, pd.bom_id, pd.ref_so_dt_id, pd.ref_so_dt_bom_id, pd.ref_product_id, pd.ref_product_bom_id,
 		pd.product_type, pd.product_json, pd.ref_type, pd.ref_json, pd.gen_code, pd.remark,
 		pd.need_qty, pd.qty, pd.price, pd.subtotal, pd.discount_amount, pd.discount_percentage, pd.discount_percentage_num,
 		pd.discount_percentage_amount, pd.discount_final, pd.discount_type, pd.is_vat, pd.is_pph23, pd.total_amount,
@@ -1242,4 +1242,48 @@ func (r *PurchaseOrderRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[s
 	}
 
 	return products, total, nil
+}
+
+func (r *PurchaseOrderRepository) GetRefPoDtByRefDtID(ctx *fiber.Ctx, tx *gorm.DB, tableName string, parentColumnName string, detailIDs []uint, span opentracing.Span) ([]map[string]interface{}, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-GetRefPoDtByRefDtID", opentracing.ChildOf(span.Context()))
+
+	var details []map[string]interface{}
+
+	baseQuery := fmt.Sprintf(`
+		FROM (
+			SELECT DISTINCT ON (sd.id)
+				sd.id, sd.qty_po, sd.%s
+			FROM %s sd
+		) AS alias WHERE 1=1`, parentColumnName, tableName)
+
+	query := `SELECT *
+		` + baseQuery
+
+	var args []interface{}
+	i := 1
+
+	if len(detailIDs) > 0 {
+		query += fmt.Sprintf(" AND id = ANY($1)")
+		args = append(args, pq.Array(detailIDs))
+		i++
+	}
+
+	err := tx.Raw(query, args...).Scan(&details).Error
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return details, nil
+}
+
+func (r *PurchaseOrderRepository) BulkUpdateReverseInvRefDtsQty(ctx *fiber.Ctx, tx *gorm.DB, refDts []map[string]interface{}, tableName string, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("PurchaseOrderRepository-BulkUpdateReverseInvRefDtsQty", opentracing.ChildOf(span.Context()))
+
+	if err := r.utilRepo.Upsert(tx, tableName, "id", refDts, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
 }

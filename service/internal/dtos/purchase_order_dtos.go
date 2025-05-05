@@ -60,6 +60,46 @@ type CreatePoDtsRequest struct {
 	TotalAmount              *float64 `json:"total_amount"`
 }
 
+type FormPoDtsRequest struct {
+	ID                       *uint    `json:"id"`
+	PoDtID                   *uint    `json:"po_dt_id"`
+	PoID                     *uint    `json:"po_id"`
+	ProductUuid              string   `json:"product_uuid"`
+	ItemUnitID               *uint    `json:"item_unit_id"`
+	VatID                    *uint    `json:"vat_id"`
+	Pph23ID                  *uint    `json:"pph23_id"`
+	RefID                    *uint    `json:"ref_id"`
+	RefSoDtID                *uint    `json:"ref_so_dt_id"`
+	RefSoDtBomID             *uint    `json:"ref_so_dt_bom_id"`
+	RefProductID             *uint    `json:"ref_product_id"`
+	RefProductBomID          *uint    `json:"ref_product_bom_id"`
+	ProductID                uint     `json:"product_id"`
+	BomID                    *uint    `json:"bom_id"`
+	ProductType              *string  `json:"product_type"`
+	ProductJSON              *string  `json:"product_json"`
+	RefType                  *string  `json:"ref_type"`
+	RefJSON                  *string  `json:"ref_json"`
+	GenCode                  *string  `json:"gen_code"`
+	Remark                   *string  `json:"remark"`
+	NeedQty                  *float64 `json:"need_qty"`
+	Qty                      *float64 `json:"qty"`
+	Price                    *float64 `json:"price"`
+	Subtotal                 *float64 `json:"subtotal"`
+	DiscountAmount           *float64 `json:"discount_amount"`
+	DiscountPercentage       *float64 `json:"discount_percentage"`
+	DiscountPercentageNum    *float64 `json:"discount_percentage_num"`
+	DiscountPercentageAmount *float64 `json:"discount_percentage_amount"`
+	DiscountFinal            *float64 `json:"discount_final"`
+	DiscountType             *string  `json:"discount_type"`
+	VatPerc                  *float64 `json:"vat_perc"`
+	VatPercAm                *float64 `json:"vat_perc_am"`
+	Pph23Perc                *float64 `json:"pph23_perc"`
+	Pph23PercAm              *float64 `json:"pph23_perc_am"`
+	IsVat                    *int8    `json:"is_vat"`
+	IsPph23                  *int8    `json:"is_pph23"`
+	TotalAmount              *float64 `json:"total_amount"`
+}
+
 type CreatePurchaseOrderRequest struct {
 	CustomerID               *uint                `json:"customer_id"`
 	PurchaseTypeID           *uint                `json:"purchase_type_id"`
@@ -93,6 +133,46 @@ type CreatePurchaseOrderRequest struct {
 	TotalVat                 *float64             `json:"total_vat"`
 	GrandTotal               *float64             `json:"grand_total"`
 	PoDts                    []CreatePoDtsRequest `json:"po_dts"`
+
+	CustomerCode string `json:"customer_code"`
+}
+
+type FormPurchaseOrderRequest struct {
+	ID                       *uint              `json:"id"`
+	CustomerID               *uint              `json:"customer_id"`
+	PurchaseTypeID           *uint              `json:"purchase_type_id"`
+	CurrencyID               *uint              `json:"currency_id"`
+	VatID                    *uint              `json:"vat_id"`
+	PaymentTermID            *uint              `json:"payment_term_id"`
+	ShippingTermID           *uint              `json:"shipping_term_id"`
+	Pph23ID                  *uint              `json:"pph23_id"`
+	BranchID                 *uint              `json:"branch_id"`
+	IsVat                    *int               `json:"is_vat"`
+	RevNo                    *int               `json:"rev_no"`
+	PoNo                     *string            `json:"po_no"`
+	PoNoOri                  *string            `json:"po_no_ori"`
+	PoDate                   *string            `json:"po_date"`
+	DeliveryDate             *string            `json:"delivery_date"`
+	ShippingDestination      *string            `json:"shipping_destination"`
+	Remark                   *string            `json:"remark"`
+	Status                   string             `json:"status"`
+	ExchangeRate             *float64           `json:"exchange_rate"`
+	DiscountPercentage       *float64           `json:"discount_percentage"`
+	DiscountAmount           *float64           `json:"discount_amount"`
+	DiscountPercentageAmount *float64           `json:"discount_percentage_amount"`
+	DiscountFinalHeader      *float64           `json:"discount_final_header"`
+	DiscountAmountProduct    *float64           `json:"discount_amount_product"`
+	DiscountType             *string            `json:"discount_type"`
+	Pph23Percentage          *float64           `json:"pph23_percentage"`
+	VatPercentage            *float64           `json:"vat_percentage"`
+	TotalAmountProducts      *float64           `json:"total_amount_products"`
+	Subtotal                 *float64           `json:"subtotal"`
+	TotalQty                 *float64           `json:"total_qty"`
+	TotalDiscount            *float64           `json:"total_discount"`
+	TotalPph23               *float64           `json:"total_pph23"`
+	TotalVat                 *float64           `json:"total_vat"`
+	GrandTotal               *float64           `json:"grand_total"`
+	PoDts                    []FormPoDtsRequest `json:"po_dts"`
 
 	CustomerCode string `json:"customer_code"`
 }
@@ -322,7 +402,10 @@ type PurchaseOrderPoDtListDTO struct {
 	BomID                    *uint    `json:"bom_id" db:"bom_id"`
 	RefSoDtID                *uint    `json:"ref_so_dt_id" db:"ref_so_dt_id"`
 	RefSoDtBomID             *uint    `json:"ref_so_dt_bom_id" db:"ref_so_dt_bom_id"`
+	RefRoDtID                *uint    `json:"ref_ro_dt_id" db:"ref_ro_dt_id"`
+	RefRoDtBomID             *uint    `json:"ref_ro_dt_bom_id" db:"ref_ro_dt_bom_id"`
 	RefProductID             *uint    `json:"ref_product_id" db:"ref_product_id"`
+	RefProductBomID          *uint    `json:"ref_product_bom_id" db:"ref_product_bom_id"`
 	ProductType              *string  `json:"product_type" db:"product_type"`
 	ProductJSON              *string  `json:"product_json" db:"product_json"`
 	RefType                  *string  `json:"ref_type" db:"ref_type"`
