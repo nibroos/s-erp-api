@@ -38,6 +38,9 @@ type SalesInvoice struct {
 	TotalPph23               *float64       `json:"total_pph23" gorm:"column:total_pph23"`
 	TotalVat                 *float64       `json:"total_vat" gorm:"column:total_vat"`
 	GrandTotal               *float64       `json:"grand_total" gorm:"column:grand_total"`
+	TotalAdjustment          *float64       `json:"total_adjustment" gorm:"column:total_adjustment"`
+	HistoryTotalAdjustment   *float64       `json:"history_total_adjustment" gorm:"column:history_total_adjustment"`
+	HistoryStatus            *string        `json:"history_status" gorm:"column:history_status"`
 	CreatedByID              *uint          `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID              *uint          `json:"updated_by_id" gorm:"column:updated_by_id"`
 	DeletedByID              *uint          `json:"deleted_by_id" gorm:"column:deleted_by_id"`

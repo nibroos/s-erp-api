@@ -371,6 +371,7 @@ type GetRefSalesOrderForInvoiceRequest struct {
 	DateType       *string `json:"date_type"`
 	StartDate      *string `json:"start_date"`
 	EndDate        *string `json:"end_date"`
+	SpecificIDs    *string `json:"specific_ids"`
 	PerPage        *string `json:"per_page" default:"10"`
 	Page           *string `json:"page" default:"1"`
 	OrderColumn    *string `json:"order_column" default:"id"`

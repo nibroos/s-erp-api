@@ -285,6 +285,10 @@ func (c *SalesInvoiceController) GetRefSalesOrderDts(ctx *fiber.Ctx) error {
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
 	}
 
+	if ctx.Query("specific_ids") != "" {
+		filters["specific_ids"] = ctx.Query("specific_ids")
+	}
+
 	soDts, total, err := c.service.GetRefSalesOrderDts(ctx, filters, parentSpan)
 	if err != nil {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch sales order details", http.StatusInternalServerError)
