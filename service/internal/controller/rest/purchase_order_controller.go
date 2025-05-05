@@ -100,7 +100,7 @@ func (c *PurchaseOrderController) CreatePurchaseOrder(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.CreatePurchaseOrderRequest
+	var req dtos.FormPurchaseOrderRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
@@ -148,7 +148,7 @@ func (c *PurchaseOrderController) UpdatePurchaseOrder(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.UpdatePurchaseOrderRequest
+	var req dtos.FormPurchaseOrderRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
@@ -208,11 +208,15 @@ func (c *PurchaseOrderController) DeletePurchaseOrder(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Purchase order not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
-	err := c.service.DeletePurchaseOrder(ctx, req.ID, parentSpan)
+	tx := c.repo.BeginTransaction()
+
+	err := c.service.DeletePurchaseOrder(ctx, tx, req.ID, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Failed to delete purchase order", http.StatusInternalServerError, err.Error(), nil)
 	}
+
+	tx.Commit()
 
 	return utils.GetResponse(ctx, nil, nil, "Purchase order deleted successfully", http.StatusOK, nil, nil)
 }
@@ -293,4 +297,59 @@ func (c *PurchaseOrderController) RestorePurchaseOrder(ctx *fiber.Ctx) error {
 	tx.Commit()
 
 	return utils.GetResponse(ctx, nil, nil, "Purchase order restored successfully", http.StatusOK, nil, nil)
+}
+
+func (c *PurchaseOrderController) GetWidgetPurchaseOrders(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("PurchaseOrderController-GetWidgetPurchaseOrders", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("PurchaseOrderController-GetWidgetPurchaseOrders: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	purchaseOrders, total, err := c.service.GetWidgetPurchaseOrders(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch purchase orders", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, purchaseOrders, paginationMeta, "Purchase orders fetched successfully", http.StatusOK, nil, nil)
+}
+
+func (c *PurchaseOrderController) GetRefIndexSoDts(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("PurchaseOrderController-GetRefIndexSoDts", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("PurchaseOrderController-GetRefIndexSoDts: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	quoDts, total, err := c.service.GetRefIndexSoDts(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch sales order", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, quoDts, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)
 }

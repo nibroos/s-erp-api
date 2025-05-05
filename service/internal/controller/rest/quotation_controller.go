@@ -380,3 +380,31 @@ func (c *QuotationController) CsvGetQuotations(ctx *fiber.Ctx) error {
 
 	return ctx.Send(quotations)
 }
+
+func (c *QuotationController) GetWidgetQuotations(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("QuotationController-GetWidgetQuotations", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("QuotationController-GetWidgetQuotations: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	quotations, total, err := c.service.GetWidgetQuotations(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch quotation", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, quotations, paginationMeta, "quotation fetched successfully", http.StatusOK, nil, nil)
+}

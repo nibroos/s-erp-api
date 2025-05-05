@@ -210,6 +210,14 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 		}
 	}
 
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+		query += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
+		countQuery += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
 	if !isAdmin && branchID != nil {
 		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
 		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
@@ -284,6 +292,215 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 	}
 
 	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return products, total, nil
+}
+
+func (r *QuotationRepository) GetWidgetQuotations(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.QuotationStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("QuotationRepository-GetWidgetQuotations", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	products := []dtos.QuotationStatusWidget{}
+
+	var total int
+
+	filterDBColumnKey := []string{
+		"q.quo_no", "q.title", "q.remark",
+		"pi.name",
+		"it.name",
+		"qd.remark",
+		"qd.gen_code",
+		"qdb.remark",
+		"qdb.gen_code",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND q.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":        "q.status",
+		"customer_id":   "q.customer_id",
+		"order_type_id": "q.order_type_id",
+		"currency_id":   "q.currency_id",
+		"vat_id":        "q.vat_id",
+		"payment_id":    "q.payment_id",
+		"pph23_id":      "q.pph23_id",
+		"expired_at":    "q.expired_at",
+		"due_at":        "q.due_at",
+	}
+
+	for key, valueID := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", valueID, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":   "q.customer_id",
+		"order_type_ids": "q.order_type_id",
+		"currency_ids":   "q.currency_id",
+		"payment_ids":    "q.payment_id",
+		"pph23_ids":      "q.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+
+		filterDateTypeKey := map[string]string{
+			"due_at":     "q.due_at",
+			"expired_at": "q.expired_at",
+		}
+
+		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	query := `
+    WITH status_values AS (
+        SELECT status, row_number() over () as status_order
+        FROM (VALUES 
+            ('TOTAL', 0),      -- Set TOTAL with order 0 to appear first
+            ('WAITING', 1),
+            ('APPROVED', 2),
+            ('PENDING', 3),
+            ('CANCELED', 4)
+        ) AS s(status)
+    ),
+    filtered_orders AS (
+        SELECT 
+            q.id,             
+            q.status as q_status,
+            q.total_qty,
+            q.grand_total
+        FROM quotations q
+        LEFT JOIN quo_dts qd ON qd.quotation_id = q.id
+        LEFT JOIN products pi ON qd.item_id = pi.id
+        LEFT JOIN quo_dt_boms qdb ON qdb.quo_dt_id = qd.id
+        LEFT JOIN products it ON qdb.item_id = it.id
+        WHERE q.deleted_at IS NULL
+        ` + condition + queryGlobal + `
+    ),
+    quotation_stats AS (
+        SELECT 
+            sv.status,
+            sv.status_order,
+            COUNT(DISTINCT fo.id) as order_count,
+            COALESCE(SUM(fo.total_qty), 0) as total_qty,
+            COALESCE(SUM(fo.grand_total), 0) as grand_total
+        FROM status_values sv
+        LEFT JOIN filtered_orders fo ON sv.status = fo.q_status OR sv.status = 'TOTAL'
+        GROUP BY sv.status, sv.status_order
+    )
+    SELECT 
+        sv.status,
+        order_count,
+        total_qty,
+        grand_total
+    FROM quotation_stats sv
+    ORDER BY status_order`
+
+	for key, value := range filters {
+		switch key {
+		case "quo_no", "title", "remark":
+			if value != "" {
+				query += fmt.Sprintf(" AND q.%s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (q.branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (q.branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	var selectErr error
+
+	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+	err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+	if err != nil {
+		selectSpan.LogKV("query", query)
+		utils.LogErrors(selectSpan, err)
+		selectErr = err
+	}
+
+	if selectErr != nil {
+		defer childSpan.Finish()
 		return nil, 0, selectErr
 	}
 

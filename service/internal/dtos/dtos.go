@@ -1966,6 +1966,7 @@ type ProductListDTO struct {
 	FactoryCode      *string  `json:"factory_code" db:"factory_code"`
 	Name             string   `json:"name" db:"name"`
 	ProdType         *string  `json:"prod_type" db:"prod_type"`
+	ItemType         *string  `json:"item_type" db:"item_type"`
 	Sku              *string  `json:"sku" db:"sku"`
 	Barcode          *string  `json:"barcode" db:"barcode"`
 	Specification    *string  `json:"specification" db:"specification"`
@@ -1982,13 +1983,20 @@ type ProductListDTO struct {
 	Margin           *float64 `json:"margin" db:"margin"`
 	ExpiredAt        *string  `json:"expired_at" db:"expired_at"`
 	Status           int8     `json:"status" db:"status"`
+	CreatedByID      *uint    `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID      *uint    `json:"updated_by_id" db:"updated_by_id"`
 	CreatedByName    *string  `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string  `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt        *string  `json:"created_at" db:"created_at"`
 	UpdatedAt        *string  `json:"updated_at" db:"updated_at"`
 	DeleteAt         *string  `json:"deleted_at" db:"deleted_at"`
 
+	ItemID            *uint   `json:"item_id" db:"item_id"`
+	RefProductID      *uint   `json:"ref_product_id" db:"ref_product_id"`
+	RefProductBomID   *uint   `json:"ref_product_bom_id" db:"ref_product_bom_id"`
+	ProductBomID      *uint   `json:"product_bom_id" db:"product_bom_id"`
 	ItemName          *string `json:"item_name" db:"item_name"`
+	ProductBomName    *string `json:"product_bom_name" db:"product_bom_name"`
 	ItemCode          *string `json:"item_code" db:"item_code"`
 	ItemFactoryCode   *string `json:"item_factory_code" db:"item_factory_code"`
 	ItemSku           *string `json:"item_sku" db:"item_sku"`

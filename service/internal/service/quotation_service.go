@@ -39,6 +39,17 @@ func (s *QuotationService) GetQuotations(ctx *fiber.Ctx, filters map[string]stri
 	return quotations, total, nil
 }
 
+func (s *QuotationService) GetWidgetQuotations(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.QuotationStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("QuotationService-GetWidgetQuotations", opentracing.ChildOf(span.Context()))
+
+	quotations, total, err := s.repo.GetWidgetQuotations(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+	return quotations, total, nil
+}
+
 func (s *QuotationService) CreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.Quotation, *gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuotation", opentracing.ChildOf(span.Context()))
 

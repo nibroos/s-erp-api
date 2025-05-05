@@ -410,6 +410,7 @@ type SalesOrderDetailDTO struct {
 	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	Remark        *string  `json:"remark" db:"remark"`
 	RevNo         *int     `json:"rev_no" db:"rev_no"`
+	IsVat         *int     `json:"is_vat" db:"is_vat"`
 	Status        string   `json:"status" db:"status"`
 	ExchangeRate  float64  `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64 `json:"vat_perc" db:"vat_perc"`
@@ -1147,6 +1148,7 @@ type ScheduleAttachmentsDTO struct {
 	RefType    *string `json:"ref_type" db:"ref_type"`
 	FileType   *string `json:"file_type" db:"file_type"`
 	FileUrl    *string `json:"file_url" db:"file_url"`
+	FileUrlApp *string `json:"file_url_app" db:"file_url_app"`
 	FileName   *string `json:"file_name" db:"file_name"`
 	Remark     *string `json:"remark" db:"remark"`
 	FileSize   *int64  `json:"file_size" db:"file_size"`
@@ -1156,4 +1158,11 @@ type ScheduleAttachmentsDTO struct {
 
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+}
+
+type SalesOrderStatusWidget struct {
+	Status     string  `json:"status" db:"status"`
+	OrderCount int     `json:"order_count" db:"order_count"`
+	TotalQty   float64 `json:"total_qty" db:"total_qty"`
+	GrandTotal float64 `json:"grand_total" db:"grand_total"`
 }

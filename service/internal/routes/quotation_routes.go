@@ -16,6 +16,7 @@ func SetupQuotationRoutes(quotations fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.
 	quotationController := rest.NewQuotationController(quotationService, quotationRepo, tracer)
 
 	// quotations.Post("/index-quotation", middleware.PermissionMiddleware("read_masters"), quotationController.GetQuotations)
+	quotations.Post("/widget-quotation", quotationController.GetWidgetQuotations)
 	quotations.Post("/index-quotation", quotationController.GetQuotations)
 	quotations.Post("/show-quotation", quotationController.GetQuotationByID)
 	quotations.Post("/create-quotation", quotationController.CreateQuotation)
