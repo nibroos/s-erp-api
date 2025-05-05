@@ -267,11 +267,16 @@ func MapNewUpdatedReverseRefs(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtLis
 
 		if reqInvDt.RefPoDtID != nil && *reqInvDt.RefPoDtID > 0 {
 			for _, poDt := range poDts {
+				log.Printf("soDt[\"id\"] value: %v, type: %T\n", poDt["id"], poDt["id"])
+				// if id, ok := ParseMapIDToUint(poDt["id"]); ok {
 				if id, ok := poDt["id"].(int32); ok {
 					if *reqInvDt.RefPoDtID == uint(id) {
-						poDt["qty_in"] = poDt["qty_in"].(float64) - *reqInvDt.Qty
+						// poDt["qty_in"] = poDt["qty_in"].(float64) - *reqInvDt.Qty
+						// refPoDt = append(refPoDt, poDt)
+						// break
+						currentQty := ParseMapQtyToFloat64(poDt["qty_in"])
+						poDt["qty_in"] = currentQty - *reqInvDt.Qty
 						refPoDt = append(refPoDt, poDt)
-						break
 					}
 				}
 			}

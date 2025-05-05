@@ -258,6 +258,7 @@ type InventoryInvDtListDTO struct {
 	IsPph23          *int8    `json:"is_pph23" db:"is_pph23"`
 	QtyInvoice       *float64 `json:"qty_invoice" db:"qty_invoice"`
 	QtyOut           *float64 `json:"qty_out" db:"qty_out"`
+	QtyIn            *float64 `json:"qty_in" db:"qty_in"`
 	Qty              *float64 `json:"qty" db:"qty"`
 	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
 	PriceBuy         *float64 `json:"price_buy" db:"price_buy"`
@@ -454,10 +455,59 @@ type RefInvIndexSoDtListDTO struct {
 	ShippingAt   *string  `json:"shipping_at" db:"shipping_at"`
 	AgreeAt      *string  `json:"agree_at" db:"agree_at"`
 	DueAt        *string  `json:"due_at" db:"due_at"`
+	ShipDest     *string  `json:"ship_dest" db:"ship_dest"`
 	ItemSku      *string  `json:"item_sku" db:"item_sku"`
 	RefQty       *float64 `json:"ref_qty" db:"ref_qty"`
 	ItemType     *string  `json:"item_type" db:"item_type"`
 	Balance      *float64 `json:"balance" db:"balance"`
+}
+
+type RefInvIndexPoDtListDTO struct {
+	// ID               *uint    `json:"id" db:"id"`
+	ProductUuid      *string  `json:"product_uuid" db:"product_uuid"`
+	PoID             *uint    `json:"po_id" db:"po_id"`
+	CustomerID       *uint    `json:"customer_id" db:"customer_id"`
+	ItemUnitID       *uint    `json:"item_unit_id" db:"item_unit_id"`
+	ItemID           *uint    `json:"item_id" db:"item_id"`
+	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string  `json:"item_group_name" db:"item_group_name"`
+	ItemName         *string  `json:"item_name" db:"item_name"`
+	ItemCode         *string  `json:"item_code" db:"item_code"`
+	UnitName         *string  `json:"unit_name" db:"unit_name"`
+	GenCode          *string  `json:"gen_code" db:"gen_code"`
+	Remark           *string  `json:"remark" db:"remark"`
+	QtyIn            *float64 `json:"qty_in" db:"qty_in"`
+	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy         *float64 `json:"price_buy" db:"price_buy"`
+	SubtotalSell     *float64 `json:"subtotal_sell" db:"subtotal_sell"`
+	SubtotalBuy      *float64 `json:"subtotal_buy" db:"subtotal_buy"`
+	VatPerc          *float64 `json:"vat_perc" db:"vat_perc"`
+	VatPercAm        *float64 `json:"vat_perc_am" db:"vat_perc_am"`
+	Pph23Perc        *float64 `json:"pph23_perc" db:"pph23_perc"`
+	Pph23PercAm      *float64 `json:"pph23_perc_am" db:"pph23_perc_am"`
+	IsVat            *int8    `json:"is_vat" db:"is_vat"`
+	IsPph23          *int8    `json:"is_pph23" db:"is_pph23"`
+
+	CustomerName  *string  `json:"customer_name" db:"customer_name"`
+	RefType       *string  `json:"ref_type" db:"ref_type"`
+	RefSoDtID     *uint    `json:"ref_so_dt_id" db:"ref_so_dt_id"`
+	RefSoDtBomID  *uint    `json:"ref_so_dt_bom_id" db:"ref_so_dt_bom_id"`
+	RefPoDtID     *uint    `json:"ref_po_dt_id" db:"ref_po_dt_id"`
+	RefPoDtBomID  *uint    `json:"ref_po_dt_bom_id" db:"ref_po_dt_bom_id"`
+	RefInvDtID    *uint    `json:"ref_inv_dt_id" db:"ref_inv_dt_id"`
+	RefProductID  *uint    `json:"ref_product_id" db:"ref_product_id"`
+	CurrencyID    *uint    `json:"currency_id" db:"currency_id"`
+	VatID         *uint    `json:"vat_id" db:"vat_id"`
+	Pph23ID       *uint    `json:"pph23_id" db:"pph23_id"`
+	PaymentTermID *uint    `json:"payment_term_id" db:"payment_term_id"`
+	ExchangeRate  *float64 `json:"exchange_rate" db:"exchange_rate"`
+	RefNum        *string  `json:"ref_num" db:"ref_num"`
+	PoDate        *string  `json:"po_date" db:"po_date"`
+	DeliveryDate  *string  `json:"delivery_date" db:"delivery_date"`
+	ItemSku       *string  `json:"item_sku" db:"item_sku"`
+	RefQty        *float64 `json:"ref_qty" db:"ref_qty"`
+	ItemType      *string  `json:"item_type" db:"item_type"`
+	Balance       *float64 `json:"balance" db:"balance"`
 }
 
 type InvSalesOrderSoDtBomListDTO struct {
