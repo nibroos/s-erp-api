@@ -1,0 +1,1 @@
+ALTER TABLE so_dts DROP COLUMN IF EXISTS invoice_status;
