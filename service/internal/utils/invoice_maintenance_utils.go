@@ -26,16 +26,28 @@ func GetInvoiceMaintenanceIDs(req dtos.UpdateInvoiceMaintenanceRequest) ([]*uint
 	return invoiceMaintenanceDtIDs, productIDs, itemUnitIDs
 }
 
-func GetLockInvoiceMaintenanceSalesOrderIDs(req dtos.CreateInvoiceMaintenanceRequest) []*uint {
+func GetLockInvoiceMaintenanceSalesOrderIDs(req dtos.CreateInvoiceMaintenanceRequest) ([]*uint, []*uint) {
+	soIDs := []*uint{}
 	soDtIDs := []*uint{}
 
+	soIDsMap := make(map[uint]bool)
+
 	for _, reqInvoiceMaintenanceDt := range req.InvoiceMaintenanceDts {
-		if reqInvoiceMaintenanceDt.RefType != nil && *reqInvoiceMaintenanceDt.RefType == "so" && reqInvoiceMaintenanceDt.RefID != nil && *reqInvoiceMaintenanceDt.RefID > 0 {
-			soDtIDs = append(soDtIDs, reqInvoiceMaintenanceDt.RefID)
+		if reqInvoiceMaintenanceDt.RefType != nil && *reqInvoiceMaintenanceDt.RefType == "so" {
+			if reqInvoiceMaintenanceDt.RefID != nil && *reqInvoiceMaintenanceDt.RefID > 0 {
+				if !soIDsMap[*reqInvoiceMaintenanceDt.RefID] {
+					soIDsMap[*reqInvoiceMaintenanceDt.RefID] = true
+					soIDs = append(soIDs, reqInvoiceMaintenanceDt.RefID)
+				}
+			}
+
+			if reqInvoiceMaintenanceDt.RefDtID != nil && *reqInvoiceMaintenanceDt.RefDtID > 0 {
+				soDtIDs = append(soDtIDs, reqInvoiceMaintenanceDt.RefDtID)
+			}
 		}
 	}
 
-	return soDtIDs
+	return soIDs, soDtIDs
 }
 
 func MapCreateInvoiceMaintenanceDts(ctx *fiber.Ctx, req dtos.CreateInvoiceMaintenanceRequest, createdInvoiceMaintenance *models.InvoiceMaintenance, userID uint, span opentracing.Span) ([]models.InvoiceMaintenanceDt, error) {
@@ -127,10 +139,6 @@ func MapUpdateInvoiceMaintenanceDts(ctx *fiber.Ctx, req dtos.UpdateInvoiceMainte
 }
 
 func GenInvoiceMaintenanceNo(ctx *fiber.Ctx, req dtos.CreateInvoiceMaintenanceRequest, orderedNumber int, span opentracing.Span) string {
-	if req.InvoiceNo != nil {
-		return *req.InvoiceNo
-	}
-
 	prefix := "IMT"
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")

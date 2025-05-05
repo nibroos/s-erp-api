@@ -607,9 +607,9 @@ func (r *InvoiceMaintenanceRepository) GetRefSalesOrderForInvoiceMaintenance(ctx
 	condition := ""
 
 	if filters["specific_ids"] != "" {
-		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH')))", filters["specific_ids"])
+		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')))", filters["specific_ids"])
 	} else {
-		condition += " AND so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH')"
+		condition += " AND so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')"
 	}
 
 	if filters["ids"] != "" {
@@ -1184,6 +1184,155 @@ func (r *InvoiceMaintenanceRepository) BulkCancelApproveInvoiceMaintenances(tx *
 	}
 
 	return tx, nil
+}
+
+func (r *InvoiceMaintenanceRepository) UpdateSoDtInvoiceStatus(tx *gorm.DB, soDtID uint, status interface{}, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-UpdateSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var result *gorm.DB
+	if status == nil {
+		result = tx.Exec("UPDATE so_dts SET invoice_status = NULL WHERE id = ?", soDtID)
+	} else {
+		result = tx.Exec("UPDATE so_dts SET invoice_status = ? WHERE id = ?", status, soDtID)
+	}
+
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return tx, result.Error
+	}
+
+	return tx, nil
+}
+
+func (r *InvoiceMaintenanceRepository) BulkUpdateSoDtInvoiceStatus(tx *gorm.DB, soDtIDs []uint, status interface{}, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-BulkUpdateSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(soDtIDs) == 0 {
+		return tx, nil
+	}
+
+	var result *gorm.DB
+	if status == nil {
+		result = tx.Exec("UPDATE so_dts SET invoice_status = NULL WHERE id IN ?", soDtIDs)
+	} else {
+		result = tx.Exec("UPDATE so_dts SET invoice_status = ? WHERE id IN ?", status, soDtIDs)
+	}
+
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return tx, result.Error
+	}
+
+	return tx, nil
+}
+
+func (r *InvoiceMaintenanceRepository) CheckAndUpdateSalesOrderStatus(tx *gorm.DB, salesOrderID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-CheckAndUpdateSalesOrderStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var totalItems int64
+	var invoicedItems int64
+
+	if err := tx.Model(&models.SoDt{}).Where("sales_order_id = ? AND deleted_at IS NULL", salesOrderID).Count(&totalItems).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	if err := tx.Model(&models.SoDt{}).Where("sales_order_id = ? AND invoice_status = 'INVOICE' AND deleted_at IS NULL", salesOrderID).Count(&invoicedItems).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	type SalesOrderStatus struct {
+		Status        string `gorm:"column:status"`
+		HistoryStatus string `gorm:"column:history_status"`
+	}
+
+	var soStatus SalesOrderStatus
+	if err := tx.Model(&models.SalesOrder{}).Where("id = ?", salesOrderID).Select("status, history_status").Scan(&soStatus).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	if totalItems > 0 && invoicedItems == totalItems {
+		result := tx.Exec("UPDATE sales_orders SET status = 'INVOICE', history_status = CASE WHEN status != 'INVOICE' THEN status ELSE history_status END WHERE id = ?", salesOrderID)
+		if result.Error != nil {
+			utils.LogErrors(childSpan, result.Error)
+			return tx, result.Error
+		}
+	} else if invoicedItems < totalItems && soStatus.Status == "INVOICE" {
+		result := tx.Exec("UPDATE sales_orders SET status = history_status, history_status = status WHERE id = ? AND status = 'INVOICE'", salesOrderID)
+		if result.Error != nil {
+			utils.LogErrors(childSpan, result.Error)
+			return tx, result.Error
+		}
+	}
+
+	return tx, nil
+}
+
+func (r *InvoiceMaintenanceRepository) GetSoDtIDsFromInvoiceMaintenanceDts(ctx *fiber.Ctx, invoiceMaintenanceID uint, span opentracing.Span) ([]uint, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetSoDtIDsFromInvoiceMaintenanceDts", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var soDtIDs []uint
+	query := `
+	SELECT ref_dt_id 
+	FROM invoice_maintenance_dts 
+	WHERE invoice_maintenance_id = ? 
+	AND ref_type = 'so' 
+	AND ref_dt_id IS NOT NULL
+	AND deleted_at IS NULL
+	`
+
+	if err := r.db.Raw(query, invoiceMaintenanceID).Scan(&soDtIDs).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return soDtIDs, nil
+}
+
+func (r *InvoiceMaintenanceRepository) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs []uint, span opentracing.Span) (map[uint]string, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(soDtIDs) == 0 {
+		return make(map[uint]string), nil
+	}
+
+	type SoDtStatus struct {
+		ID            uint   `db:"id"`
+		InvoiceStatus string `db:"invoice_status"`
+	}
+
+	var statuses []SoDtStatus
+	query := `
+    SELECT id, invoice_status 
+    FROM so_dts 
+    WHERE id IN (?) AND deleted_at IS NULL
+    `
+
+	query = r.db.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		return tx.Raw(query, soDtIDs)
+	})
+
+	err := r.sqlDB.SelectContext(ctx.Context(), &statuses, query)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	statusMap := make(map[uint]string)
+	for _, status := range statuses {
+		if status.InvoiceStatus != "" {
+			statusMap[status.ID] = status.InvoiceStatus
+		}
+	}
+
+	return statusMap, nil
 }
 
 func (r *InvoiceMaintenanceRepository) Commit(tx *gorm.DB) error {
