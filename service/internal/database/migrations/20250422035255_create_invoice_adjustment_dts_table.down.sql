@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS invoice_adjustment_dts;
