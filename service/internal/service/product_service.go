@@ -364,3 +364,14 @@ func (s *ProductService) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[string]
 	}
 	return boms, nil
 }
+
+func (s *ProductService) GetProductBom(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.ProductListDTO, int, error) {
+	childSpan := opentracing.StartSpan("ProductService-GetProductBom", opentracing.ChildOf(span.Context()))
+
+	products, total, err := s.repo.GetProductBom(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+	return products, total, nil
+}

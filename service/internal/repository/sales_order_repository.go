@@ -237,6 +237,14 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 		}
 	}
 
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+		query += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
+		countQuery += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
 	if !isAdmin && branchID != nil {
 		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
 		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
@@ -338,6 +346,7 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 				TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
 				so.vat_perc, so.disc_am, so.disc_perc, so.disc_perc_am, so.disc_final, so.disc_type, so.qty_out, so.si_total_am, so.sa_total_am,
 				so.rev_no,
+				so.is_vat,
 
 				cu.name as created_by_name,
 				uu.name as updated_by_name
@@ -2597,4 +2606,229 @@ func (r *SalesOrderRepository) UpdateSalesOrderScheduleApp(tx *gorm.DB, schedule
 	}
 
 	return tx, nil
+}
+
+func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetWidgetSalesOrders", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	var widgets []dtos.SalesOrderStatusWidget
+
+	var total int
+
+	filterDBColumnKey := []string{
+		"so.po_buyer_no", "so.sales_order_no", "so.remark", "so.ship_dest",
+		"pi.name",
+		"it.name",
+		"sd.remark",
+		"sd.gen_code",
+		"sdb.remark",
+		"sdb.gen_code",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND so.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":        "so.status",
+		"customer_id":   "so.customer_id",
+		"order_type_id": "so.order_type_id",
+		"currency_id":   "so.currency_id",
+		"vat_id":        "so.vat_id",
+		"payment_id":    "so.payment_id",
+		"pph23_id":      "so.pph23_id",
+		"due_at":        "so.due_at",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":   "so.customer_id",
+		"order_type_ids": "so.order_type_id",
+		"currency_ids":   "so.currency_id",
+		"payment_ids":    "so.payment_id",
+		"pph23_ids":      "so.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+
+		filterDateTypeKey := map[string]string{
+			"shipping_at": "so.shipping_at",
+			"order_at":    "so.order_at",
+			"due_at":      "so.due_at",
+			"agree_at":    "so.agree_at",
+		}
+
+		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	customCondition := ""
+	filterKeyCustom := map[string]string{
+		// "is_task_exists": " AND st.is_checked = 1",
+	}
+	for _, join := range filterKeyCustom {
+		customCondition += fmt.Sprintf("%s", join)
+	}
+
+	query := `
+				WITH status_values AS (
+        SELECT status, row_number() over () as status_order
+        FROM (VALUES 
+            ('TOTAL', 0),      -- Set TOTAL with order 0 to appear first
+            ('PROCESS', 1), 
+            ('INVOICE', 2),
+            ('FINISH', 3),
+            ('HOLDING', 4),
+            ('CANCELED', 5)
+        ) AS s(status)
+    ),
+    filtered_orders AS (
+        SELECT 
+            so.id,             
+            so.status as so_status,
+            so.total_qty,
+            so.grand_total
+        FROM sales_orders so
+        LEFT JOIN so_dts sd ON sd.sales_order_id = so.id
+        LEFT JOIN products pi ON sd.item_id = pi.id
+        LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sd.id
+        LEFT JOIN products it ON sdb.item_id = it.id
+        WHERE so.deleted_at IS NULL
+        ` + condition + queryGlobal + `
+    ),
+    sales_order_stats AS (
+        SELECT 
+            sv.status,
+            sv.status_order,
+            COUNT(DISTINCT fo.id) as order_count,
+            COALESCE(SUM(fo.total_qty), 0) as total_qty,
+            COALESCE(SUM(fo.grand_total), 0) as grand_total
+        FROM status_values sv
+        LEFT JOIN filtered_orders fo ON sv.status = fo.so_status OR sv.status = 'TOTAL'
+        GROUP BY sv.status, sv.status_order
+    )
+    SELECT 
+        sv.status,
+        order_count,
+        total_qty,
+        grand_total
+    FROM sales_order_stats sv
+    ORDER BY status_order`
+
+	for key, value := range filters {
+		switch key {
+		case "po_buyer_no", "sales_order_no", "ship_dest", "remark":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	// // Group by status
+	// query += " GROUP BY sv.status ORDER BY sv.status"
+
+	var selectErr error
+
+	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+	err := r.sqlDB.SelectContext(ctx.Context(), &widgets, query, args...)
+	if err != nil {
+		selectSpan.LogKV("query", query)
+		utils.LogErrors(selectSpan, err)
+		selectErr = err
+	}
+
+	if selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return widgets, total, nil
 }

@@ -145,20 +145,6 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 		}
 	}
 
-	joinCondition := ""
-
-	if filters["is_schedule_not_exists"] == "1" {
-		condition += " AND s.id IS NULL"
-	}
-
-	customCondition := ""
-	filterKeyCustom := map[string]string{
-		// "is_task_exists": " AND st.is_checked = 1",
-	}
-	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
-	}
-
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (iv.id)
@@ -191,8 +177,7 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 
         LEFT JOIN users cu ON iv.created_by_id = cu.id
         LEFT JOIN users uu ON iv.updated_by_id = uu.id
-				` + joinCondition + `
-				WHERE 1=1` + condition + queryGlobal + customCondition + `
+				WHERE 1=1` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
@@ -675,21 +660,22 @@ func (r *InventoryRepository) UpdateInvDts(tx *gorm.DB, invDts []models.InvDt, s
 	data := make([]map[string]interface{}, 0)
 	for _, invDt := range invDts {
 		data = append(data, map[string]interface{}{
-			"id":               invDt.ID,
-			"inventory_id":     invDt.InventoryID,
-			"item_unit_id":     invDt.ItemUnitID,
-			"vat_id":           invDt.VatID,
-			"pph23_id":         invDt.Pph23ID,
-			"ref_so_dt_id":     invDt.RefSoDtID,
-			"ref_so_dt_bom_id": invDt.RefSoDtBomID,
-			"ref_po_dt_id":     invDt.RefPoDtID,
-			"ref_po_dt_bom_id": invDt.RefPoDtBomID,
-			"ref_inv_dt_id":    invDt.RefInvDtID,
-			"ref_product_id":   invDt.RefProductID,
-			"item_id":          invDt.ItemID,
-			"product_uuid":     invDt.ProductUuid,
-			"item_type":        invDt.ItemType,
-			"ref_type":         invDt.RefType,
+			"id":                 invDt.ID,
+			"inventory_id":       invDt.InventoryID,
+			"item_unit_id":       invDt.ItemUnitID,
+			"vat_id":             invDt.VatID,
+			"pph23_id":           invDt.Pph23ID,
+			"ref_so_dt_id":       invDt.RefSoDtID,
+			"ref_so_dt_bom_id":   invDt.RefSoDtBomID,
+			"ref_po_dt_id":       invDt.RefPoDtID,
+			"ref_po_dt_bom_id":   invDt.RefPoDtBomID,
+			"ref_inv_dt_id":      invDt.RefInvDtID,
+			"ref_product_id":     invDt.RefProductID,
+			"ref_product_bom_id": invDt.RefProductBomID,
+			"item_id":            invDt.ItemID,
+			"product_uuid":       invDt.ProductUuid,
+			"item_type":          invDt.ItemType,
+			"ref_type":           invDt.RefType,
 			// "ref_json":      invDt.RefJSON,
 			// "item_json":     invDt.ItemJSON,
 			"gen_code":      invDt.GenCode,
@@ -760,7 +746,7 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 		ivd.created_at, ivd.updated_at, ivd.deleted_at,
 		TO_CHAR(ivd.expired_at, 'YYYY-MM-DD') as expired_at,
 
-		ivd.ref_so_dt_id, ivd.ref_so_dt_bom_id, ivd.ref_po_dt_id, ivd.ref_po_dt_bom_id, ivd.ref_inv_dt_id, ivd.ref_product_id,
+		ivd.ref_so_dt_id, ivd.ref_so_dt_bom_id, ivd.ref_po_dt_id, ivd.ref_po_dt_bom_id, ivd.ref_inv_dt_id, ivd.ref_product_id, ivd.ref_product_bom_id,
 
 		p.customer_id,
 
@@ -859,7 +845,7 @@ func (r *InventoryRepository) LockInvDts(ctx *fiber.Ctx, tx *gorm.DB, invDtIDs [
 
 func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefInvIndexSoDtListDTO, int, error) {
 
-	childSpan := opentracing.StartSpan("InventoryRepository-GetRefIndexQuoDts", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("InventoryRepository-GetRefIndexSoDts", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]

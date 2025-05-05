@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"mime/multipart"
+	"os"
 	"strings"
 	"time"
 
@@ -75,6 +76,8 @@ func MapFilterUpdateSoDtBomsToSoDts(ctx *fiber.Ctx, soDts []dtos.SalesOrderSoDtL
 
 					if reqSoDtBom.SoDtBomID == nil {
 						newSoDtBom["created_by_id"] = userID
+						newSoDtBom["qty_out"] = 0.0
+						newSoDtBom["qty_po"] = 0.0
 						newSoDtBom["created_at"] = time.Now()
 						bulkCreateSoDtBoms = append(bulkCreateSoDtBoms, newSoDtBom)
 					} else {
@@ -161,6 +164,7 @@ func MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSal
 			IsLockPriceSell: soDt.IsLockPriceSell,
 			Qty:             soDt.Qty,
 			QtyOut:          new(float64),
+			QtyPo:           new(float64),
 			PriceSell:       soDt.PriceSell,
 			PriceBuy:        soDt.PriceBuy,
 			SubtotalSell:    soDt.SubtotalSell,
@@ -201,6 +205,7 @@ func MapCreateSoDtBoms(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, created
 						"remark":         reqSoDtBom.Remark,
 						"qty":            reqSoDtBom.Qty,
 						"qty_out":        new(float64),
+						"qty_po":         new(float64),
 						"price_sell":     reqSoDtBom.PriceSell,
 						"price_buy":      reqSoDtBom.PriceBuy,
 						"subtotal_sell":  reqSoDtBom.SubtotalSell,
@@ -309,6 +314,7 @@ func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userI
 		PaymentID:     req.PaymentID,
 		Pph23ID:       req.Pph23ID,
 		WarehouseID:   req.WarehouseID,
+		IsVat:         req.IsVat,
 		PoBuyerNo:     poBuyerNo,
 		PoBuyerNoOri:  &poBuyerNo,
 		SalesOrderNo:  &orderNo,
@@ -361,6 +367,7 @@ func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userI
 		Pph23ID:       req.Pph23ID,
 		WarehouseID:   req.WarehouseID,
 		RevNo:         &revNo,
+		IsVat:         req.IsVat,
 		PoBuyerNo:     poBuyerNo,
 		PoBuyerNoOri:  req.PoBuyerNoOri,
 		SalesOrderNo:  &salesOrderNo,
@@ -1236,6 +1243,21 @@ func MapAttachmentsScheduleToAttachments(reqAttachments []dtos.ScheduleAttachmen
 			CreatedByName: attachment.CreatedByName,
 			UpdatedByName: attachment.UpdatedByName,
 		})
+	}
+
+	return attachments
+}
+
+// add url before path file by env
+func MapAttachmentsToURL(attachments []dtos.ScheduleAttachmentsDTO) []dtos.ScheduleAttachmentsDTO {
+	// attachments := []dtos.SalesOrderAttachmentsDTO{}
+	for i, attachment := range attachments {
+		if attachment.FileUrl != nil {
+			// remove first letter from file url
+			newFileUrl := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), (*attachment.FileUrl)[1:])
+			// newFileUrl := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), *attachment.FileUrl)
+			attachments[i].FileUrlApp = &newFileUrl
+		}
 	}
 
 	return attachments

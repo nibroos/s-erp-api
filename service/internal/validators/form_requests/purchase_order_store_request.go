@@ -13,17 +13,16 @@ func NewPurchaseOrderStoreRequest() *PurchaseOrderStoreRequest {
 	return &PurchaseOrderStoreRequest{}
 }
 
-func (r *PurchaseOrderStoreRequest) Validate(req *dtos.CreatePurchaseOrderRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+func (r *PurchaseOrderStoreRequest) Validate(req *dtos.FormPurchaseOrderRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
 		"customer_id":         []string{"required", "exists:customers,id"},
 		"purchase_type_id":    []string{"required", "exists:mix_values,id"},
 		"currency_id":         []string{"required", "exists:mix_values,id"},
-		"po_no":               []string{"required"},
+		"po_no":               []string{},
 		"po_date":             []string{"required", "date:yyyy-MM-dd"},
 		"delivery_date":       []string{"required", "date:yyyy-MM-dd"},
 		"status":              []string{"required"},
 		"po_dts":              []string{"array"},
-		"po_dts.*.id":         []string{"exists:purchase_order_dts,id"},
 		"po_dts.*.product_id": []string{"required", "exists:products,id"},
 		"po_dts.*.qty":        []string{"numeric"},
 		"po_dts.*.gen_code":   []string{},

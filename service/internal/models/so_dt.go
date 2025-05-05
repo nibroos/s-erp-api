@@ -30,6 +30,7 @@ type SoDt struct {
 	IsPph23         *int8          `json:"is_pph23" gorm:"column:is_pph23"`
 	IsLockPriceSell *int8          `json:"is_lock_price_sell" gorm:"column:is_lock_price_sell"`
 	IsLockMarkup    *int8          `json:"is_lock_markup" gorm:"column:is_lock_markup"`
+	QtyPo           *float64       `json:"qty_po" gorm:"column:qty_po"`
 	QtyOut          *float64       `json:"qty_out" gorm:"column:qty_out"`
 	Qty             *float64       `json:"qty" gorm:"column:qty"`
 	PriceSell       *float64       `json:"price_sell" gorm:"column:price_sell"`
