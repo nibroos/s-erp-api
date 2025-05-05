@@ -26,16 +26,28 @@ func GetSalesInvoiceIDs(req dtos.UpdateSalesInvoiceRequest) ([]*uint, []*uint, [
 	return salesInvoiceDtIDs, productIDs, itemUnitIDs
 }
 
-func GetLockSalesInvoiceSalesOrderIDs(req dtos.CreateSalesInvoiceRequest) []*uint {
+func GetLockSalesInvoiceSalesOrderIDs(req dtos.CreateSalesInvoiceRequest) ([]*uint, []*uint) {
+	soIDs := []*uint{}
 	soDtIDs := []*uint{}
 
+	soIDsMap := make(map[uint]bool)
+
 	for _, reqSalesInvoiceDt := range req.SalesInvoiceDts {
-		if reqSalesInvoiceDt.RefType != nil && *reqSalesInvoiceDt.RefType == "sales_orders" && reqSalesInvoiceDt.RefID != nil && *reqSalesInvoiceDt.RefID > 0 {
-			soDtIDs = append(soDtIDs, reqSalesInvoiceDt.RefID)
+		if reqSalesInvoiceDt.RefType != nil && *reqSalesInvoiceDt.RefType == "so" {
+			if reqSalesInvoiceDt.RefID != nil && *reqSalesInvoiceDt.RefID > 0 {
+				if !soIDsMap[*reqSalesInvoiceDt.RefID] {
+					soIDsMap[*reqSalesInvoiceDt.RefID] = true
+					soIDs = append(soIDs, reqSalesInvoiceDt.RefID)
+				}
+			}
+
+			if reqSalesInvoiceDt.RefDtID != nil && *reqSalesInvoiceDt.RefDtID > 0 {
+				soDtIDs = append(soDtIDs, reqSalesInvoiceDt.RefDtID)
+			}
 		}
 	}
 
-	return soDtIDs
+	return soIDs, soDtIDs
 }
 
 func MapCreateSalesInvoiceDts(ctx *fiber.Ctx, req dtos.CreateSalesInvoiceRequest, createdSalesInvoice *models.SalesInvoice, userID uint, span opentracing.Span) ([]models.SalesInvoiceDt, error) {
@@ -127,10 +139,6 @@ func MapUpdateSalesInvoiceDts(ctx *fiber.Ctx, req dtos.UpdateSalesInvoiceRequest
 }
 
 func GenSalesInvoiceNo(ctx *fiber.Ctx, req dtos.CreateSalesInvoiceRequest, orderedNumber int, span opentracing.Span) string {
-	if req.InvoiceNo != nil {
-		return *req.InvoiceNo
-	}
-
 	prefix := "ISL"
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
