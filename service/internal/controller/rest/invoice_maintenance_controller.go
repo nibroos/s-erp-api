@@ -404,6 +404,33 @@ func (c *InvoiceMaintenanceController) CancelApproveInvoiceMaintenances(ctx *fib
 	return utils.GetResponse(ctx, nil, nil, fmt.Sprintf("Successfully canceled approval for %d invoice maintenances", len(req.IDs)), http.StatusOK, nil, nil)
 }
 
+func (c *InvoiceMaintenanceController) GetWidgetInvoiceMaintenances(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceMaintenanceController-GetWidgetInvoiceMaintenances", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("InvoiceMaintenanceController-GetWidgetInvoiceMaintenances: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	invoiceMaintenances, total, err := c.service.GetWidgetInvoiceMaintenances(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Invoice Maintenance", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, invoiceMaintenances, paginationMeta, "Invoice Maintenance fetched successfully", http.StatusOK, nil, nil)
+}
+
 // Uncomment these functions if you need Excel and CSV export functionality
 
 // func (c *InvoiceMaintenanceController) ExcelGetInvoiceMaintenances(ctx *fiber.Ctx) error {

@@ -468,3 +468,10 @@ type ApproveInvoiceMaintenancesRequest struct {
 type CancelApproveInvoiceMaintenancesRequest struct {
 	IDs []uint `json:"ids" validate:"required,min=1"`
 }
+
+type InvoiceMaintenanceStatusWidget struct {
+	Status     string  `json:"status" db:"status"`
+	OrderCount int     `json:"order_count" db:"order_count"`
+	TotalQty   float64 `json:"total_qty" db:"total_qty"`
+	GrandTotal float64 `json:"grand_total" db:"grand_total"`
+}

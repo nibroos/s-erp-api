@@ -299,6 +299,33 @@ func (c *SalesInvoiceController) GetRefSalesOrderDts(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, soDts, paginationMeta, "Sales order details fetched successfully", http.StatusOK, nil, nil)
 }
 
+func (c *SalesInvoiceController) GetWidgetSalesInvoices(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("SalesInvoiceController-GetWidgetSalesInvoices", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("SalesInvoiceController-GetWidgetSalesInvoices: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	salesInvoices, total, err := c.service.GetWidgetSalesInvoices(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Invoice", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, salesInvoices, paginationMeta, "Sales Invoice fetched successfully", http.StatusOK, nil, nil)
+}
+
 // Uncomment these functions if you need Excel and CSV export functionality
 
 // func (c *SalesInvoiceController) ExcelGetSalesInvoices(ctx *fiber.Ctx) error {

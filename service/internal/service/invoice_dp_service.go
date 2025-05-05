@@ -519,3 +519,15 @@ func (s *InvoiceDpService) LockCreateInvoiceDpTable(ctx *fiber.Ctx, tx *gorm.DB,
 
 	return tx, nil
 }
+
+func (s *InvoiceDpService) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InvoiceDpStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpService-GetWidgetInvoiceDps", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	invoiceDps, total, err := s.repo.GetWidgetInvoiceDps(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+	return invoiceDps, total, nil
+}

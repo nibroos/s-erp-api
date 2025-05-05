@@ -521,6 +521,17 @@ func (s *SalesInvoiceService) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs []uin
 	return statusMap, nil
 }
 
+func (s *SalesInvoiceService) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesInvoiceStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceService-GetWidgetSalesInvoices", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	salesInvoices, total, err := s.repo.GetWidgetSalesInvoices(ctx, filters, childSpan)
+	if err != nil {
+		return nil, 0, err
+	}
+	return salesInvoices, total, nil
+}
+
 func (s *SalesInvoiceService) BeginTransaction() *gorm.DB {
 	return s.repo.BeginTransaction()
 }

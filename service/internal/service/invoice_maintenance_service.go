@@ -601,6 +601,17 @@ func (s *InvoiceMaintenanceService) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs
 	return statusMap, nil
 }
 
+func (s *InvoiceMaintenanceService) GetWidgetInvoiceMaintenances(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InvoiceMaintenanceStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-GetWidgetInvoiceMaintenances", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	invoiceMaintenances, total, err := s.repo.GetWidgetInvoiceMaintenances(ctx, filters, childSpan)
+	if err != nil {
+		return nil, 0, err
+	}
+	return invoiceMaintenances, total, nil
+}
+
 func (s *InvoiceMaintenanceService) BeginTransaction() *gorm.DB {
 	return s.repo.BeginTransaction()
 }

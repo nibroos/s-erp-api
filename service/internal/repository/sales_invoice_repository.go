@@ -1133,6 +1133,200 @@ func (r *SalesInvoiceRepository) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs []
 	return statusMap, nil
 }
 
+func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesInvoiceStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetWidgetSalesInvoices", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	var widgets []dtos.SalesInvoiceStatusWidget
+	var total int
+
+	filterDBColumnKey := []string{
+		"si.invoice_no", "si.remark", "si.status",
+		"c.name",
+		"sidt.remark",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND si.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":          "si.status",
+		"customer_id":     "si.customer_id",
+		"currency_id":     "si.currency_id",
+		"payment_term_id": "si.payment_term_id",
+		"vat_id":          "si.vat_id",
+		"pph23_id":        "si.pph23_id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	// Add invoice_no and remark filters to condition
+	for key, value := range filters {
+		switch key {
+		case "invoice_no", "remark":
+			if value != "" {
+				condition += fmt.Sprintf(" AND si.%s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		condition += fmt.Sprintf(" AND si.branch_id = $%d", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		condition += fmt.Sprintf(" AND si.branch_id = $%d", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":     "si.customer_id",
+		"currency_ids":     "si.currency_id",
+		"payment_term_ids": "si.payment_term_id",
+		"pph23_ids":        "si.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs))
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"si.vat_id", "sidt.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	if filters["start_date"] != "" && filters["end_date"] != "" {
+		condition += fmt.Sprintf(" AND (si.invoice_date BETWEEN $%d AND $%d)", i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	query := `
+    WITH status_values AS (
+        SELECT status, row_number() over () as status_order
+        FROM (VALUES
+            ('TOTAL', 0),
+            ('PAID', 1),
+            ('UNPAID', 2),
+            ('CANCELED', 3)
+        ) AS s(status)
+    ),
+    filtered_invoices AS (
+        SELECT DISTINCT
+            si.id,
+            si.status as si_status,
+            si.total_qty,
+            si.grand_total
+        FROM sales_invoices si
+        LEFT JOIN sales_invoice_dts sidt ON sidt.sales_invoice_id = si.id
+        LEFT JOIN customers c ON si.customer_id = c.id
+        WHERE si.deleted_at IS NULL
+        ` + condition + queryGlobal + `
+    ),
+    sales_invoice_stats AS (
+        SELECT
+            sv.status,
+            sv.status_order,
+            COUNT(DISTINCT fi.id) as order_count,
+            COALESCE(SUM(fi.total_qty), 0) as total_qty,
+            COALESCE(SUM(fi.grand_total), 0) as grand_total
+        FROM status_values sv
+        LEFT JOIN filtered_invoices fi ON
+            (sv.status = fi.si_status) OR
+            (sv.status = 'TOTAL') OR
+            (sv.status = 'UNPAID' AND fi.si_status NOT IN ('PAID', 'CANCELED'))
+        GROUP BY sv.status, sv.status_order
+    )
+    SELECT
+        sv.status,
+        order_count,
+        total_qty,
+        grand_total
+    FROM sales_invoice_stats sv
+    ORDER BY status_order
+    `
+
+	var selectErr error
+	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+	err := r.sqlDB.SelectContext(ctx.Context(), &widgets, query, args...)
+	if err != nil {
+		selectSpan.LogKV("query", query)
+		utils.LogErrors(selectSpan, err)
+		selectErr = err
+	}
+
+	if selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return widgets, total, nil
+}
+
 func (r *SalesInvoiceRepository) Commit(tx *gorm.DB) error {
 	return tx.Commit().Error
 }

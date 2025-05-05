@@ -1050,6 +1050,378 @@ func (r *InvoiceDpRepository) GetInvoiceDpCreatedThisMonth(ctx *fiber.Ctx, tx *g
 	return count, nil
 }
 
+func (r *InvoiceDpRepository) GetInvoiceDpWidgetData(ctx *fiber.Ctx, span opentracing.Span) (map[string]interface{}, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpRepository-GetInvoiceDpWidgetData", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	result := make(map[string]interface{})
+	var wg sync.WaitGroup
+	var errChan = make(chan error, 5)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var totalInvoiceDp int
+		query := `SELECT COUNT(*) FROM invoice_dps WHERE deleted_at IS NULL`
+
+		args := []interface{}{}
+		i := 1
+
+		if !isAdmin && branchID != nil {
+			query += fmt.Sprintf(" AND branch_id = $%d", i)
+			args = append(args, branchID)
+			i++
+		}
+
+		err := r.sqlDB.GetContext(ctx.Context(), &totalInvoiceDp, query, args...)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			errChan <- err
+			return
+		}
+		result["total_invoice_dp"] = totalInvoiceDp
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var totalInvoiceDpThisMonth int
+		query := `
+			SELECT COUNT(*) 
+			FROM invoice_dps 
+			WHERE deleted_at IS NULL
+			AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE) 
+			AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`
+
+		args := []interface{}{}
+		i := 1
+
+		if !isAdmin && branchID != nil {
+			query += fmt.Sprintf(" AND branch_id = $%d", i)
+			args = append(args, branchID)
+			i++
+		}
+
+		err := r.sqlDB.GetContext(ctx.Context(), &totalInvoiceDpThisMonth, query, args...)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			errChan <- err
+			return
+		}
+		result["total_invoice_dp_this_month"] = totalInvoiceDpThisMonth
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var totalInvoiceDpAmount float64
+		query := `
+			SELECT COALESCE(SUM(grand_total), 0) 
+			FROM invoice_dps 
+			WHERE deleted_at IS NULL
+		`
+
+		args := []interface{}{}
+		i := 1
+
+		if !isAdmin && branchID != nil {
+			query += fmt.Sprintf(" AND branch_id = $%d", i)
+			args = append(args, branchID)
+			i++
+		}
+
+		err := r.sqlDB.GetContext(ctx.Context(), &totalInvoiceDpAmount, query, args...)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			errChan <- err
+			return
+		}
+		result["total_invoice_dp_amount"] = totalInvoiceDpAmount
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var totalInvoiceDpAmountThisMonth float64
+		query := `
+			SELECT COALESCE(SUM(grand_total), 0) 
+			FROM invoice_dps 
+			WHERE deleted_at IS NULL
+			AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE) 
+			AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+		`
+
+		args := []interface{}{}
+		i := 1
+
+		if !isAdmin && branchID != nil {
+			query += fmt.Sprintf(" AND branch_id = $%d", i)
+			args = append(args, branchID)
+			i++
+		}
+
+		err := r.sqlDB.GetContext(ctx.Context(), &totalInvoiceDpAmountThisMonth, query, args...)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			errChan <- err
+			return
+		}
+		result["total_invoice_dp_amount_this_month"] = totalInvoiceDpAmountThisMonth
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		type StatusCount struct {
+			Status string `db:"status"`
+			Count  int    `db:"count"`
+		}
+
+		var statusCounts []StatusCount
+		query := `
+			SELECT status, COUNT(*) as count
+			FROM invoice_dps
+			WHERE deleted_at IS NULL
+		`
+
+		args := []interface{}{}
+		i := 1
+
+		if !isAdmin && branchID != nil {
+			query += fmt.Sprintf(" AND branch_id = $%d", i)
+			args = append(args, branchID)
+			i++
+		}
+
+		query += " GROUP BY status"
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &statusCounts, query, args...)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			errChan <- err
+			return
+		}
+
+		statusMap := make(map[string]int)
+		for _, sc := range statusCounts {
+			statusMap[sc.Status] = sc.Count
+		}
+		result["invoice_dp_status_counts"] = statusMap
+	}()
+
+	wg.Wait()
+	close(errChan)
+
+	for err := range errChan {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
+}
+
+func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InvoiceDpStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpRepository-GetWidgetInvoiceDps", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	var widgets []dtos.InvoiceDpStatusWidget
+	var total int
+
+	filterDBColumnKey := []string{
+		"idp.invoice_no", "idp.remark", "idp.status",
+		"c.name",
+		"idt.remark",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND idp.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":          "idp.status",
+		"customer_id":     "idp.customer_id",
+		"currency_id":     "idp.currency_id",
+		"payment_term_id": "idp.payment_term_id",
+		"vat_id":          "idp.vat_id",
+		"pph23_id":        "idp.pph23_id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	// Add invoice_no and remark filters to condition
+	for key, value := range filters {
+		switch key {
+		case "invoice_no", "remark":
+			if value != "" {
+				condition += fmt.Sprintf(" AND idp.%s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	// Add branch ID filters to condition
+	if !isAdmin && branchID != nil {
+		condition += fmt.Sprintf(" AND idp.branch_id = $%d", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		condition += fmt.Sprintf(" AND idp.branch_id = $%d", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":     "idp.customer_id",
+		"currency_ids":     "idp.currency_id",
+		"payment_term_ids": "idp.payment_term_id",
+		"pph23_ids":        "idp.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs))
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"idp.vat_id", "idt.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	if filters["start_date"] != "" && filters["end_date"] != "" {
+		condition += fmt.Sprintf(" AND (idp.invoice_date BETWEEN $%d AND $%d)", i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	query := `
+    WITH status_values AS (
+        SELECT status, row_number() over () as status_order
+        FROM (VALUES
+            ('TOTAL', 0),
+            ('PAID', 1),
+            ('UNPAID', 2),
+            ('CANCELED', 3)
+        ) AS s(status)
+    ),
+    filtered_invoices AS (
+        SELECT DISTINCT
+            idp.id,
+            idp.status as idp_status,
+            idp.total_qty,
+            idp.grand_total
+        FROM invoice_dps idp
+        LEFT JOIN invoice_dp_dts idt ON idt.invoice_dp_id = idp.id
+        LEFT JOIN customers c ON idp.customer_id = c.id
+        WHERE idp.deleted_at IS NULL
+        ` + condition + queryGlobal + `
+    ),
+    invoice_dp_stats AS (
+        SELECT
+            sv.status,
+            sv.status_order,
+            COUNT(DISTINCT fi.id) as order_count,
+            COALESCE(SUM(fi.total_qty), 0) as total_qty,
+            COALESCE(SUM(fi.grand_total), 0) as grand_total
+        FROM status_values sv
+        LEFT JOIN filtered_invoices fi ON
+            (sv.status = fi.idp_status) OR
+            (sv.status = 'TOTAL') OR
+            (sv.status = 'UNPAID' AND fi.idp_status NOT IN ('PAID', 'CANCELED'))
+        GROUP BY sv.status, sv.status_order
+    )
+    SELECT
+        sv.status,
+        order_count,
+        total_qty,
+        grand_total
+    FROM invoice_dp_stats sv
+    ORDER BY status_order
+    `
+
+	var selectErr error
+	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+	err := r.sqlDB.SelectContext(ctx.Context(), &widgets, query, args...)
+	if err != nil {
+		selectSpan.LogKV("query", query)
+		utils.LogErrors(selectSpan, err)
+		selectErr = err
+	}
+
+	if selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return widgets, total, nil
+}
+
 func (r *InvoiceDpRepository) Commit(tx *gorm.DB) error {
 	return tx.Commit().Error
 }

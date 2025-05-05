@@ -26,4 +26,5 @@ func SetupInvoiceMaintenanceRoutes(invoiceMaintenances fiber.Router, gormDB *gor
 	invoiceMaintenances.Post("/index-ref-so-dt", invoiceMaintenanceController.GetRefSalesOrderForInvoiceMaintenance)
 	invoiceMaintenances.Post("/approve-invoice-maintenance", invoiceMaintenanceController.ApproveInvoiceMaintenances)
 	invoiceMaintenances.Post("/cancel-approve-invoice-maintenance", invoiceMaintenanceController.CancelApproveInvoiceMaintenances)
+	invoiceMaintenances.Post("/widget-invoice-maintenance", invoiceMaintenanceController.GetWidgetInvoiceMaintenances)
 }

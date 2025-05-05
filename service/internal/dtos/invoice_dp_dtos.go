@@ -466,6 +466,13 @@ type GetSoDtQtyUpdateForInvoiceDTO struct {
 	SalesOrderID *uint    `json:"sales_order_id" db:"sales_order_id"`
 }
 
+type InvoiceDpStatusWidget struct {
+	Status     string  `json:"status" db:"status"`
+	OrderCount int     `json:"order_count" db:"order_count"`
+	TotalQty   float64 `json:"total_qty" db:"total_qty"`
+	GrandTotal float64 `json:"grand_total" db:"grand_total"`
+}
+
 // type UpdateSalesOrderStatusForInvoiceRequest struct {
 // 	ID     uint   `json:"id"`
 // 	Status string `json:"status"`
