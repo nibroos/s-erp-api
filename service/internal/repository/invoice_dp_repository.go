@@ -597,6 +597,12 @@ func (r *InvoiceDpRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[st
 
 	condition := ""
 
+	if filters["specific_ids"] != "" {
+		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH')))", filters["specific_ids"])
+	} else {
+		condition += " AND so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH') AND sodt.total_dp IS NULL"
+	}
+
 	if filters["ids"] != "" {
 		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
 	}
@@ -731,7 +737,7 @@ func (r *InvoiceDpRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[st
 
         LEFT JOIN users cu ON sodt.created_by_id = cu.id
         LEFT JOIN users uu ON sodt.updated_by_id = uu.id
-                WHERE 1=1 AND so.status IN ('PROCESS', 'DELIVERY', 'SCHEDULE', 'INVOICE')` + condition + queryGlobal + `
+                WHERE 1=1` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
