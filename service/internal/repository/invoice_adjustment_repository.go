@@ -331,17 +331,30 @@ func (r *InvoiceAdjustmentRepository) GetInvoiceAdjustmentDts(ctx *fiber.Ctx, in
 	query := `
 	SELECT 
 		iadt.id, iadt.invoice_uuid, iadt.invoice_adjustment_id, iadt.ref_id, iadt.ref_type, 
-		iadt.ref_json, iadt.invoice_no, iadt.invoice_amount, iadt.total_adjustment, 
+		iadt.ref_json, iadt.invoice_amount, iadt.total_adjustment, 
 		iadt.balance_amount, iadt.adjustment_amount, iadt.admin_bank, iadt.total_amount, 
 		iadt.created_by_id, iadt.updated_by_id, iadt.deleted_by_id, 
 		iadt.created_at, iadt.updated_at, iadt.deleted_at,
 		TO_CHAR(iadt.invoice_date, 'YYYY-MM-DD') as invoice_date,
 		
 		cu.name as created_by_name,
-		uu.name as updated_by_name
+		uu.name as updated_by_name,
+		
+		CASE 
+			WHEN iadt.ref_type = 'sales_invoice' THEN si.invoice_no
+			WHEN iadt.ref_type = 'invoice_dp' THEN idp.invoice_no
+			WHEN iadt.ref_type = 'invoice_maintenance' THEN im.invoice_no
+			ELSE iadt.invoice_no
+		END as invoice_no
+		
 	FROM invoice_adjustment_dts iadt
 	LEFT JOIN users cu ON iadt.created_by_id = cu.id
 	LEFT JOIN users uu ON iadt.updated_by_id = uu.id
+	
+	LEFT JOIN sales_invoices si ON iadt.ref_type = 'sales_invoice' AND iadt.ref_id = si.id
+	LEFT JOIN invoice_dps idp ON iadt.ref_type = 'invoice_dp' AND iadt.ref_id = idp.id
+	LEFT JOIN invoice_maintenances im ON iadt.ref_type = 'invoice_maintenance' AND iadt.ref_id = im.id
+	
 	WHERE iadt.invoice_adjustment_id = $1
 	`
 
