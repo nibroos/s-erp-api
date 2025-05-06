@@ -606,7 +606,41 @@ func (r *InvoiceMaintenanceRepository) GetRefSalesOrderForInvoiceMaintenance(ctx
 
 	condition := ""
 
-	if filters["specific_ids"] != "" {
+	var refDtIDs []uint
+	if invoiceID, ok := filters["invoice_id"]; ok && invoiceID != "" {
+		var invoiceMaintenanceDts []struct {
+			RefDtID *uint `db:"ref_dt_id"`
+		}
+
+		refDtQuery := `
+			SELECT ref_dt_id 
+			FROM invoice_maintenance_dts 
+			WHERE invoice_maintenance_id = $1 
+			AND ref_type = 'so' 
+			AND deleted_at IS NULL
+		`
+
+		if err := r.sqlDB.SelectContext(ctx.Context(), &invoiceMaintenanceDts, refDtQuery, invoiceID); err != nil {
+			utils.LogErrors(childSpan, err)
+			return nil, 0, err
+		}
+
+		for _, dt := range invoiceMaintenanceDts {
+			if dt.RefDtID != nil {
+				refDtIDs = append(refDtIDs, *dt.RefDtID)
+			}
+		}
+
+		if len(refDtIDs) > 0 {
+			refDtIDsStr := make([]string, len(refDtIDs))
+			for i, id := range refDtIDs {
+				refDtIDsStr[i] = fmt.Sprintf("%d", id)
+			}
+			condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')))", strings.Join(refDtIDsStr, ","))
+		} else {
+			condition += " AND so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')"
+		}
+	} else if filters["specific_ids"] != "" {
 		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')))", filters["specific_ids"])
 	} else {
 		condition += " AND so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')"

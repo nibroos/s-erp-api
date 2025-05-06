@@ -597,7 +597,41 @@ func (r *InvoiceDpRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[st
 
 	condition := ""
 
-	if filters["specific_ids"] != "" {
+	var refDtIDs []uint
+	if invoiceID, ok := filters["invoice_id"]; ok && invoiceID != "" {
+		var invoiceDpDts []struct {
+			RefDtID *uint `db:"ref_dt_id"`
+		}
+
+		refDtQuery := `
+			SELECT ref_dt_id 
+			FROM invoice_dp_dts 
+			WHERE invoice_dp_id = $1 
+			AND ref_type = 'so' 
+			AND deleted_at IS NULL
+		`
+
+		if err := r.sqlDB.SelectContext(ctx.Context(), &invoiceDpDts, refDtQuery, invoiceID); err != nil {
+			utils.LogErrors(childSpan, err)
+			return nil, 0, err
+		}
+
+		for _, dt := range invoiceDpDts {
+			if dt.RefDtID != nil {
+				refDtIDs = append(refDtIDs, *dt.RefDtID)
+			}
+		}
+
+		if len(refDtIDs) > 0 {
+			refDtIDsStr := make([]string, len(refDtIDs))
+			for i, id := range refDtIDs {
+				refDtIDsStr[i] = fmt.Sprintf("%d", id)
+			}
+			condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH')))", strings.Join(refDtIDsStr, ","))
+		} else {
+			condition += " AND so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH') AND sodt.total_dp IS NULL"
+		}
+	} else if filters["specific_ids"] != "" {
 		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH')))", filters["specific_ids"])
 	} else {
 		condition += " AND so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH') AND sodt.total_dp IS NULL"
@@ -1285,7 +1319,6 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
 		}
 	}
 
-	// Add invoice_no and remark filters to condition
 	for key, value := range filters {
 		switch key {
 		case "invoice_no", "remark":
@@ -1297,7 +1330,6 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
 		}
 	}
 
-	// Add branch ID filters to condition
 	if !isAdmin && branchID != nil {
 		condition += fmt.Sprintf(" AND idp.branch_id = $%d", i)
 		args = append(args, branchID)

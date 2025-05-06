@@ -355,6 +355,7 @@ type GetInvoiceMaintenancesResult struct {
 
 type GetRefSalesOrderForInvoiceMaintenanceRequest struct {
 	Global         *string `json:"global"`
+	InvoiceID      *string `json:"invoice_id"`
 	SalesOrderNo   *string `json:"sales_order_no"`
 	PoBuyerNo      *string `json:"po_buyer_no"`
 	Remark         *string `json:"remark"`
