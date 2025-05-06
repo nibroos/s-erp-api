@@ -1,10 +1,12 @@
 package models
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
-type InvoiceDp struct {
+type InvoiceMaintenance struct {
 	gorm.Model
 	ID                       uint           `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
 	CustomerID               *uint          `json:"customer_id" gorm:"column:customer_id"`
@@ -15,11 +17,12 @@ type InvoiceDp struct {
 	BranchID                 *uint          `json:"branch_id" gorm:"column:branch_id"`
 	BankID                   *uint          `json:"bank_id" gorm:"column:bank_id"`
 	InvoiceNo                *string        `json:"invoice_no" gorm:"column:invoice_no"`
-	RevNo                    *int           `json:"rev_no" gorm:"column:rev_no"`
-	InvoiceDate              *string        `json:"invoice_date" gorm:"column:invoice_date"`
+	InvoiceDate              *time.Time     `json:"invoice_date" gorm:"column:invoice_date"`
 	ExchangeRate             *float64       `json:"exchange_rate" gorm:"column:exchange_rate"`
 	Remark                   *string        `json:"remark" gorm:"column:remark"`
+	RevNo                    *int           `json:"rev_no" gorm:"column:rev_no"`
 	Status                   *string        `json:"status" gorm:"column:status"`
+	ApprovedStatus           *string        `json:"approved_status" gorm:"column:approved_status"`
 	Pph23Percentage          *float64       `json:"pph23_percentage" gorm:"column:pph23_percentage"`
 	VatPercentage            *float64       `json:"vat_percentage" gorm:"column:vat_percentage"`
 	DiscountAmount           *float64       `json:"discount_amount" gorm:"column:discount_amount"`
@@ -27,10 +30,10 @@ type InvoiceDp struct {
 	DiscountPercentageAmount *float64       `json:"discount_percentage_amount" gorm:"column:discount_percentage_amount"`
 	DiscountFinal            *float64       `json:"discount_final" gorm:"column:discount_final"`
 	DiscountType             *string        `json:"discount_type" gorm:"column:discount_type"`
-	DpPercentage             *float64       `json:"dp_percentage" gorm:"column:dp_percentage"`
 	Subtotal                 *float64       `json:"subtotal" gorm:"column:subtotal"`
 	TotalAmountProducts      *float64       `json:"total_amount_products" gorm:"column:total_amount_products"`
 	TotalDpProducts          *float64       `json:"total_dp_products" gorm:"column:total_dp_products"`
+	TotalBalanceProducts     *float64       `json:"total_balance_products" gorm:"column:total_balance_products"`
 	TotalQty                 *float64       `json:"total_qty" gorm:"column:total_qty"`
 	TotalDiscount            *float64       `json:"total_discount" gorm:"column:total_discount"`
 	TotalPph23               *float64       `json:"total_pph23" gorm:"column:total_pph23"`
@@ -42,5 +45,10 @@ type InvoiceDp struct {
 	CreatedByID              *uint          `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID              *uint          `json:"updated_by_id" gorm:"column:updated_by_id"`
 	DeletedByID              *uint          `json:"deleted_by_id" gorm:"column:deleted_by_id"`
+	ApprovedByID             *uint          `json:"approved_by_id" gorm:"column:approved_by_id"`
 	DeletedAt                gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+}
+
+func (InvoiceMaintenance) TableName() string {
+	return "invoice_maintenances"
 }

@@ -1,0 +1,1 @@
+ALTER TABLE so_dts ADD COLUMN invoice_status TEXT;

@@ -24,4 +24,5 @@ func SetupSalesInvoiceRoutes(salesInvoices fiber.Router, gormDB *gorm.DB, sqlDB 
 	// salesInvoices.Post("/excel-sales-invoice", salesInvoiceController.ExcelGetSalesInvoices)
 	// salesInvoices.Post("/csv-sales-invoice", salesInvoiceController.CsvGetSalesInvoices)
 	salesInvoices.Post("/index-ref-so-dt", salesInvoiceController.GetRefSalesOrderDts)
+	salesInvoices.Post("/widget-sales-invoice", salesInvoiceController.GetWidgetSalesInvoices)
 }

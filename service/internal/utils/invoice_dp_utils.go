@@ -127,9 +127,9 @@ func MapUpdateInvoiceDpDts(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, upda
 }
 
 func GenInvoiceDpNo(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, orderedNumber int, span opentracing.Span) string {
-	if req.InvoiceNo != nil {
-		return *req.InvoiceNo
-	}
+	// if req.InvoiceNo != nil {
+	// 	return *req.InvoiceNo
+	// }
 
 	prefix := "IDP"
 	year := time.Now().Format("2006")

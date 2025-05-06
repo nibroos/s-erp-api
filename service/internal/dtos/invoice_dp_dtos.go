@@ -358,6 +358,7 @@ type GetInvoiceDpsResult struct {
 
 type GetRefSalesOrderDtsRequest struct {
 	Global         *string `json:"global"`
+	InvoiceID      *string `json:"invoice_id"`
 	SalesOrderNo   *string `json:"sales_order_no"`
 	PoBuyerNo      *string `json:"po_buyer_no"`
 	Remark         *string `json:"remark"`
@@ -372,6 +373,7 @@ type GetRefSalesOrderDtsRequest struct {
 	DateType       *string `json:"date_type"`
 	StartDate      *string `json:"start_date"`
 	EndDate        *string `json:"end_date"`
+	SpecificIDs    *string `json:"specific_ids"`
 	PerPage        *string `json:"per_page" default:"10"`
 	Page           *string `json:"page" default:"1"`
 	OrderColumn    *string `json:"order_column" default:"id"`
@@ -463,6 +465,13 @@ type GetSoDtQtyUpdateForInvoiceDTO struct {
 	SoDtID       *uint    `json:"so_dt_id" db:"so_dt_id"`
 	QtyInvoiced  *float64 `json:"qty_invoiced" db:"qty_invoiced"`
 	SalesOrderID *uint    `json:"sales_order_id" db:"sales_order_id"`
+}
+
+type InvoiceDpStatusWidget struct {
+	Status     string  `json:"status" db:"status"`
+	OrderCount int     `json:"order_count" db:"order_count"`
+	TotalQty   float64 `json:"total_qty" db:"total_qty"`
+	GrandTotal float64 `json:"grand_total" db:"grand_total"`
 }
 
 // type UpdateSalesOrderStatusForInvoiceRequest struct {

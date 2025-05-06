@@ -75,49 +75,6 @@ func (s *InvoiceDpService) CreateInvoiceDp(ctx *fiber.Ctx, req dtos.CreateInvoic
 		return nil, tx, err
 	}
 
-	// soDtIDs := utils.GetLockInvoiceDpSalesOrderIDs(req)
-	// if len(soDtIDs) > 0 {
-	// 	soDtIDsUint := make([]uint, 0)
-	// 	for _, id := range soDtIDs {
-	// 		if id != nil {
-	// 			soDtIDsUint = append(soDtIDsUint, *id)
-	// 		}
-	// 	}
-
-	// 	if len(soDtIDsUint) > 0 {
-	// 		soDtsQtyUpdate, err := s.repo.GetSoDtQtyUpdateForInvoice(ctx, soDtIDsUint, childSpan)
-	// 		if err != nil {
-	// 			tx.Rollback()
-	// 			return nil, tx, err
-	// 		}
-
-	// 		mapUpdateSoDtsQty := utils.MapUpdateSoDtsQtyForInvoice(soDtsQtyUpdate, req)
-
-	// 		if len(mapUpdateSoDtsQty) > 0 {
-	// 			tx, err = s.repo.BulkUpdateSoDtsQty(tx, mapUpdateSoDtsQty, childSpan)
-	// 			if err != nil {
-	// 				tx.Rollback()
-	// 				return nil, tx, err
-	// 			}
-	// 		}
-
-	// 		salesOrderIDs := make(map[uint]bool)
-	// 		for _, soDt := range soDtsQtyUpdate {
-	// 			if soDt.SalesOrderID != nil {
-	// 				salesOrderIDs[*soDt.SalesOrderID] = true
-	// 			}
-	// 		}
-
-	// 		for salesOrderID := range salesOrderIDs {
-	// 			tx, err = s.repo.UpdateSalesOrderStatus(tx, salesOrderID, "invoiced", childSpan)
-	// 			if err != nil {
-	// 				tx.Rollback()
-	// 				return nil, tx, err
-	// 			}
-	// 		}
-	// 	}
-	// }
-
 	return &invoiceDp, tx, nil
 }
 
@@ -561,4 +518,16 @@ func (s *InvoiceDpService) LockCreateInvoiceDpTable(ctx *fiber.Ctx, tx *gorm.DB,
 	}
 
 	return tx, nil
+}
+
+func (s *InvoiceDpService) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InvoiceDpStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpService-GetWidgetInvoiceDps", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	invoiceDps, total, err := s.repo.GetWidgetInvoiceDps(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+	return invoiceDps, total, nil
 }

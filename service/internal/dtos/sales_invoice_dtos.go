@@ -357,6 +357,7 @@ type GetSalesInvoicesResult struct {
 
 type GetRefSalesOrderForInvoiceRequest struct {
 	Global         *string `json:"global"`
+	InvoiceID      *string `json:"invoice_id"`
 	SalesOrderNo   *string `json:"sales_order_no"`
 	PoBuyerNo      *string `json:"po_buyer_no"`
 	Remark         *string `json:"remark"`
@@ -371,6 +372,7 @@ type GetRefSalesOrderForInvoiceRequest struct {
 	DateType       *string `json:"date_type"`
 	StartDate      *string `json:"start_date"`
 	EndDate        *string `json:"end_date"`
+	SpecificIDs    *string `json:"specific_ids"`
 	PerPage        *string `json:"per_page" default:"10"`
 	Page           *string `json:"page" default:"1"`
 	OrderColumn    *string `json:"order_column" default:"id"`
@@ -427,6 +429,7 @@ type RefSalesOrderForInvoiceListDTO struct {
 	TotalAm          *float64  `json:"total_am" db:"total_am"`
 	TotalDp          *float64  `json:"total_dp" db:"total_dp"`
 	TotalBalance     *float64  `json:"total_balance" db:"total_balance"`
+	InvoiceStatus    *string   `json:"invoice_status" db:"invoice_status"`
 	CreatedByName    *string   `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string   `json:"updated_by_name" db:"updated_by_name"`
 	CreatedByID      *uint     `json:"created_by_id" db:"created_by_id"`
@@ -464,4 +467,11 @@ type RefSalesOrderForInvoiceListDTO struct {
 type UpdateSalesOrderStatusForInvoiceRequest struct {
 	ID     uint   `json:"id"`
 	Status string `json:"status"`
+}
+
+type SalesInvoiceStatusWidget struct {
+	Status     string  `json:"status" db:"status"`
+	OrderCount int     `json:"order_count" db:"order_count"`
+	TotalQty   float64 `json:"total_qty" db:"total_qty"`
+	GrandTotal float64 `json:"grand_total" db:"grand_total"`
 }

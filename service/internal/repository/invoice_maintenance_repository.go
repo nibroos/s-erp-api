@@ -17,15 +17,15 @@ import (
 	"gorm.io/gorm"
 )
 
-type SalesInvoiceRepository struct {
+type InvoiceMaintenanceRepository struct {
 	db       *gorm.DB
 	sqlDB    *sqlx.DB
 	utilRepo *UtilRepository
 	tracer   opentracing.Tracer
 }
 
-func NewSalesInvoiceRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tracer opentracing.Tracer) *SalesInvoiceRepository {
-	return &SalesInvoiceRepository{
+func NewInvoiceMaintenanceRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tracer opentracing.Tracer) *InvoiceMaintenanceRepository {
+	return &InvoiceMaintenanceRepository{
 		db:       db,
 		sqlDB:    sqlDB,
 		tracer:   tracer,
@@ -33,22 +33,22 @@ func NewSalesInvoiceRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilReposi
 	}
 }
 
-func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesInvoiceListDTO, int, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSalesInvoices", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InvoiceMaintenanceListDTO, int, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetInvoiceMaintenances", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
 
 	isAdmin := utils.IsAdmin(ctx)
 
-	salesInvoices := []dtos.SalesInvoiceListDTO{}
+	invoiceMaintenances := []dtos.InvoiceMaintenanceListDTO{}
 
 	var total int
 
 	filterDBColumnKey := []string{
-		"si.invoice_no", "si.remark", "si.status",
+		"im.invoice_no", "im.remark", "im.status",
 		"c.name",
-		"sidt.remark",
+		"imdt.remark",
 	}
 
 	var args []interface{}
@@ -72,15 +72,15 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND si.id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND im.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
-		"customer_id":     "si.customer_id",
-		"currency_id":     "si.currency_id",
-		"payment_term_id": "si.payment_term_id",
-		"vat_id":          "si.vat_id",
-		"pph23_id":        "si.pph23_id",
+		"customer_id":     "im.customer_id",
+		"currency_id":     "im.currency_id",
+		"payment_term_id": "im.payment_term_id",
+		"vat_id":          "im.vat_id",
+		"pph23_id":        "im.pph23_id",
 	}
 
 	for key, col := range filterKey {
@@ -92,10 +92,10 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 	}
 
 	filterIDsKey := map[string]string{
-		"customer_ids":     "si.customer_id",
-		"currency_ids":     "si.currency_id",
-		"payment_term_ids": "si.payment_term_id",
-		"pph23_ids":        "si.pph23_id",
+		"customer_ids":     "im.customer_id",
+		"currency_ids":     "im.currency_id",
+		"payment_term_ids": "im.payment_term_id",
+		"pph23_ids":        "im.pph23_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -114,7 +114,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"si.vat_id", "sidt.vat_id"},
+		"vat_ids": []string{"im.vat_id", "imdt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -133,12 +133,12 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (si.id)
-					si.id, si.customer_id, si.currency_id, si.payment_term_id, si.vat_id, si.pph23_id, si.branch_id, si.bank_id,
-					si.invoice_no, si.remark, si.status, 
-					si.exchange_rate, si.pph23_percentage, si.vat_percentage, si.total_qty, si.subtotal, si.total_discount, si.total_pph23, si.total_vat, si.grand_total, si.created_by_id, si.updated_by_id, si.deleted_by_id, si.created_at, si.updated_at, si.deleted_at,
-					TO_CHAR(si.invoice_date, 'YYYY-MM-DD') as invoice_date,
-					si.discount_amount, si.discount_percentage, si.discount_percentage_amount, si.discount_final, si.discount_type, si.total_amount_products, si.total_dp_products, si.total_balance_products,
+        SELECT DISTINCT ON (im.id)
+					im.id, im.customer_id, im.currency_id, im.payment_term_id, im.vat_id, im.pph23_id, im.branch_id, im.bank_id,
+					im.invoice_no, im.remark, im.status, im.approved_status, im.approved_by_id, im.rev_no,
+					im.exchange_rate, im.pph23_percentage, im.vat_percentage, im.total_qty, im.subtotal, im.total_discount, im.total_pph23, im.total_vat, im.grand_total, im.created_by_id, im.updated_by_id, im.deleted_by_id, im.created_at, im.updated_at, im.deleted_at,
+					TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date,
+					im.discount_amount, im.discount_percentage, im.discount_percentage_amount, im.discount_final, im.discount_type, im.total_amount_products, im.total_dp_products, im.total_balance_products, im.total_adjustment,
 
 					c.name as customer_name,
 					cur.name as currency_name,
@@ -147,23 +147,25 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 					pph.name as pph23_name,
 					b.name as branch_name,
 
-					sidt.remark as sales_invoice_dt_remark,
+					imdt.remark as invoice_maintenance_dt_remark,
 
 					cu.name as created_by_name,
-					uu.name as updated_by_name
+					uu.name as updated_by_name,
+					au.name as approved_by_name
 
-        FROM sales_invoices si
-				LEFT JOIN sales_invoice_dts sidt ON sidt.sales_invoice_id = si.id
-				LEFT JOIN customers c ON si.customer_id = c.id
-				LEFT JOIN mix_values cur ON si.currency_id = cur.id
-				LEFT JOIN mix_values pt ON si.payment_term_id = pt.id
-				LEFT JOIN mix_values vat ON si.vat_id = vat.id
-				LEFT JOIN mix_values pph ON si.pph23_id = pph.id
-				LEFT JOIN branches b ON si.branch_id = b.id
-				LEFT JOIN bank_informations bk ON si.bank_id = bk.id
+        FROM invoice_maintenances im
+				LEFT JOIN invoice_maintenance_dts imdt ON imdt.invoice_maintenance_id = im.id
+				LEFT JOIN customers c ON im.customer_id = c.id
+				LEFT JOIN mix_values cur ON im.currency_id = cur.id
+				LEFT JOIN mix_values pt ON im.payment_term_id = pt.id
+				LEFT JOIN mix_values vat ON im.vat_id = vat.id
+				LEFT JOIN mix_values pph ON im.pph23_id = pph.id
+				LEFT JOIN branches b ON im.branch_id = b.id
+				LEFT JOIN bank_informations bk ON im.bank_id = bk.id
 
-        LEFT JOIN users cu ON si.created_by_id = cu.id
-        LEFT JOIN users uu ON si.updated_by_id = uu.id
+        LEFT JOIN users cu ON im.created_by_id = cu.id
+        LEFT JOIN users uu ON im.updated_by_id = uu.id
+		LEFT JOIN users au ON im.approved_by_id = au.id
 				WHERE 1=1` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
@@ -254,7 +256,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 		defer wg.Done()
 		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-		err := r.sqlDB.SelectContext(ctx.Context(), &salesInvoices, query, args...)
+		err := r.sqlDB.SelectContext(ctx.Context(), &invoiceMaintenances, query, args...)
 		if err != nil {
 			selectSpan.LogKV("query", query)
 			utils.LogErrors(selectSpan, err)
@@ -276,12 +278,12 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 		return nil, 0, selectErr
 	}
 
-	return salesInvoices, total, nil
+	return invoiceMaintenances, total, nil
 }
 
-func (r *SalesInvoiceRepository) GetSalesInvoiceByID(ctx *fiber.Ctx, params *dtos.GetSalesInvoiceParams, tx *gorm.DB, span opentracing.Span) (*dtos.SalesInvoiceDetailDTO, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSalesInvoiceByID", opentracing.ChildOf(span.Context()))
-	var salesInvoice dtos.SalesInvoiceDetailDTO
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceByID(ctx *fiber.Ctx, params *dtos.GetInvoiceMaintenanceParams, tx *gorm.DB, span opentracing.Span) (*dtos.InvoiceMaintenanceDetailDTO, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetInvoiceMaintenanceByID", opentracing.ChildOf(span.Context()))
+	var invoiceMaintenance dtos.InvoiceMaintenanceDetailDTO
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
@@ -290,20 +292,20 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceByID(ctx *fiber.Ctx, params *dto
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (si.id)
-            si.id, si.customer_id, si.currency_id, si.payment_term_id, si.vat_id, si.pph23_id, si.branch_id, si.bank_id,
-            si.invoice_no, si.remark, si.status, 
-            si.exchange_rate, si.pph23_percentage, si.vat_percentage, si.total_qty, si.subtotal, si.total_discount, si.total_pph23, si.total_vat, si.grand_total, si.created_by_id, si.updated_by_id, si.deleted_by_id, si.created_at, si.updated_at, si.deleted_at,
-            TO_CHAR(si.invoice_date, 'YYYY-MM-DD') as invoice_date,
-            si.discount_amount, si.discount_percentage, si.discount_percentage_amount, si.discount_final, si.discount_type, si.total_amount_products, si.total_dp_products, si.total_balance_products, si.rev_no,
+        SELECT DISTINCT ON (im.id)
+            im.id, im.customer_id, im.currency_id, im.payment_term_id, im.vat_id, im.pph23_id, im.branch_id, im.bank_id,
+            im.invoice_no, im.remark, im.status, im.approved_status, im.rev_no,
+            im.exchange_rate, im.pph23_percentage, im.vat_percentage, im.total_qty, im.subtotal, im.total_discount, im.total_pph23, im.total_vat, im.grand_total, im.created_by_id, im.updated_by_id, im.deleted_by_id, im.created_at, im.updated_at, im.deleted_at,
+            TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date,
+            im.discount_amount, im.discount_percentage, im.discount_percentage_amount, im.discount_final, im.discount_type, im.total_amount_products, im.total_dp_products, im.total_balance_products,
 
             cu.name as created_by_name,
             uu.name as updated_by_name
 
-        FROM sales_invoices si
-        LEFT JOIN sales_invoice_dts sidt ON sidt.sales_invoice_id = si.id
-        LEFT JOIN users cu ON si.created_by_id = cu.id
-        LEFT JOIN users uu ON si.updated_by_id = uu.id
+        FROM invoice_maintenances im
+        LEFT JOIN invoice_maintenance_dts imdt ON imdt.invoice_maintenance_id = im.id
+        LEFT JOIN users cu ON im.created_by_id = cu.id
+        LEFT JOIN users uu ON im.updated_by_id = uu.id
     ) AS alias WHERE 1=1`
 
 	if params.IsDeleted != nil && *params.IsDeleted == 1 {
@@ -328,30 +330,30 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceByID(ctx *fiber.Ctx, params *dto
 		i++
 	}
 
-	if err := r.sqlDB.Get(&salesInvoice, query, args...); err != nil {
+	if err := r.sqlDB.Get(&invoiceMaintenance, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
 		childSpan.LogKV("query", query)
 		return nil, err
 	}
 
-	return &salesInvoice, nil
+	return &invoiceMaintenance, nil
 }
 
-func (r *SalesInvoiceRepository) GetUpdatedSalesInvoiceDts(ctx *fiber.Ctx, salesInvoiceID uint, span opentracing.Span) ([]dtos.SalesInvoiceDtListUpdateDTO, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetUpdatedSalesInvoiceDts", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetUpdatedInvoiceMaintenanceDts(ctx *fiber.Ctx, invoiceMaintenanceID uint, span opentracing.Span) ([]dtos.InvoiceMaintenanceDtListUpdateDTO, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetUpdatedInvoiceMaintenanceDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	salesInvoiceDts := []dtos.SalesInvoiceDtListUpdateDTO{}
+	invoiceMaintenanceDts := []dtos.InvoiceMaintenanceDtListUpdateDTO{}
 
 	query := `
 	SELECT 
-		sidt.id, sidt.product_uuid, sidt.sales_invoice_id, sidt.item_unit_id, sidt.vat_id, sidt.pph23_id, 
-				sidt.ref_id, sidt.ref_dt_id, sidt.product_id, sidt.ref_type, sidt.product_type, sidt.remark, 
-		sidt.is_vat, sidt.is_pph23, sidt.qty, sidt.price, sidt.subtotal,
-		sidt.discount, sidt.total_amount, sidt.total_dp, sidt.total_balance, sidt.created_by_id, sidt.updated_by_id, sidt.deleted_by_id, 
-		sidt.created_at, sidt.updated_at, sidt.deleted_at,
+		imdt.id, imdt.product_uuid, imdt.invoice_maintenance_id, imdt.item_unit_id, imdt.vat_id, imdt.pph23_id, 
+				imdt.ref_id, imdt.ref_dt_id, imdt.product_id, imdt.ref_type, imdt.product_type, imdt.remark, 
+		imdt.is_vat, imdt.is_pph23, imdt.qty, imdt.price, imdt.subtotal,
+		imdt.discount, imdt.total_amount, imdt.total_dp, imdt.total_balance, imdt.created_by_id, imdt.updated_by_id, imdt.deleted_by_id, 
+		imdt.created_at, imdt.updated_at, imdt.deleted_at,
 		
-		sidt.id as sales_invoice_dt_id,
+		imdt.id as invoice_maintenance_dt_id,
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
 		isg.name as item_sub_group_name,
@@ -362,40 +364,40 @@ func (r *SalesInvoiceRepository) GetUpdatedSalesInvoiceDts(ctx *fiber.Ctx, sales
 		
 		cu.name as created_by_name,
 		uu.name as updated_by_name
-	FROM sales_invoice_dts sidt
-	LEFT JOIN products p ON sidt.product_id = p.id
-	LEFT JOIN item_units iu ON sidt.item_unit_id = iu.id
+	FROM invoice_maintenance_dts imdt
+	LEFT JOIN products p ON imdt.product_id = p.id
+	LEFT JOIN item_units iu ON imdt.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
 	LEFT JOIN mix_values isg ON p.item_sub_group_id = isg.id
 	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN users cu ON sidt.created_by_id = cu.id
-	LEFT JOIN users uu ON sidt.updated_by_id = uu.id
-	WHERE sidt.sales_invoice_id = $1 AND sidt.deleted_at IS NULL
-	ORDER BY sidt.id ASC
+	LEFT JOIN users cu ON imdt.created_by_id = cu.id
+	LEFT JOIN users uu ON imdt.updated_by_id = uu.id
+	WHERE imdt.invoice_maintenance_id = $1 AND imdt.deleted_at IS NULL
+	ORDER BY imdt.id ASC
 	`
 
-	err := r.sqlDB.SelectContext(ctx.Context(), &salesInvoiceDts, query, salesInvoiceID)
+	err := r.sqlDB.SelectContext(ctx.Context(), &invoiceMaintenanceDts, query, invoiceMaintenanceID)
 	if err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
-	return salesInvoiceDts, nil
+	return invoiceMaintenanceDts, nil
 }
 
-func (r *SalesInvoiceRepository) BeginTransaction() *gorm.DB {
+func (r *InvoiceMaintenanceRepository) BeginTransaction() *gorm.DB {
 	return r.db.Begin()
 }
 
-func (r *SalesInvoiceRepository) Rollback() *gorm.DB {
+func (r *InvoiceMaintenanceRepository) Rollback() *gorm.DB {
 	return r.db.Rollback()
 }
 
-func (r *SalesInvoiceRepository) CreateSalesInvoice(tx *gorm.DB, salesInvoice *models.SalesInvoice, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-CreateSalesInvoice", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) CreateInvoiceMaintenance(tx *gorm.DB, invoiceMaintenance *models.InvoiceMaintenance, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-CreateInvoiceMaintenance", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	result := tx.Create(&salesInvoice)
+	result := tx.Create(&invoiceMaintenance)
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
 		return tx, result.Error
@@ -404,32 +406,32 @@ func (r *SalesInvoiceRepository) CreateSalesInvoice(tx *gorm.DB, salesInvoice *m
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) CreateSalesInvoiceDts(tx *gorm.DB, salesInvoiceDts []models.SalesInvoiceDt, span opentracing.Span) (*gorm.DB, []models.SalesInvoiceDt, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-CreateSalesInvoiceDts", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) CreateInvoiceMaintenanceDts(tx *gorm.DB, invoiceMaintenanceDts []models.InvoiceMaintenanceDt, span opentracing.Span) (*gorm.DB, []models.InvoiceMaintenanceDt, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-CreateInvoiceMaintenanceDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	result := tx.Create(&salesInvoiceDts)
+	result := tx.Create(&invoiceMaintenanceDts)
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
 		return tx, nil, result.Error
 	}
 
-	return tx, salesInvoiceDts, nil
+	return tx, invoiceMaintenanceDts, nil
 }
 
-func (r *SalesInvoiceRepository) GetSalesInvoiceDts(ctx *fiber.Ctx, salesInvoiceID uint, isDeleted *int, span opentracing.Span) ([]dtos.SalesInvoiceDtListDTO, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSalesInvoiceDts", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceDts(ctx *fiber.Ctx, invoiceMaintenanceID uint, isDeleted *int, span opentracing.Span) ([]dtos.InvoiceMaintenanceDtListDTO, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetInvoiceMaintenanceDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	salesInvoiceDts := []dtos.SalesInvoiceDtListDTO{}
+	invoiceMaintenanceDts := []dtos.InvoiceMaintenanceDtListDTO{}
 
 	query := `
 	SELECT 
-		sidt.id, sidt.product_uuid, sidt.sales_invoice_id, sidt.item_unit_id, sidt.vat_id, sidt.pph23_id, 
-		sidt.ref_id, sidt.ref_dt_id, sidt.product_id, sidt.ref_type, sidt.product_type, sidt.remark, 
-		sidt.is_vat, sidt.is_pph23, sidt.qty, sidt.price, sidt.subtotal,
-		sidt.discount, sidt.total_amount, sidt.total_dp, sidt.total_balance, sidt.created_by_id, sidt.updated_by_id, sidt.deleted_by_id, 
-		sidt.created_at, sidt.updated_at, sidt.deleted_at,
+		imdt.id, imdt.product_uuid, imdt.invoice_maintenance_id, imdt.item_unit_id, imdt.vat_id, imdt.pph23_id, 
+		imdt.ref_id, imdt.ref_dt_id, imdt.product_id, imdt.ref_type, imdt.product_type, imdt.remark, 
+		imdt.is_vat, imdt.is_pph23, imdt.qty, imdt.price, imdt.subtotal,
+		imdt.discount, imdt.total_amount, imdt.total_dp, imdt.total_balance, imdt.created_by_id, imdt.updated_by_id, imdt.deleted_by_id, 
+		imdt.created_at, imdt.updated_at, imdt.deleted_at,
 		
 		p.name as item_name, p.code as item_code,
 		u.name as unit_name,
@@ -439,41 +441,41 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceDts(ctx *fiber.Ctx, salesInvoice
 		cu.name as created_by_name,
 		uu.name as updated_by_name,
 
-		CASE WHEN sidt.ref_type = 'so' THEN so.sales_order_no ELSE NULL END as ref_num
-	FROM sales_invoice_dts sidt
-	LEFT JOIN products p ON sidt.product_id = p.id
-	LEFT JOIN item_units iu ON sidt.item_unit_id = iu.id
+		CASE WHEN imdt.ref_type = 'so' THEN so.sales_order_no ELSE NULL END as ref_num
+	FROM invoice_maintenance_dts imdt
+	LEFT JOIN products p ON imdt.product_id = p.id
+	LEFT JOIN item_units iu ON imdt.item_unit_id = iu.id
 	LEFT JOIN mix_values u ON iu.unit_id = u.id
-	LEFT JOIN mix_values v ON sidt.vat_id = v.id
-	LEFT JOIN mix_values pph ON sidt.pph23_id = pph.id
-	LEFT JOIN sales_orders so ON sidt.ref_id = so.id AND sidt.ref_type = 'so'
-	LEFT JOIN users cu ON sidt.created_by_id = cu.id
-	LEFT JOIN users uu ON sidt.updated_by_id = uu.id
-	WHERE sidt.sales_invoice_id = $1
+	LEFT JOIN mix_values v ON imdt.vat_id = v.id
+	LEFT JOIN mix_values pph ON imdt.pph23_id = pph.id
+	LEFT JOIN sales_orders so ON imdt.ref_id = so.id AND imdt.ref_type = 'so'
+	LEFT JOIN users cu ON imdt.created_by_id = cu.id
+	LEFT JOIN users uu ON imdt.updated_by_id = uu.id
+	WHERE imdt.invoice_maintenance_id = $1
 	`
 
 	if isDeleted != nil && *isDeleted == 1 {
-		query += " AND sidt.deleted_at IS NOT NULL"
+		query += " AND imdt.deleted_at IS NOT NULL"
 	} else {
-		query += " AND sidt.deleted_at IS NULL"
+		query += " AND imdt.deleted_at IS NULL"
 	}
 
-	query += " ORDER BY sidt.id ASC"
+	query += " ORDER BY imdt.id ASC"
 
-	err := r.sqlDB.SelectContext(ctx.Context(), &salesInvoiceDts, query, salesInvoiceID)
+	err := r.sqlDB.SelectContext(ctx.Context(), &invoiceMaintenanceDts, query, invoiceMaintenanceID)
 	if err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
-	return salesInvoiceDts, nil
+	return invoiceMaintenanceDts, nil
 }
 
-func (r *SalesInvoiceRepository) UpdateSalesInvoice(tx *gorm.DB, salesInvoice *models.SalesInvoice, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-UpdateSalesInvoice", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) UpdateInvoiceMaintenance(tx *gorm.DB, invoiceMaintenance *models.InvoiceMaintenance, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-UpdateInvoiceMaintenance", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	result := tx.Model(&models.SalesInvoice{}).Where("id = ?", salesInvoice.ID).Updates(salesInvoice)
+	result := tx.Model(&models.InvoiceMaintenance{}).Where("id = ?", invoiceMaintenance.ID).Updates(invoiceMaintenance)
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
 		return tx, result.Error
@@ -482,15 +484,15 @@ func (r *SalesInvoiceRepository) UpdateSalesInvoice(tx *gorm.DB, salesInvoice *m
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) BulkCreateSalesInvoiceDts(tx *gorm.DB, salesInvoiceDts []models.SalesInvoiceDt, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-BulkCreateSalesInvoiceDts", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) BulkCreateInvoiceMaintenanceDts(tx *gorm.DB, invoiceMaintenanceDts []models.InvoiceMaintenanceDt, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-BulkCreateInvoiceMaintenanceDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	if len(salesInvoiceDts) == 0 {
+	if len(invoiceMaintenanceDts) == 0 {
 		return tx, nil
 	}
 
-	result := tx.Create(&salesInvoiceDts)
+	result := tx.Create(&invoiceMaintenanceDts)
 	if result.Error != nil {
 		utils.LogErrors(childSpan, result.Error)
 		return tx, result.Error
@@ -499,15 +501,15 @@ func (r *SalesInvoiceRepository) BulkCreateSalesInvoiceDts(tx *gorm.DB, salesInv
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) BulkUpdateSalesInvoiceDts(tx *gorm.DB, salesInvoiceDts []models.SalesInvoiceDt, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-BulkUpdateSalesInvoiceDts", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) BulkUpdateInvoiceMaintenanceDts(tx *gorm.DB, invoiceMaintenanceDts []models.InvoiceMaintenanceDt, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-BulkUpdateInvoiceMaintenanceDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	if len(salesInvoiceDts) == 0 {
+	if len(invoiceMaintenanceDts) == 0 {
 		return tx, nil
 	}
 
-	if err := tx.Save(&salesInvoiceDts).Error; err != nil {
+	if err := tx.Save(&invoiceMaintenanceDts).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return tx, err
 	}
@@ -515,15 +517,15 @@ func (r *SalesInvoiceRepository) BulkUpdateSalesInvoiceDts(tx *gorm.DB, salesInv
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) DeleteSalesInvoiceDtsByIDs(tx *gorm.DB, salesInvoiceDtIDs []uint, userID uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-DeleteSalesInvoiceDtsByIDs", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) DeleteInvoiceMaintenanceDtsByIDs(tx *gorm.DB, invoiceMaintenanceDtIDs []uint, userID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-DeleteInvoiceMaintenanceDtsByIDs", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	if len(salesInvoiceDtIDs) == 0 {
+	if len(invoiceMaintenanceDtIDs) == 0 {
 		return tx, nil
 	}
 
-	result := tx.Model(&models.SalesInvoiceDt{}).Where("id IN ?", salesInvoiceDtIDs).Updates(map[string]interface{}{
+	result := tx.Model(&models.InvoiceMaintenanceDt{}).Where("id IN ?", invoiceMaintenanceDtIDs).Updates(map[string]interface{}{
 		"deleted_by_id": userID,
 		"deleted_at":    time.Now(),
 	})
@@ -535,11 +537,11 @@ func (r *SalesInvoiceRepository) DeleteSalesInvoiceDtsByIDs(tx *gorm.DB, salesIn
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) DeleteSalesInvoice(tx *gorm.DB, salesInvoiceID uint, userID uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-DeleteSalesInvoice", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) DeleteInvoiceMaintenance(tx *gorm.DB, invoiceMaintenanceID uint, userID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-DeleteInvoiceMaintenance", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	result := tx.Model(&models.SalesInvoice{}).Where("id = ?", salesInvoiceID).Updates(map[string]interface{}{
+	result := tx.Model(&models.InvoiceMaintenance{}).Where("id = ?", invoiceMaintenanceID).Updates(map[string]interface{}{
 		"deleted_by_id": userID,
 		"deleted_at":    time.Now(),
 	})
@@ -551,12 +553,12 @@ func (r *SalesInvoiceRepository) DeleteSalesInvoice(tx *gorm.DB, salesInvoiceID 
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) RestoreSalesInvoice(ctx *fiber.Ctx, params *dtos.GetSalesInvoiceParams, tx *gorm.DB, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-RestoreSalesInvoice", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) RestoreInvoiceMaintenance(ctx *fiber.Ctx, params *dtos.GetInvoiceMaintenanceParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-RestoreInvoiceMaintenance", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	var salesInvoice models.SalesInvoice
-	if err := tx.Unscoped().Model(&salesInvoice).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
+	var invoiceMaintenance models.InvoiceMaintenance
+	if err := tx.Unscoped().Model(&invoiceMaintenance).Where("id = ?", params.ID).Update("deleted_at", nil).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -564,8 +566,8 @@ func (r *SalesInvoiceRepository) RestoreSalesInvoice(ctx *fiber.Ctx, params *dto
 	return nil
 }
 
-func (r *SalesInvoiceRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefSalesOrderForInvoiceListDTO, int, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetRefSalesOrderDts", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetRefSalesOrderForInvoiceMaintenance(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefSalesOrderForInvoiceMaintenanceListDTO, int, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetRefSalesOrderForInvoiceMaintenance", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	claims, _ := auth.GetAuthUser(ctx)
@@ -573,7 +575,7 @@ func (r *SalesInvoiceRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 
 	isAdmin := utils.IsAdmin(ctx)
 
-	soDts := []dtos.RefSalesOrderForInvoiceListDTO{}
+	soDts := []dtos.RefSalesOrderForInvoiceMaintenanceListDTO{}
 
 	var total int
 
@@ -606,24 +608,24 @@ func (r *SalesInvoiceRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 
 	var refDtIDs []uint
 	if invoiceID, ok := filters["invoice_id"]; ok && invoiceID != "" {
-		var salesInvoiceDts []struct {
+		var invoiceMaintenanceDts []struct {
 			RefDtID *uint `db:"ref_dt_id"`
 		}
 
 		refDtQuery := `
 			SELECT ref_dt_id 
-			FROM sales_invoice_dts 
-			WHERE sales_invoice_id = $1 
+			FROM invoice_maintenance_dts 
+			WHERE invoice_maintenance_id = $1 
 			AND ref_type = 'so' 
 			AND deleted_at IS NULL
 		`
 
-		if err := r.sqlDB.SelectContext(ctx.Context(), &salesInvoiceDts, refDtQuery, invoiceID); err != nil {
+		if err := r.sqlDB.SelectContext(ctx.Context(), &invoiceMaintenanceDts, refDtQuery, invoiceID); err != nil {
 			utils.LogErrors(childSpan, err)
 			return nil, 0, err
 		}
 
-		for _, dt := range salesInvoiceDts {
+		for _, dt := range invoiceMaintenanceDts {
 			if dt.RefDtID != nil {
 				refDtIDs = append(refDtIDs, *dt.RefDtID)
 			}
@@ -648,7 +650,7 @@ func (r *SalesInvoiceRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
 	}
 
-	if value, ok := filters["so_no"]; ok && value != "" {
+	if value, ok := filters["sales_order_no"]; ok && value != "" {
 		condition += fmt.Sprintf(" AND so.sales_order_no ILIKE $%d", i)
 		args = append(args, "%"+value+"%")
 		i++
@@ -781,10 +783,9 @@ func (r *SalesInvoiceRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 
 		LEFT JOIN users cu ON sodt.created_by_id = cu.id
 		LEFT JOIN users uu ON sodt.updated_by_id = uu.id
-				WHERE 1=1
-				AND so.order_type_id != 130
-				AND ot.name != 'Maintenance'` + condition + queryGlobal + `
-	) AS alias WHERE 1=1 AND deleted_at IS NULL`
+				WHERE 1=1 AND so.order_type_id = 130
+                AND ot.name = 'Maintenance'` + condition + queryGlobal + `
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
         ` + baseQuery
@@ -872,8 +873,8 @@ func (r *SalesInvoiceRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 	return soDts, total, nil
 }
 
-func (r *SalesInvoiceRepository) GetSoDtBoms(ctx *fiber.Ctx, soDtIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtBomListDTO, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSoDtBoms", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetSoDtBoms(ctx *fiber.Ctx, soDtIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtBomListDTO, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetSoDtBoms", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	if len(soDtIDs) == 0 {
@@ -920,42 +921,58 @@ func (r *SalesInvoiceRepository) GetSoDtBoms(ctx *fiber.Ctx, soDtIDs []uint, spa
 	return soDtBoms, nil
 }
 
-func (r *SalesInvoiceRepository) BulkUpdateSalesOrdersStatus(tx *gorm.DB, salesOrderIDs []uint, status string, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-BulkUpdateSalesOrdersStatus", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) BulkUpdateSalesOrdersStatus(tx *gorm.DB, salesOrderIDs []uint, status string, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-BulkUpdateSalesOrdersStatus", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	if len(salesOrderIDs) == 0 {
 		return tx, nil
 	}
 
-	for _, soID := range salesOrderIDs {
-		if _, err := r.CheckAndUpdateSalesOrderStatus(tx, soID, childSpan); err != nil {
-			return tx, err
-		}
+	query := `
+        UPDATE sales_orders 
+        SET 
+            status = CASE WHEN status != 'INVOICE' THEN ? ELSE status END,
+            history_status = CASE WHEN status != 'INVOICE' THEN status ELSE history_status END
+        WHERE id IN ?
+    `
+
+	result := tx.Exec(query, status, salesOrderIDs)
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return tx, result.Error
 	}
 
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) RestoreSalesOrdersStatus(tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-RestoreSalesOrdersStatus", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) RestoreSalesOrdersStatus(tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-RestoreSalesOrdersStatus", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	if len(salesOrderIDs) == 0 {
 		return tx, nil
 	}
 
-	for _, soID := range salesOrderIDs {
-		if _, err := r.CheckAndUpdateSalesOrderStatus(tx, soID, childSpan); err != nil {
-			return tx, err
-		}
+	query := `
+        UPDATE sales_orders 
+        SET 
+            status = history_status,
+            history_status = status
+        WHERE id IN ? AND status = 'INVOICE'
+    `
+
+	result := tx.Exec(query, salesOrderIDs)
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return tx, result.Error
 	}
 
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) LockSalesOrders(tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-LockSalesOrders", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) LockSalesOrders(tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-LockSalesOrders", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	if len(salesOrderIDs) == 0 {
@@ -971,12 +988,12 @@ func (r *SalesInvoiceRepository) LockSalesOrders(tx *gorm.DB, salesOrderIDs []ui
 	return nil
 }
 
-func (r *SalesInvoiceRepository) LockSalesInvoice(tx *gorm.DB, salesInvoiceID uint, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-LockSalesInvoice", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) LockInvoiceMaintenance(tx *gorm.DB, invoiceMaintenanceID uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-LockInvoiceMaintenance", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	lockQuery := "SELECT id FROM sales_invoices WHERE id = ? FOR UPDATE"
-	if err := tx.Exec(lockQuery, salesInvoiceID).Error; err != nil {
+	lockQuery := "SELECT id FROM invoice_maintenances WHERE id = ? FOR UPDATE"
+	if err := tx.Exec(lockQuery, invoiceMaintenanceID).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return err
 	}
@@ -984,27 +1001,27 @@ func (r *SalesInvoiceRepository) LockSalesInvoice(tx *gorm.DB, salesInvoiceID ui
 	return nil
 }
 
-func (r *SalesInvoiceRepository) GetSalesInvoiceForUpdate(tx *gorm.DB, salesInvoiceID uint, span opentracing.Span) (*models.SalesInvoice, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSalesInvoiceForUpdate", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceForUpdate(tx *gorm.DB, invoiceMaintenanceID uint, span opentracing.Span) (*models.InvoiceMaintenance, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetInvoiceMaintenanceForUpdate", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	var salesInvoice models.SalesInvoice
-	if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", salesInvoiceID).First(&salesInvoice).Error; err != nil {
+	var invoiceMaintenance models.InvoiceMaintenance
+	if err := tx.Set("gorm:query_option", "FOR UPDATE").Where("id = ?", invoiceMaintenanceID).First(&invoiceMaintenance).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
 
-	return &salesInvoice, nil
+	return &invoiceMaintenance, nil
 }
 
-func (r *SalesInvoiceRepository) GetSalesInvoiceCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetCustomerSalesInvoiceCreatedThisMonth", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetCustomerInvoiceMaintenanceCreatedThisMonth", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	var count int
 	query := `
     SELECT COUNT(*) 
-    FROM sales_invoices 
+    FROM invoice_maintenances 
     WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE) 
     AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
     `
@@ -1018,8 +1035,193 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceCreatedThisMonth(ctx *fiber.Ctx,
 	return count, nil
 }
 
-func (r *SalesInvoiceRepository) UpdateSoDtInvoiceStatus(tx *gorm.DB, soDtID uint, status interface{}, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-UpdateSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetSalesOrdersByIDs(ctx *fiber.Ctx, salesOrderIDs []uint, span opentracing.Span) ([]models.SalesOrder, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetSalesOrdersByIDs", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(salesOrderIDs) == 0 {
+		return []models.SalesOrder{}, nil
+	}
+
+	var salesOrders []models.SalesOrder
+	if err := r.db.Where("id IN ?", salesOrderIDs).Find(&salesOrders).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return salesOrders, nil
+}
+
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceDtsByIDs(ctx *fiber.Ctx, invoiceMaintenanceDtIDs []uint, span opentracing.Span) ([]models.InvoiceMaintenanceDt, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetInvoiceMaintenanceDtsByIDs", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(invoiceMaintenanceDtIDs) == 0 {
+		return []models.InvoiceMaintenanceDt{}, nil
+	}
+
+	var invoiceMaintenanceDts []models.InvoiceMaintenanceDt
+	if err := r.db.Where("id IN ?", invoiceMaintenanceDtIDs).Find(&invoiceMaintenanceDts).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return invoiceMaintenanceDts, nil
+}
+
+func (r *InvoiceMaintenanceRepository) GetSalesOrderIDsFromInvoiceMaintenanceDts(ctx *fiber.Ctx, invoiceMaintenanceID uint, span opentracing.Span) ([]uint, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetSalesOrderIDsFromInvoiceMaintenanceDts", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var salesOrderIDs []uint
+	query := `
+    SELECT DISTINCT ref_id 
+    FROM invoice_maintenance_dts 
+    WHERE invoice_maintenance_id = ? 
+    AND ref_type = 'so' 
+    AND deleted_at IS NULL
+    `
+
+	if err := r.db.Raw(query, invoiceMaintenanceID).Scan(&salesOrderIDs).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return salesOrderIDs, nil
+}
+
+func (r *InvoiceMaintenanceRepository) GetSalesOrderIDsFromInvoiceMaintenanceDtsByIDs(ctx *fiber.Ctx, invoiceMaintenanceDtIDs []uint, span opentracing.Span) ([]uint, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetSalesOrderIDsFromInvoiceMaintenanceDtsByIDs", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(invoiceMaintenanceDtIDs) == 0 {
+		return []uint{}, nil
+	}
+
+	var salesOrderIDs []uint
+	query := `
+    SELECT DISTINCT ref_id 
+    FROM invoice_maintenance_dts 
+    WHERE id IN ? 
+    AND ref_type = 'so' 
+    AND deleted_at IS NULL
+    `
+
+	if err := r.db.Raw(query, invoiceMaintenanceDtIDs).Scan(&salesOrderIDs).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return salesOrderIDs, nil
+}
+
+func (r *InvoiceMaintenanceRepository) UpdateSalesOrdersStatusToInvoice(tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-UpdateSalesOrdersStatusToInvoice", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(salesOrderIDs) == 0 {
+		return tx, nil
+	}
+
+	return r.BulkUpdateSalesOrdersStatus(tx, salesOrderIDs, "INVOICE", childSpan)
+}
+
+func (r *InvoiceMaintenanceRepository) RestoreSalesOrdersStatusFromInvoice(tx *gorm.DB, salesOrderIDs []uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-RestoreSalesOrdersStatusFromInvoice", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(salesOrderIDs) == 0 {
+		return tx, nil
+	}
+
+	return r.RestoreSalesOrdersStatus(tx, salesOrderIDs, childSpan)
+}
+
+func (r *InvoiceMaintenanceRepository) UpdateSalesOrdersStatusForInvoiceMaintenance(tx *gorm.DB, req dtos.UpdateSalesOrderStatusForInvoiceMaintenanceRequest, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-UpdateSalesOrdersStatusForInvoiceMaintenance", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	query := `
+        UPDATE sales_orders 
+        SET 
+            status = ?,
+            history_status = status
+        WHERE id = ?
+    `
+
+	result := tx.Exec(query, req.Status, req.ID)
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return tx, result.Error
+	}
+
+	return tx, nil
+}
+
+func (r *InvoiceMaintenanceRepository) BulkApproveInvoiceMaintenances(tx *gorm.DB, ids []uint, userID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-BulkApproveInvoiceMaintenances", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(ids) == 0 {
+		return tx, nil
+	}
+
+	lockQuery := "SELECT id FROM invoice_maintenances WHERE id IN ? FOR UPDATE"
+	if err := tx.Exec(lockQuery, ids).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	result := tx.Model(&models.InvoiceMaintenance{}).
+		Where("id IN ?", ids).
+		Updates(map[string]interface{}{
+			"approved_status": "APPROVED",
+			"approved_by_id":  userID,
+			"updated_by_id":   userID,
+			"updated_at":      time.Now(),
+		})
+
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return tx, result.Error
+	}
+
+	return tx, nil
+}
+
+func (r *InvoiceMaintenanceRepository) BulkCancelApproveInvoiceMaintenances(tx *gorm.DB, ids []uint, userID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-BulkCancelApproveInvoiceMaintenances", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(ids) == 0 {
+		return tx, nil
+	}
+
+	lockQuery := "SELECT id FROM invoice_maintenances WHERE id IN ? FOR UPDATE"
+	if err := tx.Exec(lockQuery, ids).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	result := tx.Model(&models.InvoiceMaintenance{}).
+		Where("id IN ?", ids).
+		Updates(map[string]interface{}{
+			"approved_status": "PENDING",
+			"approved_by_id":  nil,
+			"updated_by_id":   userID,
+			"updated_at":      time.Now(),
+		})
+
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return tx, result.Error
+	}
+
+	return tx, nil
+}
+
+func (r *InvoiceMaintenanceRepository) UpdateSoDtInvoiceStatus(tx *gorm.DB, soDtID uint, status interface{}, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-UpdateSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	var result *gorm.DB
@@ -1037,8 +1239,8 @@ func (r *SalesInvoiceRepository) UpdateSoDtInvoiceStatus(tx *gorm.DB, soDtID uin
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) BulkUpdateSoDtInvoiceStatus(tx *gorm.DB, soDtIDs []uint, status interface{}, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-BulkUpdateSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) BulkUpdateSoDtInvoiceStatus(tx *gorm.DB, soDtIDs []uint, status interface{}, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-BulkUpdateSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	if len(soDtIDs) == 0 {
@@ -1060,8 +1262,8 @@ func (r *SalesInvoiceRepository) BulkUpdateSoDtInvoiceStatus(tx *gorm.DB, soDtID
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) CheckAndUpdateSalesOrderStatus(tx *gorm.DB, salesOrderID uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-CheckAndUpdateSalesOrderStatus", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) CheckAndUpdateSalesOrderStatus(tx *gorm.DB, salesOrderID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-CheckAndUpdateSalesOrderStatus", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	var totalItems int64
@@ -1105,21 +1307,21 @@ func (r *SalesInvoiceRepository) CheckAndUpdateSalesOrderStatus(tx *gorm.DB, sal
 	return tx, nil
 }
 
-func (r *SalesInvoiceRepository) GetSoDtIDsFromSalesInvoiceDts(ctx *fiber.Ctx, salesInvoiceID uint, span opentracing.Span) ([]uint, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSoDtIDsFromSalesInvoiceDts", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetSoDtIDsFromInvoiceMaintenanceDts(ctx *fiber.Ctx, invoiceMaintenanceID uint, span opentracing.Span) ([]uint, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetSoDtIDsFromInvoiceMaintenanceDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	var soDtIDs []uint
 	query := `
 	SELECT ref_dt_id 
-	FROM sales_invoice_dts 
-	WHERE sales_invoice_id = ? 
+	FROM invoice_maintenance_dts 
+	WHERE invoice_maintenance_id = ? 
 	AND ref_type = 'so' 
 	AND ref_dt_id IS NOT NULL
 	AND deleted_at IS NULL
 	`
 
-	if err := r.db.Raw(query, salesInvoiceID).Scan(&soDtIDs).Error; err != nil {
+	if err := r.db.Raw(query, invoiceMaintenanceID).Scan(&soDtIDs).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		return nil, err
 	}
@@ -1127,8 +1329,8 @@ func (r *SalesInvoiceRepository) GetSoDtIDsFromSalesInvoiceDts(ctx *fiber.Ctx, s
 	return soDtIDs, nil
 }
 
-func (r *SalesInvoiceRepository) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs []uint, span opentracing.Span) (map[uint]string, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs []uint, span opentracing.Span) (map[uint]string, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
 	if len(soDtIDs) == 0 {
@@ -1167,21 +1369,21 @@ func (r *SalesInvoiceRepository) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs []
 	return statusMap, nil
 }
 
-func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesInvoiceStatusWidget, int, error) {
-	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetWidgetSalesInvoices", opentracing.ChildOf(span.Context()))
+func (r *InvoiceMaintenanceRepository) GetWidgetInvoiceMaintenances(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InvoiceMaintenanceStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetWidgetInvoiceMaintenances", opentracing.ChildOf(span.Context()))
 
 	claims, _ := auth.GetAuthUser(ctx)
 	branchID := claims["bid"]
 
 	isAdmin := utils.IsAdmin(ctx)
 
-	var widgets []dtos.SalesInvoiceStatusWidget
+	var widgets []dtos.InvoiceMaintenanceStatusWidget
 	var total int
 
 	filterDBColumnKey := []string{
-		"si.invoice_no", "si.remark", "si.status",
+		"im.invoice_no", "im.remark", "im.status",
 		"c.name",
-		"sidt.remark",
+		"imdt.remark",
 	}
 
 	var args []interface{}
@@ -1205,16 +1407,16 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 	condition := ""
 
 	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND si.id IN (%s)", filters["ids"])
+		condition += fmt.Sprintf(" AND im.id IN (%s)", filters["ids"])
 	}
 
 	filterKey := map[string]string{
-		"status":          "si.status",
-		"customer_id":     "si.customer_id",
-		"currency_id":     "si.currency_id",
-		"payment_term_id": "si.payment_term_id",
-		"vat_id":          "si.vat_id",
-		"pph23_id":        "si.pph23_id",
+		"status":          "im.status",
+		"customer_id":     "im.customer_id",
+		"currency_id":     "im.currency_id",
+		"payment_term_id": "im.payment_term_id",
+		"vat_id":          "im.vat_id",
+		"pph23_id":        "im.pph23_id",
 	}
 
 	for key, col := range filterKey {
@@ -1225,12 +1427,11 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 		}
 	}
 
-	// Add invoice_no and remark filters to condition
 	for key, value := range filters {
 		switch key {
 		case "invoice_no", "remark":
 			if value != "" {
-				condition += fmt.Sprintf(" AND si.%s ILIKE $%d", key, i)
+				condition += fmt.Sprintf(" AND im.%s ILIKE $%d", key, i)
 				args = append(args, "%"+value+"%")
 				i++
 			}
@@ -1238,22 +1439,22 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 	}
 
 	if !isAdmin && branchID != nil {
-		condition += fmt.Sprintf(" AND si.branch_id = $%d", i)
+		condition += fmt.Sprintf(" AND im.branch_id = $%d", i)
 		args = append(args, branchID)
 		i++
 	}
 
 	if isAdmin && filters["branch_id"] != "" {
-		condition += fmt.Sprintf(" AND si.branch_id = $%d", i)
+		condition += fmt.Sprintf(" AND im.branch_id = $%d", i)
 		args = append(args, filters["branch_id"])
 		i++
 	}
 
 	filterIDsKey := map[string]string{
-		"customer_ids":     "si.customer_id",
-		"currency_ids":     "si.currency_id",
-		"payment_term_ids": "si.payment_term_id",
-		"pph23_ids":        "si.pph23_id",
+		"customer_ids":     "im.customer_id",
+		"currency_ids":     "im.currency_id",
+		"payment_term_ids": "im.payment_term_id",
+		"pph23_ids":        "im.pph23_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -1272,7 +1473,7 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"si.vat_id", "sidt.vat_id"},
+		"vat_ids": []string{"im.vat_id", "imdt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1290,7 +1491,7 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 	}
 
 	if filters["start_date"] != "" && filters["end_date"] != "" {
-		condition += fmt.Sprintf(" AND (si.invoice_date BETWEEN $%d AND $%d)", i, i+1)
+		condition += fmt.Sprintf(" AND (im.invoice_date BETWEEN $%d AND $%d)", i, i+1)
 		args = append(args, filters["start_date"], filters["end_date"])
 		i += 2
 	}
@@ -1307,17 +1508,17 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
     ),
     filtered_invoices AS (
         SELECT DISTINCT
-            si.id,
-            si.status as si_status,
-            si.total_qty,
-            si.grand_total
-        FROM sales_invoices si
-        LEFT JOIN sales_invoice_dts sidt ON sidt.sales_invoice_id = si.id
-        LEFT JOIN customers c ON si.customer_id = c.id
-        WHERE si.deleted_at IS NULL
+            im.id,
+            im.status as im_status,
+            im.total_qty,
+            im.grand_total
+        FROM invoice_maintenances im
+        LEFT JOIN invoice_maintenance_dts imdt ON imdt.invoice_maintenance_id = im.id
+        LEFT JOIN customers c ON im.customer_id = c.id
+        WHERE im.deleted_at IS NULL
         ` + condition + queryGlobal + `
     ),
-    sales_invoice_stats AS (
+    invoice_maintenance_stats AS (
         SELECT
             sv.status,
             sv.status_order,
@@ -1326,9 +1527,9 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
             COALESCE(SUM(fi.grand_total), 0) as grand_total
         FROM status_values sv
         LEFT JOIN filtered_invoices fi ON
-            (sv.status = fi.si_status) OR
+            (sv.status = fi.im_status) OR
             (sv.status = 'TOTAL') OR
-            (sv.status = 'UNPAID' AND fi.si_status NOT IN ('PAID', 'CANCELED'))
+            (sv.status = 'UNPAID' AND fi.im_status NOT IN ('PAID', 'CANCELED'))
         GROUP BY sv.status, sv.status_order
     )
     SELECT
@@ -1336,7 +1537,7 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
         order_count,
         total_qty,
         grand_total
-    FROM sales_invoice_stats sv
+    FROM invoice_maintenance_stats sv
     ORDER BY status_order
     `
 
@@ -1361,6 +1562,6 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 	return widgets, total, nil
 }
 
-func (r *SalesInvoiceRepository) Commit(tx *gorm.DB) error {
+func (r *InvoiceMaintenanceRepository) Commit(tx *gorm.DB) error {
 	return tx.Commit().Error
 }
