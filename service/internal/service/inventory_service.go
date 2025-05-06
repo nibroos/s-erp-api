@@ -346,6 +346,22 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 			tx.Rollback()
 			return nil, err
 		}
+
+		poHead, err := s.repo.GetRefInHeadByRefDtID(ctx, tx, "purchase_order_dts", "purchase_orders", "po_id", refPoDtID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+
+		mappedPoHead := utils.MapInvRefHeadUpdateStatus(poHead, "po")
+
+		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, mappedPoHead, "purchase_orders", childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	if len(newRefPoDtBom) > 0 {
@@ -460,6 +476,22 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 	if len(newRefPoDt) > 0 {
 		log.Println("updateRefQtyInOut-newRefPoDt>0", newRefPoDt)
 		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefPoDt, "purchase_order_dts", childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+
+		poHead, err := s.repo.GetRefInHeadByRefDtID(ctx, tx, "purchase_order_dts", "purchase_orders", "po_id", refPoDtID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+
+		mappedPoHead := utils.MapInvRefHeadUpdateStatus(poHead, "po")
+
+		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, mappedPoHead, "purchase_orders", childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()

@@ -59,6 +59,10 @@ func MapCreateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, createdInven
 			return invDtsModel, err
 		}
 
+		if invDt.ExpiredAt != nil && *invDt.ExpiredAt == "" {
+			invDt.ExpiredAt = nil
+		}
+
 		invDtModel := models.InvDt{
 			ProductUuid:     invDt.ProductUuid,
 			InventoryID:     createdInventory.ID,
@@ -639,3 +643,52 @@ func GetInvSoDtIDs(invDts []dtos.RefInvIndexSoDtListDTO) []uint {
 
 // 	return combinedQuoDts
 // }
+
+func MapInvRefHeadUpdateStatus(heads []map[string]interface{}, refType string) []map[string]interface{} {
+	updatedHeads := []map[string]interface{}{}
+	for _, head := range heads {
+		if refType == "po" {
+			status := determinePoStatusInvRefHead(head)
+			updatedHeads = append(updatedHeads, map[string]interface{}{
+				"id":     head["id"],
+				"status": status,
+			})
+
+		}
+	}
+
+	return updatedHeads
+}
+
+func determinePoStatusInvRefHead(head map[string]interface{}) string {
+	// Default status
+	status := "PROCESS"
+
+	qtyIn, totalQty, ok := getInvRefHeadQuantities(head)
+	if !ok {
+		return status
+	}
+
+	switch {
+	case qtyIn == 0:
+		status = "PROCESS"
+	case qtyIn > 0 && qtyIn < totalQty:
+		status = "PARTIAL"
+	case qtyIn >= totalQty:
+		status = "FINISH"
+	}
+
+	return status
+}
+
+func getInvRefHeadQuantities(head map[string]interface{}) (qtyIn float64, totalQty float64, ok bool) {
+	// Check if both quantities exist
+	if head["qty_in"] == nil || head["total_qty"] == nil {
+		return 0, 0, false
+	}
+
+	qtyIn = head["qty_in"].(float64)
+	totalQty = head["total_qty"].(float64)
+
+	return qtyIn, totalQty, true
+}

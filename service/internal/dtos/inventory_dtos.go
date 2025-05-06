@@ -504,6 +504,7 @@ type RefInvIndexPoDtListDTO struct {
 	RefNum        *string  `json:"ref_num" db:"ref_num"`
 	PoDate        *string  `json:"po_date" db:"po_date"`
 	DeliveryDate  *string  `json:"delivery_date" db:"delivery_date"`
+	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	ItemSku       *string  `json:"item_sku" db:"item_sku"`
 	RefQty        *float64 `json:"ref_qty" db:"ref_qty"`
 	ItemType      *string  `json:"item_type" db:"item_type"`

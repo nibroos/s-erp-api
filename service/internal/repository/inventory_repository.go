@@ -779,18 +779,18 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 	LEFT JOIN so_dts sd ON sd.id = ivd.ref_so_dt_id AND ivd.ref_type = 'so'
 	LEFT JOIN so_dt_boms sdb ON sdb.id = ivd.ref_so_dt_bom_id AND ivd.ref_type = 'so'
 	LEFT JOIN sales_orders so ON (so.id = sd.sales_order_id OR so.id = sdb.sales_order_id)
-	LEFT JOIN purchase_order_dts pd ON pd.id = ivd.ref_po_dt_id AND ivd.ref_type = 'po'
-	LEFT JOIN purchase_orders po ON po.id = pd.po_id
-	LEFT JOIN inv_dts ivd_refs ON ivd_refs.id = ivd.ref_inv_dt_id
+	LEFT JOIN purchase_order_dts pd ON pd.id               = ivd.ref_po_dt_id
+	LEFT JOIN purchase_orders po ON po.id                  = pd.po_id
+	LEFT JOIN inv_dts ivd_refs ON ivd_refs.id              = ivd.ref_inv_dt_id
 	LEFT JOIN inventories iv_refs ON ivd_refs.inventory_id = iv_refs.id
-	LEFT JOIN inventories p ON ivd.inventory_id = p.id
-	LEFT JOIN products pi ON ivd.item_id = pi.id
-	LEFT JOIN item_units iu ON ivd.item_unit_id = iu.id
-	LEFT JOIN mix_values u ON iu.unit_id = u.id
-	LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
-	LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-	LEFT JOIN users cu ON ivd.created_by_id = cu.id
-	LEFT JOIN users uu ON ivd.updated_by_id = uu.id
+	LEFT JOIN inventories p ON ivd.inventory_id            = p.id
+	LEFT JOIN products pi ON ivd.item_id                   = pi.id
+	LEFT JOIN item_units iu ON ivd.item_unit_id            = iu.id
+	LEFT JOIN mix_values u ON iu.unit_id                   = u.id
+	LEFT JOIN mix_values isg ON pi.item_sub_group_id       = isg.id
+	LEFT JOIN mix_values ig ON isg.parent_id               = ig.id
+	LEFT JOIN users cu ON ivd.created_by_id                = cu.id
+	LEFT JOIN users uu ON ivd.updated_by_id                = uu.id
 	WHERE ivd.deleted_at IS NULL`
 
 	var args []interface{}
@@ -1187,7 +1187,7 @@ func (r *InventoryRepository) GetRefIndexPoDts(ctx *fiber.Ctx, filters map[strin
 	var total int
 
 	filterDBColumnKey := []string{
-		"so.po_buyer_no",
+		"so.po_no",
 		"pi.name",
 		"sd.remark",
 		"sd.gen_code",
@@ -1347,7 +1347,7 @@ func (r *InventoryRepository) GetRefIndexPoDts(ctx *fiber.Ctx, filters map[strin
 			so.payment_term_id as payment_term_id,
 			so.exchange_rate as exchange_rate,
 			so.po_no as ref_num,
-			so.ship_dest,
+			so.shipping_destination as ship_dest,
 			isg.name as item_sub_group_name,
 			ig.name as item_group_name,
 			u.name as unit_name,
@@ -1407,8 +1407,8 @@ func (r *InventoryRepository) GetRefIndexPoDts(ctx *fiber.Ctx, filters map[strin
 	}
 
 	columnIDsKey := map[string]string{
-		"ref_num":       "so.po_buyer_no",
-		"order_at":      "so.order_at",
+		"ref_num": "so.po_buyer_no",
+		// "order_at":      "so.order_at",
 		"customer_name": "c.name",
 		"item_code":     "pi.code",
 		"item_name":     "pi.name",
@@ -2177,6 +2177,49 @@ func (r *InventoryRepository) GetRefInDtByRefDtID(ctx *fiber.Ctx, tx *gorm.DB, t
 	}
 
 	log.Println("GetRefInDtByRefDtID-query", query)
+
+	err := tx.Raw(query, args...).Scan(&details).Error
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return details, nil
+}
+
+func (r *InventoryRepository) GetRefInHeadByRefDtID(ctx *fiber.Ctx, tx *gorm.DB, tableName string, parentTableName string, parentColumnName string, detailIDs []uint, span opentracing.Span) ([]map[string]interface{}, error) {
+	childSpan := opentracing.StartSpan("InventoryRepository-GetRefInHeadByRefDtID", opentracing.ChildOf(span.Context()))
+
+	var details []map[string]interface{}
+
+	baseQuery := fmt.Sprintf(`
+    FROM (
+        SELECT
+            h.id, 
+            SUM(sd.qty_in) as qty_in, 
+            sd.%s, 
+						MIN(sd.id) as dt_id,
+            h.total_qty, 
+            h.status
+        FROM %s sd
+        LEFT JOIN %s h ON sd.%s = h.id
+        WHERE sd.deleted_at IS NULL
+				GROUP BY h.id, sd.%s, h.total_qty, h.status
+    ) AS alias WHERE 1=1`, parentColumnName, tableName, parentTableName, parentColumnName, parentColumnName)
+
+	query := `SELECT *
+		` + baseQuery
+
+	var args []interface{}
+	i := 1
+
+	if len(detailIDs) > 0 {
+		query += fmt.Sprintf(" AND dt_id = ANY($1)")
+		args = append(args, pq.Array(detailIDs))
+		i++
+	}
+
+	log.Println("GetRefInHeadByRefDtID-query", query)
 
 	err := tx.Raw(query, args...).Scan(&details).Error
 	if err != nil {
