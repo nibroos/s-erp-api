@@ -290,7 +290,7 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 	}
 
 	if len(refPoDtID) > 0 {
-		poDt, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "purchase_order_dts", "purchase_order_id", refPoDtID, childSpan)
+		poDt, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "purchase_order_dts", "po_id", refPoDtID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -299,7 +299,7 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 	}
 
 	if len(refPoDtBomID) > 0 {
-		poDtBom, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "po_dt_boms", "purchase_order_id", refPoDtBomID, childSpan)
+		poDtBom, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "po_dt_boms", "po_id", refPoDtBomID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -340,7 +340,7 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 	}
 
 	if len(newRefPoDt) > 0 {
-		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefPoDt, "po_dts", childSpan)
+		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefPoDt, "purchase_order_dts", childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -380,6 +380,8 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 		return nil, err
 	}
 
+	log.Println("updateRefQtyInOut-refSoDtID", refSoDtID, "refSoDtBomID", refSoDtBomID, "refPoDtID", refPoDtID, "refPoDtBomID", refPoDtBomID, "refInvDtID", refInvDtID)
+
 	var soDt []map[string]interface{}
 	var soDtBom []map[string]interface{}
 	var poDt []map[string]interface{}
@@ -405,7 +407,7 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 	}
 
 	if len(refPoDtID) > 0 {
-		poDt, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "purchase_order_dts", "purchase_order_id", refPoDtID, childSpan)
+		poDt, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "purchase_order_dts", "po_id", refPoDtID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -414,7 +416,7 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 	}
 
 	if len(refPoDtBomID) > 0 {
-		poDtBom, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "po_dt_boms", "purchase_order_id", refPoDtBomID, childSpan)
+		poDtBom, err = s.repo.GetRefInDtByRefDtID(ctx, tx, "po_dt_boms", "po_id", refPoDtBomID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -457,7 +459,7 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 
 	if len(newRefPoDt) > 0 {
 		log.Println("updateRefQtyInOut-newRefPoDt>0", newRefPoDt)
-		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefPoDt, "po_dts", childSpan)
+		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefPoDt, "purchase_order_dts", childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -808,6 +810,34 @@ func (s *InventoryService) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[string]s
 	childSpan := opentracing.StartSpan("InventoryService-GetRefIndexSoDts", opentracing.ChildOf(span.Context()))
 
 	soDts, total, err := s.repo.GetRefIndexSoDts(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	// soIDs := utils.GetInvSoDtIDs(soDts)
+
+	// var soDtBoms []dtos.InvSalesOrderQuoDtBomListDTO
+	// if len(soIDs) > 0 {
+	// 	soDtBoms, err = s.repo.GetRefSoDtsBomByQuoDtIDs(ctx, filters, soIDs, childSpan)
+
+	// 	if err != nil {
+	// 		defer childSpan.Finish()
+	// 		return nil, 0, err
+	// 	}
+	// }
+
+	// if len(soDtBoms) > 0 {
+	// 	soDts = utils.MapInvRefSoDtBomsToQuoDts(soDtBoms, soDts)
+	// }
+
+	return soDts, total, nil
+}
+
+func (s *InventoryService) GetRefIndexPoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefInvIndexPoDtListDTO, int, error) {
+	childSpan := opentracing.StartSpan("InventoryService-GetRefIndexPoDts", opentracing.ChildOf(span.Context()))
+
+	soDts, total, err := s.repo.GetRefIndexPoDts(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
