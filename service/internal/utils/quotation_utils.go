@@ -375,6 +375,11 @@ func GenerateQuoNoOnCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequ
 	}
 
 	// SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
+
+	if req.CustomerCode == nil {
+		return ""
+	}
+
 	surname := *req.CustomerCode
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")

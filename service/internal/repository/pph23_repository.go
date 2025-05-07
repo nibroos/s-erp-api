@@ -61,6 +61,18 @@ func (r *Pph23Repository) GetPph23s(ctx *fiber.Ctx, filters map[string]string, s
 		queryGlobal += ")"
 	}
 
+	filterEqual := map[string]string{
+		"status":    "m.status",
+		"is_active": "m.status",
+	}
+	for key, colDB := range filterEqual {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", colDB, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
 	filtersParams := map[string]string{
 		"name":        "m.name",
 		"description": "m.description",

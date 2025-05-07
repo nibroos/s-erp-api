@@ -1214,6 +1214,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 					q.disc_perc as head_disc_perc,
 					q.markup_perc as head_markup_perc,
 					q.remark as head_remark,
+					q.payment_id as payment_id,
 					q.is_vat as head_is_vat,
 					q.quo_no as ref_num,
 
@@ -2518,7 +2519,7 @@ func (r *SalesOrderRepository) GetScheduleByID(ctx *fiber.Ctx, params *dtos.GetS
 	baseQuery := `
     FROM ( 
 			SELECT DISTINCT ON (s.id)
-				s.id, s.assignee_id, s.customer_id, s.sales_order_id, s.title, s.module_type, s.color,
+				s.id, s.assignee_id, s.customer_id, s.sales_order_id, s.title, s.module_type, s.color, s.remark,
 					s.total_task_step_4_done,
 					s.total_all_tasks_done,
 					s.total_tasks,

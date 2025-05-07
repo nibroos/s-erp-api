@@ -24,4 +24,6 @@ func SetupItemSubGroupRoutes(itemSubGroups fiber.Router, gormDB *gorm.DB, sqlDB 
 	itemSubGroups.Post("/restore-item-sub-group", itemSubGroupController.RestoreItemSubGroup)
 	itemSubGroups.Post("/excel-item-sub-group", itemSubGroupController.ExcelGetItemSubGroups)
 	itemSubGroups.Post("/csv-item-sub-group", itemSubGroupController.CsvGetItemSubGroups)
+
+	itemSubGroups.Post("/is-item-sub-group", itemSubGroupController.IsItemSubGroupByID)
 }

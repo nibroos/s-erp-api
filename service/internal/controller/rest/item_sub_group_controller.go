@@ -125,6 +125,7 @@ func (c *ItemSubGroupController) CreateItemSubGroup(ctx *fiber.Ctx) error {
 
 	return utils.GetResponse(ctx, []interface{}{getItemSubGroup}, paginationMeta, "Item subgroup created successfully", http.StatusCreated, nil, nil)
 }
+
 func (c *ItemSubGroupController) GetItemSubGroupByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("ItemSubGroupController-GetItemSubGroupByID", opentracing.ChildOf(apiSpan.Context()))
@@ -372,4 +373,47 @@ func (c *ItemSubGroupController) CsvGetItemSubGroups(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Send(itemSubGroups)
+}
+
+func (c *ItemSubGroupController) IsItemSubGroupByID(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("ItemSubGroupController-IsItemSubGroupByID", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.IsItemSubGroupRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusBadRequest, err.Error(), nil)
+	}
+
+	if req.ID == 0 {
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusBadRequest, "ID is required", nil)
+	}
+
+	params := &dtos.GetItemSubGroupParams{ID: req.ID}
+	itemSubGroup, err := c.service.IsItemSubGroupByID(ctx, params, parentSpan)
+	if err != nil {
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusNotFound, err.Error(), nil)
+	}
+
+	var data dtos.IsItemSubGroupDTO
+
+	data.Detail = *itemSubGroup
+	data.IsExist = true
+	if itemSubGroup != nil {
+		data.IsExist = false
+	}
+
+	filters := ctx.Locals("filters").(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+
+	return utils.GetResponse(ctx, itemSubGroup, paginationMeta, "Item subgroup fetched successfully", http.StatusOK, nil, nil)
 }

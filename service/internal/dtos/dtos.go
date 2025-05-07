@@ -429,6 +429,11 @@ type GetItemSubGroupByIDRequest struct {
 	ID uint `json:"id"`
 }
 
+type IsItemSubGroupRequest struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
 type DeleteItemSubGroupRequest struct {
 	ID uint `json:"id"`
 }
@@ -469,6 +474,11 @@ type ItemSubGroupDetailDTO struct {
 	CreatedAt     *string `json:"created_at" db:"created_at"`
 	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
 	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type IsItemSubGroupDTO struct {
+	Detail  ItemSubGroupDetailDTO
+	IsExist bool
 }
 type GetItemSubGroupsResult struct {
 	ItemSubGroups []ItemSubGroupListDTO

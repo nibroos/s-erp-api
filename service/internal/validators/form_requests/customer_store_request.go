@@ -19,8 +19,9 @@ func (r *CustomerStoreRequest) Validate(req *dtos.CreateCustomerRequest, ctx *fi
 	rules := map[string][]string{
 		"customer_type_id": []string{"required", "numeric", "exists:mix_values,id"},
 		"agent_id":         []string{"exists:customers,id"},
-		"code":             []string{},
+		"code":             []string{"required", "unique:customers,code"},
 		"name":             []string{"required", "min:3"},
+		"shortname":        []string{"required", "unique:customers,shortname"},
 		"address":          []string{},
 		"phone":            []string{},
 		"email":            []string{"email"},
