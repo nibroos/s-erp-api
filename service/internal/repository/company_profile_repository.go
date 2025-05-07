@@ -444,6 +444,10 @@ func (r *CompanyProfileRepository) GetBankInformations(ctx *fiber.Ctx, filters m
 	bankInformations := []dtos.BankInformationListDTO{}
 	var total int
 
+	// condition := ""
+	var args []interface{}
+	i := 1
+
 	query := `SELECT *
     FROM ( 
         SELECT 
@@ -489,9 +493,6 @@ func (r *CompanyProfileRepository) GetBankInformations(ctx *fiber.Ctx, filters m
 		WHERE bi.deleted_at IS NULL
     ) AS alias WHERE 1=1`
 
-	var args []interface{}
-
-	i := 1
 	for key, value := range filters {
 		switch key {
 		case "name", "description":

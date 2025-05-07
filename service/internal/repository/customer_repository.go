@@ -34,6 +34,22 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 	customers := []dtos.CustomerListDTO{}
 	var total int
 
+	condition := ""
+	var args []interface{}
+	i := 1
+
+	filterEqual := map[string]string{
+		"status":    "m.status",
+		"is_active": "m.status",
+	}
+	for key, colDB := range filterEqual {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", colDB, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (c.id)
@@ -49,6 +65,7 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 				LEFT JOIN customers ag ON ag.agent_id = ag.id
         LEFT JOIN users cu ON c.created_by_id = cu.id
         LEFT JOIN users uu ON c.updated_by_id = uu.id
+				WHERE 1=1 ` + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -65,11 +82,9 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 				LEFT JOIN customers ag ON ag.agent_id = ag.id
         LEFT JOIN users cu ON c.created_by_id = cu.id
         LEFT JOIN users uu ON c.updated_by_id = uu.id
+				WHERE 1=1 ` + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
-	var args []interface{}
-
-	i := 1
 	for key, value := range filters {
 		switch key {
 		case "name", "code", "address", "phone", "email", "pic":

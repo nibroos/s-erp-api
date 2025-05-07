@@ -836,6 +836,7 @@ type RefIndexQuoDtListDTO struct {
 	CustomerID     *uint    `json:"customer_id" db:"customer_id"`
 	OrderTypeID    *uint    `json:"order_type_id" db:"order_type_id"`
 	CurrencyID     *uint    `json:"currency_id" db:"currency_id"`
+	PaymentID      *uint    `json:"payment_id" db:"payment_id"`
 	HeadVatID      *uint    `json:"head_vat_id" db:"head_vat_id"`
 	HeadPph23ID    *uint    `json:"head_pph23_id" db:"head_pph23_id"`
 	HeadVatPerc    *float64 `json:"head_vat_perc" db:"head_vat_perc"`
@@ -1112,6 +1113,7 @@ type ScheduleSingleDetailDTO struct {
 	StartAt            *string `json:"start_at" db:"start_at"`
 	EndAt              *string `json:"end_at" db:"end_at"`
 	Color              *string `json:"color" db:"color"`
+	Remark             *string `json:"remark" db:"remark"`
 	TotalTaskStep4Done *int    `json:"total_task_step_4_done" db:"total_task_step_4_done"`
 	TotalAllTasksDone  *int    `json:"total_all_tasks_done" db:"total_all_tasks_done"`
 	TotalTasks         *int    `json:"total_tasks" db:"total_tasks"`

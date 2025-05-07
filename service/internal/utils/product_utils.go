@@ -51,3 +51,51 @@ func MapCreateUpdateItemUnits(ctx *fiber.Ctx, req []dtos.CreateMsItemUnitsReques
 
 	return createItemUnits, updateItemUnits, IDs, nil
 }
+
+func MapGetUnitIDs(ctx *fiber.Ctx, req []dtos.CreateMsItemUnitsRequest, childSpan opentracing.Span) ([]uint, error) {
+	// Create a slice to hold the unit IDs
+	unitIDs := make([]uint, 0)
+
+	// Iterate over the item units in the request
+	for _, itemUnit := range req {
+		// Check if the item unit has an ID
+		if itemUnit.ItemUnitID != nil {
+			unitIDs = append(unitIDs, *itemUnit.ItemUnitID)
+		}
+	}
+
+	log.Println("unitIDs", unitIDs)
+
+	return unitIDs, nil
+}
+
+func MapItemUnitsByProductIDsAndUnitIDs(ctx *fiber.Ctx, productID uint, oldItemUnits []dtos.ItemUnitDetailDTO, newItemUnit []dtos.CreateMsItemUnitsRequest, childSpan opentracing.Span) ([]dtos.CreateMsItemUnitsRequest, error) {
+	itemUnits := make([]dtos.CreateMsItemUnitsRequest, 0)
+
+	for _, reqItemUnit := range newItemUnit {
+		if reqItemUnit.ID == nil || *reqItemUnit.ID == 0 {
+			log.Println("MapItemUnitsByProductIDsAndUnitIDs-reqItemUnit.ID1", reqItemUnit)
+
+			isUpdate := false
+			for _, oldItemUnit := range oldItemUnits {
+				if oldItemUnit.UnitID == &reqItemUnit.UnitID {
+					reqItemUnit.ID = &oldItemUnit.ID
+					itemUnits = append(itemUnits, reqItemUnit)
+					isUpdate = true
+					log.Println("MapItemUnitsByProductIDsAndUnitIDs-reqItemUnit-isUpdate", reqItemUnit)
+				}
+			}
+
+			if !isUpdate {
+				log.Println("MapItemUnitsByProductIDsAndUnitIDs-reqItemUnit-!isUpdate", reqItemUnit)
+				itemUnits = append(itemUnits, reqItemUnit)
+			}
+		} else {
+			log.Println("MapItemUnitsByProductIDsAndUnitIDs-reqItemUnit.ID2", reqItemUnit.ID, reqItemUnit.PriceSell)
+			itemUnits = append(itemUnits, reqItemUnit)
+		}
+	}
+	log.Println("MapItemUnitsByProductIDsAndUnitIDs-itemUnits", itemUnits)
+
+	return itemUnits, nil
+}

@@ -61,6 +61,17 @@ func (s *ItemSubGroupService) GetItemSubGroupByID(ctx *fiber.Ctx, params *dtos.G
 	return itemSubGroup, nil
 }
 
+func (s *ItemSubGroupService) IsItemSubGroupByID(ctx *fiber.Ctx, params *dtos.GetItemSubGroupParams, span opentracing.Span) (*dtos.ItemSubGroupDetailDTO, error) {
+	childSpan := opentracing.StartSpan("ItemSubGroupService-IsItemSubGroupByID", opentracing.ChildOf(span.Context()))
+
+	itemSubGroup, err := s.repo.IsItemSubGroupByID(ctx, params, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return itemSubGroup, nil
+}
+
 func (s *ItemSubGroupService) UpdateItemSubGroup(ctx *fiber.Ctx, itemSubGroup *models.MixValue, tx *gorm.DB, span opentracing.Span) (*models.MixValue, error) {
 	childSpan := opentracing.StartSpan("ItemSubGroupService-UpdateItemSubGroup", opentracing.ChildOf(span.Context()))
 

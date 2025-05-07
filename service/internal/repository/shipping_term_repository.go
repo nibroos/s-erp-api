@@ -35,6 +35,22 @@ func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[st
 	shippingTerms := []dtos.ShippingTermListDTO{}
 	var total int
 
+	condition := ""
+	var args []interface{}
+	i := 1
+
+	filterEqual := map[string]string{
+		"status":    "m.status",
+		"is_active": "m.status",
+	}
+	for key, colDB := range filterEqual {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", colDB, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
 	query := `SELECT *
     FROM ( 
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
@@ -57,12 +73,9 @@ func (r *ShippingTermRepository) GetShippingTerms(ctx *fiber.Ctx, filters map[st
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
         LEFT JOIN groups g ON m.group_id = g.id
-        WHERE g.name = 'shipping_terms'
+        WHERE g.name = 'shipping_terms' ` + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
-	var args []interface{}
-
-	i := 1
 	for key, value := range filters {
 		switch key {
 		case "name", "description", "remark":

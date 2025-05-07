@@ -2,11 +2,13 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/nibroos/s-erp-api/service/internal/auth"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -138,7 +140,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		"status":  "m.status",
 		// "prod_type":         "m.prod_type",
 		"item_sub_group_id": "m.item_sub_group_id",
-		"item_group_id":     "isg.item_group_id",
+		"item_group_id":     "isg.parent_id",
 	}
 
 	for key, columnName := range filterKey {
@@ -150,9 +152,21 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		}
 	}
 
+	filterEqual := map[string]string{
+		"status":    "m.status",
+		"is_active": "m.status",
+	}
+	for key, colDB := range filterEqual {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", colDB, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
 	filterIDsKey := map[string]string{
 		"item_sub_group_ids": "m.item_sub_group_id",
-		"item_group_ids":     "isg.item_group_id",
+		"item_group_ids":     "isg.parent_id",
 		"product_bom_ids":    "bo2.product_id",
 	}
 
@@ -233,7 +247,7 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 				LEFT JOIN products pi ON bo.product_item_id = pi.id
 				LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
+				LEFT JOIN item_units iu ON iu.id = m.item_unit_id AND iu.deleted_at IS NOT NULL
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
 				LEFT JOIN branches b ON bi.branch_id = b.id
@@ -378,11 +392,11 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
 		COALESCE(bi.tpb_code, m.tpb_code) as tpb_code,
 		COALESCE(bi.minimum_stock, m.minimum_stock) as minimum_stock,
 		COALESCE(bi.qty_stock, iu.qty_stock) as qty_stock,
-		COALESCE(bi.price_sell, iu.price_sell) as price_sell,
-		COALESCE(bi.price_buy, iu.price_buy) as price_buy,
+		COALESCE(iu.price_sell, 0) as price_sell,
+		COALESCE(iu.price_buy, 0) as price_buy,
 		COALESCE(bi.margin, iu.margin) as margin,
 		COALESCE(bi.status, m.status) as status,
-		COALESCE(bi.expired_at, m.expired_at) as expired_at,
+		TO_CHAR(COALESCE(bi.expired_at, m.expired_at), 'YYYY-MM-DD') as expired_at,
 		COALESCE(bi.created_at, m.created_at) as created_at,
 		COALESCE(bi.updated_at, m.updated_at) as updated_at,
 		COALESCE(bi.deleted_at, m.deleted_at) as deleted_at,
@@ -391,7 +405,9 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
 		`
 	} else {
 		cdSelect = `
-			m.name, m.factory_code, m.sku, m.barcode, m.specification, m.description, m.remark, m.tpb_code, m.minimum_stock, iu.price_sell, iu.price_buy, iu.margin, m.status, m.expired_at, m.created_at, m.updated_at, m.deleted_at,
+			m.name, m.factory_code, m.sku, m.barcode, m.specification, m.description, m.remark, m.tpb_code, m.minimum_stock, iu.price_sell, iu.price_buy, iu.margin, m.status, 
+			TO_CHAR(m.expired_at, 'YYYY-MM-DD') as expired_at,
+			m.created_at, m.updated_at, m.deleted_at,
 		`
 	}
 
@@ -415,9 +431,9 @@ func (r *ProductRepository) GetProductByID(ctx *fiber.Ctx, params *dtos.GetProdu
         FROM products m
 				LEFT JOIN mix_values isg ON m.item_sub_group_id = isg.id
 				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-				LEFT JOIN item_units iu ON iu.id = m.item_unit_id
+				LEFT JOIN item_units iu ON iu.id = m.item_unit_id AND iu.deleted_at IS NULL
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
-				LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id
+				LEFT JOIN branch_items bi ON bi.item_unit_id = iu.id AND bi.deleted_at IS NULL
 				LEFT JOIN branches b ON bi.branch_id = b.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
@@ -689,6 +705,7 @@ func (r *ProductRepository) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, tx *go
 
         FROM item_units m
 				LEFT JOIN products mi ON m.product_id = mi.id
+				WHERE m.deleted_at IS NULL
     ) AS alias WHERE 1=1`
 
 	var args []interface{}
@@ -946,7 +963,7 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 		"status":  "combined.status",
 		// "prod_type":         "m.prod_type",
 		"item_sub_group_id": "m.item_sub_group_id",
-		"item_group_id":     "isg.item_group_id",
+		"item_group_id":     "isg.parent_id",
 	}
 
 	for key, _ := range filterKey {
@@ -992,7 +1009,8 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
             SELECT
                 m.id, m.item_sub_group_id, m.item_unit_id,
                 m.code, m.factory_code, m.name, m.sku, m.barcode, m.specification, 
-                m.description, m.remark, m.tpb_code, m.minimum_stock, m.status, m.expired_at,
+                m.description, m.remark, m.tpb_code, m.minimum_stock, m.status, 
+								TO_CHAR(m.expired_at, 'YYYY-MM-DD') as expired_at,
                 m.id as product_id,
                 m.id as ref_id,
 								m.id as ref_product_id,
@@ -1198,4 +1216,46 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 	}
 
 	return products, total, nil
+}
+
+// func (r *ProductRepository) GetItemUnitIDBySelectedItemID(ctx *fiber.Ctx, params *dtos.GetProductItemUnitParams, span opentracing.Span) (*dtos.ItemUnitDetailDTO, error) {
+func (r *ProductRepository) GetItemUnitsByProductIDsAndUnitIDs(ctx *fiber.Ctx, tx *gorm.DB, params *dtos.GetProductItemUnitParams, unitIDs []uint, span opentracing.Span) ([]dtos.ItemUnitDetailDTO, error) {
+	childSpan := opentracing.StartSpan("ProductRepository-GetItemUnitsByProductIDsAndUnitIDs", opentracing.ChildOf(span.Context()))
+	var msItem []dtos.ItemUnitDetailDTO
+
+	log.Println("ProductRepository-GetItemUnitsByProductIDsAndUnitIDs-query1", unitIDs)
+
+	query := ` SELECT *
+		FROM (
+			SELECT DISTINCT ON (m.id)
+				m.id, m.product_id, m.unit_id
+
+        FROM item_units m
+				LEFT JOIN products mi ON m.product_id = mi.id
+				WHERE m.deleted_at IS NULL
+    ) AS alias WHERE 1=1`
+
+	var args []interface{}
+
+	i := 1
+	query += " AND product_id = $1"
+	args = append(args, params.ProductID)
+	i++
+
+	log.Println("ProductRepository-GetItemUnitsByProductIDsAndUnitIDs-query2", unitIDs)
+
+	// unit_id
+	query += " AND unit_id = ANY($2)"
+	args = append(args, pq.Array(unitIDs))
+	i++
+
+	log.Println("ProductRepository-GetItemUnitsByProductIDsAndUnitIDs-query", query)
+
+	// if err := r.sqlDB.Get(&msItem, query, args...); err != nil {
+	if err := tx.Raw(query, args...).Scan(&msItem).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return msItem, nil
 }

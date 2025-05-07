@@ -34,6 +34,22 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 	itemSubGroups := []dtos.ItemSubGroupListDTO{}
 	var total int
 
+	condition := ""
+	var args []interface{}
+	i := 1
+
+	filterEqual := map[string]string{
+		"status":    "m.status",
+		"is_active": "m.status",
+	}
+	for key, colDB := range filterEqual {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", colDB, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
 	query := `SELECT *
     FROM ( 
         SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
@@ -47,7 +63,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 				LEFT JOIN groups g ON m.group_id = g.id
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
-				WHERE g.name = 'item_sub_groups'
+				WHERE g.name = 'item_sub_groups' ` + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	countQuery := `SELECT COUNT(*) FROM (
@@ -62,12 +78,9 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
         LEFT JOIN users cu ON m.created_by_id = cu.id
         LEFT JOIN users uu ON m.updated_by_id = uu.id
 				LEFT JOIN groups g ON m.group_id = g.id
-				WHERE g.name = 'item_sub_groups'
+				WHERE g.name = 'item_sub_groups' ` + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
-	var args []interface{}
-
-	i := 1
 	for key, value := range filters {
 		switch key {
 		case "name", "description", "remark":
@@ -194,6 +207,45 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 
 func (r *ItemSubGroupRepository) GetItemSubGroupByID(ctx *fiber.Ctx, params *dtos.GetItemSubGroupParams, span opentracing.Span) (*dtos.ItemSubGroupDetailDTO, error) {
 	childSpan := opentracing.StartSpan("ItemSubGroupRepository-GetItemSubGroupByID", opentracing.ChildOf(span.Context()))
+	var itemSubGroup dtos.ItemSubGroupDetailDTO
+
+	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
+	m.parent_id, m.parent_id as item_group_id,
+	p.name as group_name,
+	cu.name as created_by_name,
+	uu.name as updated_by_name
+
+	FROM mix_values m
+	LEFT JOIN mix_values p ON m.parent_id = p.id
+	LEFT JOIN users cu ON m.created_by_id = cu.id
+	LEFT JOIN users uu ON m.updated_by_id = uu.id
+	LEFT JOIN groups g ON m.group_id = g.id
+	WHERE g.name = 'item_sub_groups'`
+
+	var args []interface{}
+
+	i := 1
+	query += " AND m.id = $1"
+	args = append(args, params.ID)
+	i++
+
+	isDeletedQuery := ` AND m.deleted_at IS NULL`
+	if params.IsDeleted != nil && *params.IsDeleted == 1 {
+		isDeletedQuery = " AND m.deleted_at IS NOT NULL"
+	}
+
+	query += isDeletedQuery
+
+	if err := r.sqlDB.Get(&itemSubGroup, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return &itemSubGroup, nil
+}
+
+func (r *ItemSubGroupRepository) IsItemSubGroupByID(ctx *fiber.Ctx, params *dtos.GetItemSubGroupParams, span opentracing.Span) (*dtos.ItemSubGroupDetailDTO, error) {
+	childSpan := opentracing.StartSpan("ItemSubGroupRepository-IsItemSubGroupByID", opentracing.ChildOf(span.Context()))
 	var itemSubGroup dtos.ItemSubGroupDetailDTO
 
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,

@@ -274,7 +274,29 @@ func (s *ProductService) BulkCreateUpdateItemUnits(ctx *fiber.Ctx, req dtos.Upda
 	childSpan := opentracing.StartSpan("ProductService-BulkCreateUpdateItemUnits", opentracing.ChildOf(span.Context()))
 
 	// map
-	bulkCreateItemUnits, bulkUpdateItemUnits, itemUnitIDs, err := utils.MapCreateUpdateItemUnits(ctx, req.Units, req.ID, childSpan)
+	unitIDs, err := utils.MapGetUnitIDs(ctx, req.Units, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
+	// var params dtos.GetProductItemUnitParams
+	params := &dtos.GetProductItemUnitParams{ProductID: req.ID}
+	// get all item units by product_id & unit_id
+	oldItemUnits, err := s.repo.GetItemUnitsByProductIDsAndUnitIDs(ctx, tx, params, unitIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
+	// map to add ID if product_id & unit_id exist
+	itemUnits := req.Units
+	itemUnits, err = utils.MapItemUnitsByProductIDsAndUnitIDs(ctx, req.ID, oldItemUnits, itemUnits, childSpan)
+
+	// map
+	bulkCreateItemUnits, bulkUpdateItemUnits, itemUnitIDs, err := utils.MapCreateUpdateItemUnits(ctx, itemUnits, req.ID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
