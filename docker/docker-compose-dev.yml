@@ -30,7 +30,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB: ${REDIS_DB}
       SERVICE_TYPE: main
-    # restart: on-failure
+    restart: on-failure
 
   service:
     build: 
@@ -53,7 +53,7 @@ services:
       - .env
     environment:
       SEEDER_DIR: /apps/internal/database/seeders
-    # restart: on-failure
+    restart: on-failure
 
   postgres:
     image: postgres:17.4-alpine
@@ -67,7 +67,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-s-erp-api:/var/lib/postgresql/data
-    # restart: on-failure
+    restart: on-failure
 
   # asynq-client:
   #   build:
@@ -164,7 +164,7 @@ services:
       - s-erp-api-network
     depends_on:
       - postgres
-    # restart: on-failure
+    restart: on-failure
 
   node-exporter:
     image: prom/node-exporter:v1.8.2
@@ -211,7 +211,7 @@ services:
       GF_DATABASE_NAME: grafana
       GF_DATABASE_USER: grafana
       GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-    # restart: on-failure
+    restart: on-failure
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0

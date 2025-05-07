@@ -39,8 +39,8 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 	i := 1
 
 	filterEqual := map[string]string{
-		"status":    "m.status",
-		"is_active": "m.status",
+		"status":    "c.status",
+		"is_active": "c.status",
 	}
 	for key, colDB := range filterEqual {
 		if value, ok := filters[key]; ok && value != "" {
