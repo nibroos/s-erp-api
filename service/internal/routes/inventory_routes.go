@@ -28,4 +28,7 @@ func SetupInventoryRoutes(inventories fiber.Router, gormDB *gorm.DB, sqlDB *sqlx
 	inventories.Post("/index-ref-inv-dt", inventoryController.GetRefIndexInvDts)
 
 	inventories.Post("/stocks/index-stock", inventoryController.GetStocks)
+	inventories.Post("/stocks/index-stock-closings", inventoryController.GetStocks)
+	inventories.Post("/stocks/create-stock-closing", inventoryController.GetStocks)
+	inventories.Post("/stocks/create-update-adjustment", inventoryController.GetStocks)
 }

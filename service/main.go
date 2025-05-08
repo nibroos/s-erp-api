@@ -11,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -179,6 +180,12 @@ func main() {
 	// app.Use(middleware.JaegerTracingMiddleware(tracer))
 	app.Use(middleware.ConvertEmptyStringsToNull())
 	app.Use(middleware.ConvertRequestToFilters())
+	app.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
+			log.Printf("Panic recovered: %v\n", e)
+		},
+	}))
 
 	// static folder on /public/uploads
 	app.Static("/public", "./public")
@@ -213,11 +220,16 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if err := app.Listen(":4001"); err != nil {
-				log.Fatalf("Failed to start REST server: %v", err)
+			for {
+				log.Println("Starting REST server on :4001...")
+				if err := app.Listen(":4001"); err != nil {
+					log.Printf("Server error: %v", err)
+					log.Println("Restarting server in 5 seconds...")
+					time.Sleep(5 * time.Second)
+					continue
+				}
+				break
 			}
-
-			println("Server started on :4001")
 		}()
 
 		// Start gRPC server
