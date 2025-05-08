@@ -421,6 +421,22 @@ func (r *QuotationRepository) GetWidgetQuotations(ctx *fiber.Ctx, filters map[st
 		i += 2
 	}
 
+	filterLikeKeys := map[string]string{
+		"quo_no": "q.quo_no",
+		"title":  "q.title",
+		"remark": "q.remark",
+	}
+
+	for key, value := range filters {
+		if value != "" {
+			if column, ok := filterLikeKeys[key]; ok {
+				condition += fmt.Sprintf(" AND %s ILIKE $%d", column, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
 	query := `
     WITH status_values AS (
         SELECT status, row_number() over () as status_order
@@ -433,7 +449,7 @@ func (r *QuotationRepository) GetWidgetQuotations(ctx *fiber.Ctx, filters map[st
         ) AS s(status)
     ),
     filtered_orders AS (
-        SELECT 
+        SELECT DISTINCT ON (q.id)
             q.id,             
             q.status as q_status,
             q.total_qty,
@@ -464,17 +480,6 @@ func (r *QuotationRepository) GetWidgetQuotations(ctx *fiber.Ctx, filters map[st
         grand_total
     FROM quotation_stats sv
     ORDER BY status_order`
-
-	for key, value := range filters {
-		switch key {
-		case "quo_no", "title", "remark":
-			if value != "" {
-				query += fmt.Sprintf(" AND q.%s ILIKE $%d", key, i)
-				args = append(args, "%"+value+"%")
-				i++
-			}
-		}
-	}
 
 	if !isAdmin && branchID != nil {
 		query += fmt.Sprintf(" AND (q.branch_id = $%d)", i)

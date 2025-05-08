@@ -806,6 +806,34 @@ func (r *PurchaseOrderRepository) GetWidgetPurchaseOrders(ctx *fiber.Ctx, filter
 		i += 2
 	}
 
+	filterLikeKeys := map[string]string{
+		"po_no":                "po.po_no",
+		"shipping_destination": "po.shipping_destination",
+		"remark":               "po.remark",
+	}
+
+	for key, value := range filters {
+		if value != "" {
+			if column, ok := filterLikeKeys[key]; ok {
+				condition += fmt.Sprintf(" AND %s ILIKE $%d", column, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		condition += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		condition += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
 	query := `
 	WITH status_values AS (
         SELECT status, row_number() over () as status_order
@@ -848,29 +876,6 @@ func (r *PurchaseOrderRepository) GetWidgetPurchaseOrders(ctx *fiber.Ctx, filter
         grand_total
     FROM purchase_order_stats sv
     ORDER BY status_order`
-
-	for key, value := range filters {
-		switch key {
-		case "po_no", "shipping_destination", "remark":
-			if value != "" {
-				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-				args = append(args, "%"+value+"%")
-				i++
-			}
-		}
-	}
-
-	if !isAdmin && branchID != nil {
-		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		args = append(args, branchID)
-		i++
-	}
-
-	if isAdmin && filters["branch_id"] != "" {
-		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		args = append(args, filters["branch_id"])
-		i++
-	}
 
 	var selectErr error
 	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))

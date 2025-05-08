@@ -2741,6 +2741,36 @@ func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[
 		customCondition += fmt.Sprintf("%s", join)
 	}
 
+	filterLikeKeys := map[string]string{
+		"po_buyer_no":    "so.po_buyer_no",
+		"sales_order_no": "so.sales_order_no",
+		"ship_dest":      "so.ship_dest",
+		"remark":         "so.remark",
+		"customer_name":  "c.name",
+	}
+
+	for key, value := range filters {
+		if value != "" {
+			if column, ok := filterLikeKeys[key]; ok {
+				condition += fmt.Sprintf(" AND %s ILIKE $%d", column, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		condition += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		condition += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
 	query := `
 				WITH status_values AS (
         SELECT status, row_number() over () as status_order
@@ -2754,7 +2784,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[
         ) AS s(status)
     ),
     filtered_orders AS (
-        SELECT 
+        SELECT DISTINCT ON (so.id)
             so.id,             
             so.status as so_status,
             so.total_qty,
@@ -2785,29 +2815,6 @@ func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[
         grand_total
     FROM sales_order_stats sv
     ORDER BY status_order`
-
-	for key, value := range filters {
-		switch key {
-		case "po_buyer_no", "sales_order_no", "ship_dest", "remark":
-			if value != "" {
-				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-				args = append(args, "%"+value+"%")
-				i++
-			}
-		}
-	}
-
-	if !isAdmin && branchID != nil {
-		query += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
-		args = append(args, branchID)
-		i++
-	}
-
-	if isAdmin && filters["branch_id"] != "" {
-		query += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
-		args = append(args, filters["branch_id"])
-		i++
-	}
 
 	// // Group by status
 	// query += " GROUP BY sv.status ORDER BY sv.status"
