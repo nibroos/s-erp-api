@@ -967,3 +967,14 @@ func (s *InventoryService) CreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, date
 // 	// backfillMissingClosings
 // 	return stockClosings, nil
 // }
+
+func (s *InventoryService) GetInventoriesStatus(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InventoryListDTO, int, error) {
+	childSpan := opentracing.StartSpan("InventoryService-GetInventoriesStatus", opentracing.ChildOf(span.Context()))
+
+	inventories, total, err := s.repo.GetInventoriesStatus(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+	return inventories, total, nil
+}

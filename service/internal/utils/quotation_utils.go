@@ -266,7 +266,10 @@ func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID 
 	orderNumber := orderedNumber
 	orderNumber++
 
-	quoNo := GenerateQuoNoOnCreateQuotation(ctx, req, orderNumber, orderedNumberGlobal, span)
+	orderNumberGlobal := orderedNumberGlobal
+	orderNumberGlobal++
+
+	quoNo := GenerateQuoNoOnCreateQuotation(ctx, req, orderNumber, orderNumberGlobal, span)
 
 	quotation := models.Quotation{
 		CustomerID:    req.CustomerID,
@@ -384,9 +387,10 @@ func GenerateQuoNoOnCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequ
 	surname := "Yubi"
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
+	orderGlobal := fmt.Sprintf("%d", orderedNumberGlobal)
 	order := fmt.Sprintf("%d", orderedNumber)
 
-	str := fmt.Sprintf("%s/%s/%s-%s-%s", surname, orderedNumberGlobal, year, month, order)
+	str := fmt.Sprintf("%s/%s/%s-%s-%s", surname, orderGlobal, year, month, order)
 
 	return str
 }

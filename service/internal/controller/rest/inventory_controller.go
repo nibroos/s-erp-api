@@ -570,3 +570,34 @@ func (c *InventoryController) CreateStockClosings(ctx *fiber.Ctx) error {
 
 	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Stock Closing created successfully", http.StatusCreated, nil, nil)
 }
+
+func (c *InventoryController) GetInventoriesStatus(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InventoryController-GetInventoriesStatus", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	log.Println("filters2", ctx.Locals("filters"))
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	log.Println("filters", filters)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("InventoryController-GetInventoriesStatus: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	inventories, total, err := c.service.GetInventoriesStatus(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Inventory", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, inventories, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)
+}

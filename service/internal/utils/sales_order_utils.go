@@ -293,9 +293,10 @@ func GenSalesOrderNo(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, orderedNu
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
 	order := fmt.Sprintf("%d", orderedNumber)
+	orderGlobal := fmt.Sprintf("%d", globalOrderedNumber)
 
 	// str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
-	str := fmt.Sprintf("SO/%s/%s-%s-%s-%s", globalOrderedNumber, surname, year, month, order)
+	str := fmt.Sprintf("SO/%s/%s-%s-%s-%s", orderGlobal, surname, year, month, order)
 
 	return str
 }
@@ -303,6 +304,7 @@ func GenSalesOrderNo(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, orderedNu
 func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userID uint, branchID uint, customerSoCreatedThisMonthNumber int, globalSoCreatedThisMonthNumber int, span opentracing.Span) (models.SalesOrder, error) {
 	// order := 1
 	customerSoCreatedThisMonthNumber++
+	globalSoCreatedThisMonthNumber++
 
 	orderNo := GenSalesOrderNo(ctx, req, customerSoCreatedThisMonthNumber, globalSoCreatedThisMonthNumber, span)
 	poBuyerNo := GeneratePoBuyerNoNoOnCreateSalesOrder(ctx, req, customerSoCreatedThisMonthNumber, globalSoCreatedThisMonthNumber, span)
@@ -491,9 +493,10 @@ func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesO
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
 	order := fmt.Sprintf("%d", orderedNumber)
+	orderGlobal := fmt.Sprintf("%d", globalOrderedNumber)
 
 	// str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
-	str := fmt.Sprintf("%s/%s-%s-%s", surname, year, month, order)
+	str := fmt.Sprintf("%s/%s/%s-%s-%s", surname, orderGlobal, year, month, order)
 
 	return str
 }
