@@ -13,6 +13,8 @@ import (
 
 // SetupRoutes sets up the REST routes for the user service.
 func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) {
+	app.Use(middleware.SafetyMiddleware())
+
 	// Test route to trigger panic
 	app.Get("/api/v1/test-panic", func(c *fiber.Ctx) error {
 		// Simulate a nil pointer dereference

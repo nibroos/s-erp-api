@@ -44,8 +44,9 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 	childSpan := opentracing.StartSpan("SalesOrderService-CreateSalesOrder", opentracing.ChildOf(span.Context()))
 
 	customerSoCreatedThisMonthNumber, err := s.repo.GetCustomerSalesOrderCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+	globalSoCreatedThisMonthNumber, err := s.repo.GetGlobalSalesOrderCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
 
-	salesOrder, err := utils.MapCreateSalesOrder(ctx, req, userID, branchID, customerSoCreatedThisMonthNumber, childSpan)
+	salesOrder, err := utils.MapCreateSalesOrder(ctx, req, userID, branchID, customerSoCreatedThisMonthNumber, globalSoCreatedThisMonthNumber, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, tx, err

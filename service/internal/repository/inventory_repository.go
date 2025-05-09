@@ -390,6 +390,32 @@ func (r *InventoryRepository) GetStocks(ctx *fiber.Ctx, filters map[string]strin
 		customCondition += fmt.Sprintf("%s", join)
 	}
 
+	// orderColumnKeys := map[string]string{
+	// 	"id":             "st.id",
+	// 	"item_id":        "st.item_id",
+	// 	"item_name":      "pi.name",
+	// 	"warehouse_name": "w.name",
+	// 	"warehouse_id":   "st.warehouse_id",
+	// 	"branch_id":      "st.branch_id",
+	// 	"qty":            "st.qty",
+	// }
+
+	// orderColumn := utils.GetStringOrDefault(filters["order_column"], "id")
+	// orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+
+	// for key, value := range orderColumnKeys {
+	// 	if key == orderColumn {
+	// 		log.Println("orderColumn", orderColumn, key, value)
+	// 		orderColumn = value
+	// 		log.Println("orderColumn2", orderColumn, key, value)
+	// 		break
+	// 	}
+	// 	log.Println("orderColumn0", orderColumn, key, value)
+	// }
+
+	// // orderQuery := fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+	// orderQuery := fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (st.id)
@@ -444,6 +470,10 @@ func (r *InventoryRepository) GetStocks(ctx *fiber.Ctx, filters map[string]strin
 		i++
 	}
 
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "id")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
 	countArgs := append([]interface{}{}, args...)
 
 	var wg sync.WaitGroup
@@ -467,10 +497,6 @@ func (r *InventoryRepository) GetStocks(ctx *fiber.Ctx, filters map[string]strin
 	if countErr != nil {
 		return nil, 0, countErr
 	}
-
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "id")
-	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
-	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
 	currentPage := utils.GetIntOrDefault(filters["page"], 1)
@@ -2521,4 +2547,942 @@ func (r *InventoryRepository) GetRefIndexInvDts(ctx *fiber.Ctx, filters map[stri
 	}
 
 	return products, total, nil
+}
+
+func (r *InventoryRepository) GetStockClosings(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.StockClosingListDTO, int, error) {
+	childSpan := opentracing.StartSpan("InventoryRepository-GetStockClosings", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	products := []dtos.StockClosingListDTO{}
+	var total int
+
+	var args []interface{}
+	queryGlobal := ""
+	i := 1
+
+	condition := ""
+
+	// Handle date filters
+	dateCondition := ""
+	if endAt, ok := filters["end_at"]; ok && endAt != "" {
+		if startAt, ok := filters["start_at"]; ok && startAt != "" {
+			// Case: Both start_at and end_at are provided
+			dateCondition = `
+				WITH date_range AS (
+						SELECT 
+								$` + fmt.Sprint(i) + `::date AS start_date,
+								$` + fmt.Sprint(i+1) + `::date AS end_date
+				),
+				all_products AS (
+						SELECT p.id as item_id FROM products p WHERE p.deleted_at IS NULL
+				),
+				all_warehouses AS (
+						SELECT mv.id as warehouse_id 
+						FROM mix_values mv
+						LEFT JOIN groups g ON mv.group_id = g.id
+						WHERE g.name = 'warehouses'
+						AND mv.deleted_at IS NULL
+				),
+				product_warehouse_combinations AS (
+						SELECT ap.item_id, aw.warehouse_id
+						FROM all_products ap
+						CROSS JOIN all_warehouses aw
+				),
+				latest_closings AS (
+						SELECT 
+								sc.item_id,
+								sc.warehouse_id,
+								sc.closing_at,
+								sc.end_qty AS begin_qty
+						FROM stock_closings sc
+						WHERE sc.closing_at = (
+								SELECT MAX(sc2.closing_at)
+								FROM stock_closings sc2
+								WHERE sc2.closing_at < (SELECT start_date FROM date_range)
+								AND sc2.item_id = sc.item_id
+								AND sc2.warehouse_id = sc.warehouse_id
+								AND sc2.deleted_at IS NULL
+						)
+						AND sc.deleted_at IS NULL
+				),
+				-- New CTE to calculate movements between last closing and start date
+				gap_movements AS (
+						SELECT 
+								id.item_id,
+								i.warehouse_id,
+								SUM(CASE 
+										WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN COALESCE(id.qty, 0)
+										ELSE 0 
+								END) AS gap_in_qty,
+								SUM(CASE 
+										WHEN iot.options_json->>'io_type' = 'INVENTORY_OUT' THEN COALESCE(id.qty, 0)
+										ELSE 0 
+								END) AS gap_out_qty
+						FROM inv_dts id
+						INNER JOIN inventories i ON id.inventory_id = i.id 
+						INNER JOIN mix_values iot ON i.io_type_id = iot.id
+						WHERE i.ingoing_at > (
+								SELECT COALESCE(
+										(SELECT MAX(sc.closing_at) 
+										FROM stock_closings sc 
+										WHERE sc.item_id = id.item_id 
+										AND sc.warehouse_id = i.warehouse_id 
+										AND sc.closing_at < (SELECT start_date FROM date_range)
+										AND sc.deleted_at IS NULL
+										),
+										'1970-01-01'
+								)
+						)
+						AND i.ingoing_at < (SELECT start_date FROM date_range)
+						AND i.deleted_at IS NULL 
+						AND id.deleted_at IS NULL
+						GROUP BY id.item_id, i.warehouse_id
+				),
+				inventory_movements AS (
+						SELECT 
+								id.item_id,
+								i.warehouse_id,
+								SUM(CASE 
+										WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN COALESCE(id.qty, 0)
+										ELSE 0 
+								END) AS in_qty,
+								SUM(CASE 
+										WHEN iot.options_json->>'io_type' = 'INVENTORY_OUT' THEN COALESCE(id.qty, 0)
+										ELSE 0 
+								END) AS out_qty,
+								MAX(CASE 
+										WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN id.price_buy
+										ELSE NULL 
+								END) AS price_buy,
+								MAX(CASE 
+										WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN id.price_sell
+										ELSE NULL 
+								END) AS price_sell
+						FROM inv_dts id
+						INNER JOIN inventories i ON id.inventory_id = i.id 
+						INNER JOIN mix_values iot ON i.io_type_id = iot.id
+						WHERE i.ingoing_at >= (SELECT start_date FROM date_range)
+						AND i.ingoing_at <= (SELECT end_date FROM date_range)
+						AND i.deleted_at IS NULL 
+						AND id.deleted_at IS NULL
+						GROUP BY id.item_id, i.warehouse_id
+				),
+				range_closings AS (
+						SELECT 
+								sc.item_id,
+								sc.warehouse_id,
+								sc.closing_at,
+								sc.last_closing_at,
+								sc.begin_qty,
+								sc.in_qty,
+								sc.out_qty,
+								sc.adjustment_qty,
+								sc.end_qty,
+								sc.price_sell,
+								sc.price_buy,
+								sc.total_value_sell,
+								sc.total_value_buy
+						FROM stock_closings sc
+						WHERE sc.closing_at = (SELECT end_date FROM date_range)
+						AND sc.deleted_at IS NULL
+				),
+				combined_data AS (
+						SELECT 
+								pwc.item_id,
+								pwc.warehouse_id,
+								TO_CHAR((SELECT end_date FROM date_range), 'YYYY-MM-DD') AS closing_at,
+								COALESCE(
+										TO_CHAR(lc.closing_at, 'YYYY-MM-DD'), 
+										TO_CHAR((SELECT start_date FROM date_range), 'YYYY-MM-DD')
+								) AS last_closing_at,
+								-- Calculate adjusted begin_qty by including gap movements
+								COALESCE(lc.begin_qty, 0) + COALESCE(gm.gap_in_qty, 0) - COALESCE(gm.gap_out_qty, 0) AS begin_qty,
+								COALESCE(im.in_qty, 0) AS in_qty,
+								COALESCE(im.out_qty, 0) AS out_qty,
+								COALESCE(rc.adjustment_qty, 0) AS adjustment_qty,
+								-- Calculate end_qty including gap movements
+								COALESCE(lc.begin_qty, 0) + COALESCE(gm.gap_in_qty, 0) - COALESCE(gm.gap_out_qty, 0) + 
+										COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(rc.adjustment_qty, 0) AS end_qty,
+								COALESCE(rc.price_sell, im.price_sell) AS price_sell,
+								COALESCE(rc.price_buy, im.price_buy) AS price_buy,
+								(COALESCE(lc.begin_qty, 0) + COALESCE(gm.gap_in_qty, 0) - COALESCE(gm.gap_out_qty, 0) + 
+										COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(rc.adjustment_qty, 0)) * 
+										COALESCE(rc.price_sell, im.price_sell) AS total_value_sell,
+								(COALESCE(lc.begin_qty, 0) + COALESCE(gm.gap_in_qty, 0) - COALESCE(gm.gap_out_qty, 0) + 
+										COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(rc.adjustment_qty, 0)) * 
+										COALESCE(rc.price_buy, im.price_buy) AS total_value_buy
+						FROM product_warehouse_combinations pwc
+						LEFT JOIN latest_closings lc ON pwc.item_id = lc.item_id AND pwc.warehouse_id = lc.warehouse_id
+						LEFT JOIN gap_movements gm ON pwc.item_id = gm.item_id AND pwc.warehouse_id = gm.warehouse_id
+						LEFT JOIN inventory_movements im ON pwc.item_id = im.item_id AND pwc.warehouse_id = im.warehouse_id
+						LEFT JOIN range_closings rc ON pwc.item_id = rc.item_id AND pwc.warehouse_id = rc.warehouse_id
+				)
+				SELECT 
+						cd.*,
+						pi.name as item_name,
+						w.name as warehouse_name,
+						u.name as unit_name,
+						cu.name as created_by_name,
+						uu.name as updated_by_name
+				FROM combined_data cd
+				LEFT JOIN products pi ON cd.item_id = pi.id
+				LEFT JOIN item_units iu ON pi.item_unit_id = iu.id
+				LEFT JOIN mix_values u ON u.id = iu.unit_id
+				LEFT JOIN mix_values w ON w.id = cd.warehouse_id
+				LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
+				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+				LEFT JOIN users cu ON 1 = cu.id 
+				LEFT JOIN users uu ON 1 = uu.id 
+				WHERE 1=1`
+			args = append(args, startAt, endAt)
+			i += 2
+		} else {
+			// Case: Only end_at is provided
+			dateCondition = `
+                WITH end_date AS (
+                    SELECT $` + fmt.Sprint(i) + `::date AS closing_date
+                ),
+                all_products AS (
+                    SELECT p.id as item_id FROM products p WHERE p.deleted_at IS NULL
+                ),
+                all_warehouses AS (
+                    SELECT mv.id as warehouse_id 
+                    FROM mix_values mv
+                    LEFT JOIN groups g ON mv.group_id = g.id
+                    WHERE g.name = 'warehouses'
+                    AND mv.deleted_at IS NULL
+                ),
+                product_warehouse_combinations AS (
+                    SELECT ap.item_id, aw.warehouse_id
+                    FROM all_products ap
+                    CROSS JOIN all_warehouses aw
+                ),
+                existing_closings AS (
+                    SELECT 
+                        st.id, st.item_id, st.warehouse_id,
+                        TO_CHAR(st.closing_at, 'YYYY-MM-DD') as closing_at,
+                        TO_CHAR(st.last_closing_at, 'YYYY-MM-DD') as last_closing_at,
+                        st.begin_qty, st.in_qty, st.out_qty, st.adjustment_qty, st.end_qty,
+                        st.price_sell, st.price_buy,
+                        st.total_value_sell, st.total_value_buy,
+                        st.created_at, st.updated_at, st.deleted_at
+                    FROM stock_closings st
+                    WHERE st.closing_at = (SELECT closing_date FROM end_date)
+                    AND st.deleted_at IS NULL
+                ),
+                latest_closings AS (
+                    SELECT 
+                        sc.item_id,
+                        sc.warehouse_id,
+                        sc.closing_at as last_closing_at,
+                        sc.end_qty as begin_qty
+                    FROM stock_closings sc
+                    WHERE sc.closing_at = (
+                        SELECT MAX(sc2.closing_at)
+                        FROM stock_closings sc2
+                        WHERE sc2.closing_at < (SELECT closing_date FROM end_date)
+                        AND sc2.item_id = sc.item_id
+                        AND sc2.warehouse_id = sc.warehouse_id
+                        AND sc2.deleted_at IS NULL
+                    )
+                    AND sc.deleted_at IS NULL
+                ),
+                inventory_movements AS (
+                    SELECT 
+                        id.item_id,
+                        i.warehouse_id,
+                        SUM(CASE 
+                            WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN COALESCE(id.qty, 0)
+                            ELSE 0 
+                        END) as in_qty,
+                        SUM(CASE 
+                            WHEN iot.options_json->>'io_type' = 'INVENTORY_OUT' THEN COALESCE(id.qty, 0)
+                            ELSE 0 
+                        END) as out_qty,
+                        MAX(id.price_buy) as price_buy,
+                        MAX(id.price_sell) as price_sell
+                    FROM inv_dts id
+                    INNER JOIN inventories i ON id.inventory_id = i.id 
+                    INNER JOIN mix_values iot ON i.io_type_id = iot.id
+                    WHERE i.ingoing_at > (
+                        SELECT COALESCE(
+                            (SELECT MAX(sc.closing_at) 
+                            FROM stock_closings sc 
+                            WHERE sc.item_id = id.item_id 
+                            AND sc.warehouse_id = i.warehouse_id 
+                            AND sc.closing_at < (SELECT closing_date FROM end_date)
+                            AND sc.deleted_at IS NULL
+                            ),
+                            '1970-01-01'
+                        )
+                    )
+                    AND i.ingoing_at <= (SELECT closing_date FROM end_date)
+                    AND i.deleted_at IS NULL 
+                    AND id.deleted_at IS NULL
+                    GROUP BY id.item_id, i.warehouse_id
+                ),
+                combined_data AS (
+										SELECT 
+												COALESCE(ec.id, 0) as id,
+												pwc.item_id,
+												pwc.warehouse_id,
+												COALESCE(
+														ec.closing_at, 
+														TO_CHAR((SELECT closing_date FROM end_date), 'YYYY-MM-DD')
+												) as closing_at,
+												COALESCE(
+														TO_CHAR(lc.last_closing_at, 'YYYY-MM-DD'),
+														'1970-01-01'
+												) as last_closing_at,
+                        COALESCE(lc.begin_qty, 0) as begin_qty,
+                        COALESCE(im.in_qty, 0) as in_qty,
+                        COALESCE(im.out_qty, 0) as out_qty,
+                        COALESCE(ec.adjustment_qty, 0) as adjustment_qty,
+                        COALESCE(lc.begin_qty, 0) + COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(ec.adjustment_qty, 0) as end_qty,
+                        COALESCE(ec.price_sell, im.price_sell) as price_sell,
+                        COALESCE(ec.price_buy, im.price_buy) as price_buy,
+                        (COALESCE(lc.begin_qty, 0) + COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(ec.adjustment_qty, 0)) * 
+                            COALESCE(ec.price_sell, im.price_sell) as total_value_sell,
+                        (COALESCE(lc.begin_qty, 0) + COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(ec.adjustment_qty, 0)) * 
+                            COALESCE(ec.price_buy, im.price_buy) as total_value_buy,
+                        CURRENT_TIMESTAMP as created_at,
+                        NULL as updated_at,
+                        NULL as deleted_at
+                    FROM product_warehouse_combinations pwc
+                    LEFT JOIN existing_closings ec ON pwc.item_id = ec.item_id AND pwc.warehouse_id = ec.warehouse_id
+                    LEFT JOIN latest_closings lc ON pwc.item_id = lc.item_id AND pwc.warehouse_id = lc.warehouse_id
+                    LEFT JOIN inventory_movements im ON pwc.item_id = im.item_id AND pwc.warehouse_id = im.warehouse_id
+                )
+                SELECT 
+                    cd.*,
+                    pi.name as item_name,
+                    w.name as warehouse_name,
+                    u.name as unit_name,
+                    cu.name as created_by_name,
+                    uu.name as updated_by_name
+                FROM combined_data cd
+                LEFT JOIN products pi ON cd.item_id = pi.id
+                LEFT JOIN item_units iu ON pi.item_unit_id = iu.id
+                LEFT JOIN mix_values u ON u.id = iu.unit_id
+                LEFT JOIN mix_values w ON w.id = cd.warehouse_id
+								LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
+								LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+                LEFT JOIN users cu ON 1 = cu.id 
+                LEFT JOIN users uu ON 1 = uu.id 
+                WHERE 1=1`
+			args = append(args, endAt)
+			i++
+		}
+	}
+
+	filterDBColumnKey := []string{
+		"pi.name",
+	}
+
+	if value, ok := filters["global"]; ok && value != "" {
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND iv.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"item_id":           "cd.item_id",
+		"warehouse_id":      "cd.warehouse_id",
+		"item_group_id":     "ig.id",
+		"item_sub_group_id": "isg.id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"warehouse_ids":      "cd.warehouse_id",
+		"item_ids":           "cd.item_id",
+		"item_group_ids":     "ig.id",
+		"item_sub_group_ids": "isg.id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs))
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	log.Println("dateCondition", dateCondition)
+
+	baseQuery := ""
+	if dateCondition != "" {
+		baseQuery = dateCondition
+	} else {
+		log.Println("baseQuery2", baseQuery)
+		baseQuery = `
+		FROM ( 
+			SELECT DISTINCT ON (st.id)
+				st.id, st.item_id, st.warehouse_id,
+				TO_CHAR(st.closing_at, 'YYYY-MM-DD') as closing_at,
+				TO_CHAR(st.last_closing_at, 'YYYY-MM-DD') as last_closing_at,
+				st.begin_qty, st.in_qty, st.out_qty, st.adjustment_qty, st.end_qty,
+				st.price_sell, st.price_buy,
+				st.total_value_sell, st.total_value_buy,
+				st.created_at, st.updated_at, st.deleted_at,
+				pi.name as item_name,
+				w.name as warehouse_name,
+				u.name as unit_name,
+				cu.name as created_by_name,
+				uu.name as updated_by_name
+			FROM stock_closings st
+			LEFT JOIN products pi ON st.item_id = pi.id
+			LEFT JOIN item_units iu ON pi.item_unit_id = iu.id
+			LEFT JOIN mix_values u ON u.id = iu.unit_id
+			LEFT JOIN mix_values w ON w.id = st.warehouse_id
+			LEFT JOIN users cu ON st.created_by_id = cu.id
+			LEFT JOIN users uu ON st.updated_by_id = uu.id
+			WHERE 1=1` + condition + queryGlobal + `
+		) AS alias WHERE 1=1 AND deleted_at IS NULL`
+	}
+
+	query := ``
+	countQuery := ``
+
+	if dateCondition != "" {
+		// For the main query
+		query = dateCondition + condition + queryGlobal
+
+		// Add additional filters
+		for key, value := range filters {
+			switch key {
+			case "item_name", "warehouse_name", "unit_name":
+				if value != "" {
+					query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+					args = append(args, "%"+value+"%")
+					i++
+				}
+			}
+		}
+
+		// Add ordering
+		orderColumn := utils.GetStringOrDefault(filters["order_column"], "closing_at")
+		orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+		query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+		// For count query, we need to wrap the existing query
+		countQuery = `SELECT COUNT(*) as total FROM (` + query + `) AS count_subquery`
+	} else {
+		// Original query structure when no date filters
+		query = `SELECT * ` + baseQuery
+		countQuery = `SELECT COUNT(*) as total ` + baseQuery
+
+		// Add additional filters to both queries
+		for key, value := range filters {
+			switch key {
+			case "item_name", "warehouse_name", "unit_name":
+				if value != "" {
+					query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+					countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+					args = append(args, "%"+value+"%")
+					i++
+				}
+			}
+		}
+
+		// Add ordering only to main query
+		orderColumn := utils.GetStringOrDefault(filters["order_column"], "id")
+		orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+		query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+	}
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+			defer countSpan.Finish()
+
+			// err := r.db.Raw(countQuery, countArgs...).Scan(&total).Error
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+		defer selectSpan.Finish()
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return products, total, nil
+}
+
+func (r *InventoryRepository) GetStockClosingsBackup(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.StockClosingListDTO, int, error) {
+	childSpan := opentracing.StartSpan("InventoryRepository-GetStockClosings", opentracing.ChildOf(span.Context()))
+
+	products := []dtos.StockClosingListDTO{}
+
+	var total int
+
+	filterDBColumnKey := []string{
+		"pi.name",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	// filters["start_at"], filters["end_at"]
+
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND iv.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"item_id":      "st.item_id",
+		"warehouse_id": "st.warehouse_id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"warehouse_ids": "st.warehouse_id",
+		"item_ids":      "st.item_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (st.id)
+					st.id, st.item_id, st.warehouse_id,
+					TO_CHAR(st.closing_at, 'YYYY-MM-DD') as closing_at,
+					TO_CHAR(st.last_closing_at, 'YYYY-MM-DD') as last_closing_at,
+					st.begin_qty, st.in_qty, st.out_qty, st.adjustment_qty, st.end_qty,
+					st.price_sell, st.price_buy,
+					st.total_value_sell, st.total_value_buy,
+					st.created_at, st.updated_at, st.deleted_at,
+
+					pi.name as item_name,
+					w.name as warehouse_name,
+					u.name as unit_name,
+					cu.name as created_by_name,
+					uu.name as updated_by_name
+
+        FROM stock_closings st
+				LEFT JOIN products pi ON st.item_id = pi.id
+				LEFT JOIN item_units iu ON pi.item_unit_id = iu.id
+				LEFT JOIN mix_values u ON u.id = iu.unit_id
+				LEFT JOIN mix_values w ON w.id = st.warehouse_id
+				LEFT JOIN users cu ON st.created_by_id = cu.id
+				LEFT JOIN users uu ON st.updated_by_id = uu.id
+				WHERE 1=1` + condition + queryGlobal + `
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	query := `SELECT *
+		` + baseQuery
+
+	countQuery := `SELECT COUNT(*) as total
+		` + baseQuery
+
+	for key, value := range filters {
+		switch key {
+		// case "po_buyer_no", "sales_order_no", "ship_dest", "remark":
+		case "item_name", "warehouse_name", "unit_name":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "id")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return products, total, nil
+}
+
+func (r *InventoryRepository) CreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, date string, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InventoryRepository-CreateStockClosings", opentracing.ChildOf(span.Context()))
+
+	log.Printf("[INFO] Processing stock closing for %s...", date)
+	adminID := 1
+	query := `WITH date_params AS (
+			SELECT $1::date as closing_date
+		),
+		all_warehouses AS (
+				SELECT mv.id as warehouse_id
+				FROM mix_values mv
+				LEFT JOIN groups g ON mv.group_id = g.id
+				WHERE g.name = 'warehouses'
+				AND mv.deleted_at IS NULL
+		),
+		latest_closing AS (
+				SELECT 
+						item_id, 
+						warehouse_id, 
+						closing_at as last_closing_date,
+						end_qty as prev_qty
+				FROM stock_closings sc
+				WHERE sc.closing_at = (
+						SELECT MAX(closing_at)
+						FROM stock_closings sc2
+						WHERE sc2.closing_at < (SELECT closing_date FROM date_params)
+						AND sc2.item_id = sc.item_id
+						AND sc2.warehouse_id = sc.warehouse_id
+						AND sc2.deleted_at IS NULL
+				)
+				AND sc.deleted_at IS NULL
+		),
+		inventory_movements AS (
+				SELECT 
+						id.item_id,
+						i.warehouse_id,
+						SUM(CASE 
+								WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN COALESCE(id.qty, 0)
+								ELSE 0 
+						END) as qty_in,
+						SUM(CASE 
+								WHEN iot.options_json->>'io_type' = 'INVENTORY_OUT' THEN COALESCE(id.qty, 0)
+								ELSE 0 
+						END) as qty_out,
+						MAX(CASE 
+								WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN id.price_buy
+								ELSE NULL 
+						END) as last_buy_price,
+						MAX(CASE 
+								WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN id.price_sell
+								ELSE NULL 
+						END) as last_sell_price
+				FROM inv_dts id
+				INNER JOIN inventories i ON id.inventory_id = i.id 
+				INNER JOIN mix_values iot ON i.io_type_id = iot.id
+				WHERE i.ingoing_at > (
+						SELECT COALESCE(
+								(SELECT MAX(closing_at) 
+								FROM stock_closings sc 
+								WHERE sc.item_id = id.item_id 
+								AND sc.warehouse_id = i.warehouse_id 
+								AND sc.closing_at < (SELECT closing_date FROM date_params)
+								AND sc.deleted_at IS NULL
+								),
+								'1970-01-01'
+						)
+				)
+				AND i.ingoing_at <= (SELECT closing_date FROM date_params)
+				AND i.deleted_at IS NULL 
+				AND id.deleted_at IS NULL
+				GROUP BY id.item_id, i.warehouse_id
+		),
+		all_products AS (
+				SELECT 
+						p.id as item_id,
+						p.item_unit_id,
+						iu.price_buy as default_price_buy,
+						iu.price_sell as default_price_sell
+				FROM products p
+				LEFT JOIN item_units iu ON p.item_unit_id = iu.id 
+				WHERE p.deleted_at IS NULL
+		),
+		product_warehouse_combinations AS (
+				SELECT 
+						ap.item_id,
+						aw.warehouse_id,
+						ap.default_price_buy,
+						ap.default_price_sell
+				FROM all_products ap
+				CROSS JOIN all_warehouses aw
+		),
+		calculated_stock AS (
+				SELECT
+						pwc.item_id,
+						pwc.warehouse_id,
+						COALESCE(lc.last_closing_date, (SELECT closing_date FROM date_params)) as last_closing_at,
+						COALESCE(lc.prev_qty, 0) as begin_qty,
+						COALESCE(im.qty_in, 0) as in_qty,
+						COALESCE(im.qty_out, 0) as out_qty,
+						0 as adjustment_qty,
+						COALESCE(lc.prev_qty, 0) + COALESCE(im.qty_in, 0) - COALESCE(im.qty_out, 0) as end_qty,
+						COALESCE(im.last_sell_price, pwc.default_price_sell, 0) as price_sell,
+						COALESCE(im.last_buy_price, pwc.default_price_buy, 0) as price_buy
+				FROM product_warehouse_combinations pwc
+				LEFT JOIN latest_closing lc ON pwc.item_id = lc.item_id 
+						AND pwc.warehouse_id = lc.warehouse_id
+				LEFT JOIN inventory_movements im ON pwc.item_id = im.item_id 
+						AND pwc.warehouse_id = im.warehouse_id
+		)
+		INSERT INTO stock_closings (
+				item_id,
+				warehouse_id, 
+				closing_at,
+				last_closing_at,
+				begin_qty,
+				in_qty,
+				out_qty,
+				adjustment_qty,
+				end_qty,
+				price_sell,
+				price_buy,
+				total_value_sell,
+				total_value_buy,
+				created_at,
+				created_by_id
+		)
+		SELECT
+				item_id,
+				warehouse_id,
+				(SELECT closing_date FROM date_params),
+				last_closing_at,
+				begin_qty,
+				in_qty, 
+				out_qty,
+				adjustment_qty,
+				end_qty,
+				price_sell,
+				price_buy,
+				(end_qty * price_sell) as total_value_sell,
+				(end_qty * price_buy) as total_value_buy,
+				CURRENT_TIMESTAMP,
+				$2
+		FROM calculated_stock;`
+
+	var productCount, warehouseCount int
+	tx.Raw("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL").Scan(&productCount)
+	tx.Raw("SELECT COUNT(*) FROM mix_values WHERE group_id = (SELECT id FROM groups WHERE name = 'warehouses') AND deleted_at IS NULL").Scan(&warehouseCount)
+
+	log.Printf("[DEBUG] Found %d active products and %d active warehouses", productCount, warehouseCount)
+
+	err := tx.Error
+
+	result := tx.Exec(query, date, adminID)
+
+	if result.Error != nil {
+		defer childSpan.Finish()
+		log.Printf("[ERROR] Error creating stock closing: %v", err)
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+		return nil, err
+	}
+
+	log.Printf("[SUCCESS] Stock closing for %s created successfully.", date)
+
+	return tx, nil
+}
+
+func (r *InventoryRepository) DeleteStockClosingByDate(ctx *fiber.Ctx, tx *gorm.DB, date string, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InvDtRepository-DeleteStockClosingByDate", opentracing.ChildOf(span.Context()))
+
+	claims := utils.GetClaims(ctx, childSpan)
+	userID := uint(claims["user_id"].(float64))
+
+	now := time.Now()
+	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
+
+	query := tx.Model(&models.StockClosings{}).Where("closing_at = ?", date)
+
+	if err := query.Updates(map[string]interface{}{
+		"deleted_by_id": userID,
+		"deleted_at":    deletedAt,
+	}).Error; err != nil {
+		defer childSpan.Finish()
+		log.Printf("[ERROR]Error deleting stock closing: %v", err)
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
 }

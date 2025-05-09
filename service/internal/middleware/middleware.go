@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -21,7 +21,10 @@ import (
 // ErrorHandler middleware
 func ErrorHandler(ctx *fiber.Ctx, err error) error {
 	// Default to 500 Internal Server Error
-	code := http.StatusInternalServerError
+	code := fiber.StatusInternalServerError
+	if e, ok := err.(*fiber.Error); ok {
+		code = e.Code
+	}
 	message := "Internal server error"
 
 	if err == sql.ErrNoRows {
@@ -38,7 +41,7 @@ func ErrorHandler(ctx *fiber.Ctx, err error) error {
 	stackTrace := fmt.Sprintf("%s:%d", file, line)
 
 	// Log the error and stack trace
-	log.Printf("Error: %v\nStack Trace: %s\n", err, stackTrace)
+	log.Printf("[ERROR] %v\nStack Trace: %s\n", err, stackTrace)
 
 	// Return a JSON response with the error
 	return ctx.Status(code).JSON(fiber.Map{
@@ -330,5 +333,53 @@ func JaegerTracingMiddleware(tracer opentracing.Tracer) fiber.Handler {
 		}
 
 		return err
+	}
+}
+
+func SafeHandler(handler fiber.Handler) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("Panic in handler: %v\n", err)
+				c.Status(500).JSON(fiber.Map{
+					"error":   true,
+					"message": "Internal server error",
+				})
+			}
+		}()
+		return handler(c)
+	}
+}
+
+func SafetyMiddleware() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		defer func() {
+			if r := recover(); r != nil {
+				stack := debug.Stack()
+				log.Printf("Panic recovered: %v\nStack trace: %s\n", r, string(stack))
+
+				// Return error response to client
+				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error":   true,
+					"message": "Internal server error",
+				})
+			}
+		}()
+
+		return c.Next()
+	}
+}
+
+func RecoverMiddleware() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[PANIC RECOVER] %v\n", r)
+				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "Internal Server Error",
+				})
+			}
+		}()
+		return c.Next()
 	}
 }

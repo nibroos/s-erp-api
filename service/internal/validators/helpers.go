@@ -59,6 +59,11 @@ func isDate(date string) bool {
 	return regexDate.MatchString(date)
 }
 
+// isBeforeDate check the date string is valid or not
+func isBeforeDate(date string, beforeDate string) bool {
+	return regexDate.MatchString(date) && regexDate.MatchString(beforeDate) && date < beforeDate
+}
+
 // isDateDDMMYY check the date string is valid or not
 func isDateDDMMYY(date string) bool {
 	return regexDateDDMMYY.MatchString(date)

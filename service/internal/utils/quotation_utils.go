@@ -260,13 +260,13 @@ func GenQuoNo() string {
 	return "QUO-" + time.Now().Format("20060102-150405")
 }
 
-func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, orderedNumber int, span opentracing.Span) (models.Quotation, error) {
+func MapCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, userID uint, branchID uint, orderedNumber int, orderedNumberGlobal int, span opentracing.Span) (models.Quotation, error) {
 	revNo := 0
 
 	orderNumber := orderedNumber
 	orderNumber++
 
-	quoNo := GenerateQuoNoOnCreateQuotation(ctx, req, orderNumber, span)
+	quoNo := GenerateQuoNoOnCreateQuotation(ctx, req, orderNumber, orderedNumberGlobal, span)
 
 	quotation := models.Quotation{
 		CustomerID:    req.CustomerID,
@@ -369,7 +369,7 @@ func GenerateQuoNoOnUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotationRequ
 	return *quoNo
 }
 
-func GenerateQuoNoOnCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, orderedNumber int, span opentracing.Span) string {
+func GenerateQuoNoOnCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequest, orderedNumber int, orderedNumberGlobal int, span opentracing.Span) string {
 	if req.QuoNo != nil {
 		return *req.QuoNo
 	}
@@ -380,12 +380,13 @@ func GenerateQuoNoOnCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequ
 		return ""
 	}
 
-	surname := *req.CustomerCode
+	// surname := *req.CustomerCode
+	surname := "Yubi"
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
 	order := fmt.Sprintf("%d", orderedNumber)
 
-	str := fmt.Sprintf("%s/%s/%s-%s-%s", surname, order, year, month, order)
+	str := fmt.Sprintf("%s/%s/%s-%s-%s", surname, orderedNumberGlobal, year, month, order)
 
 	return str
 }

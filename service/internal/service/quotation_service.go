@@ -54,8 +54,9 @@ func (s *QuotationService) CreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotat
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuotation", opentracing.ChildOf(span.Context()))
 
 	customerQuoCreatedThisMonthNumber, err := s.repo.GetCustomerQuotationCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+	quoGlobalCreatedThisMonthNumber, err := s.repo.GetGlobalQuotationCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
 
-	quotation, err := utils.MapCreateQuotation(ctx, req, userID, branchID, customerQuoCreatedThisMonthNumber, childSpan)
+	quotation, err := utils.MapCreateQuotation(ctx, req, userID, branchID, customerQuoCreatedThisMonthNumber, quoGlobalCreatedThisMonthNumber, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, tx, err

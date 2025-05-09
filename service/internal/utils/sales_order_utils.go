@@ -282,29 +282,30 @@ func MapUpdateSoDts(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, updatedSal
 	return soDtsModel, nil
 }
 
-func GenSalesOrderNo(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, orderedNumber int, span opentracing.Span) string {
+func GenSalesOrderNo(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, orderedNumber int, globalOrderedNumber int, span opentracing.Span) string {
 	if req.PoBuyerNo != nil {
 		return *req.PoBuyerNo
 	}
 
 	// SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
-	surname := req.CustomerCode
+	// surname := req.CustomerCode
+	surname := "Yubi"
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
 	order := fmt.Sprintf("%d", orderedNumber)
 
 	// str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
-	str := fmt.Sprintf("SO/%s/%s-%s-%s", order, surname, year, month)
+	str := fmt.Sprintf("SO/%s/%s-%s-%s-%s", globalOrderedNumber, surname, year, month, order)
 
 	return str
 }
 
-func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userID uint, branchID uint, customerSoCreatedThisMonthNumber int, span opentracing.Span) (models.SalesOrder, error) {
+func MapCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userID uint, branchID uint, customerSoCreatedThisMonthNumber int, globalSoCreatedThisMonthNumber int, span opentracing.Span) (models.SalesOrder, error) {
 	// order := 1
 	customerSoCreatedThisMonthNumber++
 
-	orderNo := GenSalesOrderNo(ctx, req, customerSoCreatedThisMonthNumber, span)
-	poBuyerNo := GeneratePoBuyerNoNoOnCreateSalesOrder(ctx, req, customerSoCreatedThisMonthNumber, span)
+	orderNo := GenSalesOrderNo(ctx, req, customerSoCreatedThisMonthNumber, globalSoCreatedThisMonthNumber, span)
+	poBuyerNo := GeneratePoBuyerNoNoOnCreateSalesOrder(ctx, req, customerSoCreatedThisMonthNumber, globalSoCreatedThisMonthNumber, span)
 
 	salesOrder := models.SalesOrder{
 		CustomerID:    req.CustomerID,
@@ -479,13 +480,14 @@ func GenerateSoNoOnUpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequ
 	return *salesOrderNo
 }
 
-func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, orderedNumber int, span opentracing.Span) string {
+func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, orderedNumber int, globalOrderedNumber int, span opentracing.Span) string {
 	if req.PoBuyerNo != nil {
 		return *req.PoBuyerNo
 	}
 
 	// SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
-	surname := req.CustomerCode
+	// surname := req.CustomerCode
+	surname := "Yubi"
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
 	order := fmt.Sprintf("%d", orderedNumber)
