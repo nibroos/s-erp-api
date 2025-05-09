@@ -16,6 +16,7 @@ func SetupInventoryRoutes(inventories fiber.Router, gormDB *gorm.DB, sqlDB *sqlx
 	inventoryController := rest.NewInventoryController(inventoryService, inventoryRepo, tracer)
 
 	inventories.Post("/index-inventory", inventoryController.GetInventories)
+	inventories.Post("/index-inventory-status", inventoryController.GetInventories)
 	inventories.Post("/show-inventory", inventoryController.GetInventoryByID)
 	inventories.Post("/create-inventory", inventoryController.CreateInventory)
 	inventories.Post("/update-inventory", inventoryController.UpdateInventory)
