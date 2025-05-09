@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -168,7 +169,23 @@ func main() {
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
 		ErrorHandler: middleware.ErrorHandler,
+		// Increase read/write timeouts
+		ReadTimeout:  time.Second * 60,
+		WriteTimeout: time.Second * 60,
 	})
+
+	app.Use(middleware.RecoverMiddleware())
+
+	// Add recover middleware with more detailed logging
+	app.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
+			// Log the full stack trace
+			buf := make([]byte, 2048)
+			n := runtime.Stack(buf, false)
+			log.Printf("Panic recovered: %v\nStack trace: %s\n", e, buf[:n])
+		},
+	}))
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
@@ -180,12 +197,6 @@ func main() {
 	// app.Use(middleware.JaegerTracingMiddleware(tracer))
 	app.Use(middleware.ConvertEmptyStringsToNull())
 	app.Use(middleware.ConvertRequestToFilters())
-	app.Use(recover.New(recover.Config{
-		EnableStackTrace: true,
-		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
-			log.Printf("Panic recovered: %v\n", e)
-		},
-	}))
 
 	// static folder on /public/uploads
 	app.Static("/public", "./public")

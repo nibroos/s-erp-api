@@ -574,8 +574,44 @@ type StockListDTO struct {
 	UpdatedAt     *string  `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string  `json:"deleted_at" db:"deleted_at"`
 
-	WarehouseName *string `json:"warehouse_name" db:"warehouse_name"`
-	ItemName      *string `json:"item_name" db:"item_name"`
-	UnitName      *string `json:"unit_name" db:"unit_name"`
-	BranchName    *string `json:"branch_name" db:"branch_name"`
+	WarehouseName    *string `json:"warehouse_name" db:"warehouse_name"`
+	ItemName         *string `json:"item_name" db:"item_name"`
+	UnitName         *string `json:"unit_name" db:"unit_name"`
+	BranchName       *string `json:"branch_name" db:"branch_name"`
+	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
+	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
+}
+
+type StockClosingListDTO struct {
+	ID             int      `json:"id" db:"id"`
+	ItemID         *uint    `json:"item_id" db:"item_id"`
+	WarehouseID    *uint    `json:"warehouse_id" db:"warehouse_id"`
+	ClosingAt      *string  `json:"closing_at" db:"closing_at"`
+	LastClosingAt  *string  `json:"last_closing_at" db:"last_closing_at"`
+	BeginQty       *float64 `json:"begin_qty" db:"begin_qty"`
+	InQty          *float64 `json:"in_qty" db:"in_qty"`
+	OutQty         *float64 `json:"out_qty" db:"out_qty"`
+	AdjustmentQty  *float64 `json:"adjustment_qty" db:"adjustment_qty"`
+	EndQty         *float64 `json:"end_qty" db:"end_qty"`
+	PriceSell      *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy       *float64 `json:"price_buy" db:"price_buy"`
+	TotalValueSell *float64 `json:"total_value_sell" db:"total_value_sell"`
+	TotalValueBuy  *float64 `json:"total_value_buy" db:"total_value_buy"`
+	CreatedByName  *string  `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName  *string  `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt      *string  `json:"created_at" db:"created_at"`
+	UpdatedAt      *string  `json:"updated_at" db:"updated_at"`
+	DeleteAt       *string  `json:"deleted_at" db:"deleted_at"`
+
+	WarehouseName    *string `json:"warehouse_name" db:"warehouse_name"`
+	ItemName         *string `json:"item_name" db:"item_name"`
+	UnitName         *string `json:"unit_name" db:"unit_name"`
+	ItemGroupName    *string `json:"item_group_name" db:"item_group_name"`
+	ItemSubGroupName *string `json:"item_sub_group_name" db:"item_sub_group_name"`
+}
+
+type FormClosingStockStoreRequest struct {
+	StartClosingAt *string `json:"start_closing_at"`
+	EndClosingAt   string  `json:"end_closing_at"`
+	Password       string  `json:"password"`
 }

@@ -905,3 +905,65 @@ func (s *InventoryService) GetRefIndexInvDts(ctx *fiber.Ctx, filters map[string]
 
 	return soDts, total, nil
 }
+
+func (s *InventoryService) GetStockClosings(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.StockClosingListDTO, int, error) {
+	childSpan := opentracing.StartSpan("InventoryService-GetStockClosings", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	inventories, total, err := s.repo.GetStockClosings(ctx, filters, childSpan)
+	if err != nil {
+		return nil, 0, err
+	}
+	return inventories, total, nil
+}
+
+func (s *InventoryService) CreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, date string, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InventoryService-CreateStockClosings", opentracing.ChildOf(span.Context()))
+
+	// delete closing by date
+	if err := s.repo.DeleteStockClosingByDate(ctx, tx, date, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	stockClosings, err := s.repo.CreateStockClosings(ctx, tx, date, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	return stockClosings, nil
+}
+
+// func (s *InventoryService) BulkCreateStockClosingsByRange(ctx *fiber.Ctx, tx *gorm.DB, req dtos.FormClosingStockStoreRequest, span opentracing.Span) (*gorm.DB, error) {
+// 	childSpan := opentracing.StartSpan("InventoryService-BulkCreateStockClosingsByRange", opentracing.ChildOf(span.Context()))
+
+// 	stockClosings, err := s.repo.CreateStockClosings(ctx, tx, req, childSpan)
+// 	if err != nil {
+// 		defer childSpan.Finish()
+// 		return nil, err
+// 	}
+
+// 	return stockClosings, nil
+// }
+
+// func (s *InventoryService) BackgroundCreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, date string, span opentracing.Span) ([]dtos.RefInvIndexInvDtListDTO, error) {
+// 	childSpan := opentracing.StartSpan("InventoryService-BackgroundCreateStockClosings", opentracing.ChildOf(span.Context()))
+
+// 	// stockClosings, err := s.repo.CreateStockClosings(ctx, date, childSpan)
+// 	// if err != nil {
+// 	// 	defer childSpan.Finish()
+// 	// 	return nil, err
+// 	// }
+
+// 	// check last stock closing by date
+// 	stockClosings, err := s.repo.GetStockClosingByDate(ctx, date, childSpan)
+// 	if err != nil {
+// 		defer childSpan.Finish()
+// 		return nil, err
+// 	}
+
+// 	// backfillMissingClosings
+// 	return stockClosings, nil
+// }

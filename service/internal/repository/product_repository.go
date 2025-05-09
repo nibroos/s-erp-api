@@ -1035,7 +1035,8 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 						SELECT
 								b.id, i.item_sub_group_id, b.item_unit_id,
 								i.code, i.factory_code, i.name, i.sku, i.barcode, i.specification,
-								i.description, i.remark, i.tpb_code, i.minimum_stock, i.status, i.expired_at,
+								i.description, i.remark, i.tpb_code, i.minimum_stock, i.status, 
+								TO_CHAR(i.expired_at, 'YYYY-MM-DD') as expired_at,
 								i.id as product_id,
 								b.id as ref_id,
 								NULL as ref_product_id,

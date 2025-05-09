@@ -493,3 +493,80 @@ func (c *InventoryController) GetStocks(ctx *fiber.Ctx) error {
 
 	return utils.GetResponse(ctx, stocks, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)
 }
+
+func (c *InventoryController) GetStockClosings(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InventoryController-GetStockClosings", opentracing.ChildOf(apiSpan.Context()))
+	defer apiSpan.Finish()
+	defer parentSpan.Finish()
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("InventoryController-GetStockClosing: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	stocks, total, err := c.service.GetStockClosings(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Inventory", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, stocks, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)
+}
+
+func (c *InventoryController) CreateStockClosings(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InventoryController-CreateStockClosings", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.FormClosingStockStoreRequest
+
+	// Use the utility function to parse the request body
+	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
+	}
+
+	// Validate the request
+	reqValidator, isValid := form_requests.NewClosingStockStoreRequest().Validate(&req, ctx)
+	if !isValid {
+		return utils.ErrValidResponse(ctx, apiSpan, "Failed to create Inventory", reqValidator)
+	}
+
+	tx := c.repo.BeginTransaction()
+
+	// // Lock the rows for update
+	// tx, err := c.service.LockCreateInventoryTable(ctx, tx, req, parentSpan)
+	// if err != nil {
+	// 	utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+	// 	return utils.GetResponse(ctx, nil, nil, "Failed to update Inventory", http.StatusInternalServerError, err.Error(), nil)
+	// }
+
+	// create header inventory
+	tx, err := c.service.CreateStockClosings(ctx, tx, req.EndClosingAt, parentSpan)
+	if err != nil {
+		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Inventory", http.StatusInternalServerError)
+	}
+
+	tx.Commit()
+
+	filters := make(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+
+	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Stock Closing created successfully", http.StatusCreated, nil, nil)
+}

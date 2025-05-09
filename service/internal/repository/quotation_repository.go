@@ -1225,3 +1225,19 @@ func (r *QuotationRepository) GetCustomerQuotationCreatedThisMonth(ctx *fiber.Ct
 
 	return count, nil
 }
+
+func (r *QuotationRepository) GetGlobalQuotationCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
+	childSpan := opentracing.StartSpan("QuotationRepository-GetCustomerQuotationCreatedThisMonth", opentracing.ChildOf(span.Context()))
+
+	query := `SELECT COUNT(*) FROM quotations WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW()) AND deleted_at IS NULL`
+
+	var count int
+
+	err := tx.Raw(query).Scan(&count).Error
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return 0, err
+	}
+
+	return count, nil
+}

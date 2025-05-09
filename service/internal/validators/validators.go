@@ -98,6 +98,16 @@ func (r *Request) Validate() (map[string][]string, bool) {
 							if !isDate(nestedValue.(string)) {
 								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
 							}
+						case "before_date":
+							if value == nil {
+								continue
+							}
+							if !isDate(nestedValue.(string)) {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
+							}
+							if !isBeforeDate(nestedValue.(string), ruleParam) {
+								errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)] = append(errors[fmt.Sprintf("%s.%d.%s", arrayField, i, nestedField)], fmt.Sprintf("The %s field must be before %s", customFieldName, ruleParam))
+							}
 						case "min":
 							min, err := strconv.Atoi(ruleParam)
 							if err != nil {
@@ -202,6 +212,16 @@ func (r *Request) Validate() (map[string][]string, bool) {
 					}
 					if !isDate(value.(string)) {
 						errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
+					}
+				case "before_date":
+					if value == nil {
+						continue
+					}
+					if !isDate(value.(string)) {
+						errors[field] = append(errors[field], fmt.Sprintf("The %s field must be a valid date in the format %s", customFieldName, ruleParam))
+					}
+					if !isBeforeDate(value.(string), ruleParam) {
+						errors[field] = append(errors[field], fmt.Sprintf("The %s field must be before %s", customFieldName, ruleParam))
 					}
 				case "min":
 					min, err := strconv.Atoi(ruleParam)

@@ -1689,6 +1689,32 @@ func (r *SalesOrderRepository) GetCustomerSalesOrderCreatedThisMonth(ctx *fiber.
 	return total, nil
 }
 
+// GetCustomerSalesOrderCreatedThisMonth
+func (r *SalesOrderRepository) GetGlobalSalesOrderCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderRepository-GetGlobalSalesOrderCreatedThisMonth", opentracing.ChildOf(span.Context()))
+
+	var total int
+
+	baseQuery := `
+		FROM (
+			SELECT COUNT(*) as total
+			FROM sales_orders so
+			WHERE so.created_at >= date_trunc('month', CURRENT_DATE)
+			AND so.deleted_at IS NULL
+		) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	err := tx.Raw(query).Scan(&total).Error
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return 0, err
+	}
+
+	return total, nil
+}
+
 // CreateSchedule
 func (r *SalesOrderRepository) CreateSchedule(ctx *fiber.Ctx, tx *gorm.DB, schedule *models.Schedule, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-CreateSchedule", opentracing.ChildOf(span.Context()))
