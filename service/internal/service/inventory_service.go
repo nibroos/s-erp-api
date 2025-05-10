@@ -968,13 +968,25 @@ func (s *InventoryService) CreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, date
 // 	return stockClosings, nil
 // }
 
-func (s *InventoryService) GetInventoriesStatus(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InventoryListDTO, int, error) {
+func (s *InventoryService) GetInventoriesStatus(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InventoryStatusDtDTO, int, error) {
 	childSpan := opentracing.StartSpan("InventoryService-GetInventoriesStatus", opentracing.ChildOf(span.Context()))
 
-	inventories, total, err := s.repo.GetInventoriesStatus(ctx, filters, childSpan)
+	items, total, err := s.repo.GetInventoriesStatus(ctx, filters, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		return nil, 0, err
 	}
-	return inventories, total, nil
+
+	var params dtos.GetInventoriesStatusDtParams
+	params.ItemIDs = utils.GetInventoryDtItemIDs(items)
+
+	invDt, _, err := s.repo.GetInventoriesStatusDt(ctx, filters, params, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	mappedInvDt := utils.MapInventoryStatusList(items, invDt)
+
+	return mappedInvDt, total, nil
 }
