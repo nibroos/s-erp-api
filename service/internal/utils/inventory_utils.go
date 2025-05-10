@@ -692,3 +692,73 @@ func getInvRefHeadQuantities(head map[string]interface{}) (qtyIn float64, totalQ
 
 	return qtyIn, totalQty, true
 }
+
+func GetInventoryDtItemIDs(inventoryItems []dtos.InventoryStatusDTO) []uint {
+	itemIDs := []uint{}
+
+	for _, item := range inventoryItems {
+		itemIDs = append(itemIDs, item.ItemID)
+	}
+
+	return itemIDs
+}
+
+func MapInventoryStatusList(items []dtos.InventoryStatusDTO, inventoryItems []dtos.InventoryStatusDtDTO) []dtos.InventoryStatusDtDTO {
+	mappedInvDt := []dtos.InventoryStatusDtDTO{}
+
+	// type InventoryStatusDtDTO struct {
+	// 	ID uint `json:"id" db:"id"`
+	// 	IngoingAt *string `json:"ingoing_at" db:"ingoing_at"`
+
+	// 	IoType           *string  `json:"io_type" db:"io_type"`
+	// 	ItemGroupName    *string  `json:"item_group_name" db:"item_group_name"`
+	// 	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
+	// 	WarehouseName    *string  `json:"warehouse_name" db:"warehouse_name"`
+	// 	IoTypeName       *string  `json:"io_type_name" db:"io_type_name"`
+	// 	CustomerName     *string  `json:"customer_name" db:"customer_name"`
+	// 	ItemCode         *string  `json:"item_code" db:"item_code"`
+	// 	ItemName         *string  `json:"item_name" db:"item_name"`
+	// 	UnitName         *string  `json:"unit_name" db:"unit_name"`
+	// 	CurrencyName     *string  `json:"currency_name" db:"currency_name"`
+	// 	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
+	// 	PriceBuy         *float64 `json:"price_buy" db:"price_buy"`
+	// 	QtyIn            *float64 `json:"qty_in" db:"qty_in"`
+	// 	QtyOut           *float64 `json:"qty_out" db:"qty_out"`
+	// 	Balance          *float64 `json:"balance" db:"balance"`
+	// }
+
+	// get the inv dt list, add total each "items"
+
+	for _, inv := range items {
+		var balance float64 = 0
+		var totalQtyIn float64 = 0
+		var totalQtyOut float64 = 0
+		for _, invDt := range inventoryItems {
+			if inv.ItemID == invDt.ItemID {
+				if invDt.IoType == "INVENTORY_IN" {
+					invDt.QtyIn = invDt.Qty
+					invDt.Price = invDt.PriceBuy
+					balance += invDt.Qty
+					totalQtyIn += invDt.Qty
+				} else if invDt.IoType == "INVENTORY_OUT" {
+					invDt.QtyOut = invDt.Qty
+					invDt.Price = invDt.PriceSell
+					balance -= invDt.Qty
+					totalQtyOut += invDt.Qty
+				}
+				invDt.Balance = balance
+
+				mappedInvDt = append(mappedInvDt, invDt)
+			}
+		}
+
+		var totalDt dtos.InventoryStatusDtDTO
+		totalDt.ID = 0
+		totalDt.IsTotal = true
+		totalDt.OutTotal = totalQtyOut
+		totalDt.InTotal = totalQtyIn
+		totalDt.BalanceTotal = totalQtyIn - totalQtyOut
+		mappedInvDt = append(mappedInvDt, totalDt)
+	}
+	return mappedInvDt
+}

@@ -615,3 +615,42 @@ type FormClosingStockStoreRequest struct {
 	EndClosingAt   string  `json:"end_closing_at"`
 	Password       string  `json:"password"`
 }
+
+type InventoryStatusDTO struct {
+	ID       uint `json:"id" db:"id"`
+	ItemID   uint `json:"item_id" db:"item_id"`
+	BranchID uint `json:"branch_id" db:"branch_id"`
+}
+
+type GetInventoriesStatusDtParams struct {
+	ItemIDs []uint `json:"item_ids"`
+}
+
+type InventoryStatusDtDTO struct {
+	ID        uint    `json:"id" db:"id"`
+	ItemID    uint    `json:"item_id" db:"item_id"`
+	BranchID  *uint   `json:"branch_id" db:"branch_id"`
+	IngoingAt *string `json:"ingoing_at" db:"ingoing_at"`
+
+	IoType           string   `json:"io_type" db:"io_type"`
+	ItemGroupName    *string  `json:"item_group_name" db:"item_group_name"`
+	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
+	WarehouseName    *string  `json:"warehouse_name" db:"warehouse_name"`
+	IoTypeName       *string  `json:"io_type_name" db:"io_type_name"`
+	CustomerName     *string  `json:"customer_name" db:"customer_name"`
+	ItemCode         *string  `json:"item_code" db:"item_code"`
+	ItemName         *string  `json:"item_name" db:"item_name"`
+	UnitName         *string  `json:"unit_name" db:"unit_name"`
+	CurrencyName     *string  `json:"currency_name" db:"currency_name"`
+	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy         *float64 `json:"price_buy" db:"price_buy"`
+	Price            *float64 `json:"price" db:"price"`
+	Qty              float64  `json:"qty" db:"qty"`
+	QtyIn            float64  `json:"qty_in" db:"qty_in"`
+	QtyOut           float64  `json:"qty_out" db:"qty_out"`
+	Balance          float64  `json:"balance" db:"balance"`
+	IsTotal          bool     `json:"is_total" db:"is_total"`
+	InTotal          float64  `json:"in_total" db:"in_total"`
+	OutTotal         float64  `json:"out_total" db:"out_total"`
+	BalanceTotal     float64  `json:"balance_total" db:"balance_total"`
+}
