@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/middleware"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
@@ -12,7 +13,7 @@ import (
 )
 
 // SetupRoutes sets up the REST routes for the user service.
-func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Tracer) {
+func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) {
 	app.Use(middleware.SafetyMiddleware())
 
 	// Test route to trigger panic
@@ -126,7 +127,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, tracer opentra
 	SetupSalesOrderRoutes(salesOrders, gormDB, sqlDB, utilRepo, tracer)
 
 	inventories := version.Group("/inventories")
-	SetupInventoryRoutes(inventories, gormDB, sqlDB, utilRepo, tracer)
+	SetupInventoryRoutes(inventories, gormDB, sqlDB, utilRepo, rabbitmq, tracer)
 
 	shippingTerms := version.Group("/shipping-terms")
 	SetupShippingTermRoutes(shippingTerms, gormDB, sqlDB, utilRepo, tracer)

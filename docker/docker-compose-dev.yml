@@ -69,6 +69,52 @@ services:
       - postgres-s-erp-api:/var/lib/postgresql/data
     restart: on-failure
 
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: rabbitmq-s-erp-api
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      SERVICE_TYPE: consumer
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - s-erp-api-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  consumer-service:
+    build: 
+      context: ../service
+      dockerfile: Dockerfile.dev
+      network: host
+    image: nibroos/s-erp-service-dev:1.0.250216
+    networks:
+      - s-erp-api-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      SERVICE_TYPE: consumer
+    volumes:
+      - ./../service:/apps
+    restart: unless-stopped
+
   # asynq-client:
   #   build:
   #     context: ../service
@@ -283,6 +329,7 @@ volumes:
   grafana-storage:
   # jaeger-logs:
   elasticsearch-data:
+  rabbitmq-data:
 
 networks:
   s-erp-api-network:

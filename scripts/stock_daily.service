@@ -1,0 +1,12 @@
+[Unit]
+Description=Stock Daily Closing Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/nibros/projects/s-erp-api/scripts/stock_daily.sh
+User=nibros
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
