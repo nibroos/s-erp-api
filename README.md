@@ -40,11 +40,12 @@ Change bash directory to each service.
 
 <p>
   <img src="https://img.shields.io/badge/-Docker-2496ED?style=for-the-badge&logo=Docker&logoColor=fff" />&nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/-NGINX-269539?style=for-the-badge&logo=NGINX&logoColor=fff" />
-  <img src="https://img.shields.io/badge/-Go-1185F4?style=for-the-badge&logo=Go&logoColor=fff" />
+  <img src="https://img.shields.io/badge/-NGINX-269539?style=for-the-badge&logo=NGINX&logoColor=fff" />&nbsp;&nbsp;
+  <img src="https://img.shields.io/badge/-Go-1185F4?style=for-the-badge&logo=Go&logoColor=fff" />&nbsp;&nbsp;
+<img src="https://img.shields.io/badge/-PostgreSQL-336791?style=for-the-badge&logo=PostgreSQL&logoColor=fff" />&nbsp;&nbsp;
+  <img src="https://img.shields.io/badge/-RabbitMq-446?style=for-the-badge&logo=RabbitMq" />
 </p>
 <p>
-<img src="https://img.shields.io/badge/-PostgreSQL-336791?style=for-the-badge&logo=PostgreSQL&logoColor=fff" />&nbsp;&nbsp;
 </p>
 
 ## 📔 Notes & Issues
@@ -78,6 +79,29 @@ Postman credentials:
   - HTTP Request: `S-ERP-API.postman_collection.json`
 - Use `vegeta` to generate the load test. look up `target.txt` for the target URL, then run `vegeta attack -targets=target.txt -rate=1000 -duration=30s -output /dev/null`, change the rate and duration as you need.
 - Use `k6` to execute the test. look up `load-test` folder for the script, then run `k6 run script.js`, change the script as you need.
+
+### Scheduler
+Use `.service` & `.timer` on /scripts, change the `ExecStart` to your directory, and `User` to your user. To run the scheduler on linux, you need to create a systemd service and timer:
+```bash
+# Create the service file
+sudo nano /etc/systemd/system/stock_daily.service
+sudo nano /etc/systemd/system/stock_daily.timer
+
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Enable and start both the service and timer
+sudo systemctl enable stock_daily.service
+sudo systemctl enable stock_daily.timer
+sudo systemctl start stock_daily.timer
+
+# Verify the status
+systemctl status stock_daily.timer
+systemctl status stock_daily.service
+
+# View logs
+journalctl -u stock_daily.service -f
+```
 
 
 <h1 align="center">

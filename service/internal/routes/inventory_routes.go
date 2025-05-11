@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
@@ -10,10 +11,10 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupInventoryRoutes(inventories fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) {
-	inventoryRepo := repository.NewInventoryRepository(gormDB, sqlDB, utilRepo, tracer)
-	inventoryService := service.NewInventoryService(inventoryRepo, utilRepo, tracer)
-	inventoryController := rest.NewInventoryController(inventoryService, inventoryRepo, tracer)
+func SetupInventoryRoutes(inventories fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) {
+	inventoryRepo := repository.NewInventoryRepository(gormDB, sqlDB, utilRepo, rabbitmq, tracer)
+	inventoryService := service.NewInventoryService(inventoryRepo, utilRepo, rabbitmq, tracer)
+	inventoryController := rest.NewInventoryController(inventoryService, inventoryRepo, rabbitmq, tracer)
 
 	inventories.Post("/index-inventory", inventoryController.GetInventories)
 	inventories.Post("/index-inventory-status", inventoryController.GetInventoriesStatus)

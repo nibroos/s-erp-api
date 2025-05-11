@@ -3,14 +3,17 @@ package service
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
+	"github.com/valyala/fasthttp"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -18,13 +21,15 @@ import (
 type InventoryService struct {
 	repo     *repository.InventoryRepository
 	utilRepo *repository.UtilRepository
+	rabbitmq *config.RabbitMQ
 	tracer   opentracing.Tracer
 }
 
-func NewInventoryService(repo *repository.InventoryRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *InventoryService {
+func NewInventoryService(repo *repository.InventoryRepository, utilRepo *repository.UtilRepository, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) *InventoryService {
 	return &InventoryService{
 		repo:     repo,
 		utilRepo: utilRepo,
+		rabbitmq: rabbitmq,
 		tracer:   tracer,
 	}
 }
@@ -136,6 +141,9 @@ func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 		return nil, err
 	}
 
+	oldInventory, err := s.GetInventoryByID(ctx, &dtos.GetInventoryParams{ID: *req.ID}, tx, childSpan)
+
+	log.Println("UpdateInventory-oldInventory", oldInventory.TotalQty, *oldInventory.IngoingAt)
 	if err := s.repo.UpdateInventory(tx, &inventory, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -187,6 +195,16 @@ func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
+	}
+
+	newInv, err := s.GetInventoryByID(ctx, &dtos.GetInventoryParams{ID: *req.ID}, tx, childSpan)
+
+	if oldInventory.TotalQty != newInv.TotalQty || *oldInventory.IngoingAt != *newInv.IngoingAt {
+		log.Println("UpdateInventory-PublishSyncCreateStockClosings", oldInventory.TotalQty, newInv.TotalQty, *oldInventory.IngoingAt, *newInv.IngoingAt)
+		err = s.PublishSyncCreateStockClosings(ctx, tx, oldInventory, newInv, userID, branchID, childSpan)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+		}
 	}
 
 	return &inventory, nil
@@ -917,11 +935,11 @@ func (s *InventoryService) GetStockClosings(ctx *fiber.Ctx, filters map[string]s
 	return inventories, total, nil
 }
 
-func (s *InventoryService) CreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, date string, span opentracing.Span) (*gorm.DB, error) {
+func (s *InventoryService) CreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, date string, userID uint, branchID uint, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-CreateStockClosings", opentracing.ChildOf(span.Context()))
 
 	// delete closing by date
-	if err := s.repo.DeleteStockClosingByDate(ctx, tx, date, childSpan); err != nil {
+	if err := s.repo.DeleteStockClosingByDate(ctx, tx, date, userID, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
@@ -989,4 +1007,123 @@ func (s *InventoryService) GetInventoriesStatus(ctx *fiber.Ctx, filters map[stri
 	mappedInvDt := utils.MapInventoryStatusList(items, invDt)
 
 	return mappedInvDt, total, nil
+}
+
+func (s *InventoryService) PublishSyncCreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, oldInv *dtos.InventoryDetailDTO, newInv *dtos.InventoryDetailDTO, userID uint, branchID uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InventoryService-SyncCreateStockClosings", opentracing.ChildOf(span.Context()))
+
+	var req dtos.SyncStockInventoryRequest
+	req.StartClosingAt = oldInv.IngoingAt
+	req.EndClosingAt = *newInv.IngoingAt
+	req.Password = os.Getenv("RABBITMQ_PASSWORD")
+	req.UserID = userID
+	req.BranchID = branchID
+
+	err := utils.PublishSyncCreateStockClosings(ctx, s.rabbitmq, req)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+	}
+
+	return nil
+}
+
+func (s *InventoryService) BackgroundSyncCreateStockClosingsByRangeDate(ctx *fiber.Ctx, tx *gorm.DB, params dtos.FormClosingStockStoreRequest, userID uint, branchID uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InventoryService-BackgroundSyncCreateStockClosingsByRangeDate", opentracing.ChildOf(span.Context()))
+
+	var req dtos.SyncStockInventoryRequest
+	req.StartClosingAt = params.StartClosingAt
+	req.EndClosingAt = params.EndClosingAt
+	req.Password = params.Password
+	req.UserID = userID
+	req.BranchID = branchID
+
+	err := utils.PublishSyncCreateStockClosings(ctx, s.rabbitmq, req)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+	}
+
+	return nil
+}
+
+func (s *InventoryService) ConsumeSyncStock(req dtos.SyncStockInventoryRequest) error {
+	parentSpan := opentracing.StartSpan("InventoryService-ConsumeSyncStock")
+
+	app := fiber.New()
+	ctx := app.AcquireCtx(&fasthttp.RequestCtx{})
+	defer app.ReleaseCtx(ctx)
+
+	tx := s.repo.BeginTransaction()
+
+	log.Printf("[INFO] Processing ConsumeSyncStock: %v", req)
+
+	filters := make(map[string]string)
+
+	latestInv, err := s.repo.GetLatestInventory(ctx, tx, filters, parentSpan)
+	if err != nil {
+		log.Printf("[ERROR] Failed to get latest inventory: %v", err)
+		utils.LogErrors(parentSpan, err)
+		tx.Rollback()
+	}
+
+	log.Println("UpdateInventory-latestInv", *latestInv.IngoingAt)
+	dates, err := utils.GetDatesBetween(req, latestInv.IngoingAt)
+	if err != nil {
+		log.Printf("[ERROR] Failed to get dates between: %v", err)
+		utils.LogErrors(parentSpan, err)
+		tx.Rollback()
+	}
+
+	for _, date := range dates {
+		log.Printf("[INFO] Processing date: %s", date)
+		stockClosings, err := s.CreateStockClosings(ctx, tx, date, req.UserID, req.BranchID, parentSpan)
+		if err != nil {
+			log.Printf("[ERROR] Failed to create stock closings: %v", err)
+			tx.Rollback()
+		}
+		log.Printf("[INFO] Created stock closings: %v", stockClosings)
+	}
+
+	tx.Commit()
+
+	return nil
+}
+
+// func (s *InventoryService) ConsumeSyncStock(req dtos.SyncStockInventoryRequest) error {
+// 	app := fiber.New()
+// 	ctx := app.AcquireCtx(&fasthttp.RequestCtx{})
+// 	defer app.ReleaseCtx(ctx)
+// 	ctx.Locals("user_id", req.UserID)
+// 	ctx.Locals("branch_id", req.BranchID)
+
+// 	tx := s.repo.BeginTransaction()
+
+// 	log.Printf("[INFO] Processing ConsumeSyncStock: %v", req)
+// 	dates := utils.GetDatesBetween(req)
+
+// 	for _, date := range dates {
+// 		log.Printf("[INFO] Processing date: %s", date)
+// 		stockClosings, err := s.CreateStockClosings(ctx, tx, date, nil)
+// 		if err != nil {
+// 			log.Printf("[ERROR] Failed to create stock closings: %v", err)
+// 			tx.Rollback()
+// 		}
+// 		log.Printf("[INFO] Created stock closings: %v", stockClosings)
+// 	}
+
+// 	tx.Commit()
+
+// 	return nil
+// }
+
+func (s *InventoryService) GetLatestInventory(ctx *fiber.Ctx, tx *gorm.DB, filters map[string]string, span opentracing.Span) (*dtos.InventoryListDTO, error) {
+	childSpan := opentracing.StartSpan("InventoryService-GetLatestInventory", opentracing.ChildOf(span.Context()))
+
+	inventories, err := s.repo.GetLatestInventory(ctx, tx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return inventories, nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/nibroos/s-erp-api/service/internal/auth"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
@@ -24,13 +25,15 @@ type InventoryRepository struct {
 	db       *gorm.DB
 	sqlDB    *sqlx.DB
 	utilRepo *UtilRepository
+	rabbitmq *config.RabbitMQ
 	tracer   opentracing.Tracer
 }
 
-func NewInventoryRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tracer opentracing.Tracer) *InventoryRepository {
+func NewInventoryRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) *InventoryRepository {
 	return &InventoryRepository{
 		db:       db,
 		sqlDB:    sqlDB,
+		rabbitmq: rabbitmq,
 		tracer:   tracer,
 		utilRepo: utilRepo,
 	}
@@ -627,7 +630,7 @@ func (r *InventoryRepository) GetInventoryByID(ctx *fiber.Ctx, params *dtos.GetI
 
 	query += isDeletedQuery
 
-	if err := r.sqlDB.Get(&salesOrder, query, args...); err != nil {
+	if err := tx.Raw(query, args...).Scan(&salesOrder).Error; err != nil {
 		utils.LogErrors(childSpan, err)
 		childSpan.LogKV("query", query)
 		return nil, err
@@ -3485,11 +3488,8 @@ func (r *InventoryRepository) CreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, d
 	return tx, nil
 }
 
-func (r *InventoryRepository) DeleteStockClosingByDate(ctx *fiber.Ctx, tx *gorm.DB, date string, span opentracing.Span) error {
+func (r *InventoryRepository) DeleteStockClosingByDate(ctx *fiber.Ctx, tx *gorm.DB, date string, userID uint, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("InvDtRepository-DeleteStockClosingByDate", opentracing.ChildOf(span.Context()))
-
-	claims := utils.GetClaims(ctx, childSpan)
-	userID := uint(claims["user_id"].(float64))
 
 	now := time.Now()
 	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
@@ -3678,42 +3678,75 @@ func (r *InventoryRepository) GetInventoriesStatus(ctx *fiber.Ctx, filters map[s
 		}
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "iv.ingoing_at")
-	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
-	for key, valueID := range columnIDsKey {
-		if value, ok := filters["order_column"]; ok && value != "" && key == value {
-			orderColumn = valueID
-		}
-	}
+	// orderColumn := utils.GetStringOrDefault(filters["order_column"], "iv.ingoing_at")
+	// orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	// for key, valueID := range columnIDsKey {
+	// 	if value, ok := filters["order_column"]; ok && value != "" && key == value {
+	// 		orderColumn = valueID
+	// 	}
+	// }
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (pi.id)
-					pi.id as id,
-					pi.id as item_id,
-					iv.branch_id
-
-        FROM inventories iv
-				JOIN inv_dts ivd ON ivd.inventory_id = iv.id
-				JOIN products pi ON ivd.item_id = pi.id
-				LEFT JOIN item_units iu ON ivd.item_unit_id = iu.id
-
-				LEFT JOIN mix_values cur ON iv.currency_id = cur.id
-				LEFT JOIN mix_values vat ON iv.vat_id = vat.id
-				LEFT JOIN mix_values pph ON iv.pph23_id = pph.id
-				LEFT JOIN mix_values ot ON iv.io_type_id = ot.id
-				LEFT JOIN customers c ON iv.customer_id = c.id
-				LEFT JOIN so_dts sd ON ivd.ref_so_dt_id = sd.id
-				LEFT JOIN sales_orders so ON sd.sales_order_id = so.id
-				LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
-				LEFT JOIN mix_values ig ON isg.parent_id = ig.id
-
-        LEFT JOIN users cu ON iv.created_by_id = cu.id
-        LEFT JOIN users uu ON iv.updated_by_id = uu.id
-				WHERE iv.deleted_at IS NULL AND ivd.deleted_at IS NULL
-				` + condition + queryGlobal + `
-				ORDER BY pi.id, ` + orderColumn + ` ` + orderDirection + `
+        SELECT 
+					sub.item_id,
+					sub.ingoing_at,
+					sub.branch_id
+        FROM (
+            SELECT DISTINCT pi.id,
+							pi.id,
+							pi.id as item_id,
+							pi.name as item_name,
+							iv.branch_id,
+							iv.ingoing_at,
+							iv.created_at,
+							iv.updated_at,
+							ROW_NUMBER() OVER (PARTITION BY pi.id ORDER BY iv.ingoing_at DESC, pi.id) as rn
+            FROM products pi
+            JOIN inv_dts ivd ON ivd.item_id = pi.id
+            JOIN inventories iv ON ivd.inventory_id = iv.id AND iv.deleted_at IS NULL
+            LEFT JOIN item_units iu ON ivd.item_unit_id = iu.id
+            LEFT JOIN mix_values cur ON iv.currency_id = cur.id
+            LEFT JOIN mix_values vat ON iv.vat_id = vat.id
+            LEFT JOIN mix_values pph ON iv.pph23_id = pph.id
+            LEFT JOIN mix_values ot ON iv.io_type_id = ot.id
+            LEFT JOIN customers c ON iv.customer_id = c.id
+            LEFT JOIN so_dts sd ON ivd.ref_so_dt_id = sd.id
+            LEFT JOIN sales_orders so ON sd.sales_order_id = so.id
+            LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
+            LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+            WHERE ivd.deleted_at IS NULL
+            ` + condition + queryGlobal + `
+        ) sub
+        WHERE rn = 1
+        ORDER BY ingoing_at desc, updated_at desc, created_at desc, item_name
     ) AS alias WHERE 1=1`
+	// baseQuery := `
+	//   FROM (
+	//       SELECT
+	// 				pi.id as id,
+	// 				pi.id as item_id,
+	// 				iv.branch_id
+
+	//       FROM products pi
+	// 			JOIN inv_dts ivd ON ivd.item_id = pi.id
+	// 			JOIN inventories iv ON ivd.inventory_id = iv.id AND iv.deleted_at IS NULL
+	// 			LEFT JOIN item_units iu ON ivd.item_unit_id = iu.id
+
+	// 			LEFT JOIN mix_values cur ON iv.currency_id = cur.id
+	// 			LEFT JOIN mix_values vat ON iv.vat_id = vat.id
+	// 			LEFT JOIN mix_values pph ON iv.pph23_id = pph.id
+	// 			LEFT JOIN mix_values ot ON iv.io_type_id = ot.id
+	// 			LEFT JOIN customers c ON iv.customer_id = c.id
+	// 			LEFT JOIN so_dts sd ON ivd.ref_so_dt_id = sd.id
+	// 			LEFT JOIN sales_orders so ON sd.sales_order_id = so.id
+	// 			LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
+	// 			LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+
+	// 			WHERE ivd.deleted_at IS NULL
+	// 			` + condition + queryGlobal + `
+	// 			ORDER BY ` + orderColumn + ` ` + orderDirection + `, pi.id
+	//   ) AS alias WHERE 1=1`
 
 	query := `SELECT *
 		` + baseQuery
@@ -3977,7 +4010,7 @@ func (r *InventoryRepository) GetInventoriesStatusDt(ctx *fiber.Ctx, filters map
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (ivd.id)
+        SELECT
 					ivd.id as id,
 					ivd.item_id as item_id,
 					TO_CHAR(iv.ingoing_at, 'YYYY-MM-DD') as ingoing_at,
@@ -4018,7 +4051,7 @@ func (r *InventoryRepository) GetInventoriesStatusDt(ctx *fiber.Ctx, filters map
         LEFT JOIN users uu ON iv.updated_by_id = uu.id
 				WHERE iv.deleted_at IS NULL AND ivd.deleted_at IS NULL
 				` + condition + queryGlobal + `
-				ORDER BY ivd.id, ` + orderColumn + ` ` + orderDirection + `
+				ORDER BY ivd.item_id, ` + orderColumn + ` ` + orderDirection + `, ivd.id desc
     ) AS alias WHERE 1=1`
 
 	query := `SELECT *
@@ -4093,4 +4126,91 @@ func (r *InventoryRepository) GetInventoriesStatusDt(ctx *fiber.Ctx, filters map
 	}
 
 	return products, total, nil
+}
+
+func (r *InventoryRepository) GetLatestInventory(ctx *fiber.Ctx, tx *gorm.DB, filters map[string]string, span opentracing.Span) (*dtos.InventoryListDTO, error) {
+	childSpan := opentracing.StartSpan("InventoryRepository-GetLatestInventory", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	products := dtos.InventoryListDTO{}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+
+	condition := ""
+
+	baseQuery := `
+    FROM ( 
+        SELECT
+					iv.id, iv.branch_id,
+					TO_CHAR(iv.ingoing_at, 'YYYY-MM-DD') as ingoing_at,
+					TO_CHAR(iv.do_at, 'YYYY-MM-DD') as do_at,
+					TO_CHAR(iv.invoice_at, 'YYYY-MM-DD') as invoice_at
+
+        FROM inventories iv
+
+        LEFT JOIN users cu ON iv.created_by_id = cu.id
+        LEFT JOIN users uu ON iv.updated_by_id = uu.id
+				WHERE iv.deleted_at IS NULL
+				` + condition + queryGlobal + `
+    ) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "ingoing_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+	query += fmt.Sprintf(" LIMIT 1")
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := tx.Raw(query, args...).Scan(&products).Error
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, countErr
+	}
+
+	if selectErr != nil {
+		return nil, selectErr
+	}
+
+	return &products, nil
 }

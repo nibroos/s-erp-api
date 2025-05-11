@@ -26,7 +26,7 @@ func (r *InventoryUpdateRequest) Validate(req *dtos.FormInventoryRequest, ctx *f
 		"io_type_id":         []string{"required", "exists:mix_values,id"},
 		"status":             []string{"required"},
 		"do_at":              []string{"date:yyyy-MM-dd"},
-		"ingoing_at":         []string{"date:yyyy-MM-dd"},
+		"ingoing_at":         []string{"required", "date:yyyy-MM-dd"},
 		"invoice_at":         []string{"date:yyyy-MM-dd"},
 		"is_vat":             []string{"numeric"},
 		"is_pph23":           []string{"numeric"},

@@ -218,7 +218,7 @@ type InventoryDetailDTO struct {
 	CreatedAt     *string                 `json:"created_at" db:"created_at"`
 	UpdatedAt     *string                 `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string                 `json:"deleted_at" db:"deleted_at"`
-	InvDts        []InventoryInvDtListDTO `json:"inv_dts"`
+	InvDts        []InventoryInvDtListDTO `json:"inv_dts,omitempty" gorm:"-"`
 }
 
 type InventoryInvDtListDTO struct {
@@ -617,9 +617,9 @@ type FormClosingStockStoreRequest struct {
 }
 
 type InventoryStatusDTO struct {
-	ID       uint `json:"id" db:"id"`
-	ItemID   uint `json:"item_id" db:"item_id"`
-	BranchID uint `json:"branch_id" db:"branch_id"`
+	ItemID    uint   `json:"item_id" db:"item_id"`
+	BranchID  uint   `json:"branch_id" db:"branch_id"`
+	IngoingAt string `json:"ingoing_at" db:"ingoing_at"`
 }
 
 type GetInventoriesStatusDtParams struct {
@@ -653,4 +653,12 @@ type InventoryStatusDtDTO struct {
 	InTotal          float64  `json:"in_total" db:"in_total"`
 	OutTotal         float64  `json:"out_total" db:"out_total"`
 	BalanceTotal     float64  `json:"balance_total" db:"balance_total"`
+}
+
+type SyncStockInventoryRequest struct {
+	StartClosingAt *string `json:"start_closing_at"`
+	EndClosingAt   string  `json:"end_closing_at"`
+	Password       string  `json:"password"`
+	UserID         uint    `json:"user_id"`
+	BranchID       uint    `json:"branch_id"`
 }

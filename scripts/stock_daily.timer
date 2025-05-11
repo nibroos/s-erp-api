@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Stock Daily Closing at 23:00 daily
+Requires=stock_daily.service
+
+[Timer]
+Unit=stock_daily.service
+OnCalendar=*-*-* 23:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
@@ -15,13 +16,14 @@ import (
 )
 
 type InventoryController struct {
-	service *service.InventoryService
-	repo    *repository.InventoryRepository
-	tracer  opentracing.Tracer
+	service  *service.InventoryService
+	repo     *repository.InventoryRepository
+	tracer   opentracing.Tracer
+	rabbitmq *config.RabbitMQ
 }
 
-func NewInventoryController(service *service.InventoryService, repo *repository.InventoryRepository, tracer opentracing.Tracer) *InventoryController {
-	return &InventoryController{service: service, repo: repo, tracer: tracer}
+func NewInventoryController(service *service.InventoryService, repo *repository.InventoryRepository, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) *InventoryController {
+	return &InventoryController{service: service, repo: repo, rabbitmq: rabbitmq, tracer: tracer}
 }
 
 func (c *InventoryController) GetInventories(ctx *fiber.Ctx) error {
@@ -154,13 +156,13 @@ func (c *InventoryController) CreateInventory(ctx *fiber.Ctx) error {
 		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Inventory", http.StatusInternalServerError)
 	}
 
-	tx.Commit()
-
 	params := &dtos.GetInventoryParams{ID: createdInventory.ID}
 	getInventory, err := c.service.GetInventoryByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch sales order", http.StatusInternalServerError)
 	}
+
+	tx.Commit()
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
@@ -215,14 +217,14 @@ func (c *InventoryController) UpdateInventory(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Failed to update Inventory", http.StatusInternalServerError, err.Error(), nil)
 	}
 
-	tx.Commit()
-
 	params := &dtos.GetInventoryParams{ID: updatedInventory.ID}
 	getInventory, err := c.service.GetInventoryByID(ctx, params, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.GetResponse(ctx, nil, nil, "Inventory not found", http.StatusNotFound, err.Error(), nil)
 	}
+
+	tx.Commit()
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
@@ -497,8 +499,6 @@ func (c *InventoryController) GetStocks(ctx *fiber.Ctx) error {
 func (c *InventoryController) GetStockClosings(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("InventoryController-GetStockClosings", opentracing.ChildOf(apiSpan.Context()))
-	defer apiSpan.Finish()
-	defer parentSpan.Finish()
 	defer func() {
 		// If no error, delete span
 		if utils.FilterOtel(ctx) {
@@ -548,27 +548,21 @@ func (c *InventoryController) CreateStockClosings(ctx *fiber.Ctx) error {
 		return utils.ErrValidResponse(ctx, apiSpan, "Failed to create Inventory", reqValidator)
 	}
 
+	claims := utils.GetClaims(ctx, parentSpan)
+	userID := uint(claims["user_id"].(float64))
+	branchID := utils.GetDefaultBranchID(ctx)
+
 	tx := c.repo.BeginTransaction()
 
-	// // Lock the rows for update
-	// tx, err := c.service.LockCreateInventoryTable(ctx, tx, req, parentSpan)
-	// if err != nil {
-	// 	utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-	// 	return utils.GetResponse(ctx, nil, nil, "Failed to update Inventory", http.StatusInternalServerError, err.Error(), nil)
-	// }
-
-	// create header inventory
-	tx, err := c.service.CreateStockClosings(ctx, tx, req.EndClosingAt, parentSpan)
-	if err != nil {
-		utils.ErrTrxResponse(ctx, tx, apiSpan, err, "Failed to create Inventory", http.StatusInternalServerError)
-	}
+	// create background sync stock closing
+	c.service.BackgroundSyncCreateStockClosingsByRangeDate(ctx, tx, req, userID, branchID, parentSpan)
 
 	tx.Commit()
 
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Stock Closing created successfully", http.StatusCreated, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Stock Closing processed successfully", http.StatusCreated, nil, nil)
 }
 
 func (c *InventoryController) GetInventoriesStatus(ctx *fiber.Ctx) error {

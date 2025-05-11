@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/opentracing/opentracing-go"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func GetInvIDs(req dtos.FormInventoryRequest) ([]*uint, []*uint, []*uint) {
@@ -762,3 +765,121 @@ func MapInventoryStatusList(items []dtos.InventoryStatusDTO, inventoryItems []dt
 	}
 	return mappedInvDt
 }
+
+func PublishSyncCreateStockClosings(ctx *fiber.Ctx, rabbitmq *config.RabbitMQ, data dtos.SyncStockInventoryRequest) error {
+	body, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	return rabbitmq.Channel.PublishWithContext(ctx.Context(),
+		"",                 // exchange
+		"sync_stock_queue", // routing key (queue name)
+		false,              // mandatory
+		false,              // immediate
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "application/json",
+			Body:         body,
+		},
+	)
+}
+
+func GetDatesBetween(req dtos.SyncStockInventoryRequest, latestInvDate *string) ([]string, error) {
+	const dateLayout = "2006-01-02"
+	var dates []time.Time
+
+	// Parse end_closing_at (required field)
+	endDate, err := time.Parse(dateLayout, req.EndClosingAt)
+	if err != nil {
+		return nil, fmt.Errorf("invalid end_closing_at format: %v", err)
+	}
+	dates = append(dates, endDate)
+
+	// Parse start_closing_at if exists
+	if req.StartClosingAt != nil {
+		startDate, err := time.Parse(dateLayout, *req.StartClosingAt)
+		if err != nil {
+			return nil, fmt.Errorf("invalid start_closing_at format: %v", err)
+		}
+		dates = append(dates, startDate)
+	}
+
+	// Parse latest inventory date if exists
+	if latestInvDate != nil {
+		latestDate, err := time.Parse(dateLayout, *latestInvDate)
+		if err != nil {
+			return nil, fmt.Errorf("invalid latest_inv_date format: %v", err)
+		}
+		dates = append(dates, latestDate)
+	}
+
+	// Find min and max dates
+	if len(dates) == 0 {
+		return []string{}, nil
+	}
+
+	sort.Slice(dates, func(i, j int) bool {
+		return dates[i].Before(dates[j])
+	})
+
+	minDate := dates[0]
+	maxDate := dates[len(dates)-1]
+
+	// Generate all dates between min and max (inclusive)
+	var result []string
+	for d := minDate; !d.After(maxDate); d = d.AddDate(0, 0, 1) {
+		result = append(result, d.Format(dateLayout))
+	}
+	log.Println("dates: ", dates)
+	log.Println("result: ", result)
+
+	return result, nil
+}
+
+// func GetDatesBetween(req dtos.SyncStockInventoryRequest, latestInvDate *string) []string {
+// 	// sort by start closing at to end closing at, get all dates between
+// 	var dates []string
+// 	endClosingAt, _ := time.Parse("2006-01-02", req.EndClosingAt)
+
+// 	// If startClosingAt is nil, use the same date as endClosingAt
+// 	if req.StartClosingAt == nil {
+// 		dates = append(dates, endClosingAt.Format("2006-01-02"))
+// 		return dates
+// 	}
+
+// 	// If startClosingAt has value, get dates between
+// 	startClosingAt, _ := time.Parse("2006-01-02", *req.StartClosingAt)
+
+// 	if startClosingAt.After(endClosingAt) {
+// 		startClosingAt, endClosingAt = endClosingAt, startClosingAt
+// 	}
+
+// 	for d := startClosingAt; d.Before(endClosingAt) || d.Equal(endClosingAt); d = d.AddDate(0, 0, 1) {
+// 		dates = append(dates, d.Format("2006-01-02"))
+// 	}
+
+// 	log.Println("dates: ", dates)
+// 	return dates
+// }
+
+// func GetDatesBetween(req dtos.SyncStockInventoryRequest) []string {
+// 	// sort by start closing at to end closing at, get all dates between
+// 	var dates []string
+// 	endClosingAt, _ := time.Parse("2006-01-02", req.EndClosingAt)
+
+// 	// If startClosingAt is nil, use the same date as endClosingAt
+// 	if req.StartClosingAt == nil {
+// 		dates = append(dates, endClosingAt.Format("2006-01-02"))
+// 		return dates
+// 	}
+
+// 	// If startClosingAt has value, get dates between
+// 	startClosingAt, _ := time.Parse("2006-01-02", *req.StartClosingAt)
+// 	for d := startClosingAt; d.Before(endClosingAt) || d.Equal(endClosingAt); d = d.AddDate(0, 0, 1) {
+// 		dates = append(dates, d.Format("2006-01-02"))
+// 	}
+
+// 	log.Println("dates: ", dates)
+// 	return dates
+// }

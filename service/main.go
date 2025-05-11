@@ -17,6 +17,7 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/nibroos/s-erp-api/service/internal/config"
+	"github.com/nibroos/s-erp-api/service/internal/consumer"
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/middleware"
 	"github.com/nibroos/s-erp-api/service/internal/routes"
@@ -201,8 +202,16 @@ func main() {
 	// static folder on /public/uploads
 	app.Static("/public", "./public")
 
+	// Initialize RabbitMQ for publishers
+	rabbitmq, err := config.NewRabbitMQ()
+	if err != nil {
+		log.Printf("Warning: Failed to initialize RabbitMQ: %v", err)
+		// Don't fatal here, allow service to run without notifications
+	}
+	defer rabbitmq.Close()
+
 	// Setup REST routes
-	routes.SetupRoutes(app, gormDB, sqlDB, tracer)
+	routes.SetupRoutes(app, gormDB, sqlDB, rabbitmq, tracer)
 
 	var wg sync.WaitGroup
 
@@ -225,6 +234,26 @@ func main() {
 			// Start the cron scheduler
 			cron.Start()
 			log.Println("Scheduler started successfully")
+		}()
+	} else if os.Getenv("SERVICE_TYPE") == "consumer" {
+		rabbitmq, err := config.NewRabbitMQ()
+		if err != nil {
+			log.Fatalf("Failed to initialize RabbitMQ: %v", err)
+		}
+		defer rabbitmq.Close()
+
+		// Start the consumer service
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			consumerService := consumer.NewConsumerRouter(rabbitmq, gormDB, sqlDB, tracer)
+			if err := consumerService.SetupConsumers(); err != nil {
+				log.Printf("Consumer service error: %v", err)
+			}
+			log.Println("Consumer service started successfully")
+
+			// Keep the goroutine running
+			select {}
 		}()
 	} else {
 		// Start REST server
