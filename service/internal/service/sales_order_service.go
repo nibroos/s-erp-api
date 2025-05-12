@@ -65,11 +65,15 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 		return nil, tx, err
 	}
 
+	propJson := map[string]interface{}{
+		"ref_type": "sales_orders",
+	}
+
 	// files, err := ctx.FormFile("files")
 	files := form.File["files"]
 	if len(files) > 0 {
 		// handle new files upload
-		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, salesOrder.ID, userID, childSpan)
+		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, salesOrder.ID, userID, propJson, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -158,7 +162,7 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 }
 
 // CreateSchedule
-func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, salesOrder *models.SalesOrder, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, salesOrder *models.SalesOrder, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-CreateSchedule", opentracing.ChildOf(span.Context()))
 
 	schedule, err := utils.MapCreateSchedule(ctx, req, userID, salesOrder, childSpan)
@@ -231,12 +235,16 @@ func (s *SalesOrderService) CreateScheduleNoRef(ctx *fiber.Ctx, req dtos.CreateS
 		return tx, err
 	}
 
+	propJson := map[string]interface{}{
+		"ref_type": "schedules",
+	}
+
 	// files, err := ctx.FormFile("files")
 	files := form.File["files"]
 	log.Println("files 1", files)
 	if len(files) > 0 {
 		// handle new files upload
-		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, *schedule.ID, userID, childSpan)
+		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, *schedule.ID, userID, propJson, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -409,11 +417,15 @@ func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSale
 		}
 	}
 
+	propJson := map[string]interface{}{
+		"ref_type": "sales_orders",
+	}
+
 	// files, err := ctx.FormFile("files")
 	files := form.File["files"]
 	if len(files) > 0 {
 		// handle new files upload
-		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, salesOrder.ID, userID, childSpan)
+		newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, salesOrder.ID, userID, propJson, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -943,7 +955,7 @@ func (s *SalesOrderService) UpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.Up
 			ID: req.SalesOrderID,
 		}
 
-		reqSchedule, err := utils.MapReqCreateSchedule(ctx, req, userID, salesOrder, childSpan)
+		reqSchedule, err := utils.MapReqCreateSchedule(ctx, req, userID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -973,11 +985,25 @@ func (s *SalesOrderService) UpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.Up
 			return nil, err
 		}
 
+		refType := req.RefType
+		if refType == "" {
+			refType = "sales_orders" // sales_orders, schedules
+		}
+
+		refID := *schedule.ID
+		if refType == "sales_orders" {
+			refID = schedule.SalesOrderID
+		}
+
+		propJson := map[string]interface{}{
+			"ref_type": refType,
+		}
+
 		// files, err := ctx.FormFile("files")
 		files := form.File["files"]
 		if len(files) > 0 {
 			// handle new files upload
-			newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, *schedule.ID, userID, childSpan)
+			newFiles, err := utils.MapNewSalesOrderFiles(ctx, files, refID, userID, propJson, childSpan)
 			if err != nil {
 				defer childSpan.Finish()
 				tx.Rollback()
@@ -993,7 +1019,7 @@ func (s *SalesOrderService) UpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.Up
 		}
 
 		if len(req.Attachments) > 0 {
-			attachments := utils.MapUpdateSalesOrderAttachments(ctx, req.Attachments, *schedule.ID, userID, childSpan)
+			attachments := utils.MapUpdateSalesOrderAttachments(ctx, req.Attachments, refID, userID, childSpan)
 
 			if tx, err := s.repo.UpdateAttachmentsDesc(ctx, tx, attachments, childSpan); err != nil {
 				defer childSpan.Finish()
@@ -1166,11 +1192,24 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleAppUpload(ctx *fiber.Ctx, re
 	}
 
 	files := form.File["files"]
-	log.Println("files 1", files)
+
+	refType := req.RefType
+	if refType == "" {
+		refType = "sales_orders" // sales_orders, schedules
+	}
+
+	refID := req.ScheduleID
+	if refType == "sales_orders" {
+		refID = *req.SalesOrderID
+	}
+
+	propJson := map[string]interface{}{
+		"ref_type": refType,
+	}
+
 	if len(files) > 0 {
-		log.Println("files > 0", files, req)
 		// handle new files upload
-		newFiles, err := utils.MapNewSalesOrderFilesApp(ctx, files, req, req.ScheduleID, userID, childSpan)
+		newFiles, err := utils.MapNewSalesOrderFilesApp(ctx, files, req, refID, userID, propJson, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()

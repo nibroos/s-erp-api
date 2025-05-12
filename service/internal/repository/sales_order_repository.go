@@ -436,7 +436,7 @@ func (r *SalesOrderRepository) GetScheduleBySalesOrderID(ctx *fiber.Ctx, params 
 	var args []interface{}
 
 	i := 1
-	query += " AND sales_order_id = $1"
+	query += " AND sales_order_id = $1 AND module_type = 'sales_orders'"
 	args = append(args, params.ID)
 	i++
 
@@ -2080,6 +2080,22 @@ func (r *SalesOrderRepository) GetAttachmentsBySalesOrderID(ctx *fiber.Ctx, tx *
 
 	attachments := []dtos.SalesOrderAttachmentsDTO{}
 
+	var args []interface{}
+
+	i := 1
+
+	condition := ""
+
+	condition += fmt.Sprintf(" AND ltr.ref_id = $%d AND ltr.ref_type = 'sales_orders'", i)
+	args = append(args, salesOrderID)
+	i++
+
+	// if attachmentType != "" {
+	// 	condition += fmt.Sprintf(" AND ltr.file_prop->>'attachment_type' = $%d", i)
+	// 	args = append(args, attachmentType)
+	// 	i++
+	// }
+
 	baseQuery := `
     FROM ( 
 			SELECT DISTINCT ON (ltr.id)
@@ -2098,17 +2114,15 @@ func (r *SalesOrderRepository) GetAttachmentsBySalesOrderID(ctx *fiber.Ctx, tx *
 
 			LEFT JOIN users cu ON ltr.created_by_id = cu.id
 			LEFT JOIN users uu ON ltr.updated_by_id = uu.id
+			WHERE 1=1` + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
 		` + baseQuery
 
-	var args []interface{}
-
-	i := 1
-	query += " AND ref_id = $1"
-	args = append(args, salesOrderID)
-	i++
+	// query += " AND ref_id = $1"
+	// args = append(args, salesOrderID)
+	// i++
 
 	if err := r.sqlDB.SelectContext(ctx.Context(), &attachments, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
@@ -2123,6 +2137,16 @@ func (r *SalesOrderRepository) GetAttachmentsByScheduleID(ctx *fiber.Ctx, tx *go
 	childSpan := opentracing.StartSpan("SalesOrderRepository-GetAttachmentsByScheduleID", opentracing.ChildOf(span.Context()))
 
 	attachments := []dtos.ScheduleAttachmentsDTO{}
+
+	var args []interface{}
+
+	i := 1
+
+	condition := ""
+
+	condition += fmt.Sprintf(" AND ltr.ref_id = $%d AND ltr.ref_type = 'schedules'", i)
+	args = append(args, scheduleID)
+	i++
 
 	baseQuery := `
     FROM ( 
@@ -2142,17 +2166,11 @@ func (r *SalesOrderRepository) GetAttachmentsByScheduleID(ctx *fiber.Ctx, tx *go
 
 			LEFT JOIN users cu ON ltr.created_by_id = cu.id
 			LEFT JOIN users uu ON ltr.updated_by_id = uu.id
+			WHERE 1=1` + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
 		` + baseQuery
-
-	var args []interface{}
-
-	i := 1
-	query += " AND ref_id = $1"
-	args = append(args, scheduleID)
-	i++
 
 	if err := r.sqlDB.SelectContext(ctx.Context(), &attachments, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
@@ -2414,6 +2432,7 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
         SELECT DISTINCT ON (s.id)
 					s.id,
 					s.sales_order_id,
+					s.module_type,
 					-- s.status,
 					s.title,
 					s.color,
@@ -2836,6 +2855,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[
     )
     SELECT 
         sv.status,
+				'sales_orders' as widget_type,
         order_count,
         total_qty,
         grand_total
