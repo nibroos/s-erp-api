@@ -111,7 +111,7 @@ type CreateSalesOrderRequest struct {
 	AgreeAt       *string                `json:"agree_at"`
 	DueAt         *string                `json:"due_at"`
 	SoDts         []CreateSoDtsRequest   `json:"so_dts"`
-	Schedule      *CreateScheduleRequest `json:"schedule"`
+	Schedule      *UpdateScheduleRequest `json:"schedule"`
 
 	CustomerCode string `json:"customer_code"`
 }
@@ -456,20 +456,22 @@ type AppScheduleDetailDTO struct {
 }
 
 type SalesOrderAttachmentsDTO struct {
-	ID         *uint   `json:"id" db:"id"`
-	RefID      *uint   `json:"ref_id" db:"ref_id"`
-	RefType    *string `json:"ref_type" db:"ref_type"`
-	FileType   *string `json:"file_type" db:"file_type"`
-	FileUrl    *string `json:"file_url" db:"file_url"`
-	FileName   *string `json:"file_name" db:"file_name"`
-	Remark     *string `json:"remark" db:"remark"`
-	FileSize   *int64  `json:"file_size" db:"file_size"`
-	DeviceType *string `json:"device_type" db:"device_type"`
-	CreatedAt  *string `json:"created_at" db:"created_at"`
-	DeletedAt  *string `json:"deleted_at" db:"deleted_at"`
+	ID             *uint   `json:"id" db:"id"`
+	RefID          *uint   `json:"ref_id" db:"ref_id"`
+	RefType        *string `json:"ref_type" db:"ref_type"`
+	FileType       *string `json:"file_type" db:"file_type"`
+	FileUrl        *string `json:"file_url" db:"file_url"`
+	FileName       *string `json:"file_name" db:"file_name"`
+	Remark         *string `json:"remark" db:"remark"`
+	FileSize       *int64  `json:"file_size" db:"file_size"`
+	DeviceType     *string `json:"device_type" db:"device_type"`
+	AttachmentType *string `json:"attachment_type" db:"attachment_type"`
+	CreatedAt      *string `json:"created_at" db:"created_at"`
+	DeletedAt      *string `json:"deleted_at" db:"deleted_at"`
 
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	IsChecked     *int    `json:"is_checked" db:"is_checked"`
 }
 
 type ScheduleDetailDTO struct {
@@ -877,6 +879,7 @@ type UpdateSalesOrderScheduleRequest struct {
 	UUID         *string `json:"uuid"`
 	Title        string  `json:"title"`
 	ModuleType   string  `json:"module_type"`
+	RefType      string  `json:"ref_type"`
 	Remark       *string `json:"remark"`
 	Status       string  `json:"status"`
 	StartAt      *string `json:"start_at"`
@@ -887,13 +890,17 @@ type UpdateSalesOrderScheduleRequest struct {
 	DeletedByID  *uint   `json:"deleted_by_id"`
 	IsDelete     *int    `json:"is_delete"`
 
-	Steps        []UpdateScheduleStepRequest      `json:"steps"`
-	Attachments  []UpdateSalesOrderAttachmentsDTO `json:"attachments"`
-	DeletedFiles []uint                           `json:"deleted_files"`
+	Steps                []UpdateScheduleStepRequest      `json:"steps"`
+	Attachments          []UpdateSalesOrderAttachmentsDTO `json:"attachments"`
+	IssueAttachments     []UpdateSalesOrderAttachmentsDTO `json:"issue_attachments"`
+	SolutionAttachments  []UpdateSalesOrderAttachmentsDTO `json:"solution_attachments"`
+	DeletedFiles         []uint                           `json:"deleted_files"`
+	DeletedIssueFiles    []uint                           `json:"deleted_issue_files"`
+	DeletedSolutionFiles []uint                           `json:"deleted_solution_files"`
 }
 
 type UpdateScheduleRequest struct {
-	ID           uint    `json:"id"`
+	ID           *uint   `json:"id"`
 	AssigneeID   *uint   `json:"assignee_id"`
 	CustomerID   *uint   `json:"customer_id"`
 	SalesOrderID *uint   `json:"sales_order_id"`
@@ -923,13 +930,17 @@ type ListScheduleTaskByScheduleID struct {
 
 type UpdateSalesOrderScheduleAppRequest struct {
 	// sales_orders | feedbacks
-	RefType      string                                   `json:"ref_type"`
-	SalesOrderID *uint                                    `json:"sales_order_id"`
-	ScheduleID   uint                                     `json:"schedule_id"`
-	DeviceType   string                                   `json:"device_type"`
-	DeletedFiles []uint                                   `json:"deleted_files"`
-	Tasks        []UpdateSalesOrderScheduleAppTaskRequest `json:"tasks"`
-	Attachments  []UpdateSalesOrderAttachmentsDTO         `json:"attachments"`
+	RefType              string                                   `json:"ref_type"`
+	SalesOrderID         *uint                                    `json:"sales_order_id"`
+	ScheduleID           uint                                     `json:"schedule_id"`
+	DeviceType           string                                   `json:"device_type"`
+	DeletedFiles         []uint                                   `json:"deleted_files"`
+	DeletedIssueFiles    []uint                                   `json:"deleted_issue_files"`
+	DeletedSolutionFiles []uint                                   `json:"deleted_solution_files"`
+	Tasks                []UpdateSalesOrderScheduleAppTaskRequest `json:"tasks"`
+	Attachments          []UpdateSalesOrderAttachmentsDTO         `json:"attachments"`
+	IssueAttachments     []UpdateSalesOrderAttachmentsDTO         `json:"issue_attachments"`
+	SolutionAttachments  []UpdateSalesOrderAttachmentsDTO         `json:"solution_attachments"`
 }
 
 type UpdateSalesOrderScheduleAppTaskRequest struct {
@@ -1130,6 +1141,7 @@ type ScheduleSingleDetailDTO struct {
 type CalendarListDTO struct {
 	ID                 *uint   `json:"id" db:"id"`
 	SalesOrderID       *uint   `json:"sales_order_id" db:"sales_order_id"`
+	ModuleType         *string `json:"module_type" db:"module_type"`
 	CustomerName       *string `json:"customer_name" db:"customer_name"`
 	OrderAt            *string `json:"order_at" db:"order_at"`
 	Start              *string `json:"start" db:"start"`
@@ -1145,18 +1157,19 @@ type CalendarListDTO struct {
 }
 
 type ScheduleAttachmentsDTO struct {
-	ID         *uint   `json:"id" db:"id"`
-	RefID      *uint   `json:"ref_id" db:"ref_id"`
-	RefType    *string `json:"ref_type" db:"ref_type"`
-	FileType   *string `json:"file_type" db:"file_type"`
-	FileUrl    *string `json:"file_url" db:"file_url"`
-	FileUrlApp *string `json:"file_url_app" db:"file_url_app"`
-	FileName   *string `json:"file_name" db:"file_name"`
-	Remark     *string `json:"remark" db:"remark"`
-	FileSize   *int64  `json:"file_size" db:"file_size"`
-	DeviceType *string `json:"device_type" db:"device_type"`
-	CreatedAt  *string `json:"created_at" db:"created_at"`
-	DeletedAt  *string `json:"deleted_at" db:"deleted_at"`
+	ID             *uint   `json:"id" db:"id"`
+	RefID          *uint   `json:"ref_id" db:"ref_id"`
+	RefType        *string `json:"ref_type" db:"ref_type"`
+	FileType       *string `json:"file_type" db:"file_type"`
+	FileUrl        *string `json:"file_url" db:"file_url"`
+	FileUrlApp     *string `json:"file_url_app" db:"file_url_app"`
+	FileName       *string `json:"file_name" db:"file_name"`
+	Remark         *string `json:"remark" db:"remark"`
+	FileSize       *int64  `json:"file_size" db:"file_size"`
+	DeviceType     *string `json:"device_type" db:"device_type"`
+	AttachmentType *string `json:"attachment_type" db:"attachment_type"`
+	CreatedAt      *string `json:"created_at" db:"created_at"`
+	DeletedAt      *string `json:"deleted_at" db:"deleted_at"`
 
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
@@ -1164,6 +1177,7 @@ type ScheduleAttachmentsDTO struct {
 
 type SalesOrderStatusWidget struct {
 	Status     string  `json:"status" db:"status"`
+	WidgetType string  `json:"widget_type" db:"widget_type"`
 	OrderCount int     `json:"order_count" db:"order_count"`
 	TotalQty   float64 `json:"total_qty" db:"total_qty"`
 	GrandTotal float64 `json:"grand_total" db:"grand_total"`

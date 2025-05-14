@@ -301,6 +301,15 @@ services:
       elasticsearch:
         condition: service_healthy
 
+  # wkhtmltopdf:
+  #   image: surnet/alpine-wkhtmltopdf:3.21.3-024b2b2-small
+  #   container_name: wkhtmltopdf-s-erp-api
+  #   networks:
+  #     - s-erp-api-network
+  #   ports:
+  #     - "9000:9000"
+  #   restart: on-failure
+
   # otel-collector:
   #   image: otel/opentelemetry-collector-contrib:0.77.0
   #   container_name: otel-collector-s-erp-api

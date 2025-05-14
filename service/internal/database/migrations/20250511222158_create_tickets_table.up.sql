@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS tickets (
+  id SERIAL PRIMARY KEY,
+  customer_id INT REFERENCES customers(id) ON DELETE RESTRICT,
+  branch_id INT REFERENCES branches(id) ON DELETE RESTRICT,
+  product_id INT REFERENCES mix_values(id) ON DELETE RESTRICT,
+  rev_no INT DEFAULT 0,
+  priority_type TEXT,
+  status TEXT DEFAULT 'OPEN',
+  is_scheduled INT DEFAULT 0,
+  ticket_no TEXT,
+  ticket_no_ori TEXT,
+  title TEXT NOT NULL,
+  issue_desc TEXT,
+  issue_solution TEXT,
+  remark TEXT,
+  reported_at date NOT NULL,
+  created_by_id INT,
+  updated_by_id INT,
+  deleted_by_id INT,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone,
+  deleted_at timestamp with time zone
+);

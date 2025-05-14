@@ -34,7 +34,7 @@ func NewConsumerRouter(rabbitmq *config.RabbitMQ, gormDB *gorm.DB, sqlDB *sqlx.D
 
 func (r *ConsumerRouter) SetupConsumers() error {
 	// Email consumer
-	if err := r.setupEmailConsumer(); err != nil {
+	if err := r.setupSendEmailSolutionConsumer(); err != nil {
 		return err
 	}
 

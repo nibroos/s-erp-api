@@ -397,7 +397,7 @@ func MapUpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, userI
 		AgreeAt:       req.AgreeAt,
 		DueAt:         req.DueAt,
 		BranchID:      &branchID,
-		CreatedByID:   &userID,
+		UpdatedByID:   &userID,
 	}
 
 	return salesOrder, nil
@@ -501,7 +501,7 @@ func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesO
 	return str
 }
 
-func MapCreateSchedule(ctx *fiber.Ctx, req dtos.CreateScheduleRequest, userID uint, salesOrder *models.SalesOrder, span opentracing.Span) (models.Schedule, error) {
+func MapCreateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, userID uint, salesOrder *models.SalesOrder, span opentracing.Span) (models.Schedule, error) {
 	totalTaskStep4Done := 0
 	totalAllTasksDone := 0
 	totalTasks := 0
@@ -592,8 +592,8 @@ func MapCreateScheduleNoRef(ctx *fiber.Ctx, req dtos.CreateScheduleNoRefRequest,
 	return scheduleTask, nil
 }
 
-func MapReqCreateSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, userID uint, salesOrder *models.SalesOrder, span opentracing.Span) (dtos.CreateScheduleRequest, error) {
-	scheduleTask := dtos.CreateScheduleRequest{
+func MapReqCreateSchedule(ctx *fiber.Ctx, req dtos.UpdateSalesOrderScheduleRequest, userID uint, span opentracing.Span) (dtos.UpdateScheduleRequest, error) {
+	scheduleTask := dtos.UpdateScheduleRequest{
 		AssigneeID: req.AssigneeID,
 		UUID:       req.UUID,
 		Title:      req.Title,
@@ -780,7 +780,7 @@ func MapUpdateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, userID ui
 	}
 
 	scheduleTask := models.Schedule{
-		ID:                 &req.ID,
+		ID:                 req.ID,
 		AssigneeID:         req.AssigneeID,
 		SalesOrderID:       *req.SalesOrderID,
 		CustomerID:         req.CustomerID,
@@ -1087,7 +1087,7 @@ func MapFilterUpdateScheduleTasksApp(ctx *fiber.Ctx, req dtos.UpdateSalesOrderSc
 }
 
 // MapNewFiles
-func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, refID uint, userID uint, span opentracing.Span) ([]*models.Letter, error) {
+func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, refID uint, userID uint, propJson map[string]interface{}, span opentracing.Span) ([]*models.Letter, error) {
 	childSpan := opentracing.StartSpan("MapNewSalesOrderFiles", opentracing.ChildOf(span.Context()))
 
 	deviceType := []string{"web"}
@@ -1108,11 +1108,21 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, refID 
 			return nil, err
 		}
 
+		log.Println("propJson", propJson)
 		fileProp := map[string]interface{}{
-			"file_size":   file.Size,
-			"device_type": deviceType,
-			"original":    file.Filename,
+			"file_size":       file.Size,
+			"device_type":     deviceType,
+			"original":        file.Filename,
+			"attachment_type": propJson["attachment_type"],
 		}
+
+		refType := "schedules"
+		if propJson["ref_type"] != nil {
+			refType = propJson["ref_type"].(string)
+			log.Println("propJson[ref_type]", propJson["ref_type"])
+		}
+
+		log.Println("refType3", refType)
 
 		filePropJSON, err := json.Marshal(fileProp)
 		if err != nil {
@@ -1123,7 +1133,7 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, refID 
 		newFile := &models.Letter{
 			RefID: &refID,
 			// RefType:     ctx.FormValue("ref_type", "sales_orders"),
-			RefType:     ctx.FormValue("ref_type", "schedules"),
+			RefType:     refType,
 			FileType:    file.Header.Get("Content-Type"),
 			FileUrl:     newFilePath,
 			FileName:    file.Filename,
@@ -1138,7 +1148,7 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, refID 
 }
 
 // MapNewFiles
-func MapNewSalesOrderFilesApp(ctx *fiber.Ctx, files []*multipart.FileHeader, req dtos.UpdateSalesOrderScheduleAppRequest, refID uint, userID uint, span opentracing.Span) ([]*models.Letter, error) {
+func MapNewSalesOrderFilesApp(ctx *fiber.Ctx, files []*multipart.FileHeader, req dtos.UpdateSalesOrderScheduleAppRequest, refID uint, userID uint, propJson map[string]interface{}, span opentracing.Span) ([]*models.Letter, error) {
 	childSpan := opentracing.StartSpan("MapNewSalesOrderFiles", opentracing.ChildOf(span.Context()))
 
 	deviceType := []string{"web"}
@@ -1157,9 +1167,16 @@ func MapNewSalesOrderFilesApp(ctx *fiber.Ctx, files []*multipart.FileHeader, req
 		}
 
 		fileProp := map[string]interface{}{
-			"file_size":   file.Size,
-			"device_type": deviceType,
-			"original":    file.Filename,
+			"file_size":       file.Size,
+			"device_type":     deviceType,
+			"original":        file.Filename,
+			"attachment_type": propJson["attachment_type"],
+		}
+
+		// refType := ctx.FormValue("ref_type", "schedules")
+		refType := req.RefType
+		if propJson["ref_type"] != nil {
+			refType = propJson["ref_type"].(string)
 		}
 
 		filePropJSON, err := json.Marshal(fileProp)
@@ -1171,7 +1188,7 @@ func MapNewSalesOrderFilesApp(ctx *fiber.Ctx, files []*multipart.FileHeader, req
 		newFile := &models.Letter{
 			RefID: &refID,
 			// RefType:     ctx.FormValue("ref_type", "sales_orders"),
-			RefType:     ctx.FormValue("ref_type", "schedules"),
+			RefType:     refType,
 			FileType:    file.Header.Get("Content-Type"),
 			FileUrl:     newFilePath,
 			FileName:    file.Filename,

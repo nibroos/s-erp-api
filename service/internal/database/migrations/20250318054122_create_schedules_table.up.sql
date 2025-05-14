@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS schedules (
 
 COMMENT ON COLUMN schedules.status IS 'WAITING, PROCESS, FINISHED, CANCELED';
 
-COMMENT ON COLUMN schedules.module_type IS 'sales_orders, feedbacks';
+COMMENT ON COLUMN schedules.module_type IS 'sales_orders, tickets, schedules';
 
 CREATE INDEX idx_schedules_assignee_id ON schedules(assignee_id);
 
