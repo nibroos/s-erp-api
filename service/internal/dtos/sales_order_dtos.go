@@ -471,6 +471,7 @@ type SalesOrderAttachmentsDTO struct {
 
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	IsChecked     *int    `json:"is_checked" db:"is_checked"`
 }
 
 type ScheduleDetailDTO struct {

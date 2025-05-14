@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -915,4 +916,26 @@ func ParseMapQtyToFloat64(value interface{}) float64 {
 		}
 	}
 	return 0.0
+}
+
+// Add this helper method to TicketService
+func GetTemplatePath(fileDir string) string {
+	_, currentFile, _, _ := runtime.Caller(0)
+	// Go up two directories from service/internal/service to internal/
+	basePath := filepath.Dir(filepath.Dir(filepath.Dir(currentFile)))
+	log.Println("basePath2", basePath)
+	// endPath := filepath.Join(basePath, "templates", "send-email-solution-ticket.html")
+	// combine the base path with the file name using
+
+	// Split the provided file directory into parts
+	parts := strings.Split(fileDir, "/")
+	log.Println("parts", parts)
+
+	// Convert slice to variadic arguments
+	allParts := append([]string{basePath}, parts...)
+	templatePath := filepath.Join(allParts...)
+
+	log.Printf("Template path: %s", templatePath)
+
+	return templatePath
 }

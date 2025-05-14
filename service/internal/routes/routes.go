@@ -127,7 +127,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 	SetupSalesOrderRoutes(salesOrders, gormDB, sqlDB, utilRepo, tracer)
 
 	tickets := version.Group("/tickets")
-	SetupTicketRoutes(tickets, gormDB, sqlDB, utilRepo, tracer)
+	SetupTicketRoutes(tickets, gormDB, sqlDB, utilRepo, rabbitmq, tracer)
 
 	inventories := version.Group("/inventories")
 	SetupInventoryRoutes(inventories, gormDB, sqlDB, utilRepo, rabbitmq, tracer)

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<style>
+		body {
+			font-family: Arial;
+			margin: 20px;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+		}
+
+		th,
+		td {
+			border: 1px solid #ddd;
+			padding: 8px;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Invoice {{.InvoiceNumber}}</h1>
+	<p>Here are the details of your invoice:</p>
+	<table>
+		<thead>
+			<tr>
+				<th>Item</th>
+				<th>Quantity</th>
+				<th>Price</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{range .Items}}
+			<tr>
+				<td>{{.Name}}</td>
+				<td>{{.Quantity}}</td>
+				<td>${{.Price}}</td>
+			</tr>
+			{{end}}
+		</tbody>
+	</table>
+</body>
+
+</html>

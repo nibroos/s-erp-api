@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -393,4 +394,29 @@ func GenerateQuoNoOnCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequ
 	str := fmt.Sprintf("%s/%s/%s-%s-%s", surname, orderGlobal, year, month, order)
 
 	return str
+}
+
+// add url before path file by env
+func MapQuotationsToURL(quotations []dtos.QuotationListDTO) []dtos.QuotationListDTO {
+	// quotations := []dtos.SalesOrderAttachmentsDTO{}
+	for i, quotation := range quotations {
+		if quotation.PdfPath != nil {
+			// remove first letter from file url
+			newPdfPath := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), (*quotation.PdfPath)[1:])
+			// newPdfPath := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), *quotation.PdfPath)
+			quotations[i].PdfPathUrl = &newPdfPath
+		}
+	}
+
+	return quotations
+}
+
+// add url before path file by env
+func MapStringToURL(path *string) *string {
+	if path != nil {
+		// remove first letter from file url
+		newPath := fmt.Sprintf("%s/%s", os.Getenv("APP_HOST"), *path)
+		path = &newPath
+	}
+	return path
 }

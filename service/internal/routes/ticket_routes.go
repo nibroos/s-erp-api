@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/controller/rest"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
@@ -10,10 +11,10 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetupTicketRoutes(tickets fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) {
-	ticketRepo := repository.NewTicketRepository(gormDB, sqlDB, utilRepo, tracer)
-	ticketService := service.NewTicketService(ticketRepo, utilRepo, tracer)
-	ticketController := rest.NewTicketController(ticketService, ticketRepo, tracer)
+func SetupTicketRoutes(tickets fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, utilRepo *repository.UtilRepository, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) {
+	ticketRepo := repository.NewTicketRepository(gormDB, sqlDB, utilRepo, rabbitmq, tracer)
+	ticketService := service.NewTicketService(ticketRepo, utilRepo, rabbitmq, tracer)
+	ticketController := rest.NewTicketController(ticketService, ticketRepo, rabbitmq, tracer)
 
 	// tickets.Post("/index-ticket", middleware.PermissionMiddleware("read_masters"), ticketController.GetTickets)
 	// tickets.Post("/index-project-app", ticketController.GetProjectsApp)
@@ -26,6 +27,7 @@ func SetupTicketRoutes(tickets fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB, ut
 	tickets.Post("/restore-ticket", ticketController.RestoreTicket)
 	tickets.Post("/excel-ticket", ticketController.ExcelGetTickets)
 	tickets.Post("/csv-ticket", ticketController.CsvGetTickets)
+	tickets.Post("/send-solution-email-ticket", ticketController.SendEmailSolutionTicket)
 
 	tickets.Post("/index-calendar", ticketController.GetCalendars)
 	tickets.Post("/index-schedule-app", ticketController.GetCalendars)

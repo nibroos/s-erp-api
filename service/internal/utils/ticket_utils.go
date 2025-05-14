@@ -1,14 +1,17 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/opentracing/opentracing-go"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func GenTicketNo(ctx *fiber.Ctx, req dtos.FormTicketRequest, orderedNumber int, globalOrderedNumber int, span opentracing.Span) string {
@@ -166,3 +169,22 @@ func MapCreateUpdateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRequest, use
 // 	FileName *string `json:"file_name" db:"file_name"`
 // 	Remark   *string `json:"remark" db:"remark"`
 // }
+
+func PublishSendEmailSolutionTicket(ctx *fiber.Ctx, rabbitmq *config.RabbitMQ, data dtos.FormTicketRequest) error {
+	body, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	return rabbitmq.Channel.PublishWithContext(ctx.Context(),
+		"",                                 // exchange
+		"send_email_solution_ticket_queue", // routing key (queue name)
+		false,                              // mandatory
+		false,                              // immediate
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "application/json",
+			Body:         body,
+		},
+	)
+}

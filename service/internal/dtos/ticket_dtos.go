@@ -24,25 +24,26 @@ type GetTicketsRequest struct {
 }
 
 type FormTicketRequest struct {
-	ID                   *uint                            `json:"id"`
-	CustomerID           *uint                            `json:"customer_id"`
-	ProductID            *uint                            `json:"product_id"`
-	BranchID             *uint                            `json:"branch_id"`
-	PriorityType         *string                          `json:"priority_type"`
-	RevNo                *int                             `json:"rev_no"`
-	Title                string                           `json:"title" db:"title"`
-	TicketNo             *string                          `json:"ticket_no" db:"ticket_no"`
-	TicketNoOri          *string                          `json:"ticket_no_ori" db:"ticket_no_ori"`
-	IssueDesc            *string                          `json:"issue_desc" db:"issue_desc"`
-	IssueSolution        *string                          `json:"issue_solution" db:"issue_solution"`
-	ReportedAt           *string                          `json:"reported_at" db:"reported_at"`
-	Remark               *string                          `json:"remark" db:"remark"`
-	Status               string                           `json:"status" db:"status"`
-	Schedule             *UpdateScheduleRequest           `json:"schedule"`
-	IssueAttachments     []UpdateSalesOrderAttachmentsDTO `json:"issue_attachments"`
-	SolutionAttachments  []UpdateSalesOrderAttachmentsDTO `json:"solution_attachments"`
-	DeletedIssueFiles    []uint                           `json:"deleted_issue_files"`
-	DeletedSolutionFiles []uint                           `json:"deleted_solution_files"`
+	ID                          *uint                            `json:"id"`
+	CustomerID                  *uint                            `json:"customer_id"`
+	ProductID                   *uint                            `json:"product_id"`
+	BranchID                    *uint                            `json:"branch_id"`
+	PriorityType                *string                          `json:"priority_type"`
+	RevNo                       *int                             `json:"rev_no"`
+	Title                       string                           `json:"title" db:"title"`
+	TicketNo                    *string                          `json:"ticket_no" db:"ticket_no"`
+	TicketNoOri                 *string                          `json:"ticket_no_ori" db:"ticket_no_ori"`
+	IssueDesc                   *string                          `json:"issue_desc" db:"issue_desc"`
+	IssueSolution               *string                          `json:"issue_solution" db:"issue_solution"`
+	ReportedAt                  *string                          `json:"reported_at" db:"reported_at"`
+	Remark                      *string                          `json:"remark" db:"remark"`
+	Status                      string                           `json:"status" db:"status"`
+	Schedule                    *UpdateScheduleRequest           `json:"schedule"`
+	IssueAttachments            []UpdateSalesOrderAttachmentsDTO `json:"issue_attachments"`
+	SolutionAttachments         []UpdateSalesOrderAttachmentsDTO `json:"solution_attachments"`
+	SelectedSolutionAttachments []uint                           `json:"selected_solution_attachments"`
+	DeletedIssueFiles           []uint                           `json:"deleted_issue_files"`
+	DeletedSolutionFiles        []uint                           `json:"deleted_solution_files"`
 
 	CustomerCode string `json:"customer_code"`
 }
@@ -162,4 +163,14 @@ type TicketStatusWidget struct {
 	Status      string `json:"status" db:"status"`
 	TicketCount int    `json:"ticket_count" db:"ticket_count"`
 	WidgetType  string `json:"widget_type" db:"widget_type"`
+}
+
+type SendEmailSolutionRequest struct {
+	Req          FormTicketRequest
+	CustomerName string `json:"customer_name"`
+	Message      string `json:"message"`
+	Subject      string `json:"subject"`
+	ButtonURL    string `json:"button_url"`
+	ButtonText   string `json:"button_string"`
+	SentAt       string `json:"sent_at"`
 }

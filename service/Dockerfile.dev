@@ -1,10 +1,59 @@
-# Development Dockerfile
+FROM surnet/alpine-wkhtmltopdf:3.21.3-024b2b2-small AS wkhtmltopdf
+
 FROM golang:1.24-alpine AS base
 
 ENV GOLANG_VERSION=1.24.0
 
+# libxrender1 \
+#     libjpeg62-turbo \
+#     fontconfig \
+#     libxtst6 \
+#     xfonts-75dpi \
+#     xfonts-base \
+#     xz-utils && \
 # Install necessary packages including Make
-RUN apk add --no-cache make curl postgresql-client tzdata
+# RUN apk add --no-cache make curl postgresql-client tzdata
+RUN apk add --no-cache make \
+    curl \
+    postgresql-client \
+    tzdata \
+    git \
+    bash \
+    libxi \
+    libxtst \
+    libstdc++ \
+    libx11 \
+    libxrender \
+    libxext \
+    libssl3 \
+    ca-certificates \
+    fontconfig \
+    freetype \
+    ttf-dejavu \
+    ttf-droid \
+    ttf-freefont \
+    ttf-liberation \
+    && apk add --no-cache --virtual .build-deps \
+    msttcorefonts-installer \
+    && update-ms-fonts \
+    && fc-cache -f \
+    && rm -rf /tmp/* \
+    && apk del .build-deps
+
+COPY --from=wkhtmltopdf /bin/wkhtmltopdf /bin/wkhtmltopdf
+COPY --from=wkhtmltopdf /lib/libwkhtmltox* /lib/
+
+# RUN curl "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox_0.12.6-1.buster_amd64.deb" -L -o "wkhtmltopdf.deb"
+# RUN dpkg -i wkhtmltopdf.deb
+
+# Install wkhtmltopdf using static binary
+# RUN curl -L https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-3/wkhtmltox-0.12.6-3.archlinux-x86_64.pkg.tar.xz -o wkhtmltox.tar.xz \
+#     && tar -xf wkhtmltox.tar.xz \
+#     && mv usr/bin/wkhtmltopdf /usr/local/bin/wkhtmltopdf \
+#     && mv usr/bin/wkhtmltoimage /usr/local/bin/wkhtmltoimage \
+#     && chmod +x /usr/local/bin/wkhtmltopdf \
+#     && chmod +x /usr/local/bin/wkhtmltoimage \
+#     && rm -rf wkhtmltox.tar.xz wkhtmltox
 
 # Set the timezone to GMT+7
 RUN cp /usr/share/zoneinfo/Asia/Bangkok /etc/localtime && \

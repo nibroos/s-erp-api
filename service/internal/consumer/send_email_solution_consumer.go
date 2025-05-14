@@ -10,17 +10,17 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func (r *ConsumerRouter) setupSyncStockConsumer() error {
+func (r *ConsumerRouter) setupSendEmailSolutionConsumer() error {
 	ch := r.rabbitmq.Channel
 
 	// Setup dead letter exchange and queue
 	dlx, err := ch.QueueDeclare(
-		"sync_stock_dlq", // dead letter queue name
-		true,             // durable
-		false,            // delete when unused
-		false,            // exclusive
-		false,            // no-wait
-		nil,              // arguments
+		"send_email_solution_ticket_dlq", // dead letter queue name
+		true,                             // durable
+		false,                            // delete when unused
+		false,                            // exclusive
+		false,                            // no-wait
+		nil,                              // arguments
 	)
 	if err != nil {
 		return err
@@ -28,11 +28,11 @@ func (r *ConsumerRouter) setupSyncStockConsumer() error {
 
 	// Declare the main queue with dead letter configuration
 	q, err := ch.QueueDeclare(
-		"sync_stock_queue", // queue name
-		true,               // durable
-		false,              // delete when unused
-		false,              // exclusive
-		false,              // no-wait
+		"send_email_solution_ticket_queue", // queue name
+		true,                               // durable
+		false,                              // delete when unused
+		false,                              // exclusive
+		false,                              // no-wait
 		amqp.Table{
 			"x-dead-letter-exchange":    "",                               // default exchange
 			"x-dead-letter-routing-key": dlx.Name,                         // route to DLQ
@@ -66,16 +66,16 @@ func (r *ConsumerRouter) setupSyncStockConsumer() error {
 				}
 			}
 
-			var syncStockData dtos.SyncStockInventoryRequest
+			var syncStockData dtos.FormTicketRequest
 			if err := json.Unmarshal(d.Body, &syncStockData); err != nil {
-				log.Printf("Error parsing sync stock data: %v", err)
+				log.Printf("Error parsing send email data: %v", err)
 				r.handleMessageFailure(d, retryCount, q.Name, dlx.Name, err)
 				continue
 			}
 
-			// Process sync stock
-			if err := r.processSyncStockService(syncStockData); err != nil {
-				log.Printf("Error processing sync stock: %v", err)
+			// Process send email
+			if err := r.sendEmailSolutionService(syncStockData); err != nil {
+				log.Printf("Error processing send email: %v", err)
 				r.handleMessageFailure(d, retryCount, q.Name, dlx.Name, err)
 				continue
 			}
@@ -87,13 +87,13 @@ func (r *ConsumerRouter) setupSyncStockConsumer() error {
 	return nil
 }
 
-func (r *ConsumerRouter) processSyncStockService(data dtos.SyncStockInventoryRequest) error {
+func (r *ConsumerRouter) sendEmailSolutionService(data dtos.FormTicketRequest) error {
 	utilRepo := repository.NewUtilRepository(r.gormDB, r.sqlDB)
-	inventoryRepo := repository.NewInventoryRepository(r.gormDB, r.sqlDB, utilRepo, r.rabbitmq, r.tracer)
-	inventoryService := service.NewInventoryService(inventoryRepo, utilRepo, r.rabbitmq, r.tracer)
+	ticketRepo := repository.NewTicketRepository(r.gormDB, r.sqlDB, utilRepo, r.rabbitmq, r.tracer)
+	ticketService := service.NewTicketService(ticketRepo, utilRepo, r.rabbitmq, r.tracer)
 
-	log.Printf("Processing processSyncStockService data: %+v", data)
-	if err := inventoryService.ConsumeSyncStock(data); err != nil {
+	log.Printf("Processing sendEmailSolutionService data: %+v", data)
+	if err := ticketService.ConsumeSendEmailSolutionTicket(data); err != nil {
 		return err
 	}
 

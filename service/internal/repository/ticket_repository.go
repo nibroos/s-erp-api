@@ -11,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/nibroos/s-erp-api/service/internal/auth"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
@@ -23,13 +24,15 @@ type TicketRepository struct {
 	db       *gorm.DB
 	sqlDB    *sqlx.DB
 	utilRepo *UtilRepository
+	rabbitmq *config.RabbitMQ
 	tracer   opentracing.Tracer
 }
 
-func NewTicketRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tracer opentracing.Tracer) *TicketRepository {
+func NewTicketRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) *TicketRepository {
 	return &TicketRepository{
 		db:       db,
 		sqlDB:    sqlDB,
+		rabbitmq: rabbitmq,
 		tracer:   tracer,
 		utilRepo: utilRepo,
 	}
@@ -889,6 +892,7 @@ func (r *TicketRepository) GetAttachmentsByTicketID(ctx *fiber.Ctx, tx *gorm.DB,
 				ltr.file_prop->>'attachment_type' as attachment_type,
 
 				TO_CHAR(ltr.created_at, 'YYYY-MM-DD') as created_at,
+				1 as is_checked,
 
 				cu.name as created_by_name,
 				uu.name as updated_by_name

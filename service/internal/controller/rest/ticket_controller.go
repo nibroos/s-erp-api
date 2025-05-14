@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/service"
@@ -15,13 +16,14 @@ import (
 )
 
 type TicketController struct {
-	service *service.TicketService
-	repo    *repository.TicketRepository
-	tracer  opentracing.Tracer
+	service  *service.TicketService
+	repo     *repository.TicketRepository
+	rabbitmq *config.RabbitMQ
+	tracer   opentracing.Tracer
 }
 
-func NewTicketController(service *service.TicketService, repo *repository.TicketRepository, tracer opentracing.Tracer) *TicketController {
-	return &TicketController{service: service, repo: repo, tracer: tracer}
+func NewTicketController(service *service.TicketService, repo *repository.TicketRepository, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) *TicketController {
+	return &TicketController{service: service, repo: repo, rabbitmq: rabbitmq, tracer: tracer}
 }
 
 func (c *TicketController) GetTickets(ctx *fiber.Ctx) error {
@@ -848,4 +850,59 @@ func (c *TicketController) GetWidgetTickets(ctx *fiber.Ctx) error {
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
 	return utils.GetResponse(ctx, tickets, paginationMeta, "Ticket fetched successfully", http.StatusOK, nil, nil)
+}
+
+// send email solution
+func (c *TicketController) SendEmailSolutionTicket(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("TicketController-SendEmailSolutionTicket", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.FormTicketRequest
+
+	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
+	}
+
+	// // Validate the request
+	// reqValidator, isValid := form_requests.NewTicketUpdateRequest().Validate(&req, ctx)
+	// if !isValid {
+	// 	utils.LogResponse(apiSpan, reqValidator)
+	// 	return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
+	// }
+
+	// Extract user ID from JWT
+	claims := utils.GetClaims(ctx, parentSpan)
+	userID := uint(claims["user_id"].(float64))
+	branchID := utils.GetDefaultBranchID(ctx)
+
+	tx := c.repo.BeginTransaction()
+
+	// Lock the rows for update
+	tx, err := c.service.LockTicketTable(ctx, tx, req, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Ticket", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	err = c.service.PublishSendEmailSolutionTicket(ctx, req, userID, branchID, tx, parentSpan)
+
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to update Ticket", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	tx.Commit()
+
+	filters := make(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+
+	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Email sent", http.StatusOK, nil, nil)
 }
