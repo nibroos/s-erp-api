@@ -118,6 +118,11 @@ func (c *WarehouseController) CreateWarehouse(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
+	var branchID uint
+	if claims["bid"] != nil {
+		branchID = uint(claims["bid"].(float64))
+	}
+
 	optionsJSON := map[string]interface{}{
 		"code": req.Code,
 	}
@@ -134,6 +139,7 @@ func (c *WarehouseController) CreateWarehouse(ctx *fiber.Ctx) error {
 		OrderItem:   nil,
 		Status:      req.Status,
 		CreatedByID: &userID,
+		BranchID:    &branchID,
 		OptionsJSON: string(optionsJSONStr),
 	}
 
@@ -191,6 +197,11 @@ func (c *WarehouseController) UpdateWarehouse(ctx *fiber.Ctx) error {
 	}
 	userID := uint(claims["user_id"].(float64))
 
+	var branchID uint
+	if claims["bid"] != nil {
+		branchID = uint(claims["bid"].(float64))
+	}
+
 	optionsJSON := map[string]interface{}{
 		"code": req.Code,
 	}
@@ -207,6 +218,7 @@ func (c *WarehouseController) UpdateWarehouse(ctx *fiber.Ctx) error {
 		Remark:      req.Remark,
 		Status:      req.Status,
 		UpdatedByID: &userID,
+		BranchID:    &branchID,
 		OptionsJSON: string(optionsJSONStr),
 	}
 
