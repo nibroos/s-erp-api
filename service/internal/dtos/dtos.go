@@ -2502,6 +2502,7 @@ type WarehouseListDTO struct {
 	Code          *string `json:"code" db:"code"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	BranchID      *uint   `json:"branch_id" db:"branch_id"`
 	CreatedAt     *string `json:"created_at" db:"created_at"`
 	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
@@ -2516,6 +2517,7 @@ type WarehouseDetailDTO struct {
 	Code          *string `json:"code" db:"code"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	BranchID      *uint   `json:"branch_id" db:"branch_id"`
 	CreatedAt     *string `json:"created_at" db:"created_at"`
 	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
 	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
