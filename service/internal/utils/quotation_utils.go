@@ -402,8 +402,8 @@ func MapQuotationsToURL(quotations []dtos.QuotationListDTO) []dtos.QuotationList
 	for i, quotation := range quotations {
 		if quotation.PdfPath != nil {
 			// remove first letter from file url
-			newPdfPath := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), (*quotation.PdfPath)[1:])
-			// newPdfPath := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), *quotation.PdfPath)
+			newPdfPath := fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), (*quotation.PdfPath)[1:])
+			// newPdfPath := fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), *quotation.PdfPath)
 			quotations[i].PdfPathUrl = &newPdfPath
 		}
 	}

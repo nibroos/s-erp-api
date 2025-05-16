@@ -79,6 +79,7 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	req.CompanyAddress = utils.ParseStringPointer(ctx.FormValue("company_address"))
 	req.CompanyPhone = utils.ParseStringPointer(ctx.FormValue("company_phone"))
 	req.CompanyEmail = utils.ParseStringPointer(ctx.FormValue("company_email"))
+	req.CompanyEmailPassword = utils.ParseStringPointer(ctx.FormValue("company_email_password"))
 	req.CompanyWebsite = utils.ParseStringPointer(ctx.FormValue("company_website"))
 	req.CompanyDescription = utils.ParseStringPointer(ctx.FormValue("company_description"))
 	req.CompanyRemark = utils.ParseStringPointer(ctx.FormValue("company_remark"))
@@ -120,27 +121,28 @@ func (c *CompanyProfileController) CreateCompanyProfile(ctx *fiber.Ctx) error {
 	}
 
 	companyProfile := models.CompanyProfile{
-		ParentID:           req.ParentID,
-		IsPrimary:          req.IsPrimary,
-		CompanyOwnerName:   req.CompanyOwnerName,
-		CompanySignName:    req.CompanySignName,
-		CompanyName:        req.CompanyName,
-		CompanyCity:        req.CompanyCity,
-		CompanyProvince:    req.CompanyProvince,
-		CompanyDistrict:    req.CompanyDistrict,
-		CompanyPostalCode:  req.CompanyPostalCode,
-		CompanyAddress:     req.CompanyAddress,
-		CompanyPhone:       req.CompanyPhone,
-		CompanyEmail:       req.CompanyEmail,
-		CompanyWebsite:     req.CompanyWebsite,
-		CompanyLogo:        req.CompanyLogo,
-		CompanySign:        req.CompanySign,
-		CompanyDescription: req.CompanyDescription,
-		CompanyRemark:      req.CompanyRemark,
-		CompanyStatus:      req.CompanyStatus,
-		CompanyOptionsJSON: "{}",
-		CreatedByID:        userID,
-		UpdatedByID:        userID,
+		ParentID:             req.ParentID,
+		IsPrimary:            req.IsPrimary,
+		CompanyOwnerName:     req.CompanyOwnerName,
+		CompanySignName:      req.CompanySignName,
+		CompanyName:          req.CompanyName,
+		CompanyCity:          req.CompanyCity,
+		CompanyProvince:      req.CompanyProvince,
+		CompanyDistrict:      req.CompanyDistrict,
+		CompanyPostalCode:    req.CompanyPostalCode,
+		CompanyAddress:       req.CompanyAddress,
+		CompanyPhone:         req.CompanyPhone,
+		CompanyEmail:         req.CompanyEmail,
+		CompanyEmailPassword: req.CompanyEmailPassword,
+		CompanyWebsite:       req.CompanyWebsite,
+		CompanyLogo:          req.CompanyLogo,
+		CompanySign:          req.CompanySign,
+		CompanyDescription:   req.CompanyDescription,
+		CompanyRemark:        req.CompanyRemark,
+		CompanyStatus:        req.CompanyStatus,
+		CompanyOptionsJSON:   "{}",
+		CreatedByID:          userID,
+		UpdatedByID:          userID,
 	}
 
 	var bankInformations []*models.BankInformation
@@ -256,6 +258,7 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	req.CompanyAddress = utils.ParseStringPointer(ctx.FormValue("company_address"))
 	req.CompanyPhone = utils.ParseStringPointer(ctx.FormValue("company_phone"))
 	req.CompanyEmail = utils.ParseStringPointer(ctx.FormValue("company_email"))
+	req.CompanyEmailPassword = utils.ParseStringPointer(ctx.FormValue("company_email_password"))
 	req.CompanyWebsite = utils.ParseStringPointer(ctx.FormValue("company_website"))
 	req.CompanyDescription = utils.ParseStringPointer(ctx.FormValue("company_description"))
 	req.CompanyRemark = utils.ParseStringPointer(ctx.FormValue("company_remark"))
@@ -316,27 +319,28 @@ func (c *CompanyProfileController) UpdateCompanyProfile(ctx *fiber.Ctx) error {
 	}
 
 	companyProfile := models.CompanyProfile{
-		ID:                 req.ID,
-		ParentID:           req.ParentID,
-		IsPrimary:          req.IsPrimary,
-		CompanyOwnerName:   req.CompanyOwnerName,
-		CompanySignName:    req.CompanySignName,
-		CompanyName:        req.CompanyName,
-		CompanyCity:        req.CompanyCity,
-		CompanyProvince:    req.CompanyProvince,
-		CompanyDistrict:    req.CompanyDistrict,
-		CompanyPostalCode:  req.CompanyPostalCode,
-		CompanyAddress:     req.CompanyAddress,
-		CompanyPhone:       req.CompanyPhone,
-		CompanyEmail:       req.CompanyEmail,
-		CompanyWebsite:     req.CompanyWebsite,
-		CompanyLogo:        req.CompanyLogo,
-		CompanySign:        req.CompanySign,
-		CompanyDescription: req.CompanyDescription,
-		CompanyRemark:      req.CompanyRemark,
-		CompanyStatus:      req.CompanyStatus,
-		CompanyOptionsJSON: "{}",
-		UpdatedByID:        userID,
+		ID:                   req.ID,
+		ParentID:             req.ParentID,
+		IsPrimary:            req.IsPrimary,
+		CompanyOwnerName:     req.CompanyOwnerName,
+		CompanySignName:      req.CompanySignName,
+		CompanyName:          req.CompanyName,
+		CompanyCity:          req.CompanyCity,
+		CompanyProvince:      req.CompanyProvince,
+		CompanyDistrict:      req.CompanyDistrict,
+		CompanyPostalCode:    req.CompanyPostalCode,
+		CompanyAddress:       req.CompanyAddress,
+		CompanyPhone:         req.CompanyPhone,
+		CompanyEmail:         req.CompanyEmail,
+		CompanyEmailPassword: req.CompanyEmailPassword,
+		CompanyWebsite:       req.CompanyWebsite,
+		CompanyLogo:          req.CompanyLogo,
+		CompanySign:          req.CompanySign,
+		CompanyDescription:   req.CompanyDescription,
+		CompanyRemark:        req.CompanyRemark,
+		CompanyStatus:        req.CompanyStatus,
+		CompanyOptionsJSON:   "{}",
+		UpdatedByID:          userID,
 	}
 
 	var bankInformations []*models.BankInformation

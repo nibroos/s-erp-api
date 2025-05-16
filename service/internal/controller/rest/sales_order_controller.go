@@ -35,10 +35,7 @@ func (c *SalesOrderController) GetSalesOrders(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	log.Println("filters2", ctx.Locals("filters"))
 	filters, ok := ctx.Locals("filters").(map[string]string)
-
-	log.Println("filters", filters)
 
 	if !ok {
 		apiSpan.LogKV("response_body", string("SalesOrderController-GetSalesOrders: Invalid filters"))
@@ -892,10 +889,7 @@ func (c *SalesOrderController) GetWidgetSalesOrders(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	log.Println("filters2", ctx.Locals("filters"))
 	filters, ok := ctx.Locals("filters").(map[string]string)
-
-	log.Println("filters", filters)
 
 	if !ok {
 		apiSpan.LogKV("response_body", string("SalesOrderController-GetWidgetSalesOrders: Invalid filters"))
@@ -910,4 +904,67 @@ func (c *SalesOrderController) GetWidgetSalesOrders(ctx *fiber.Ctx) error {
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
 	return utils.GetResponse(ctx, salesOrders, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, nil)
+}
+
+func (c *SalesOrderController) GetWidgetSalesOrdersByOrderType(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("SalesOrderController-GetWidgetSalesOrdersByOrderType", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("SalesOrderController-GetWidgetSalesOrdersByOrderType: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	salesOrders, total, err := c.service.GetWidgetSalesOrdersByOrderType(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, salesOrders, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, nil)
+}
+
+func (c *SalesOrderController) GetWidgetSalesOrdersByBestCustomer(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("SalesOrderController-GetWidgetSalesOrdersByBestCustomer", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("SalesOrderController-GetWidgetSalesOrdersByBestCustomer: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	salesOrders, total, err := c.service.GetWidgetSalesOrdersByBestCustomer(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
+	}
+
+	salesOrdersTotal, err := c.service.GetWidgetSalesOrdersByBestCustomerTotal(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, salesOrders, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, map[string]interface{}{
+		"total": salesOrdersTotal,
+	})
 }

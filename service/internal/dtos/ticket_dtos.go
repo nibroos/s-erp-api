@@ -45,7 +45,12 @@ type FormTicketRequest struct {
 	DeletedIssueFiles           []uint                           `json:"deleted_issue_files"`
 	DeletedSolutionFiles        []uint                           `json:"deleted_solution_files"`
 
-	CustomerCode string `json:"customer_code"`
+	Email        string  `json:"email"`
+	CustomerCode string  `json:"customer_code"`
+	CustomerName string  `json:"customer_name"`
+	UpdatedAt    *string `json:"updated_at"`
+	SentEmailID  *uint   `json:"sent_email_id"`
+	CreatedByID  *uint   `json:"created_by_id"`
 }
 
 type UpdateTicketAttachmentsDTO struct {
@@ -98,7 +103,7 @@ type TicketListDTO struct {
 	Remark        *string `json:"remark" db:"remark"`
 	Status        string  `json:"status" db:"status"`
 	ReportedAt    *string `json:"reported_at" db:"reported_at"`
-	CreatedByID   *uint   `json:"crweated_by_id" db:"created_by_id"`
+	CreatedByID   *uint   `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`
 	DeletedByID   *uint   `json:"deleted_by_id" db:"deleted_by_id"`
 	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
@@ -129,7 +134,7 @@ type TicketDetailDTO struct {
 	Remark              *string                    `json:"remark" db:"remark"`
 	Status              string                     `json:"status" db:"status"`
 	ReportedAt          *string                    `json:"reported_at" db:"reported_at"`
-	CreatedByID         *uint                      `json:"crweated_by_id" db:"created_by_id"`
+	CreatedByID         *uint                      `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID         *uint                      `json:"updated_by_id" db:"updated_by_id"`
 	DeletedByID         *uint                      `json:"deleted_by_id" db:"deleted_by_id"`
 	CreatedByName       *string                    `json:"created_by_name" db:"created_by_name"`
@@ -140,6 +145,28 @@ type TicketDetailDTO struct {
 	Schedule            *ScheduleDetailDTO         `json:"schedule"`
 	IssueAttachments    []SalesOrderAttachmentsDTO `json:"issue_attachments"`
 	SolutionAttachments []SalesOrderAttachmentsDTO `json:"solution_attachments"`
+	SentEmails          []EmailListDTO             `json:"sent_emails"`
+}
+
+type EmailListDTO struct {
+	ID            *uint   `json:"id" db:"id"`
+	RefID         *uint   `json:"ref_id" db:"ref_id"`
+	SenderID      *uint   `json:"sender_id" db:"sender_id"`
+	RefType       *string `json:"ref_type" db:"ref_type"`
+	FromEmail     *string `json:"from_email" db:"from_email"`
+	ToEmail       *string `json:"to_email" db:"to_email"`
+	Subject       *string `json:"subject" db:"subject"`
+	Remark        *string `json:"remark" db:"remark"`
+	ErrorMessage  *string `json:"error_message" db:"error_message"`
+	Status        *string `json:"status" db:"status"`
+	CreatedByID   *uint   `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint   `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint   `json:"deleted_by_id" db:"deleted_by_id"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	LogJson       *string `json:"log_json" db:"log_json"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
 }
 
 type TicketAttachmentsDTO struct {
@@ -167,10 +194,33 @@ type TicketStatusWidget struct {
 
 type SendEmailSolutionRequest struct {
 	Req          FormTicketRequest
-	CustomerName string `json:"customer_name"`
-	Message      string `json:"message"`
-	Subject      string `json:"subject"`
-	ButtonURL    string `json:"button_url"`
-	ButtonText   string `json:"button_string"`
-	SentAt       string `json:"sent_at"`
+	CustomerName string                   `json:"customer_name"`
+	Message      string                   `json:"message"`
+	Subject      string                   `json:"subject"`
+	ButtonURL    string                   `json:"button_url"`
+	ButtonText   string                   `json:"button_string"`
+	SentAt       string                   `json:"sent_at"`
+	Company      *CompanyProfileDetailDTO `json:"company"`
+
+	Attachments []UpdateSalesOrderAttachmentsDTO `json:"attachments"`
+}
+
+type FormSentEmailRequest struct {
+	ID           *uint   `json:"id"`
+	RefID        *uint   `json:"ref_id"`
+	SenderID     *uint   `json:"sender_id"`
+	RefType      *string `json:"ref_type"`
+	FromEmail    *string `json:"from_email"`
+	ToEmail      *string `json:"to_email"`
+	Subject      *string `json:"subject"`
+	Remark       *string `json:"remark"`
+	ErrorMessage *string `json:"error_message"`
+	Status       *string `json:"status"`
+	CreatedByID  *uint   `json:"created_by_id"`
+	UpdatedByID  *uint   `json:"updated_by_id"`
+	DeletedByID  *uint   `json:"deleted_by_id"`
+	DeletedAt    *string `json:"deleted_at"`
+	CreatedAt    *string `json:"created_at"`
+	UpdatedAt    *string `json:"updated_at"`
+	LogJson      *string `json:"log_json"`
 }

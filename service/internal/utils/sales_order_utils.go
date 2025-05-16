@@ -1250,12 +1250,15 @@ func MapUpdateSalesOrderAttachments(ctx *fiber.Ctx, attachments []dtos.UpdateSal
 func MapAttachmentsScheduleToAttachments(reqAttachments []dtos.ScheduleAttachmentsDTO) []dtos.SalesOrderAttachmentsDTO {
 	attachments := []dtos.SalesOrderAttachmentsDTO{}
 	for _, attachment := range reqAttachments {
+		newFileUrl := fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), (*attachment.FileUrl)[1:])
+
 		attachments = append(attachments, dtos.SalesOrderAttachmentsDTO{
 			ID:            attachment.ID,
 			RefID:         attachment.RefID,
 			RefType:       attachment.RefType,
 			FileType:      attachment.FileType,
 			FileUrl:       attachment.FileUrl,
+			PathUrl:       &newFileUrl,
 			FileName:      attachment.FileName,
 			Remark:        attachment.Remark,
 			FileSize:      attachment.FileSize,
@@ -1276,9 +1279,24 @@ func MapAttachmentsToURL(attachments []dtos.ScheduleAttachmentsDTO) []dtos.Sched
 	for i, attachment := range attachments {
 		if attachment.FileUrl != nil {
 			// remove first letter from file url
-			newFileUrl := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), (*attachment.FileUrl)[1:])
-			// newFileUrl := fmt.Sprintf("%s%s", os.Getenv("BASE_URL"), *attachment.FileUrl)
+			newFileUrl := fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), (*attachment.FileUrl)[1:])
+			// newFileUrl := fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), *attachment.FileUrl)
 			attachments[i].FileUrlApp = &newFileUrl
+		}
+	}
+
+	return attachments
+}
+
+// add url before path file by env
+func MapRefAttachmentsToURL(attachments []dtos.SalesOrderAttachmentsDTO) []dtos.SalesOrderAttachmentsDTO {
+	// attachments := []dtos.SalesOrderAttachmentsDTO{}
+	for i, attachment := range attachments {
+		if attachment.FileUrl != nil {
+			// remove first letter from file url
+			newFileUrl := fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), (*attachment.FileUrl)[1:])
+			// newFileUrl := fmt.Sprintf("%s%s", os.Getenv("APP_HOST"), *attachment.FileUrl)
+			attachments[i].PathUrl = &newFileUrl
 		}
 	}
 

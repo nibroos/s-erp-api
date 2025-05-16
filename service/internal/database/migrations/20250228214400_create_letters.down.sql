@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS aggrement_letters;
+DROP TABLE IF EXISTS letters;

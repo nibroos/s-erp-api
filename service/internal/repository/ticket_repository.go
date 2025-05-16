@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"sync"
@@ -263,8 +264,9 @@ func (r *TicketRepository) GetTicketByID(ctx *fiber.Ctx, params *dtos.GetTicketP
 			SELECT DISTINCT ON (so.id)
 				so.id, so.customer_id, so.branch_id, so.product_id, 
 				so.title, so.ticket_no, so.remark, so.issue_desc, so.issue_solution, so.priority_type,   
-				so.status, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.updated_at, so.deleted_at,
+				so.status, so.created_by_id, so.updated_by_id, so.deleted_by_id, so.created_at, so.deleted_at,
 				TO_CHAR(so.reported_at, 'YYYY-MM-DD') as reported_at,
+				TO_CHAR(so.updated_at, 'YYYY-MM-DD') as updated_at,
 
 				so.ticket_no_ori,
 
@@ -702,7 +704,7 @@ func (r *TicketRepository) UpdateTicketSchedule(tx *gorm.DB, ticketSchedule *mod
 }
 
 func (r *TicketRepository) DeleteScheduleStepsWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, scheduleID uint, scheduleStepIDs []uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SoDtRepository-DeleteScheduleStepsWhereNotIn", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("TicketRepository-DeleteScheduleStepsWhereNotIn", opentracing.ChildOf(span.Context()))
 
 	claims := utils.GetClaims(ctx, childSpan)
 	userID := uint(claims["user_id"].(float64))
@@ -729,7 +731,7 @@ func (r *TicketRepository) DeleteScheduleStepsWhereNotIn(ctx *fiber.Ctx, tx *gor
 
 // bulk/batch update schedule steps
 func (r *TicketRepository) UpdateScheduleSteps(ctx *fiber.Ctx, tx *gorm.DB, scheduleSteps []*models.ScheduleTask, userID uint, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SoDtRepository-UpdateScheduleSteps", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("TicketRepository-UpdateScheduleSteps", opentracing.ChildOf(span.Context()))
 
 	data := make([]map[string]interface{}, 0)
 	for _, scheduleStep := range scheduleSteps {
@@ -810,7 +812,7 @@ func (r *TicketRepository) GetUpdatedScheduleStepsByTicketScheduleIDs(ctx *fiber
 }
 
 func (r *TicketRepository) DeleteScheduleTasksWhereNotIn(ctx *fiber.Ctx, tx *gorm.DB, ticketID uint, scheduleTaskIDs []uint, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("SoDtRepository-DeleteScheduleTasksWhereNotIn", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("TicketRepository-DeleteScheduleTasksWhereNotIn", opentracing.ChildOf(span.Context()))
 
 	claims := utils.GetClaims(ctx, childSpan)
 	userID := uint(claims["user_id"].(float64))
@@ -836,7 +838,7 @@ func (r *TicketRepository) DeleteScheduleTasksWhereNotIn(ctx *fiber.Ctx, tx *gor
 }
 
 func (r *TicketRepository) UpdateScheduleTasks(tx *gorm.DB, tasks []map[string]interface{}, span opentracing.Span) error {
-	childSpan := opentracing.StartSpan("SoDtRepository-UpdateScheduleTasks", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("TicketRepository-UpdateScheduleTasks", opentracing.ChildOf(span.Context()))
 
 	if err := r.utilRepo.Upsert(tx, "schedule_tasks", "id", tasks, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
@@ -1426,7 +1428,7 @@ func (r *TicketRepository) GetScheduleTaskTotalDoneByID(ctx *fiber.Ctx, tx *gorm
 
 // bulk/batch update soDts
 func (r *TicketRepository) UpdateTicketScheduleApp(tx *gorm.DB, schedule []map[string]interface{}, span opentracing.Span) (*gorm.DB, error) {
-	childSpan := opentracing.StartSpan("SoDtRepository-UpdateSoDts", opentracing.ChildOf(span.Context()))
+	childSpan := opentracing.StartSpan("TicketRepository-UpdateTicketScheduleApp", opentracing.ChildOf(span.Context()))
 
 	if err := r.utilRepo.Upsert(tx, "schedules", "id", schedule, childSpan); err != nil {
 		utils.LogErrors(childSpan, err)
@@ -1572,4 +1574,92 @@ func (r *TicketRepository) GetWidgetTickets(ctx *fiber.Ctx, filters map[string]s
 	}
 
 	return widgets, total, nil
+}
+
+// UpdateAttachmentsDesc
+func (r *TicketRepository) CreateSentEmails(ctx *fiber.Ctx, tx *gorm.DB, sentEmails []map[string]interface{}, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("TicketRepository-CreateSentEmails", opentracing.ChildOf(span.Context()))
+
+	if err := r.utilRepo.Upsert(tx, "sent_emails", "id", sentEmails, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (r *TicketRepository) CreateSentEmail(tx *gorm.DB, sentEmail *models.SentEmail, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("TicketRepository-CreateSentEmail", opentracing.ChildOf(span.Context()))
+	if err := tx.Create(&sentEmail).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (r *TicketRepository) UpdateSentEmail(tx *gorm.DB, sentEmail *models.SentEmail, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("TicketRepository-UpdateSentEmail", opentracing.ChildOf(span.Context()))
+	if err := tx.Model(&models.SentEmail{}).Where("id = ?", sentEmail.ID).Select("*").Omit(
+		"created_at", "created_by_id",
+	).Updates(&sentEmail).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	log.Println("UpdateSentEmail", sentEmail, sentEmail.ID, &sentEmail.ID)
+	return tx, nil
+}
+
+func (r *TicketRepository) GetEmailListByTicketID(ctx *fiber.Ctx, params *dtos.GetTicketParams, tx *gorm.DB, span opentracing.Span) ([]dtos.EmailListDTO, error) {
+	childSpan := opentracing.StartSpan("TicketRepository-GetEmailListByTicketID", opentracing.ChildOf(span.Context()))
+
+	email := []dtos.EmailListDTO{}
+
+	var args []interface{}
+	i := 1
+
+	condition := ""
+	if params.ID != 0 {
+		condition += fmt.Sprintf(" AND st.ref_id = $%d", i)
+		args = append(args, params.ID)
+		i++
+	}
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (st.id)
+					st.id, st.ref_id, st.sender_id, st.ref_type, st.from_email, st.to_email, st.subject, st.remark, st.status, st.error_message, 
+					
+					TO_CHAR(st.created_at, 'YYYY-MM-DD') as created_at,
+					TO_CHAR(st.updated_at, 'YYYY-MM-DD') as updated_at,
+
+					st.created_by_id, st.updated_by_id, st.deleted_by_id,
+
+					cu.name as created_by_name,
+					uu.name as updated_by_name
+
+				FROM sent_emails st
+
+        LEFT JOIN users cu ON st.created_by_id = cu.id
+        LEFT JOIN users uu ON st.updated_by_id = uu.id
+				WHERE st.deleted_at IS NULL AND st.ref_type = 'tickets'
+				` + condition + `
+    ) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	// if len(ticketScheduleIDs) > 0 {
+	// 	query += " AND schedule_id = ANY($1)"
+	// 	args = append(args, pq.Array(ticketScheduleIDs))
+	// 	i++
+	// }
+
+	// GORM Raw
+	if err := tx.Raw(query, args...).Scan(&email).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return email, nil
 }

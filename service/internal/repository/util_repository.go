@@ -28,6 +28,7 @@ func (r *UtilRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params *dtos.GetC
 	var CompanyProfile dtos.CompanyProfileDetailDTO
 
 	query := `SELECT cp.id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
+	cp.company_email_password,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
 

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/smtp"
 	"os"
+	"strings"
 
 	"text/template"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
+	"github.com/valyala/fasthttp"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -284,6 +286,19 @@ func (s *TicketService) GetTicketByID(ctx *fiber.Ctx, params *dtos.GetTicketPara
 	}
 
 	return ticket, nil
+}
+
+// get schedule by sales order id
+func (s *TicketService) GetEmailListByTicketID(ctx *fiber.Ctx, params *dtos.GetTicketParams, tx *gorm.DB, span opentracing.Span) ([]dtos.EmailListDTO, error) {
+	childSpan := opentracing.StartSpan("TicketService-GetEmailListByTicketID", opentracing.ChildOf(span.Context()))
+
+	emailList, err := s.repo.GetEmailListByTicketID(ctx, params, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	return emailList, nil
 }
 
 // get schedule by sales order id
@@ -1231,7 +1246,8 @@ func (s *TicketService) GetAttachmentsByTicketID(ctx *fiber.Ctx, tx *gorm.DB, ti
 	}
 
 	if len(attachments) > 0 {
-		combined = append(combined, attachments...)
+		attachmentsMapped := utils.MapRefAttachmentsToURL(attachments)
+		combined = append(combined, attachmentsMapped...)
 	}
 
 	attachmentsSchedule, err := s.repo.GetAttachmentsByScheduleID(ctx, tx, scheduleID, childSpan)
@@ -1240,21 +1256,12 @@ func (s *TicketService) GetAttachmentsByTicketID(ctx *fiber.Ctx, tx *gorm.DB, ti
 		return nil, err
 	}
 
-	log.Println("attachments1", attachments)
-
-	log.Println("ticketID, scheduleID", ticketID, scheduleID, attachmentsSchedule)
-
 	// combine to attachments
 	if len(attachmentsSchedule) > 0 {
-		log.Println("attachmentsSchedule>0, attachments", attachments)
 		attachmentsScheduleMapped := utils.MapAttachmentsScheduleToAttachments(attachmentsSchedule)
-		log.Println("attachmentsScheduleMapped", attachmentsScheduleMapped)
 
 		combined = append(combined, attachmentsScheduleMapped...)
 	}
-
-	log.Println("attachments", attachments)
-	log.Println("combined", combined)
 
 	return combined, nil
 }
@@ -1312,12 +1319,46 @@ func (s *TicketService) GetWidgetTickets(ctx *fiber.Ctx, filters map[string]stri
 
 func (s *TicketService) PublishSendEmailSolutionTicket(ctx *fiber.Ctx, req dtos.FormTicketRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("TicketService-SendEmailSolutionTicket", opentracing.ChildOf(span.Context()))
-	err := utils.PublishSendEmailSolutionTicket(ctx, s.rabbitmq, req)
+
+	// log sent_emails
+	// make *dtos.FormSentEmailRequest
+
+	refType := "tickets"
+	status := "PROCESS"
+	emailObject := dtos.FormSentEmailRequest{
+		RefType: &refType,
+		Status:  &status,
+	}
+
+	// MapFormSentEmailSolution
+	email, err := utils.MapFormSentEmailSolution(ctx, req, &emailObject, userID, branchID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+		return err
+	}
+
+	// create sent_emails
+	if tx, err := s.repo.CreateSentEmail(tx, email, childSpan); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+		return err
+	}
+
+	req.SentEmailID = &email.ID
+	log.Println("PublishSendEmailSolutionTicket-req.SentEmailID", req.SentEmailID)
+	log.Println("PublishSendEmailSolutionTicket-email.ID", email.ID)
+
+	err = utils.PublishSendEmailSolutionTicket(ctx, s.rabbitmq, req)
 	if err != nil {
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		return err
 	}
+
+	tx.Commit()
 
 	fmt.Println("PublishSendEmailSolutionTicket", req)
 
@@ -1327,241 +1368,249 @@ func (s *TicketService) PublishSendEmailSolutionTicket(ctx *fiber.Ctx, req dtos.
 func (s *TicketService) ConsumeSendEmailSolutionTicket(req dtos.FormTicketRequest) error {
 	childSpan := opentracing.StartSpan("TicketService-ConsumeSendEmailSolutionTicket")
 
-	var err error
+	// Start transaction early to ensure we can update status
+	tx := s.repo.BeginTransaction()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
 
-	// get company profile, email & pw
-
-	// map address, subject, body
-	// fromEmail := "company@gmail.com"
-	fromEmail := os.Getenv("SMTP_EMAIL_USER")
-	fromEmailPassword := os.Getenv("SMTP_EMAIL_PASSWORD")
 	host := os.Getenv("SMTP_HOST")
 	port := os.Getenv("SMTP_PORT")
 
-	// toEmail := "nibrosari2@gmail.com"
-	// message := gomail.NewMessage()
-
-	// // Set email headers
-	// message.SetHeader("From", fromEmail)
-	// message.SetHeader("To", toEmail)
-	// message.SetHeader("Subject", "Hello from the Mailtrap team")
-
-	// // Set email body
-	// message.SetBody("text/plain", "This is the Test Body")
-
-	// // Set up the SMTP dialer
-	// dialer := gomail.NewDialer(host, 465, fromEmail, fromEmailPassword)
-
-	// // Send the email
-	// if err := dialer.DialAndSend(message); err != nil {
-	// 	log.Println("Error sending email:", err)
-	// 	defer childSpan.Finish()
-	// 	utils.LogErrors(childSpan, err)
-	// } else {
-	// 	fmt.Println("Email sent successfully!")
-	// }
-
-	// toEmail := "thankyounibros@gmail.com"
-	// toEmail := "nibrosari2@gmail.com"
-	// to := []string{toEmail}
 	address := host + ":" + port
-	// log.Println("address", address)
 
-	// subject := "Solution Ticket"
-	// subject := "Solution Ticket;\n"
-	// mime := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
-	// body := "Hello, this is a test email from Golang RabbitMQ.\n\n"
-	// log.Println("message1", subject, mime, body)
-	// message := []byte(subject + mime + body)
-	// log.Println("message", message)
+	app := fiber.New()
+	ctx := app.AcquireCtx(&fasthttp.RequestCtx{})
+	defer app.ReleaseCtx(ctx)
 
-	// // auth google
-	// auth := smtp.PlainAuth(
-	// 	"",
-	// 	fromEmail,
-	// 	fromEmailPassword,
-	// 	host,
-	// )
-	// log.Println("auth", auth)
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
 
-	// // publish email with rabbitmq
-	// // err := smtp.SendMail(address, auth, "<"+fromEmail+">", to, message)
-	// err := smtp.SendMail(address, auth, fromEmail, to, message)
-	// if err != nil {
-	// 	log.Println("Error sending email:", err)
-	// 	defer childSpan.Finish()
-	// 	utils.LogErrors(childSpan, err)
-	// 	return err
-	// }
-
-	// log.Println("Email sent successfully")
-
-	// fmt.Println("Check for sent email!")
-
-	// Parse the HTML template
-	// tmpl, err := template.ParseFiles("email_template.html")
-	// if err != nil {
-	// 	return err
-	// }
-
-	// Execute the template with the data
-	// var body bytes.Buffer
-	// // if err := tmpl.Execute(&body, data); err != nil {
-	// // 	return err
-	// // }
+	company, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+	}
+	// fromEmail := os.Getenv("SMTP_EMAIL_USER")
+	// fromEmailPassword := os.Getenv("SMTP_EMAIL_PASSWORD")
+	fromEmail := *company.CompanyEmail
+	fromEmailPassword := company.CompanyEmailPassword
 
 	// Create the multipart email message
-	to := "nibrosari2@gmail.com"
-	subject := "Solution Ticket: " + req.Title
-	fromString := fmt.Sprintf("From: Yubi <%s>\r\n", fromEmail)
+	to := req.Email
+	subject := "Tanggapan: " + req.Title
+	fromString := fmt.Sprintf("From: %s <%s>\r\n", *company.CompanyName, fromEmail)
 	toString := fmt.Sprintf("To: Me <%s>\r\n", to)
 	subjectString := fmt.Sprintf("Subject: %s\r\n", subject)
 
-	type TemplateData struct {
-		Name         string
-		Message      string
-		Subject      string
-		ButtonURL    string
-		ButtonText   string
-		PrimaryColor string
-		ButtonColor  string
-		SentTime     time.Time
+	// Update status function
+	updateEmailStatus := func(status string, err error) error {
+
+		refType := "tickets"
+		emailObject := dtos.FormSentEmailRequest{
+			ID:           req.SentEmailID,
+			RefID:        req.ID,
+			SenderID:     req.CreatedByID,
+			RefType:      &refType,
+			FromEmail:    &fromEmail,
+			ToEmail:      &to,
+			Subject:      &subject,
+			ErrorMessage: utils.ErrorToStringPtr(err),
+			Status:       &status,
+			UpdatedByID:  req.CreatedByID,
+		}
+
+		email := &models.SentEmail{
+			ID: *req.SentEmailID,
+		}
+
+		// MapFormSentEmailSolution
+		email, err = utils.MapFormSentEmailSolution(ctx, req, &emailObject, *req.Schedule.CreatedByID, *req.BranchID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+		}
+
+		email.Status = status
+		if err != nil {
+			errMsg := err.Error()
+			email.ErrorMessage = &errMsg
+		}
+
+		if _, err := s.repo.UpdateSentEmail(tx, email, childSpan); err != nil {
+			utils.LogErrors(childSpan, err)
+			tx.Rollback()
+			return err
+		}
+
+		return tx.Commit().Error
 	}
 
-	sentAt := time.Now().Format("2006-01-02 15:04:05")
-	data := dtos.SendEmailSolutionRequest{
-		CustomerName: req.CustomerCode,
-		Message:      *req.IssueSolution,
-		Subject:      subject,
-		ButtonURL:    "https://example.com/confirm?token=abc123",
-		ButtonText:   "Contact CS Yubi",
-		Req:          req,
-		SentAt:       sentAt,
-	}
+	// Handle email sending process with error handling
+	if err := func() error {
 
-	// Read the embedded template file
-	templateFile, err := templateFS.Open("templates/send-email-solution-ticket.html")
-	if err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("Failed to open embedded template: %v", err)
+		type TemplateData struct {
+			Name         string
+			Message      string
+			Subject      string
+			ButtonURL    string
+			ButtonText   string
+			PrimaryColor string
+			ButtonColor  string
+			SentTime     time.Time
+		}
+
+		attachments := utils.MapAttachmentsTicket(ctx, req.SolutionAttachments, req.SelectedSolutionAttachments)
+
+		sentAt := time.Now().Format("2006-01-02 15:04:05")
+		data := dtos.SendEmailSolutionRequest{
+			Message:     *req.IssueSolution,
+			Subject:     subject,
+			Req:         req,
+			SentAt:      sentAt,
+			Company:     company,
+			Attachments: attachments,
+		}
+
+		// Read the embedded template file
+		templateFile, err := templateFS.Open("templates/send-email-solution-ticket.html")
+		if err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to open embedded template: %v", err)
+			return err
+		}
+		log.Println("templateFile", templateFile)
+		defer templateFile.Close()
+
+		// Read the template content
+		templateContent, err := io.ReadAll(templateFile)
+		if err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to read template content: %v", err)
+			return err
+		}
+
+		// Parse the template
+		tmpl, err := template.New("email").Funcs(template.FuncMap{
+			"hasPrefix": strings.HasPrefix,
+		}).Parse(string(templateContent))
+		if err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to parse template: %v", err)
+			return err
+		}
+
+		// // Execute template with data
+		var body bytes.Buffer
+		if err := tmpl.Execute(&body, data); err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to execute template: %v", err)
+			return err
+		}
+
+		var msg bytes.Buffer
+		msg.WriteString(fromString)
+		msg.WriteString(toString)
+		msg.WriteString(subjectString)
+		msg.WriteString("MIME-Version: 1.0\r\n")
+		msg.WriteString("Content-Type: text/html; charset=\"utf-8\"\r\n")
+		msg.WriteString("\r\n")
+		msg.Write(body.Bytes())
+
+		// TLS config (important for port 465)
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true, // For testing ONLY (remove in production)
+			ServerName:         host,
+		}
+
+		// Set up authentication
+		auth := smtp.PlainAuth("", fromEmail, *fromEmailPassword, host)
+		log.Println("auth", auth)
+		// Connect to the server via TLS
+		conn, err := tls.Dial("tcp", address, tlsConfig)
+		if err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			return err
+		}
+
+		// Create a new SMTP client
+		client, err := smtp.NewClient(conn, host)
+		if err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to create SMTP client: %v", err)
+			return err
+		}
+		defer client.Quit()
+
+		if err := client.Auth(auth); err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("SMTP authentication failed: %v", err)
+			return err
+		}
+
+		// Set sender and recipient
+		if err := client.Mail(fromEmail); err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to set sender: %v", err)
+			return err
+		}
+		if err := client.Rcpt(to); err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to set recipient: %v", err)
+			return err
+		}
+
+		// Write the email data
+		w, err := client.Data()
+		if err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to get Data writer: %v", err)
+			return err
+		}
+		defer w.Close()
+
+		_, err = w.Write(msg.Bytes())
+		if err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to write email data: %v", err)
+			return err
+		}
+		// return w.Close()
+		// // Send the email
+		// err = smtp.SendMail(
+		// 	host+":"+port,
+		// 	auth,
+		// 	from,
+		// 	[]string{to},
+		// 	msg.Bytes(),
+		// )
+
+		log.Println("Email sent successfully!")
+		return nil
+	}(); err != nil {
+		// If there's an error, update status to FAILED
+		if updateErr := updateEmailStatus("FAILED", err); updateErr != nil {
+			return fmt.Errorf("failed to update email status: %v (original error: %v)", updateErr, err)
+		}
 		return err
 	}
-	log.Println("templateFile", templateFile)
-	defer templateFile.Close()
-
-	// Read the template content
-	templateContent, err := io.ReadAll(templateFile)
-	if err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("Failed to read template content: %v", err)
-		return err
+	// If successful, update status to SUCCESS
+	if err := updateEmailStatus("SUCCESS", nil); err != nil {
+		return fmt.Errorf("failed to update success status: %v", err)
 	}
-
-	// Parse the template
-	tmpl, err := template.New("email").Parse(string(templateContent))
-	if err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("Failed to parse template: %v", err)
-		return err
-	}
-
-	// // Execute template with data
-	var body bytes.Buffer
-	if err := tmpl.Execute(&body, data); err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("Failed to execute template: %v", err)
-		return err
-	}
-
-	var msg bytes.Buffer
-	msg.WriteString(fromString)
-	msg.WriteString(toString)
-	msg.WriteString(subjectString)
-	msg.WriteString("MIME-Version: 1.0\r\n")
-	msg.WriteString("Content-Type: text/html; charset=\"utf-8\"\r\n")
-	msg.WriteString("\r\n")
-	msg.Write(body.Bytes())
-
-	// TLS config (important for port 465)
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: true, // For testing ONLY (remove in production)
-		ServerName:         host,
-	}
-
-	// Set up authentication
-	auth := smtp.PlainAuth("", fromEmail, fromEmailPassword, host)
-	log.Println("auth", auth)
-	// Connect to the server via TLS
-	conn, err := tls.Dial("tcp", address, tlsConfig)
-	if err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		return err
-	}
-
-	// Create a new SMTP client
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("Failed to create SMTP client: %v", err)
-		return err
-	}
-	defer client.Quit()
-
-	if err := client.Auth(auth); err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("SMTP authentication failed: %v", err)
-		return err
-	}
-
-	// Set sender and recipient
-	if err := client.Mail(fromEmail); err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("Failed to set sender: %v", err)
-		return err
-	}
-	if err := client.Rcpt(to); err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("Failed to set recipient: %v", err)
-		return err
-	}
-
-	// Write the email data
-	w, err := client.Data()
-	if err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("Failed to get Data writer: %v", err)
-		return err
-	}
-	defer w.Close()
-
-	_, err = w.Write(msg.Bytes())
-	if err != nil {
-		defer childSpan.Finish()
-		utils.LogErrors(childSpan, err)
-		log.Printf("Failed to write email data: %v", err)
-		return err
-	}
-	// return w.Close()
-	// // Send the email
-	// err = smtp.SendMail(
-	// 	host+":"+port,
-	// 	auth,
-	// 	from,
-	// 	[]string{to},
-	// 	msg.Bytes(),
-	// )
-
-	log.Println("Email sent successfully!")
 
 	return nil
 }

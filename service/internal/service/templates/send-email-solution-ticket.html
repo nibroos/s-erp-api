@@ -5,12 +5,253 @@
 	<title>{{.Subject}}</title>
 	<!-- cdn tailwind -->
 	<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+	<style>
+		/* Base Styles */
+		body {
+			font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+			line-height: 1.6;
+			color: #333;
+			background-color: #f5f5f5;
+			margin: 0;
+			padding: 0;
+		}
+
+		/* Email Container */
+		.email-container {
+			max-width: 1500px;
+			margin: 20px auto;
+			background-color: #ffffff;
+			overflow: hidden;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		}
+
+		/* Header */
+		.email-header {
+			padding: 20px;
+			border-top: 4px dotted #e4e4e7;
+			border-bottom: 4px dotted #e4e4e7;
+		}
+
+		.company-name {
+			font-size: 22px;
+			color: #3498db;
+			font-weight: 700;
+			margin-bottom: 5px;
+		}
+
+		.company-details {
+			font-size: 12px;
+			opacity: 0.8;
+			margin-bottom: 5px;
+			line-height: 1.4;
+		}
+
+		/* Body */
+		.email-body {
+			padding: 25px;
+		}
+
+		.recipient {
+			font-weight: 600;
+			margin-bottom: 20px;
+		}
+
+		.greeting {
+			margin-bottom: 15px;
+		}
+
+		/* Accordion Styles */
+		.accordion {
+			margin: 20px 0;
+			border-radius: 4px;
+			overflow: hidden;
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+		}
+
+		.accordion-section {
+			margin: 0 0 0 0;
+			/* border-bottom: 1px solid #eaeaea; */
+		}
+
+		.accordion-section:last-child {
+			border-bottom: none;
+		}
+
+		.accordion-header {
+			/* background-color: #f8f9fa; */
+			padding: 15px;
+			cursor: pointer;
+			position: relative;
+			font-weight: 600;
+			transition: background-color 0.3s;
+			width: 100%;
+		}
+
+		.accordion-header:hover {
+			background-color: #e9ecef;
+		}
+
+		.accordion-header:after {
+			position: absolute;
+			right: 15px;
+			font-size: 18px;
+			font-weight: bold;
+			transition: transform 0.3s;
+		}
+
+		.accordion-checkbox {
+			display: none;
+		}
+
+		.accordion-content {
+			max-height: 0;
+			transition: max-height 0.3s ease-out;
+			background-color: #fff;
+		}
+
+		.accordion-checkbox:checked+.accordion-header+.accordion-content {
+			max-height: 500px;
+			/* Adjust based on content */
+		}
+
+		/* Content Styles */
+		.issue-content {
+			padding: 15px;
+			margin-top: 5px;
+			background-color: #fff9f9;
+			border-left: 3px solid #e74c3c;
+		}
+
+		.solution-content {
+			padding: 15px;
+			margin-top: 5px;
+			background-color: #f8f9fa;
+			border-left: 3px solid #3498db;
+		}
+
+		.timestamp {
+			font-size: 12px;
+			color: #7f8c8d;
+			margin-bottom: 10px;
+		}
+
+		.status-badge {
+			display: inline-block;
+			padding: 3px 8px;
+			border-radius: 4px;
+			font-size: 12px;
+			font-weight: 600;
+			margin-left: 10px;
+		}
+
+		.status-open {
+			background-color: #f39c12;
+			color: white;
+		}
+
+		.status-resolved {
+			background-color: #27ae60;
+			color: white;
+		}
+
+		/* Footer */
+		.email-footer {
+			background-color: #f8f9fa;
+			padding: 20px;
+			text-align: center;
+			border-top: 1px solid #eaeaea;
+		}
+
+		.signature {
+			margin-bottom: 20px;
+		}
+
+		.cta-button {
+			display: inline-block;
+			background-color: rgb(204, 234, 247);
+			color: #2980b9;
+			text-decoration: none;
+			padding: 12px 25px;
+			border-radius: 4px;
+			font-weight: 600;
+			margin-top: 10px;
+			transition: background-color 0.3s;
+		}
+
+		.cta-button:hover {
+			background-color: #2980b9;
+			color: white !important;
+		}
+
+		.contact-info {
+			font-size: 12px;
+			color: #7f8c8d;
+			margin-top: 15px;
+		}
+
+		.attachments {
+			margin-top: 1rem;
+		}
+
+		.attachments-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+			gap: 1rem;
+			margin-top: 0.5rem;
+		}
+
+		.attachment-image {
+			width: 100%;
+			max-width: 200px;
+			height: 150px;
+			object-fit: cover;
+			border-radius: 4px;
+			border: 1px solid #eaeaea;
+		}
+
+		.attachment-card {
+			padding: 12px;
+			border: 1px solid #eaeaea;
+			border-radius: 4px;
+			background-color: #ffffff;
+			display: flex;
+			align-items: center;
+			text-decoration: none;
+			color: inherit;
+			transition: box-shadow 0.2s;
+		}
+
+		.attachment-card:hover {
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		}
+
+		.attachment-icon {
+			width: 24px;
+			height: 24px;
+			margin-right: 12px;
+		}
+
+		.attachment-details {
+			flex: 1;
+		}
+
+		.attachment-name {
+			font-size: 14px;
+			font-weight: 500;
+			margin-bottom: 4px;
+			color: #2980b9;
+		}
+
+		.attachment-type {
+			font-size: 12px;
+			color: #7f8c8d;
+		}
+	</style>
 </head>
 
 <body>
-	<div>
+	<!-- <div>
 		<h1 class="text-rose-600">Hello Mr.{{.CustomerName}}!</h1>
-		<!-- Use inline styles with proper quoting -->
 		<p>{{.Message}}</p>
 
 		{{if .ButtonURL}}
@@ -20,6 +261,109 @@
 		{{end}}
 
 		<p class="footer">Sent at: {{.SentAt}}</p>
+	</div> -->
+	<div class="email-container">
+		<!-- Header -->
+		<div class="email-header">
+			<div class="company-name">{{ .Company.CompanyName }}</div>
+			<div class="company-details">
+				<div style="color: gray">
+					{{ .Company.CompanyAddress }}
+				</div>
+				<div style="color: black; margin-top: 0.5rem">
+					{{ .Company.CompanyWebsite }}
+				</div>
+				<div style="color: black">{{ .Company.CompanyPhone }}</div>
+			</div>
+		</div>
+
+		<!-- Body -->
+		<div class="email-body">
+			<div class="recipient">Kepada Yth. {{ .Req.CustomerName }},</div>
+
+			<div class="greeting">Dengan hormat,</div>
+
+			<p>Berikut adalah detail laporan masalah dan tanggapan kami:</p>
+
+			<!-- Accordion Section -->
+			<div class="accordion">
+				<!-- Client Issue -->
+				<div class="accordion-section">
+					<strong>Laporan Masalah</strong>
+					<div class="issue-content">
+						<div class="timestamp">
+							Dilaporkan pada: {{ .Req.ReportedAt }}
+						</div>
+						<p>
+							{{ .Req.IssueDesc }}
+						</p>
+					</div>
+				</div>
+
+				<!-- Your Response -->
+				<div class="accordion-section" style="margin-top: 1rem">
+					<strong>Tanggapan & Solusi</strong>
+					<div class="solution-content">
+						<div class="timestamp">
+							Ditangani pada: {{ .Req.UpdatedAt }}
+						</div>
+						<p>
+							{{ .Req.IssueSolution }}
+						</p>
+
+						{{ if .Attachments }}
+						<div class="attachments">
+							<p>File Terlampir:</p>
+							<ul>
+								{{ range .Attachments }}
+								<li>
+									<a href="{{ .PathUrl }}">{{ .FileName }}</a>
+								</li>
+								{{ end }}
+							</ul>
+
+							<!-- <div class="attachments-grid">
+								{{ range .Req.SolutionAttachments }}
+								{{ if (hasPrefix .FileType "image/") }}
+								<img src="{{ .PathUrl }}" alt="{{ .FileName }}" class="attachment-image" />
+								{{ else }}
+								<a href="{{ .PathUrl }}" class="attachment-card" target="_blank">
+									<svg class="attachment-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+										stroke="currentColor" stroke-width="2">
+										<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+										<polyline points="13 2 13 9 20 9"></polyline>
+									</svg>
+									<div class="attachment-details">
+										<div class="attachment-name">{{ .FileName }}</div>
+										<div class="attachment-type">{{ .FileType }}</div>
+									</div>
+								</a>
+								{{ end }}
+								{{ end }}
+							</div> -->
+						</div>
+						{{ end }}
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Footer -->
+		<div class="email-footer">
+			<div class="signature">
+				Hormat kami,<br />
+				<strong>{{ .Company.CompanyName }}</strong><br />
+			</div>
+
+			<a href="https://wa.me/6281510020656" class="cta-button">
+				Hubungi CS 👋
+			</a>
+
+			<div class="contact-info">
+				Untuk pertanyaan lebih lanjut, hubungi kami di
+				{{ .Company.CompanyPhone }} atau email {{ .Company.CompanyEmail }}.
+			</div>
+		</div>
 	</div>
 </body>
 
