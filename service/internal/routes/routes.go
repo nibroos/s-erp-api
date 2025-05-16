@@ -165,6 +165,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 	invoiceAdjustments := version.Group("/invoice-adjustments")
 	SetupInvoiceAdjustmentRoutes(invoiceAdjustments, gormDB, sqlDB, utilRepo, tracer)
 
+	requestOrders := version.Group("/request-orders")
+	SetupRequestOrderRoutes(requestOrders, gormDB, sqlDB, utilRepo, tracer)
+
 	// Scheduler route
 	// cron := cron.New()
 	// schedulerController := rest.NewSchedulerController(cron, gormDB, sqlDB)

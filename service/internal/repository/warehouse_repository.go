@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/nibroos/s-erp-api/service/internal/auth"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
@@ -31,6 +32,11 @@ func NewWarehouseRepository(db *gorm.DB, sqlDB *sqlx.DB, tracer opentracing.Trac
 
 func (r *WarehouseRepository) GetWarehouses(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.WarehouseListDTO, int, error) {
 	childSpan := opentracing.StartSpan("WarehouseRepository-GetWarehouses", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
 
 	warehouses := []dtos.WarehouseListDTO{}
 	var total int
@@ -104,6 +110,20 @@ func (r *WarehouseRepository) GetWarehouses(ctx *fiber.Ctx, filters map[string]s
 		i += len(searchFields)
 	}
 
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND branch_id = $%d", i)
+		countQuery += fmt.Sprintf(" AND branch_id = $%d", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND branch_id = $%d", i)
+		countQuery += fmt.Sprintf(" AND branch_id = $%d", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
 	countArgs := append([]interface{}{}, args...)
 
 	var wg sync.WaitGroup
@@ -174,6 +194,11 @@ func (r *WarehouseRepository) GetWarehouseByID(ctx *fiber.Ctx, params *dtos.GetW
 	childSpan := opentracing.StartSpan("WarehouseRepository-GetWarehouseByID", opentracing.ChildOf(span.Context()))
 	var warehouse dtos.WarehouseDetailDTO
 
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
 	query := `SELECT m.id, m.name, m.description, m.remark, m.status, m.created_at, m.updated_at, m.deleted_at,
     cu.name as created_by_name,
     uu.name as updated_by_name,
@@ -198,6 +223,12 @@ func (r *WarehouseRepository) GetWarehouseByID(ctx *fiber.Ctx, params *dtos.GetW
 	}
 
 	query += isDeletedQuery
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND m.branch_id = $%d", i)
+		args = append(args, branchID)
+		i++
+	}
 
 	if err := r.sqlDB.Get(&warehouse, query, args...); err != nil {
 		utils.LogErrors(childSpan, err)
