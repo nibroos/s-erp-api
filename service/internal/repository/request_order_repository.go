@@ -1359,7 +1359,7 @@ func (r *RequestOrderRepository) GetWidgetRequestOrders(ctx *fiber.Ctx, filters 
         FROM (VALUES
             ('TOTAL', 0),
             ('PENDING', 1),
-            ('PROCESS', 2),
+            ('APPROVED', 2),
             ('CANCELED', 3)
         ) AS s(status)
     ),
