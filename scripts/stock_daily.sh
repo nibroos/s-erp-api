@@ -32,17 +32,17 @@ source "$ENV_FILE"
 set +a
 
 # Login and get JWT token
-LOGIN_RESPONSE=$(curl -s -X POST "${BASE_URL}/api/v1/auth/login" \
+LOGIN_RESPONSE=$(curl -s -X POST "${APP_HOST}/api/v1/auth/login" \
      -H "Content-Type: application/json" \
      -d "{
         \"email\": \"${schedule_credentials}\",
         \"password\": \"${schedule_password}\"
      }")
 
-# echo "BASE_URL: $BASE_URL"
+# echo "APP_HOST: $APP_HOST"
 # echo "Schedule credentials: $schedule_credentials"
 # echo "Schedule password: $schedule_password"
-# echo "Login request: ${BASE_URL}/api/v1/auth/login"
+# echo "Login request: ${APP_HOST}/api/v1/auth/login"
 # echo "Login data: {\"email\": \"${schedule_credentials}\", \"password\": \"${schedule_password}\"}"
 # echo "Login response: $LOGIN_RESPONSE"
 
@@ -73,7 +73,7 @@ if [ -z "$TOKEN" ]; then
 fi
 
 # API endpoint for stock closing
-API_URL="${BASE_URL}/api/v1/inventories/stocks/create-stock-closing"
+API_URL="${APP_HOST}/api/v1/inventories/stocks/create-stock-closing"
 
 # body, end_closing_at, password
 

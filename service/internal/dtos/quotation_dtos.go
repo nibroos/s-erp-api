@@ -311,7 +311,7 @@ type QuotationListDTO struct {
 	GrandTotal    *float64 `json:"grand_total" db:"grand_total"`
 	DueAt         *string  `json:"due_at" db:"due_at"`
 	ExpiredAt     *string  `json:"expired_at" db:"expired_at"`
-	CreatedByID   *uint    `json:"crweated_by_id" db:"created_by_id"`
+	CreatedByID   *uint    `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID   *uint    `json:"updated_by_id" db:"updated_by_id"`
 	DeletedByID   *uint    `json:"deleted_by_id" db:"deleted_by_id"`
 	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`

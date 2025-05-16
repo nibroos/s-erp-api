@@ -113,6 +113,11 @@ func (c *TicketController) GetTicketByID(ctx *fiber.Ctx) error {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Solution Attachments", http.StatusInternalServerError)
 	}
 
+	ticket.SentEmails, err = c.service.GetEmailListByTicketID(ctx, params, tx, parentSpan)
+	if err != nil {
+		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Email List", http.StatusInternalServerError)
+	}
+
 	createdTicketIDs := make([]uint, 0)
 	createdTicketIDs = append(createdTicketIDs, ticket.ID)
 
@@ -870,12 +875,12 @@ func (c *TicketController) SendEmailSolutionTicket(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
 	}
 
-	// // Validate the request
-	// reqValidator, isValid := form_requests.NewTicketUpdateRequest().Validate(&req, ctx)
-	// if !isValid {
-	// 	utils.LogResponse(apiSpan, reqValidator)
-	// 	return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
-	// }
+	// Validate the request
+	reqValidator, isValid := form_requests.NewSendSolutionEmailRequest().Validate(&req, ctx)
+	if !isValid {
+		utils.LogResponse(apiSpan, reqValidator)
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": reqValidator, "message": "Validation failed", "status": http.StatusBadRequest})
+	}
 
 	// Extract user ID from JWT
 	claims := utils.GetClaims(ctx, parentSpan)
@@ -888,7 +893,7 @@ func (c *TicketController) SendEmailSolutionTicket(ctx *fiber.Ctx) error {
 	tx, err := c.service.LockTicketTable(ctx, tx, req, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to update Ticket", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to process email", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	err = c.service.PublishSendEmailSolutionTicket(ctx, req, userID, branchID, tx, parentSpan)
@@ -896,7 +901,7 @@ func (c *TicketController) SendEmailSolutionTicket(ctx *fiber.Ctx) error {
 	if err != nil {
 		tx.Rollback()
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.GetResponse(ctx, nil, nil, "Failed to update Ticket", http.StatusInternalServerError, err.Error(), nil)
+		return utils.GetResponse(ctx, nil, nil, "Failed to process email", http.StatusInternalServerError, err.Error(), nil)
 	}
 
 	tx.Commit()
@@ -904,5 +909,5 @@ func (c *TicketController) SendEmailSolutionTicket(ctx *fiber.Ctx) error {
 	filters := make(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 
-	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Email sent", http.StatusOK, nil, nil)
+	return utils.GetResponse(ctx, []interface{}{}, paginationMeta, "Email processed", http.StatusOK, nil, nil)
 }

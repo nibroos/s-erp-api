@@ -188,3 +188,48 @@ func PublishSendEmailSolutionTicket(ctx *fiber.Ctx, rabbitmq *config.RabbitMQ, d
 		},
 	)
 }
+
+func MapAttachmentsTicket(ctx *fiber.Ctx, req []dtos.UpdateSalesOrderAttachmentsDTO, SelectedSolutionAttachments []uint) []dtos.UpdateSalesOrderAttachmentsDTO {
+	attachments := make([]dtos.UpdateSalesOrderAttachmentsDTO, 0)
+
+	for _, attachment := range req {
+		for _, selectedAttachment := range SelectedSolutionAttachments {
+			if attachment.ID != nil && *attachment.ID == selectedAttachment {
+				attachments = append(attachments, attachment)
+			}
+		}
+	}
+
+	return attachments
+}
+
+func MapFormSentEmailSolution(ctx *fiber.Ctx, req dtos.FormTicketRequest, emailObject *dtos.FormSentEmailRequest, userID uint, branchID uint, span opentracing.Span) (*models.SentEmail, error) {
+	logJson, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	logJsonStr := string(logJson)
+
+	mail := models.SentEmail{
+		SenderID: &userID,
+		RefType:  *emailObject.RefType,
+		Status:   *emailObject.Status,
+		LogJson:  &logJsonStr,
+	}
+
+	if emailObject.ID != nil {
+		mail.ID = *emailObject.ID
+		mail.RefID = emailObject.RefID
+		mail.SenderID = emailObject.SenderID
+		mail.FromEmail = *emailObject.FromEmail
+		mail.ToEmail = *emailObject.ToEmail
+		mail.Subject = *emailObject.Subject
+		mail.Remark = emailObject.Remark
+		mail.ErrorMessage = emailObject.ErrorMessage
+		mail.UpdatedByID = &userID
+	} else {
+		mail.CreatedByID = &userID
+	}
+
+	return &mail, nil
+}

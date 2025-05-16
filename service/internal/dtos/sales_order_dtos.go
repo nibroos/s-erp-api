@@ -296,6 +296,7 @@ type UpdateSalesOrderAttachmentsDTO struct {
 	RefType  *string `json:"ref_type" db:"ref_type"`
 	FileType *string `json:"file_type" db:"file_type"`
 	FileUrl  *string `json:"file_url" db:"file_url"`
+	PathUrl  *string `json:"path_url" db:"path_url"`
 	FileName *string `json:"file_name" db:"file_name"`
 	Remark   *string `json:"remark" db:"remark"`
 }
@@ -366,7 +367,7 @@ type SalesOrderListDTO struct {
 	ShippingAt    *string  `json:"shipping_at" db:"shipping_at"`
 	AgreeAt       *string  `json:"agree_at" db:"agree_at"`
 	DueAt         *string  `json:"due_at" db:"due_at"`
-	CreatedByID   *uint    `json:"crweated_by_id" db:"created_by_id"`
+	CreatedByID   *uint    `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID   *uint    `json:"updated_by_id" db:"updated_by_id"`
 	DeletedByID   *uint    `json:"deleted_by_id" db:"deleted_by_id"`
 	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`
@@ -461,6 +462,7 @@ type SalesOrderAttachmentsDTO struct {
 	RefType        *string `json:"ref_type" db:"ref_type"`
 	FileType       *string `json:"file_type" db:"file_type"`
 	FileUrl        *string `json:"file_url" db:"file_url"`
+	PathUrl        *string `json:"path_url" db:"path_url"`
 	FileName       *string `json:"file_name" db:"file_name"`
 	Remark         *string `json:"remark" db:"remark"`
 	FileSize       *int64  `json:"file_size" db:"file_size"`
@@ -1181,4 +1183,13 @@ type SalesOrderStatusWidget struct {
 	OrderCount int     `json:"order_count" db:"order_count"`
 	TotalQty   float64 `json:"total_qty" db:"total_qty"`
 	GrandTotal float64 `json:"grand_total" db:"grand_total"`
+}
+
+type SalesOrderByTypeWidget struct {
+	OrderTypeID int     `json:"order_type_id" db:"order_type_id"`
+	Status      string  `json:"status" db:"status"`
+	WidgetType  string  `json:"widget_type" db:"widget_type"`
+	OrderCount  int     `json:"order_count" db:"order_count"`
+	TotalQty    float64 `json:"total_qty" db:"total_qty"`
+	GrandTotal  float64 `json:"grand_total" db:"grand_total"`
 }

@@ -158,7 +158,7 @@ type InventoryListDTO struct {
 	DoAt           *string  `json:"do_at" db:"do_at"`
 	IngoingAt      *string  `json:"ingoing_at" db:"ingoing_at"`
 	InvoiceAt      *string  `json:"invoice_at" db:"invoice_at"`
-	CreatedByID    *uint    `json:"crweated_by_id" db:"created_by_id"`
+	CreatedByID    *uint    `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID    *uint    `json:"updated_by_id" db:"updated_by_id"`
 	DeletedByID    *uint    `json:"deleted_by_id" db:"deleted_by_id"`
 	CreatedByName  *string  `json:"created_by_name" db:"created_by_name"`
@@ -565,7 +565,7 @@ type StockListDTO struct {
 	WarehouseID   *uint    `json:"warehouse_id" db:"warehouse_id"`
 	BranchID      *uint    `json:"branch_id" db:"branch_id"`
 	Qty           *float64 `json:"qty" db:"qty"`
-	CreatedByID   *uint    `json:"crweated_by_id" db:"created_by_id"`
+	CreatedByID   *uint    `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID   *uint    `json:"updated_by_id" db:"updated_by_id"`
 	DeletedByID   *uint    `json:"deleted_by_id" db:"deleted_by_id"`
 	CreatedByName *string  `json:"created_by_name" db:"created_by_name"`

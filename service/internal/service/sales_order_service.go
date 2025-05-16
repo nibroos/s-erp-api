@@ -1207,6 +1207,10 @@ func (s *SalesOrderService) UpdateSalesOrderScheduleAppUpload(ctx *fiber.Ctx, re
 		"ref_type": refType,
 	}
 
+	if refType == "tickets" {
+		propJson["attachment_type"] = "solution"
+	}
+
 	if len(files) > 0 {
 		// handle new files upload
 		newFiles, err := utils.MapNewSalesOrderFilesApp(ctx, files, req, refID, userID, propJson, childSpan)
@@ -1562,4 +1566,39 @@ func (s *SalesOrderService) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[str
 		return nil, 0, err
 	}
 	return salesOrders, total, nil
+}
+
+func (s *SalesOrderService) GetWidgetSalesOrdersByOrderType(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderByTypeWidget, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetWidgetSalesOrdersByOrderType", opentracing.ChildOf(span.Context()))
+
+	salesOrders, total, err := s.repo.GetWidgetSalesOrdersByOrderType(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+	return salesOrders, total, nil
+}
+
+func (s *SalesOrderService) GetWidgetSalesOrdersByBestCustomer(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderByTypeWidget, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetWidgetSalesOrdersByBestCustomer", opentracing.ChildOf(span.Context()))
+
+	salesOrders, total, err := s.repo.GetWidgetSalesOrdersByBestCustomer(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	return salesOrders, total, nil
+}
+
+func (s *SalesOrderService) GetWidgetSalesOrdersByBestCustomerTotal(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) (dtos.SalesOrderByTypeWidget, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetWidgetSalesOrdersByBestCustomerTotal", opentracing.ChildOf(span.Context()))
+
+	salesOrdersTotal, err := s.repo.GetWidgetSalesOrdersByBestCustomerTotal(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return salesOrdersTotal, err
+	}
+
+	return salesOrdersTotal, nil
 }

@@ -939,3 +939,11 @@ func GetTemplatePath(fileDir string) string {
 
 	return templatePath
 }
+
+func ErrorToStringPtr(err error) *string {
+	if err != nil {
+		errStr := err.Error()
+		return &errStr
+	}
+	return nil
+}
