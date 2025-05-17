@@ -1,0 +1,2 @@
+ALTER TABLE inv_dts ADD COLUMN IF NOT EXISTS invoice_status TEXT;
+ALTER TABLE inventories ADD COLUMN IF NOT EXISTS history_status TEXT;
