@@ -1568,6 +1568,17 @@ func (s *SalesOrderService) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[str
 	return salesOrders, total, nil
 }
 
+func (s *SalesOrderService) GetWidgetSalesOrdersByStatus(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderStatusWidget, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetWidgetSalesOrdersByStatus", opentracing.ChildOf(span.Context()))
+
+	salesOrders, total, err := s.repo.GetWidgetSalesOrdersByStatus(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+	return salesOrders, total, nil
+}
+
 func (s *SalesOrderService) GetWidgetSalesOrdersByOrderType(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderByTypeWidget, int, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-GetWidgetSalesOrdersByOrderType", opentracing.ChildOf(span.Context()))
 
