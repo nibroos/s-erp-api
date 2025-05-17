@@ -16,8 +16,10 @@ type SalesInvoice struct {
 	Pph23ID                  *uint          `json:"pph23_id" gorm:"column:pph23_id"`
 	BranchID                 *uint          `json:"branch_id" gorm:"column:branch_id"`
 	BankID                   *uint          `json:"bank_id" gorm:"column:bank_id"`
+	Title                    *string        `json:"title" gorm:"column:title"`
 	InvoiceNo                *string        `json:"invoice_no" gorm:"column:invoice_no"`
 	InvoiceDate              *time.Time     `json:"invoice_date" gorm:"column:invoice_date"`
+	DueDate                  *time.Time     `json:"due_date" gorm:"column:due_date"`
 	ExchangeRate             *float64       `json:"exchange_rate" gorm:"column:exchange_rate"`
 	Remark                   *string        `json:"remark" gorm:"column:remark"`
 	RevNo                    *int           `json:"rev_no" gorm:"column:rev_no"`

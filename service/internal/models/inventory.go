@@ -24,6 +24,7 @@ type Inventory struct {
 	ShipDest       *string  `json:"ship_dest" gorm:"column:ship_dest"`
 	Remark         *string  `json:"remark" gorm:"column:remark"`
 	Status         string   `json:"status" gorm:"column:status"`
+	HistoryStatus  *string  `json:"history_status" gorm:"column:history_status"`
 	ExchangeRate   *float64 `json:"exchange_rate" gorm:"column:exchange_rate"`
 	IsVat          *int     `json:"is_vat" gorm:"column:is_vat"`
 	VatPerc        *float64 `json:"vat_perc" gorm:"column:vat_perc"`
