@@ -7,6 +7,7 @@ import (
 
 type GetInvoiceAdjustmentsRequest struct {
 	Global         *string `json:"global"`
+	Title          *string `json:"title"`
 	InvoiceNo      *string `json:"invoice_no"`
 	Reference      *string `json:"reference"`
 	Remark         *string `json:"remark"`
@@ -44,6 +45,8 @@ type CreateInvoiceAdjustmentRequest struct {
 	BranchID   *uint `json:"branch_id"`
 	BankID     *uint `json:"bank_id"`
 	// InvoiceNo       *string                            `json:"invoice_no"`
+	Title           *string                            `json:"title"`
+	AdjustmentDate  *string                            `json:"adjustment_date"`
 	PaymentDate     *string                            `json:"payment_date"`
 	PaymentAmount   *float64                           `json:"payment_amount"`
 	ExchangeRate    *float64                           `json:"exchange_rate"`
@@ -84,7 +87,9 @@ type UpdateInvoiceAdjustmentRequest struct {
 	CurrencyID          *uint                              `json:"currency_id"`
 	BranchID            *uint                              `json:"branch_id"`
 	BankID              *uint                              `json:"bank_id"`
+	Title               *string                            `json:"title"`
 	InvoiceNo           *string                            `json:"invoice_no"`
+	AdjustmentDate      *string                            `json:"adjustment_date"`
 	PaymentDate         *string                            `json:"payment_date"`
 	PaymentAmount       *float64                           `json:"payment_amount"`
 	ExchangeRate        *float64                           `json:"exchange_rate"`
@@ -134,7 +139,9 @@ type InvoiceAdjustmentListDTO struct {
 	CurrencyID      *uint    `json:"currency_id" db:"currency_id"`
 	BranchID        *uint    `json:"branch_id" db:"branch_id"`
 	BankID          *uint    `json:"bank_id" db:"bank_id"`
+	Title           *string  `json:"title" db:"title"`
 	InvoiceNo       *string  `json:"invoice_no" db:"invoice_no"`
+	AdjustmentDate  *string  `json:"adjustment_date" db:"adjustment_date"`
 	PaymentDate     *string  `json:"payment_date" db:"payment_date"`
 	PaymentAmount   *float64 `json:"payment_amount" db:"payment_amount"`
 	ExchangeRate    *float64 `json:"exchange_rate" db:"exchange_rate"`
@@ -157,10 +164,12 @@ type InvoiceAdjustmentListDTO struct {
 	UpdatedAt       *string  `json:"updated_at" db:"updated_at"`
 	DeletedAt       *string  `json:"deleted_at" db:"deleted_at"`
 
-	CustomerName *string `json:"customer_name" db:"customer_name"`
-	CurrencyName *string `json:"currency_name" db:"currency_name"`
-	BranchName   *string `json:"branch_name" db:"branch_name"`
-	BankName     *string `json:"bank_name" db:"bank_name"`
+	CustomerName  *string `json:"customer_name" db:"customer_name"`
+	CurrencyName  *string `json:"currency_name" db:"currency_name"`
+	BranchName    *string `json:"branch_name" db:"branch_name"`
+	BankName      *string `json:"bank_name" db:"bank_name"`
+	AccountNumber *string `json:"account_number" db:"account_number"`
+	AccountName   *string `json:"account_name" db:"account_name"`
 }
 
 type InvoiceAdjustmentDetailDTO struct {
@@ -169,7 +178,9 @@ type InvoiceAdjustmentDetailDTO struct {
 	CurrencyID      *uint    `json:"currency_id" db:"currency_id"`
 	BranchID        *uint    `json:"branch_id" db:"branch_id"`
 	BankID          *uint    `json:"bank_id" db:"bank_id"`
+	Title           *string  `json:"title" db:"title"`
 	InvoiceNo       *string  `json:"invoice_no" db:"invoice_no"`
+	AdjustmentDate  *string  `json:"adjustment_date" db:"adjustment_date"`
 	PaymentDate     *string  `json:"payment_date" db:"payment_date"`
 	PaymentAmount   *float64 `json:"payment_amount" db:"payment_amount"`
 	ExchangeRate    *float64 `json:"exchange_rate" db:"exchange_rate"`

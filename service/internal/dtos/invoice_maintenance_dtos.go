@@ -4,6 +4,7 @@ import "time"
 
 type GetInvoiceMaintenancesRequest struct {
 	Global         *string `json:"global"`
+	Title          *string `json:"title"`
 	InvoiceNo      *string `json:"invoice_no"`
 	Remark         *string `json:"remark"`
 	Status         *string `json:"status"`
@@ -53,8 +54,10 @@ type CreateInvoiceMaintenanceRequest struct {
 	Pph23ID                  *uint                               `json:"pph23_id"`
 	BranchID                 *uint                               `json:"branch_id"`
 	BankID                   *uint                               `json:"bank_id"`
+	Title                    *string                             `json:"title"`
 	InvoiceNo                *string                             `json:"invoice_no"`
 	InvoiceDate              *string                             `json:"invoice_date"`
+	DueDate                  *string                             `json:"due_date"`
 	ExchangeRate             *float64                            `json:"exchange_rate"`
 	Remark                   *string                             `json:"remark"`
 	Status                   *string                             `json:"status"`
@@ -114,8 +117,10 @@ type UpdateInvoiceMaintenanceRequest struct {
 	Pph23ID                  *uint                               `json:"pph23_id"`
 	BranchID                 *uint                               `json:"branch_id"`
 	BankID                   *uint                               `json:"bank_id"`
+	Title                    *string                             `json:"title"`
 	InvoiceNo                *string                             `json:"invoice_no"`
 	InvoiceDate              *string                             `json:"invoice_date"`
+	DueDate                  *string                             `json:"due_date"`
 	ExchangeRate             *float64                            `json:"exchange_rate"`
 	Remark                   *string                             `json:"remark"`
 	Status                   *string                             `json:"status"`
@@ -176,8 +181,13 @@ type InvoiceMaintenanceListDTO struct {
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
 	BankID                   *uint    `json:"bank_id" db:"bank_id"`
+	BankName                 *string  `json:"bank_name" db:"bank_name"`
+	AccountNumber            *string  `json:"account_number" db:"account_number"`
+	AccountName              *string  `json:"account_name" db:"account_name"`
+	Title                    *string  `json:"title" db:"title"`
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
+	DueDate                  *string  `json:"due_date" db:"due_date"`
 	Remark                   *string  `json:"remark" db:"remark"`
 	Status                   *string  `json:"status" db:"status"`
 	ApprovedStatus           *string  `json:"approved_status" db:"approved_status"`
@@ -229,8 +239,10 @@ type InvoiceMaintenanceDetailDTO struct {
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
 	BankID                   *uint    `json:"bank_id" db:"bank_id"`
+	Title                    *string  `json:"title" db:"title"`
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
+	DueDate                  *string  `json:"due_date" db:"due_date"`
 	Remark                   *string  `json:"remark" db:"remark"`
 	Status                   *string  `json:"status" db:"status"`
 	ApprovedStatus           *string  `json:"approved_status" db:"approved_status"`

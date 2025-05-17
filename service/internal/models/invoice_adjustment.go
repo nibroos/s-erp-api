@@ -13,7 +13,9 @@ type InvoiceAdjustment struct {
 	CurrencyID      *uint          `json:"currency_id" gorm:"column:currency_id"`
 	BranchID        *uint          `json:"branch_id" gorm:"column:branch_id"`
 	BankID          *uint          `json:"bank_id" gorm:"column:bank_id"`
+	Title           *string        `json:"title" gorm:"column:title"`
 	InvoiceNo       *string        `json:"invoice_no" gorm:"column:invoice_no"`
+	AdjustmentDate  *time.Time     `json:"adjustment_date" gorm:"column:adjustment_date"`
 	PaymentDate     *time.Time     `json:"payment_date" gorm:"column:payment_date"`
 	PaymentAmount   *float64       `json:"payment_amount" gorm:"column:payment_amount"`
 	ExchangeRate    *float64       `json:"exchange_rate" gorm:"column:exchange_rate"`

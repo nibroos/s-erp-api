@@ -46,7 +46,7 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 	var total int
 
 	filterDBColumnKey := []string{
-		"im.invoice_no", "im.remark", "im.status",
+		"im.invoice_no", "im.remark", "im.status", "im.title",
 		"c.name",
 		"imdt.remark",
 	}
@@ -135,9 +135,9 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
     FROM ( 
         SELECT DISTINCT ON (im.id)
 					im.id, im.customer_id, im.currency_id, im.payment_term_id, im.vat_id, im.pph23_id, im.branch_id, im.bank_id,
-					im.invoice_no, im.remark, im.status, im.approved_status, im.approved_by_id, im.rev_no,
+					im.invoice_no, im.remark, im.status, im.approved_status, im.approved_by_id, im.rev_no, im.title, bk.name as bank_name, bk.account_number as account_number, bk.account_name as account_name,
 					im.exchange_rate, im.pph23_percentage, im.vat_percentage, im.total_qty, im.subtotal, im.total_discount, im.total_pph23, im.total_vat, im.grand_total, im.created_by_id, im.updated_by_id, im.deleted_by_id, im.created_at, im.updated_at, im.deleted_at,
-					TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date,
+					TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(im.due_date, 'YYYY-MM-DD') as due_date,
 					im.discount_amount, im.discount_percentage, im.discount_percentage_amount, im.discount_final, im.discount_type, im.total_amount_products, im.total_dp_products, im.total_balance_products, im.total_adjustment,
 
 					c.name as customer_name,
@@ -177,7 +177,7 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 
 	for key, value := range filters {
 		switch key {
-		case "invoice_no", "remark", "status":
+		case "invoice_no", "remark", "status", "title":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -294,9 +294,9 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceByID(ctx *fiber.Ctx,
     FROM ( 
         SELECT DISTINCT ON (im.id)
             im.id, im.customer_id, im.currency_id, im.payment_term_id, im.vat_id, im.pph23_id, im.branch_id, im.bank_id,
-            im.invoice_no, im.remark, im.status, im.approved_status, im.rev_no,
+            im.invoice_no, im.remark, im.status, im.approved_status, im.rev_no, im.title,
             im.exchange_rate, im.pph23_percentage, im.vat_percentage, im.total_qty, im.subtotal, im.total_discount, im.total_pph23, im.total_vat, im.grand_total, im.created_by_id, im.updated_by_id, im.deleted_by_id, im.created_at, im.updated_at, im.deleted_at,
-            TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date,
+            TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(im.due_date, 'YYYY-MM-DD') as due_date,
             im.discount_amount, im.discount_percentage, im.discount_percentage_amount, im.discount_final, im.discount_type, im.total_amount_products, im.total_dp_products, im.total_balance_products,
 
             cu.name as created_by_name,
@@ -636,14 +636,14 @@ func (r *InvoiceMaintenanceRepository) GetRefSalesOrderForInvoiceMaintenance(ctx
 			for i, id := range refDtIDs {
 				refDtIDsStr[i] = fmt.Sprintf("%d", id)
 			}
-			condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')))", strings.Join(refDtIDsStr, ","))
+			condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at))", strings.Join(refDtIDsStr, ","))
 		} else {
-			condition += " AND so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')"
+			condition += " AND so.status NOT IN ('CANCELED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at"
 		}
 	} else if filters["specific_ids"] != "" {
-		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')))", filters["specific_ids"])
+		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at))", filters["specific_ids"])
 	} else {
-		condition += " AND so.status NOT IN ('CANCELED', 'FINISH') AND (sodt.invoice_status IS NULL OR sodt.invoice_status != 'INVOICE')"
+		condition += " AND so.status NOT IN ('CANCELED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at"
 	}
 
 	if filters["ids"] != "" {
@@ -1381,7 +1381,7 @@ func (r *InvoiceMaintenanceRepository) GetWidgetInvoiceMaintenances(ctx *fiber.C
 	var total int
 
 	filterDBColumnKey := []string{
-		"im.invoice_no", "im.remark", "im.status",
+		"im.invoice_no", "im.remark", "im.status", "im.title",
 		"c.name",
 		"imdt.remark",
 	}
@@ -1429,7 +1429,7 @@ func (r *InvoiceMaintenanceRepository) GetWidgetInvoiceMaintenances(ctx *fiber.C
 
 	for key, value := range filters {
 		switch key {
-		case "invoice_no", "remark":
+		case "invoice_no", "remark", "title":
 			if value != "" {
 				condition += fmt.Sprintf(" AND im.%s ILIKE $%d", key, i)
 				args = append(args, "%"+value+"%")

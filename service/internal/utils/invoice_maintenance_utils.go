@@ -182,6 +182,15 @@ func MapCreateInvoiceMaintenance(ctx *fiber.Ctx, req dtos.CreateInvoiceMaintenan
 		invoiceDate = &parsedTime
 	}
 
+	var dueDate *time.Time
+	if req.DueDate != nil {
+		parsedTime, err := time.Parse("2006-01-02", *req.DueDate)
+		if err != nil {
+			return models.InvoiceMaintenance{}, err
+		}
+		dueDate = &parsedTime
+	}
+
 	invoiceMaintenance := models.InvoiceMaintenance{
 		CustomerID:               req.CustomerID,
 		CurrencyID:               req.CurrencyID,
@@ -190,8 +199,10 @@ func MapCreateInvoiceMaintenance(ctx *fiber.Ctx, req dtos.CreateInvoiceMaintenan
 		Pph23ID:                  req.Pph23ID,
 		BranchID:                 &branchID,
 		BankID:                   req.BankID,
+		Title:                    req.Title,
 		InvoiceNo:                &invoiceNo,
 		InvoiceDate:              invoiceDate,
+		DueDate:                  dueDate,
 		ExchangeRate:             req.ExchangeRate,
 		Remark:                   req.Remark,
 		Status:                   req.Status,
@@ -239,6 +250,15 @@ func MapUpdateInvoiceMaintenance(ctx *fiber.Ctx, req dtos.UpdateInvoiceMaintenan
 		invoiceDate = &parsedTime
 	}
 
+	var dueDate *time.Time
+	if req.DueDate != nil {
+		parsedTime, err := time.Parse("2006-01-02", *req.DueDate)
+		if err != nil {
+			return models.InvoiceMaintenance{}, err
+		}
+		dueDate = &parsedTime
+	}
+
 	invoiceMaintenance := models.InvoiceMaintenance{
 		ID:                       req.ID,
 		CustomerID:               req.CustomerID,
@@ -248,8 +268,10 @@ func MapUpdateInvoiceMaintenance(ctx *fiber.Ctx, req dtos.UpdateInvoiceMaintenan
 		Pph23ID:                  req.Pph23ID,
 		BranchID:                 &branchID,
 		BankID:                   req.BankID,
+		Title:                    req.Title,
 		InvoiceNo:                &invoiceNo,
 		InvoiceDate:              invoiceDate,
+		DueDate:                  dueDate,
 		ExchangeRate:             req.ExchangeRate,
 		Remark:                   req.Remark,
 		Status:                   req.Status,
