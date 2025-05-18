@@ -1,0 +1,21 @@
+body {
+	font-family: Arial, sans-serif;
+}
+
+.vertical-top {
+	vertical-align: top;
+}
+
+.text-right {
+	text-align: right;
+}
+
+.text-center {
+	text-align: center;
+}
+
+.info-label {
+	font-weight: bold;
+	white-space: nowrap;
+	margin-bottom: 5px;
+}

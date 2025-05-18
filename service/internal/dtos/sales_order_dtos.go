@@ -223,6 +223,10 @@ type UpdateSoDtsRequest struct {
 	DiscType        *string                   `json:"disc_type"`
 	TotalAm         *float64                  `json:"total_am"`
 	SoDtsBoms       []*UpdateSoDtsBomsRequest `json:"so_dts_boms" gorm:"-"`
+
+	ItemName *string `json:"item_name" db:"item_name"`
+	ItemCode *string `json:"item_code" db:"item_code"`
+	UnitName *string `json:"unit_name" db:"unit_name"`
 }
 
 type UpdateSoDtsBomsRequest struct {
@@ -242,6 +246,10 @@ type UpdateSoDtsBomsRequest struct {
 	PriceBuy     float64 `json:"price_buy"`
 	SubtotalSell float64 `json:"subtotal_sell"`
 	SubtotalBuy  float64 `json:"subtotal_buy"`
+
+	ItemName *string `json:"item_name" db:"item_name"`
+	ItemCode *string `json:"item_code" db:"item_code"`
+	UnitName *string `json:"unit_name" db:"unit_name"`
 }
 
 type UpdateSalesOrderRequest struct {
@@ -406,7 +414,7 @@ type SalesOrderDetailDTO struct {
 	Pph23ID       *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID      *uint    `json:"branch_id" db:"branch_id"`
 	SalesOrderNo  *string  `json:"sales_order_no" db:"sales_order_no"`
-	PoBuyerNo     string   `json:"po_buyer_no" db:"po_buyer_no"`
+	PoBuyerNo     *string  `json:"po_buyer_no" db:"po_buyer_no"`
 	PoBuyerNoOri  *string  `json:"po_buyer_no_ori" db:"po_buyer_no_ori"`
 	ShipDest      *string  `json:"ship_dest" db:"ship_dest"`
 	Remark        *string  `json:"remark" db:"remark"`
@@ -448,6 +456,21 @@ type SalesOrderDetailDTO struct {
 	SoDts         []SalesOrderSoDtListDTO    `json:"so_dts"`
 	Schedule      *ScheduleDetailDTO         `json:"schedule"`
 	Attachments   []SalesOrderAttachmentsDTO `json:"attachments"`
+
+	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
+	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
+	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
+	Phone            *string                 `json:"phone" db:"phone"`
+	Address          *string                 `json:"address" db:"address"`
+	Company          CompanyProfileDetailDTO `json:"company"`
+	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
+	CurrencyName     *string                 `json:"currency_name" db:"currency_name"`
+	VatName          *string                 `json:"vat_name" db:"vat_name"`
+	Pph23Name        *string                 `json:"pph23_name" db:"pph23_name"`
+	BankName         *string                 `json:"bank_name" db:"bank_name"`
+	AccountName      *string                 `json:"account_name" db:"account_name"`
+	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
+	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
 }
 
 type AppScheduleDetailDTO struct {
@@ -1192,4 +1215,68 @@ type SalesOrderByTypeWidget struct {
 	OrderCount  int     `json:"order_count" db:"order_count"`
 	TotalQty    float64 `json:"total_qty" db:"total_qty"`
 	GrandTotal  float64 `json:"grand_total" db:"grand_total"`
+}
+
+type FormSalesOrderRequest struct {
+	ID            uint                             `json:"id"`
+	SalesOrderID  *uint                            `json:"sales_order_id"`
+	CustomerID    *uint                            `json:"customer_id"`
+	OrderTypeID   *uint                            `json:"order_type_id"`
+	CurrencyID    *uint                            `json:"currency_id"`
+	WarehouseID   *uint                            `json:"warehouse_id"`
+	VatID         *uint                            `json:"vat_id"`
+	PaymentID     *uint                            `json:"payment_id"`
+	Pph23ID       *uint                            `json:"pph23_id"`
+	BranchID      *uint                            `json:"branch_id"`
+	RevNo         *int                             `json:"rev_no"`
+	PoBuyerNo     *string                          `json:"po_buyer_no"`
+	PoBuyerNoOri  *string                          `json:"po_buyer_no_ori"`
+	SalesOrderNo  *string                          `json:"sales_order_no"`
+	Remark        *string                          `json:"remark"`
+	ShipDest      *string                          `json:"ship_dest"`
+	Status        string                           `json:"status"`
+	ExchangeRate  *float64                         `json:"exchange_rate"`
+	VatPerc       *float64                         `json:"vat_perc"`
+	Pph23Perc     *float64                         `json:"pph23_perc"`
+	MarkupPerc    *float64                         `json:"markup_perc"`
+	IsVat         *int                             `json:"is_vat"`
+	IsPph23       *int                             `json:"is_pph23"`
+	DiscAm        *float64                         `json:"disc_am"`
+	DiscPerc      *float64                         `json:"disc_perc"`
+	DiscPercAm    *float64                         `json:"disc_perc_am"`
+	DiscFinal     *float64                         `json:"disc_final"`
+	DiscType      *string                          `json:"disc_type"`
+	TotalQty      *float64                         `json:"total_qty"`
+	Subtotal      *float64                         `json:"subtotal"`
+	TotalDiscount *float64                         `json:"total_discount"`
+	TotalPph23    *float64                         `json:"total_pph23"`
+	TotalVat      *float64                         `json:"total_vat"`
+	GrandTotal    *float64                         `json:"grand_total"`
+	OrderAt       *string                          `json:"order_at"`
+	ShippingAt    *string                          `json:"shipping_at"`
+	AgreeAt       *string                          `json:"agree_at"`
+	DueAt         *string                          `json:"due_at"`
+	SoDts         []UpdateSoDtsRequest             `json:"so_dts"`
+	Attachments   []UpdateSalesOrderAttachmentsDTO `json:"attachments"`
+	DeletedFiles  []uint                           `json:"deleted_files"`
+
+	CustomerCode   string                  `json:"customer_code"`
+	CustomerName   string                  `json:"customer_name"`
+	Phone          string                  `json:"phone"`
+	Address        string                  `json:"address"`
+	Company        CompanyProfileDetailDTO `json:"company"`
+	OrderTypeName  string                  `json:"order_type_name"`
+	CurrencyName   string                  `json:"currency_name"`
+	VatName        string                  `json:"vat_name"`
+	Pph23Name      string                  `json:"pph23_name"`
+	BankName       string                  `json:"bank_name"`
+	AccountName    string                  `json:"account_name"`
+	TotalAfterDisc *float64                `json:"total_after_disc"`
+	IsIDOnly       *int                    `json:"is_id_only"`
+}
+
+type SalesOrderPDFData struct {
+	Num string `json:"num"`
+	// Form FormSalesOrderRequest
+	Form SalesOrderDetailDTO
 }

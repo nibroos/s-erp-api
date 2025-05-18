@@ -2,6 +2,7 @@
 <html>
 
 <head>
+
 	<script>
 		function substitutePdfVariables() {
 
@@ -29,15 +30,41 @@
 
 	<style>
 		body {
-			margin: 10px;
+			font-family: Arial, sans-serif;
+			font-size: 12px;
+			margin: 0 2rem;
+			color: #212529;
+		}
+
+		.vertical-top {
+			vertical-align: top;
+		}
+
+		.text-right {
+			text-align: right;
+		}
+
+		.text-center {
 			text-align: center;
-			font-size: 10px;
+		}
+
+		.info-label {
+			font-weight: bold;
+			white-space: nowrap;
+			margin-bottom: 5px;
+		}
+
+		.text-grey {
+			color: #949494;
 		}
 	</style>
 </head>
 
 <body onload="substitutePdfVariables()">
-	<p>Page <span class="page"></span> of <span class="topage"></span></p>
+	<div style="margin: 0.5rem 0 0 0; text-align: center;">Page <span class="page"></span> of <span class="topage"></span>
+	</div>
+	<div>&nbsp;</div>
+	<!-- <div style="background-color: #195093; width: 100%;">&nbsp;</div> -->
 </body>
 
 

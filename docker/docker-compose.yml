@@ -21,7 +21,7 @@ services:
     build: 
       context: ../service
       dockerfile: Dockerfile
-    image: nibroos/s-erp-service:1.0.250204
+    image: nibroos/s-erp-service:1.0.250517
     networks:
       - s-erp-api-network
     depends_on:
@@ -29,8 +29,10 @@ services:
     volumes:
       - public-s-erp-api:/apps/public
     ports:
-      - "50051"
-      - "4001"
+      - "50051:50051"
+      - "4001:4001"
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -47,21 +49,169 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB: ${REDIS_DB}
       SERVICE_TYPE: main
+      SEEDER_DIR: /apps/internal/database/seeders
+    restart: on-failure
+
+  consumer-service:
+    build: 
+      context: ../service
+      dockerfile: Dockerfile
+      network: host
+    image: nibroos/s-erp-service:1.0.250517
+    networks:
+      - s-erp-api-network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      SERVICE_TYPE: consumer
+    volumes:
+      - public-s-erp-api:/apps/public
+    restart: unless-stopped
 
   postgres:
-    image: postgres:13-alpine
+    image: postgres:17.4-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
       POSTGRES_DB: ${POSTGRES_DB:-s_erp_api}
-      SEEDER_DIR: /apps/internal/database/seeders
-    container_name: postgres-prod-s-erp-api
     networks:
       - s-erp-api-network
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-s-erp-api:/var/lib/postgresql/data
+    restart: on-failure
+
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: rabbitmq-s-erp-api
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      SERVICE_TYPE: consumer
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - s-erp-api-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: bitnami/postgres-exporter:0.17.0
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - postgres
+    restart: on-failure
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    expose:
+      - 9100
+    networks:
+      - s-erp-api-network
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - postgres-exporter
+    restart: on-failure
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    ports:
+      - "3005:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - prometheus
+    environment:
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: postgres:5432
+      GF_DATABASE_NAME: grafana
+      GF_DATABASE_USER: grafana
+      GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: on-failure
+
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
+  #   networks:
+  #     - s-erp-api-network
+  #   environment:
+  #     - discovery.type=single-node  # Run in single-node mode
+  #     - ES_JAVA_OPTS=-Xms128m -Xmx256m  # Set min heap to 128MB and max heap to 256MB
+  #     - xpack.ml.enabled=false  # Disable machine learning
+  #     - xpack.security.enabled=false  # Disable security
+  #     - xpack.monitoring.enabled=false  # Disable monitoring
+  #     - xpack.watcher.enabled=false  # Disable watcher (alerting)
+  #   ports:
+  #     - "9200:9200"
+  #   volumes:
+  #     - elasticsearch-data:/usr/share/elasticsearch/data
+  #   ulimits:
+  #     memlock:
+  #       soft: -1
+  #       hard: -1
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:9200"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
+
+  # jaeger:
+  #   image: jaegertracing/all-in-one:1.56
+  #   ports:
+  #     - 16686:16686  # Jaeger UI
+  #     - 14268:14268  # HTTP collector
+  #     - 4317:4317  # OTLP gRPC
+  #     - 4318:4318  # OTLP HTTP
+  #   networks:
+  #     - s-erp-api-network
+  #   environment:
+  #     - SPAN_STORAGE_TYPE=elasticsearch  # Use Elasticsearch as the storage backend
+  #     - ES_SERVER_URLS=http://elasticsearch:9200  # Elasticsearch server address
+  #     - ES_TTL=168h  # Set TTL to 7 days (optional)
+  #   depends_on:
+  #     elasticsearch:
+  #       condition: service_healthy
 
   # redis:
   #   image: "redis:alpine"
@@ -108,6 +258,10 @@ services:
 volumes:
   postgres-s-erp-api:
   public-s-erp-api:
+  grafana-storage:
+  # jaeger-logs:
+  elasticsearch-data:
+  rabbitmq-data:
 
 networks:
   s-erp-api-network:

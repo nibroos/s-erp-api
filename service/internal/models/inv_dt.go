@@ -11,6 +11,7 @@ type InvDt struct {
 	ItemUnitID      uint     `json:"item_unit_id" gorm:"column:item_unit_id"`
 	VatID           *uint    `json:"vat_id" gorm:"column:vat_id"`
 	Pph23ID         *uint    `json:"pph23_id" gorm:"column:pph23_id"`
+	RefRoDtID       *uint    `json:"ref_ro_dt_id" gorm:"column:ref_ro_dt_id"`
 	RefSoDtID       *uint    `json:"ref_so_dt_id" gorm:"column:ref_so_dt_id"`
 	RefSoDtBomID    *uint    `json:"ref_so_dt_bom_id" gorm:"column:ref_so_dt_bom_id"`
 	RefPoDtID       *uint    `json:"ref_po_dt_id" gorm:"column:ref_po_dt_id"`

@@ -74,6 +74,7 @@ func MapCreateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, createdInven
 			Pph23ID:         invDt.Pph23ID,
 			RefSoDtID:       invDt.RefSoDtID,
 			RefSoDtBomID:    invDt.RefSoDtBomID,
+			RefRoDtID:       invDt.RefRoDtID,
 			RefPoDtID:       invDt.RefPoDtID,
 			RefPoDtBomID:    invDt.RefPoDtBomID,
 			RefInvDtID:      invDt.RefInvDtID,
@@ -173,9 +174,10 @@ func MapUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, updatedInven
 	return invDtsModel, nil
 }
 
-func MapOldUpdateInvDts(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtListDTO, userID uint, span opentracing.Span) ([]uint, []uint, []uint, []uint, []uint, error) {
+func MapOldUpdateInvDts(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtListDTO, userID uint, span opentracing.Span) ([]uint, []uint, []uint, []uint, []uint, []uint, error) {
 	refSoDtID := []uint{}
 	refSoDtBomDtID := []uint{}
+	refRoDtID := []uint{}
 	refPoDtID := []uint{}
 	refPoDtBomID := []uint{}
 	refInvDtID := []uint{}
@@ -189,6 +191,10 @@ func MapOldUpdateInvDts(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtListDTO, 
 			refSoDtBomDtID = append(refSoDtBomDtID, *reqInvDt.RefSoDtBomID)
 		}
 
+		if reqInvDt.RefRoDtID != nil {
+			refRoDtID = append(refRoDtID, *reqInvDt.RefRoDtID)
+		}
+
 		if reqInvDt.RefPoDtID != nil {
 			refPoDtID = append(refPoDtID, *reqInvDt.RefPoDtID)
 		}
@@ -202,12 +208,13 @@ func MapOldUpdateInvDts(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtListDTO, 
 		}
 	}
 
-	return refSoDtID, refSoDtBomDtID, refPoDtID, refPoDtBomID, refInvDtID, nil
+	return refSoDtID, refSoDtBomDtID, refRoDtID, refPoDtID, refPoDtBomID, refInvDtID, nil
 }
 
-func MapNewUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID uint, span opentracing.Span) ([]uint, []uint, []uint, []uint, []uint, error) {
+func MapNewUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID uint, span opentracing.Span) ([]uint, []uint, []uint, []uint, []uint, []uint, error) {
 	refSoDtID := []uint{}
 	refSoDtBomDtID := []uint{}
+	refRoDtID := []uint{}
 	refPoDtID := []uint{}
 	refPoDtBomID := []uint{}
 	refInvDtID := []uint{}
@@ -221,6 +228,10 @@ func MapNewUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID ui
 			refSoDtBomDtID = append(refSoDtBomDtID, *reqInvDt.RefSoDtBomID)
 		}
 
+		if reqInvDt.RefRoDtID != nil {
+			refRoDtID = append(refRoDtID, *reqInvDt.RefRoDtID)
+		}
+
 		if reqInvDt.RefPoDtID != nil {
 			refPoDtID = append(refPoDtID, *reqInvDt.RefPoDtID)
 		}
@@ -234,12 +245,13 @@ func MapNewUpdateInvDts(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID ui
 		}
 	}
 
-	return refSoDtID, refSoDtBomDtID, refPoDtID, refPoDtBomID, refInvDtID, nil
+	return refSoDtID, refSoDtBomDtID, refRoDtID, refPoDtID, refPoDtBomID, refInvDtID, nil
 }
 
-func MapNewUpdatedReverseRefs(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtListDTO, soDts []map[string]interface{}, soDtBoms []map[string]interface{}, poDts []map[string]interface{}, poDtBoms []map[string]interface{}, invDts []map[string]interface{}) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, error) {
+func MapNewUpdatedReverseRefs(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtListDTO, soDts []map[string]interface{}, soDtBoms []map[string]interface{}, roDts []map[string]interface{}, poDts []map[string]interface{}, poDtBoms []map[string]interface{}, invDts []map[string]interface{}) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, error) {
 	refSoDt := []map[string]interface{}{}
 	refSoDtBomDt := []map[string]interface{}{}
+	refRoDt := []map[string]interface{}{}
 	refPoDt := []map[string]interface{}{}
 	refPoDtBom := []map[string]interface{}{}
 	refInvDt := []map[string]interface{}{}
@@ -266,6 +278,21 @@ func MapNewUpdatedReverseRefs(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtLis
 					if *reqInvDt.RefSoDtBomID == uint(id) {
 						soDtBom["qty_out"] = soDtBom["qty_out"].(float64) - *reqInvDt.Qty
 						refSoDtBomDt = append(refSoDtBomDt, soDtBom)
+						break
+					}
+				}
+			}
+		}
+
+		if reqInvDt.RefRoDtID != nil && *reqInvDt.RefRoDtID > 0 {
+			for _, roDt := range roDts {
+				// log.Printf("roDt[\"id\"] value: %v, type: %T\n", roDt["id"], roDt["id"])
+
+				if id, ok := roDt["id"].(int32); ok {
+					// if *reqInvDt.RefRoDtID == roDt["id"] {
+					if *reqInvDt.RefRoDtID == uint(id) {
+						roDt["qty_out"] = roDt["qty_out"].(float64) - *reqInvDt.Qty
+						refRoDt = append(refRoDt, roDt)
 						break
 					}
 				}
@@ -316,12 +343,13 @@ func MapNewUpdatedReverseRefs(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtLis
 		}
 	}
 
-	return refSoDt, refSoDtBomDt, refPoDt, refPoDtBom, refInvDt, nil
+	return refSoDt, refSoDtBomDt, refRoDt, refPoDt, refPoDtBom, refInvDt, nil
 }
 
-func MapNewUpdatedRefs(ctx *fiber.Ctx, req dtos.FormInventoryRequest, soDts []map[string]interface{}, soDtBoms []map[string]interface{}, poDts []map[string]interface{}, poDtBoms []map[string]interface{}, invDts []map[string]interface{}) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, error) {
+func MapNewUpdatedRefs(ctx *fiber.Ctx, req dtos.FormInventoryRequest, soDts []map[string]interface{}, soDtBoms []map[string]interface{}, roDts []map[string]interface{}, poDts []map[string]interface{}, poDtBoms []map[string]interface{}, invDts []map[string]interface{}) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, []map[string]interface{}, error) {
 	refSoDt := []map[string]interface{}{}
 	refSoDtBomDt := []map[string]interface{}{}
+	refRoDt := []map[string]interface{}{}
 	refPoDt := []map[string]interface{}{}
 	refPoDtBom := []map[string]interface{}{}
 	refInvDt := []map[string]interface{}{}
@@ -362,6 +390,25 @@ func MapNewUpdatedRefs(ctx *fiber.Ctx, req dtos.FormInventoryRequest, soDts []ma
 			}
 		}
 
+		if reqInvDt.RefRoDtID != nil && *reqInvDt.RefRoDtID > 0 {
+			for _, roDt := range roDts {
+				// log.Printf("roDt[\"id\"] value: %v, type: %T\n", roDt["id"], roDt["id"])
+
+				if id, ok := roDt["id"].(int32); ok {
+					// if *reqInvDt.RefRoDtID == roDt["id"] {
+					if *reqInvDt.RefRoDtID == uint(id) {
+
+						if roDt["qty_out"] == nil {
+							roDt["qty_out"] = *new(float64)
+						}
+						log.Println("reqInvDt.Qty: ", *reqInvDt.Qty)
+						roDt["qty_out"] = roDt["qty_out"].(float64) + *reqInvDt.Qty
+						refRoDt = append(refRoDt, roDt)
+						break
+					}
+				}
+			}
+		}
 		if reqInvDt.RefPoDtID != nil && *reqInvDt.RefPoDtID > 0 {
 			for _, poDt := range poDts {
 				if id, ok := poDt["id"].(int32); ok {
@@ -416,7 +463,7 @@ func MapNewUpdatedRefs(ctx *fiber.Ctx, req dtos.FormInventoryRequest, soDts []ma
 		}
 	}
 
-	return refSoDt, refSoDtBomDt, refPoDt, refPoDtBom, refInvDt, nil
+	return refSoDt, refSoDtBomDt, refRoDt, refPoDt, refPoDtBom, refInvDt, nil
 }
 
 func GenInventoryNo(ctx *fiber.Ctx, req dtos.FormInventoryRequest, orderedNumber int, span opentracing.Span) string {

@@ -662,7 +662,7 @@ func (s *QuotationService) PdfGetQuotations(ctx *fiber.Ctx, req dtos.FormQuotati
 	page.EnableLocalFileAccess.Set(true)
 	page.HeaderHTML.Set("file://" + headerPath) // Set header
 	page.FooterHTML.Set("file://" + footerPath) // Set footer
-	page.FooterSpacing.Set(10)                  // Space below content (mm)
+	// page.FooterSpacing.Set(10)                  // Space below content (mm)
 
 	pdfg.AddPage(page)
 

@@ -1,4 +1,6 @@
-FROM golang:1.23-alpine AS builder
+FROM surnet/alpine-wkhtmltopdf:3.21.3-024b2b2-small AS wkhtmltopdf
+
+FROM golang:1.24-alpine AS builder
 
 # Set the SEEDER_DIR environment variable
 ENV SEEDER_DIR=/apps/internal/database/seeders
@@ -19,11 +21,40 @@ RUN go build -ldflags "-s -w" -trimpath -o app .
 
 FROM alpine:latest
 
-# Install necessary packages
-RUN apk --no-cache add ca-certificates tzdata \
-    && cp /usr/share/zoneinfo/Asia/Bangkok /etc/localtime \
-    && echo "Asia/Bangkok" > /etc/timezone \
-    && apk del tzdata
+# Install necessary packages including PDF generation dependencies
+RUN apk --no-cache add \
+    ca-certificates \
+    tzdata \
+    postgresql-client \
+    git \
+    bash \
+    libxi \
+    libxtst \
+    libstdc++ \
+    libx11 \
+    libxrender \
+    libxext \
+    libssl3 \
+    fontconfig \
+    freetype \
+    ttf-dejavu \
+    ttf-droid \
+    ttf-freefont \
+    ttf-liberation \
+    && apk add --no-cache --virtual .build-deps \
+    msttcorefonts-installer \
+    && update-ms-fonts \
+    && fc-cache -f \
+    && rm -rf /tmp/* \
+    && apk del .build-deps
+
+# Set timezone
+RUN cp /usr/share/zoneinfo/Asia/Bangkok /etc/localtime \
+    && echo "Asia/Bangkok" > /etc/timezone
+
+# Copy wkhtmltopdf from the wkhtmltopdf stage
+COPY --from=wkhtmltopdf /bin/wkhtmltopdf /bin/wkhtmltopdf
+COPY --from=wkhtmltopdf /lib/libwkhtmltox* /lib/
 
 # Copy the migrate CLI
 COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
@@ -58,5 +89,4 @@ RUN mkdir -p /go && chown -R appuser:appgroup /go
 
 WORKDIR /apps
 
-# ENTRYPOINT ["/apps/app"]
 ENTRYPOINT ["/apps/app"]

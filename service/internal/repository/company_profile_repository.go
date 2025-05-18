@@ -278,10 +278,12 @@ func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params 
 	if companyProfile.CompanyLogo != nil {
 		logo := utils.AddHostURLToImageURL(*companyProfile.CompanyLogo)
 		companyProfile.CompanyLogo = &logo
+		companyProfile.CompanyLogoUrl = &logo
 	}
 	if companyProfile.CompanySign != nil {
 		sign := utils.AddHostURLToImageURL(*companyProfile.CompanySign)
 		companyProfile.CompanySign = &sign
+		companyProfile.CompanySignUrl = &sign
 	}
 
 	bankQuery := `SELECT 
@@ -720,6 +722,12 @@ func (r *CompanyProfileRepository) GetBankInformationsWithCompany(ctx *fiber.Ctx
 	if filters["name"] != "" {
 		conditions = append(conditions, fmt.Sprintf("bi.name ILIKE $%d", argIndex))
 		args = append(args, "%"+filters["name"]+"%")
+		argIndex++
+	}
+
+	if filters["id"] != "" {
+		conditions = append(conditions, fmt.Sprintf("bi.id = $%d", argIndex))
+		args = append(args, filters["id"])
 		argIndex++
 	}
 

@@ -26,3 +26,7 @@ type Branch struct {
 	UpdatedByID      uint    `json:"updated_by_id" gorm:"column:updated_by_id"`
 	DeletedByID      uint    `json:"deleted_by_id" gorm:"column:deleted_by_id"`
 }
+
+func (Branch) TableName() string {
+	return "branches"
+}

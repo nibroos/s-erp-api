@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sales Order</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			margin: 0;
+			padding: 20px;
+			color: #333;
+		}
+
+		.header {
+			margin-bottom: 20px;
+		}
+
+		.company-name {
+			font-size: 18px;
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		.company-address {
+			font-size: 12px;
+			line-height: 1.4;
+			margin-bottom: 5px;
+		}
+
+		.company-contact {
+			font-size: 12px;
+			margin-bottom: 15px;
+		}
+
+		.document-title {
+			text-align: center;
+			font-weight: bold;
+			margin-bottom: 15px;
+			font-size: 16px;
+		}
+
+		.so-info {
+			display: flex;
+			text-align: center;
+			justify-content: space-between;
+			margin-bottom: 20px;
+			font-size: 12px;
+		}
+
+		.so-number {
+			text-decoration-line: underline;
+		}
+
+		.customer-info {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 20px;
+			font-size: 12px;
+		}
+
+		.info-box {
+			width: 48%;
+		}
+
+		.info-label {
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-bottom: 20px;
+			font-size: 12px;
+		}
+
+		th {
+			text-align: left;
+			padding: 8px;
+			background-color: #f2f2f2;
+			border: 1px solid #ddd;
+		}
+
+		td {
+			padding: 8px;
+			border: 1px solid #ddd;
+		}
+
+		.text-right {
+			text-align: right;
+		}
+
+		.text-center {
+			text-align: center;
+		}
+
+		.totals {
+			width: 50%;
+			margin-left: auto;
+			font-size: 12px;
+		}
+
+		.totals-row {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 5px;
+		}
+
+		.totals-label {
+			font-weight: bold;
+		}
+
+		.remark {
+			font-size: 12px;
+			margin-bottom: 20px;
+			font-style: italic;
+		}
+
+		.payment-info {
+			font-size: 12px;
+			margin-bottom: 30px;
+		}
+
+		.approval {
+			display: flex;
+			justify-content: space-between;
+			margin-top: 50px;
+		}
+
+		.approval-box {
+			width: 200px;
+			text-align: center;
+		}
+
+		.approval-line {
+			border-top: 1px solid #333;
+			margin-top: 50px;
+			padding-top: 5px;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="header">
+		<div class="company-name">PT. YUBI TECHNOLOGY</div>
+		<div class="company-address">
+			Ruan Buiti Gxilong Hold No.50, 36 S., J Gxilong Koma, Wp.Gxilong Bar,<br>
+			Ken, Kip, Gxin, Kum Jukait Uzun, Su Jukaita Hd 5
+		</div>
+		<div class="company-contact">
+			Q1-22452097 / Nursingbytehsec.com
+		</div>
+	</div>
+
+	<div class="document-title">SALES ORDER</div>
+
+	<div class="so-info">
+		<div class="so-number">YUBI/QUOT/2025/04/0001</div>
+		<div></div>
+	</div>
+
+	<div class="customer-info">
+		<div class="info-box">
+			<div class="info-label">BILL TO</div>
+			<div>8&RTCHEN</div>
+		</div>
+		<div class="info-box">
+			<div class="info-label">REFERENCE</div>
+			<div>CUSTOMER</div>
+		</div>
+	</div>
+
+	<div class="customer-info">
+		<div class="info-box">
+			<div class="info-label">QUOT DATE</div>
+			<div>2025-05-08</div>
+		</div>
+		<div class="info-box">
+			<div class="info-label">PHONE NO.</div>
+			<div>0812345678910</div>
+		</div>
+	</div>
+
+	<div class="customer-info">
+		<div class="info-box">
+			<div class="info-label">EXPIRED DATE</div>
+			<div>2025-05-10</div>
+		</div>
+		<div class="info-box">
+			<div class="info-label">PIC</div>
+			<div>ibn.Nom</div>
+		</div>
+	</div>
+
+	<table>
+		<thead>
+			<tr>
+				<th>NO</th>
+				<th>ITEM NAME</th>
+				<th>UNIT</th>
+				<th class="text-right">QTY</th>
+				<th class="text-right">PRICE</th>
+				<th class="text-right">AMOUNT</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td class="text-center">1</td>
+				<td>LICENSE POS SYSTEM - MONTH</td>
+				<td class="text-center">MONTH</td>
+				<td class="text-center">1</td>
+				<td class="text-right">500.000</td>
+				<td class="text-right">500.000</td>
+			</tr>
+			<tr>
+				<td class="text-center">2</td>
+				<td>MONITOR TOUCHPOS</td>
+				<td class="text-center">PCS</td>
+				<td class="text-center">1</td>
+				<td class="text-right">500.000</td>
+				<td class="text-right">500.000</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<div class="remark">
+		*Jits Ands telah melakukan pembeyaran, mohon kirimkan bukti transfer melalui email m_maatar@yubitebc.com,
+		atau Ands juga dapat mengirishkan bukti transfer melalui WhatsApp ke nomor 0611 247 QBS.
+	</div>
+
+	<div class="totals">
+		<div class="totals-row">
+			<div class="totals-label">SUB AMOUNT</div>
+			<div>1,000.000</div>
+		</div>
+		<div class="totals-row">
+			<div class="totals-label">DISCOUNT</div>
+			<div>0</div>
+		</div>
+		<div class="totals-row">
+			<div class="totals-label">TOTAL AMOUNT</div>
+			<div>1,000.000</div>
+		</div>
+		<div class="totals-row">
+			<div class="totals-label">PPN23</div>
+			<div>0</div>
+		</div>
+		<div class="totals-row">
+			<div class="totals-label">VAT</div>
+			<div>0</div>
+		</div>
+		<div class="totals-row">
+			<div class="totals-label">GRAND TOTAL</div>
+			<div>1,000.000</div>
+		</div>
+	</div>
+
+	<div class="payment-info">
+		<div class="info-label">PAYMENT INFORMATION</div>
+		<div>BANK : BRI</div>
+		<div>BENEFICIARY : P.T. YUBI TECHNOLOGY</div>
+	</div>
+
+	<div class="approval">
+		<div class="approval-box">
+			<div class="approval-line">Approved By</div>
+		</div>
+		<div class="approval-box">
+			<div class="approval-line">Received By</div>
+		</div>
+	</div>
+</body>
+
+</html>

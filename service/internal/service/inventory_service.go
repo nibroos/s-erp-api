@@ -274,7 +274,7 @@ func (s *InventoryService) UpdateResetStocksOnUpdateInventory(ctx *fiber.Ctx, re
 func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtListDTO, createdInventoryIDs []uint, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-updateRefReverseQtyInOut", opentracing.ChildOf(span.Context()))
 
-	refSoDtID, refSoDtBomID, refPoDtID, refPoDtBomID, refInvDtID, err := utils.MapOldUpdateInvDts(ctx, oldInvDts, userID, span)
+	refSoDtID, refSoDtBomID, refRoDtID, refPoDtID, refPoDtBomID, refInvDtID, err := utils.MapOldUpdateInvDts(ctx, oldInvDts, userID, span)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -285,6 +285,7 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 
 	var soDt []map[string]interface{}
 	var soDtBom []map[string]interface{}
+	var roDt []map[string]interface{}
 	var poDt []map[string]interface{}
 	var poDtBom []map[string]interface{}
 	var invDt []map[string]interface{}
@@ -300,6 +301,15 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 
 	if len(refSoDtBomID) > 0 {
 		soDtBom, err = s.repo.GetRefOutDtByRefDtID(ctx, tx, "so_dt_boms", "sales_order_id", refSoDtBomID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(refRoDtID) > 0 {
+		roDt, err = s.repo.GetRefOutDtByRefDtID(ctx, tx, "request_order_dts", "request_order_id", refRoDtID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -334,7 +344,7 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 		}
 	}
 
-	newRefSoDt, newRefSoDtBom, newRefPoDt, newRefPoDtBom, newRefInvDt, err := utils.MapNewUpdatedReverseRefs(ctx, oldInvDts, soDt, soDtBom, poDt, poDtBom, invDt)
+	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefPoDt, newRefPoDtBom, newRefInvDt, err := utils.MapNewUpdatedReverseRefs(ctx, oldInvDts, soDt, soDtBom, roDt, poDt, poDtBom, invDt)
 
 	log.Println("updateRefReverseQtyInOut-soDt", soDt, "soDtBom", soDtBom, "poDt", poDt, "poDtBom", poDtBom, "invDt", invDt)
 	log.Println("updateRefReverseQtyInOut-newRef-soDt", newRefSoDt, "newRef-soDtBom", newRefSoDtBom, "newRef-poDt", newRefPoDt, "newRef-poDtBom", newRefPoDtBom, "newRef-invDt", newRefInvDt)
@@ -350,6 +360,15 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 
 	if len(newRefSoDtBom) > 0 {
 		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefSoDtBom, "so_dt_boms", childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(newRefRoDt) > 0 {
+		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefRoDt, "request_order_dts", childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -407,17 +426,18 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 	childSpan := opentracing.StartSpan("InventoryService-updateRefQtyInOut", opentracing.ChildOf(span.Context()))
 
 	// Bulk/Create Update Batch InvDts
-	refSoDtID, refSoDtBomID, refPoDtID, refPoDtBomID, refInvDtID, err := utils.MapNewUpdateInvDts(ctx, req, userID, span)
+	refSoDtID, refSoDtBomID, refRoDtID, refPoDtID, refPoDtBomID, refInvDtID, err := utils.MapNewUpdateInvDts(ctx, req, userID, span)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
 	}
 
-	log.Println("updateRefQtyInOut-refSoDtID", refSoDtID, "refSoDtBomID", refSoDtBomID, "refPoDtID", refPoDtID, "refPoDtBomID", refPoDtBomID, "refInvDtID", refInvDtID)
+	log.Println("updateRefQtyInOut-refSoDtID", refSoDtID, "refSoDtBomID", refSoDtBomID, "refRoDtID", refRoDtID, "refPoDtID", refPoDtID, "refPoDtBomID", refPoDtBomID, "refInvDtID", refInvDtID)
 
 	var soDt []map[string]interface{}
 	var soDtBom []map[string]interface{}
+	var roDt []map[string]interface{}
 	var poDt []map[string]interface{}
 	var poDtBom []map[string]interface{}
 	var invDt []map[string]interface{}
@@ -433,6 +453,15 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 
 	if len(refSoDtBomID) > 0 {
 		soDtBom, err = s.repo.GetRefOutDtByRefDtID(ctx, tx, "so_dt_boms", "sales_order_id", refSoDtBomID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(refRoDtID) > 0 {
+		roDt, err = s.repo.GetRefOutDtByRefDtID(ctx, tx, "request_order_dts", "request_order_id", refRoDtID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -467,9 +496,9 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 		}
 	}
 
-	newRefSoDt, newRefSoDtBom, newRefPoDt, newRefPoDtBom, newRefInvDt, err := utils.MapNewUpdatedRefs(ctx, req, soDt, soDtBom, poDt, poDtBom, invDt)
+	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefPoDt, newRefPoDtBom, newRefInvDt, err := utils.MapNewUpdatedRefs(ctx, req, soDt, soDtBom, roDt, poDt, poDtBom, invDt)
 
-	log.Println("updateRefQtyInOut-newRef-soDt", newRefSoDt, "newRef-soDtBom", newRefSoDtBom, "newRef-poDt", newRefPoDt, "newRef-poDtBom", newRefPoDtBom, "newRef-invDt", newRefInvDt)
+	log.Println("updateRefQtyInOut-newRef-soDt", newRefSoDt, "newRef-soDtBom", newRefSoDtBom, "newRef-roDt", newRefRoDt, "newRef-poDt", newRefPoDt, "newRef-poDtBom", newRefPoDtBom, "newRef-invDt", newRefInvDt)
 
 	if len(newRefSoDt) > 0 {
 		log.Println("updateRefQtyInOut-newRefSoDt>0", newRefSoDt)
@@ -484,6 +513,16 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 	if len(newRefSoDtBom) > 0 {
 		log.Println("updateRefQtyInOut-newRefSoDtBom>0", newRefSoDtBom)
 		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefSoDtBom, "so_dt_boms", childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(newRefRoDt) > 0 {
+		log.Println("updateRefQtyInOut-newRefRoDt>0", newRefRoDt)
+		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefRoDt, "request_order_dts", childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -881,6 +920,17 @@ func (s *InventoryService) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[string]s
 	// 	soDts = utils.MapInvRefSoDtBomsToQuoDts(soDtBoms, soDts)
 	// }
 
+	return soDts, total, nil
+}
+
+func (s *InventoryService) GetRefIndexRoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefInvIndexRoDtListDTO, int, error) {
+	childSpan := opentracing.StartSpan("InventoryService-GetRefIndexRoDts", opentracing.ChildOf(span.Context()))
+
+	soDts, total, err := s.repo.GetRefIndexRoDts(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
 	return soDts, total, nil
 }
 
