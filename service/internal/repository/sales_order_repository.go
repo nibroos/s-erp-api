@@ -128,6 +128,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	filterIDsOrKey := map[string][]string{
 		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		// "product_ids": []string{"pi.id", "it.id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -139,6 +140,35 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 				}
 				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
 				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	// And one for array conditions with OR
+	filterIDsOrArrayKey := map[string][]string{
+		"product_ids": []string{"pi.id", "it.id"},
+	}
+
+	// Handle array OR conditions
+	for key, valueIDs := range filterIDsOrArrayKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s = ANY($%d)", valueID, i)
+				args = append(args, pq.Array(intIDs))
+				i++
 			}
 			condition += ")"
 		}
@@ -429,6 +459,8 @@ func (r *SalesOrderRepository) GetScheduleBySalesOrderID(ctx *fiber.Ctx, params 
     FROM ( 
 			SELECT DISTINCT ON (s.id)
 				s.id, s.assignee_id, so.customer_id, s.sales_order_id, s.uuid, s.steps_id, s.title, s.module_type, s.remark, s.status, s.color, s.created_by_id, s.updated_by_id, s.deleted_by_id, s.deleted_at,
+				s.total_tasks, s.total_all_tasks_done,
+				s.total_tasks_4, s.total_task_step_4_done,
 
 				TO_CHAR(s.start_at, 'YYYY-MM-DD') as start_at,
 				TO_CHAR(s.end_at, 'YYYY-MM-DD') as end_at,
