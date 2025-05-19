@@ -144,6 +144,35 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 		}
 	}
 
+	// And one for array conditions with OR
+	filterIDsOrArrayKey := map[string][]string{
+		"product_ids": []string{"pi.id", "it.id"},
+	}
+
+	// Handle array OR conditions
+	for key, valueIDs := range filterIDsOrArrayKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s = ANY($%d)", valueID, i)
+				args = append(args, pq.Array(intIDs))
+				i++
+			}
+			condition += ")"
+		}
+	}
+
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (q.id)

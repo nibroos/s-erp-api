@@ -516,6 +516,7 @@ type ScheduleDetailDTO struct {
 	TotalTaskStep4Done *int    `json:"total_task_step_4_done" db:"total_task_step_4_done"`
 	TotalAllTasksDone  *int    `json:"total_all_tasks_done" db:"total_all_tasks_done"`
 	TotalTasks         *int    `json:"total_tasks" db:"total_tasks"`
+	TotalTasks4        *int    `json:"total_tasks_4" db:"total_tasks_4"`
 	CreatedByID        *uint   `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID        *uint   `json:"updated_by_id" db:"updated_by_id"`
 	DeletedByID        *uint   `json:"deleted_by_id" db:"deleted_by_id"`

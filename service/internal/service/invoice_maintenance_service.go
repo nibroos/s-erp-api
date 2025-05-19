@@ -623,3 +623,51 @@ func (s *InvoiceMaintenanceService) Commit(tx *gorm.DB) error {
 func (s *InvoiceMaintenanceService) Rollback(tx *gorm.DB) *gorm.DB {
 	return tx.Rollback()
 }
+
+func (s *InvoiceMaintenanceService) PublishBulkSendEmailSolutionTicket(ctx *fiber.Ctx, req dtos.FormTicketRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) error {
+	// childSpan := opentracing.StartSpan("TicketSeInvoiceMaintenanceServicervice-PublishBulkSendEmailSolutionTicket", opentracing.ChildOf(span.Context()))
+
+	// log sent_emails
+	// make *dtos.FormSentEmailRequest
+
+	// refType := "tickets"
+	// status := "PROCESS"
+	// emailObject := dtos.FormSentEmailRequest{
+	// 	RefType: &refType,
+	// 	Status:  &status,
+	// }
+
+	// // MapFormSentEmailSolution
+	// email, err := utils.MapFormSentEmailSolution(ctx, req, &emailObject, userID, branchID, childSpan)
+	// if err != nil {
+	// 	defer childSpan.Finish()
+	// 	utils.LogErrors(childSpan, err)
+	// 	tx.Rollback()
+	// 	return err
+	// }
+
+	// // create sent_emails
+	// if tx, err := s.repo.CreateSentEmail(tx, email, childSpan); err != nil {
+	// 	defer childSpan.Finish()
+	// 	utils.LogErrors(childSpan, err)
+	// 	tx.Rollback()
+	// 	return err
+	// }
+
+	// req.SentEmailID = &email.ID
+	// log.Println("PublishSendEmailSolutionTicket-req.SentEmailID", req.SentEmailID)
+	// log.Println("PublishSendEmailSolutionTicket-email.ID", email.ID)
+
+	// err = utils.PublishSendEmailSolutionTicket(ctx, s.rabbitmq, req)
+	// if err != nil {
+	// 	defer childSpan.Finish()
+	// 	utils.LogErrors(childSpan, err)
+	// 	return err
+	// }
+
+	// tx.Commit()
+
+	// fmt.Println("PublishSendEmailSolutionTicket", req)
+
+	return nil
+}

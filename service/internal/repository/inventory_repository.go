@@ -150,6 +150,35 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 		}
 	}
 
+	// And one for array conditions with OR
+	filterIDsOrArrayKey := map[string][]string{
+		"product_ids": []string{"ivd.ref_product_id", "ivd.item_id"},
+	}
+
+	// Handle array OR conditions
+	for key, valueIDs := range filterIDsOrArrayKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s = ANY($%d)", valueID, i)
+				args = append(args, pq.Array(intIDs))
+				i++
+			}
+			condition += ")"
+		}
+	}
+
 	filterDBColumnLikeKey := map[string]string{
 		"do_no":          "iv.do_no",
 		"invoice_no":     "iv.invoice_no",
@@ -3906,6 +3935,35 @@ func (r *InventoryRepository) GetInventoriesStatus(ctx *fiber.Ctx, filters map[s
 				}
 				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
 				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	// And one for array conditions with OR
+	filterIDsOrArrayKey := map[string][]string{
+		"product_ids": []string{"ivd.ref_product_id", "ivd.item_id"},
+	}
+
+	// Handle array OR conditions
+	for key, valueIDs := range filterIDsOrArrayKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s = ANY($%d)", valueID, i)
+				args = append(args, pq.Array(intIDs))
+				i++
 			}
 			condition += ")"
 		}
