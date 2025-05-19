@@ -46,7 +46,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 	var total int
 
 	filterDBColumnKey := []string{
-		"si.invoice_no", "si.remark", "si.status",
+		"si.invoice_no", "si.remark", "si.status", "si.title",
 		"c.name",
 		"sidt.remark",
 	}
@@ -135,9 +135,9 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
     FROM ( 
         SELECT DISTINCT ON (si.id)
 					si.id, si.customer_id, si.currency_id, si.payment_term_id, si.vat_id, si.pph23_id, si.branch_id, si.bank_id,
-					si.invoice_no, si.remark, si.status, 
+					si.invoice_no, si.title, si.remark, si.status, bk.name as bank_name, bk.account_number as account_number, bk.account_name as account_name,
 					si.exchange_rate, si.pph23_percentage, si.vat_percentage, si.total_qty, si.subtotal, si.total_discount, si.total_pph23, si.total_vat, si.grand_total, si.created_by_id, si.updated_by_id, si.deleted_by_id, si.created_at, si.updated_at, si.deleted_at,
-					TO_CHAR(si.invoice_date, 'YYYY-MM-DD') as invoice_date,
+					TO_CHAR(si.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(si.due_date, 'YYYY-MM-DD') as due_date,
 					si.discount_amount, si.discount_percentage, si.discount_percentage_amount, si.discount_final, si.discount_type, si.total_amount_products, si.total_dp_products, si.total_balance_products,
 
 					c.name as customer_name,
@@ -175,7 +175,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 
 	for key, value := range filters {
 		switch key {
-		case "invoice_no", "remark", "status":
+		case "invoice_no", "remark", "status", "title":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -292,9 +292,9 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceByID(ctx *fiber.Ctx, params *dto
     FROM ( 
         SELECT DISTINCT ON (si.id)
             si.id, si.customer_id, si.currency_id, si.payment_term_id, si.vat_id, si.pph23_id, si.branch_id, si.bank_id,
-            si.invoice_no, si.remark, si.status, 
+            si.invoice_no, si.title, si.remark, si.status, 
             si.exchange_rate, si.pph23_percentage, si.vat_percentage, si.total_qty, si.subtotal, si.total_discount, si.total_pph23, si.total_vat, si.grand_total, si.created_by_id, si.updated_by_id, si.deleted_by_id, si.created_at, si.updated_at, si.deleted_at,
-            TO_CHAR(si.invoice_date, 'YYYY-MM-DD') as invoice_date,
+            TO_CHAR(si.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(si.due_date, 'YYYY-MM-DD') as due_date,
             si.discount_amount, si.discount_percentage, si.discount_percentage_amount, si.discount_final, si.discount_type, si.total_amount_products, si.total_dp_products, si.total_balance_products, si.rev_no,
 
             cu.name as created_by_name,
@@ -920,6 +920,307 @@ func (r *SalesInvoiceRepository) GetSoDtBoms(ctx *fiber.Ctx, soDtIDs []uint, spa
 	return soDtBoms, nil
 }
 
+func (r *SalesInvoiceRepository) GetRefInventoryOutDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefInventoryOutForInvoiceListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetRefInventoryOutDts", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	invDts := []dtos.RefInventoryOutForInvoiceListDTO{}
+
+	var total int
+
+	filterDBColumnKey := []string{
+		"inv.inventory_no", "inv.remark",
+		"c.name",
+		"p.name", "p.code",
+		"invdt.remark",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	condition += " AND mv.group_id = g.id AND g.name = 'outgoing_types'"
+
+	var refDtIDs []uint
+	if invoiceID, ok := filters["invoice_id"]; ok && invoiceID != "" {
+		var salesInvoiceDts []struct {
+			RefDtID *uint `db:"ref_dt_id"`
+		}
+
+		refDtQuery := `
+			SELECT ref_dt_id 
+			FROM sales_invoice_dts 
+			WHERE sales_invoice_id = $1 
+			AND ref_type = 'inv_out' 
+			AND deleted_at IS NULL
+		`
+
+		if err := r.sqlDB.SelectContext(ctx.Context(), &salesInvoiceDts, refDtQuery, invoiceID); err != nil {
+			utils.LogErrors(childSpan, err)
+			return nil, 0, err
+		}
+
+		for _, dt := range salesInvoiceDts {
+			if dt.RefDtID != nil {
+				refDtIDs = append(refDtIDs, *dt.RefDtID)
+			}
+		}
+
+		if len(refDtIDs) > 0 {
+			refDtIDsStr := make([]string, len(refDtIDs))
+			for i, id := range refDtIDs {
+				refDtIDsStr[i] = fmt.Sprintf("%d", id)
+			}
+			condition += fmt.Sprintf(" AND (invdt.id IN (%s) OR (inv.status NOT IN ('CANCELED') AND (invdt.qty_invoice IS NULL OR invdt.qty_invoice < invdt.qty)))", strings.Join(refDtIDsStr, ","))
+		} else {
+			condition += " AND inv.status NOT IN ('CANCELED') AND (invdt.qty_invoice IS NULL OR invdt.qty_invoice < invdt.qty)"
+		}
+	} else if filters["specific_ids"] != "" {
+		condition += fmt.Sprintf(" AND (invdt.id IN (%s) OR (inv.status NOT IN ('CANCELED') AND (invdt.qty_invoice IS NULL OR invdt.qty_invoice < invdt.qty)))", filters["specific_ids"])
+	} else {
+		condition += " AND inv.status NOT IN ('CANCELED') AND (invdt.qty_invoice IS NULL OR invdt.qty_invoice < invdt.qty)"
+	}
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND invdt.id IN (%s)", filters["ids"])
+	}
+
+	if value, ok := filters["inventory_out_no"]; ok && value != "" {
+		condition += fmt.Sprintf(" AND inv.inventory_no ILIKE $%d", i)
+		args = append(args, "%"+value+"%")
+		i++
+	}
+
+	if value, ok := filters["product_name"]; ok && value != "" {
+		condition += fmt.Sprintf(" AND p.name ILIKE $%d", i)
+		args = append(args, "%"+value+"%")
+		i++
+	}
+
+	if value, ok := filters["product_code"]; ok && value != "" {
+		condition += fmt.Sprintf(" AND p.code ILIKE $%d", i)
+		args = append(args, "%"+value+"%")
+		i++
+	}
+
+	if value, ok := filters["item_type"]; ok && value != "" {
+		condition += fmt.Sprintf(" AND invdt.item_type = $%d", i)
+		args = append(args, value)
+		i++
+	}
+
+	filterKey := map[string]string{
+		"customer_id":  "inv.customer_id",
+		"warehouse_id": "inv.warehouse_id",
+		"currency_id":  "inv.currency_id",
+		"vat_id":       "inv.vat_id",
+		"pph23_id":     "inv.pph23_id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":  "inv.customer_id",
+		"warehouse_ids": "inv.warehouse_id",
+		"currency_ids":  "inv.currency_id",
+		"pph23_ids":     "inv.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs))
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"inv.vat_id", "invdt.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	baseQuery := `
+	FROM ( 
+		SELECT DISTINCT ON (invdt.id)
+				invdt.id as id, invdt.id as inv_dt_id, invdt.product_uuid, invdt.inventory_id as inventory_out_id, invdt.item_unit_id, invdt.vat_id, invdt.pph23_id, 
+				invdt.id as ref_id, invdt.item_id, invdt.ref_type, invdt.item_type, invdt.gen_code, invdt.remark, 
+				invdt.vat_perc, invdt.vat_perc_am, invdt.pph23_perc, invdt.pph23_perc_am, 
+				invdt.is_vat, invdt.is_pph23, invdt.qty_invoice as qty_invoiced, invdt.qty, invdt.qty_out, 
+				invdt.price_sell as price, invdt.subtotal_sell as subtotal, 
+				0 as disc_am, 0 as disc_perc, 0 as disc_perc_num, 0 as disc_perc_am, 
+				'' as disc_type, 0 as disc_final, invdt.subtotal_sell as total_am, 
+				0 as total_dp,
+				invdt.subtotal_sell as total_balance,
+				invdt.created_by_id, 
+				invdt.updated_by_id, invdt.deleted_by_id, invdt.created_at, invdt.updated_at, invdt.deleted_at,
+
+				inv.customer_id, inv.warehouse_id, inv.currency_id, inv.vat_id as head_vat_id, 
+				inv.pph23_id as head_pph23_id, inv.vat_perc as head_vat_perc, 
+				inv.pph23_perc as head_pph23_perc, 0 as head_disc_am, 
+				0 as head_disc_perc, inv.remark as head_remark, inv.exchange_rate, inv.inventory_no as inventory_out_no, 
+				TO_CHAR(inv.do_at, 'YYYY-MM-DD') as out_date,
+				TO_CHAR(inv.do_at, 'YYYY-MM-DD') as due_at,
+
+				c.name as customer_name,
+				w.name as warehouse_name,
+				p.name as item_name, p.code as item_code, p.sku as item_sku,
+				u.name as unit_name,
+				v.name as vat_name,
+				pph.name as pph23_name,
+				
+				cu.name as created_by_name,
+				uu.name as updated_by_name
+
+		FROM inv_dts invdt
+				LEFT JOIN inventories inv ON invdt.inventory_id = inv.id
+				LEFT JOIN mix_values mv ON inv.io_type_id = mv.id
+				LEFT JOIN groups g ON mv.group_id = g.id
+				LEFT JOIN customers c ON inv.customer_id = c.id
+				LEFT JOIN mix_values w ON inv.warehouse_id = w.id
+				LEFT JOIN products p ON invdt.item_id = p.id
+				LEFT JOIN item_units iu ON invdt.item_unit_id = iu.id
+				LEFT JOIN mix_values u ON iu.unit_id = u.id
+				LEFT JOIN mix_values v ON invdt.vat_id = v.id
+				LEFT JOIN mix_values pph ON invdt.pph23_id = pph.id
+
+		LEFT JOIN users cu ON invdt.created_by_id = cu.id
+		LEFT JOIN users uu ON invdt.updated_by_id = uu.id
+				WHERE 1=1` + condition + queryGlobal + `
+	) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	query := `SELECT *
+		` + baseQuery
+
+	countQuery := `SELECT COUNT(*) as total
+		` + baseQuery
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "created_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &invDts, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return invDts, total, nil
+}
+
 func (r *SalesInvoiceRepository) BulkUpdateSalesOrdersStatus(tx *gorm.DB, salesOrderIDs []uint, status string, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("SalesInvoiceRepository-BulkUpdateSalesOrdersStatus", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
@@ -1167,6 +1468,189 @@ func (r *SalesInvoiceRepository) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs []
 	return statusMap, nil
 }
 
+func (r *SalesInvoiceRepository) LockInventories(tx *gorm.DB, inventoryIDs []uint, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-LockInventories", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(inventoryIDs) == 0 {
+		return nil
+	}
+
+	lockQuery := "SELECT id FROM inventories WHERE id IN ? FOR UPDATE"
+	if err := tx.Exec(lockQuery, inventoryIDs).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *SalesInvoiceRepository) UpdateInvDtInvoiceStatus(tx *gorm.DB, invDtID uint, status interface{}, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-UpdateInvDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var result *gorm.DB
+	if status == nil {
+		result = tx.Exec("UPDATE inv_dts SET invoice_status = NULL WHERE id = ?", invDtID)
+	} else {
+		result = tx.Exec("UPDATE inv_dts SET invoice_status = ? WHERE id = ?", status, invDtID)
+	}
+
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return tx, result.Error
+	}
+
+	return tx, nil
+}
+
+func (r *SalesInvoiceRepository) BulkUpdateInvDtInvoiceStatus(tx *gorm.DB, invDtIDs []uint, status interface{}, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-BulkUpdateInvDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(invDtIDs) == 0 {
+		return tx, nil
+	}
+
+	var result *gorm.DB
+	if status == nil {
+		result = tx.Exec("UPDATE inv_dts SET invoice_status = NULL WHERE id IN ?", invDtIDs)
+	} else {
+		result = tx.Exec("UPDATE inv_dts SET invoice_status = ? WHERE id IN ?", status, invDtIDs)
+	}
+
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return tx, result.Error
+	}
+
+	return tx, nil
+}
+
+func (r *SalesInvoiceRepository) CheckAndUpdateInventoryStatus(tx *gorm.DB, inventoryID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-CheckAndUpdateInventoryStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var totalItems int64
+	var invoicedItems int64
+
+	if err := tx.Model(&models.InvDt{}).Where("inventory_id = ? AND deleted_at IS NULL", inventoryID).Count(&totalItems).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	if err := tx.Model(&models.InvDt{}).Where("inventory_id = ? AND invoice_status = 'INVOICE' AND deleted_at IS NULL", inventoryID).Count(&invoicedItems).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	type InventoryStatus struct {
+		Status        string `gorm:"column:status"`
+		HistoryStatus string `gorm:"column:history_status"`
+	}
+
+	var invStatus InventoryStatus
+	if err := tx.Model(&models.Inventory{}).Where("id = ?", inventoryID).Select("status, history_status").Scan(&invStatus).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	if totalItems > 0 && invoicedItems == totalItems {
+		result := tx.Exec("UPDATE inventories SET status = 'INVOICE', history_status = CASE WHEN status != 'INVOICE' THEN status ELSE history_status END WHERE id = ?", inventoryID)
+		if result.Error != nil {
+			utils.LogErrors(childSpan, result.Error)
+			return tx, result.Error
+		}
+	} else if invoicedItems < totalItems && invStatus.Status == "INVOICE" {
+		result := tx.Exec("UPDATE inventories SET status = history_status, history_status = status WHERE id = ? AND status = 'INVOICE'", inventoryID)
+		if result.Error != nil {
+			utils.LogErrors(childSpan, result.Error)
+			return tx, result.Error
+		}
+	}
+
+	return tx, nil
+}
+
+func (r *SalesInvoiceRepository) GetInvDtIDsFromSalesInvoiceDts(ctx *fiber.Ctx, salesInvoiceID uint, span opentracing.Span) ([]uint, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetInvDtIDsFromSalesInvoiceDts", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var invDtIDs []uint
+	query := `
+	SELECT ref_dt_id 
+	FROM sales_invoice_dts 
+	WHERE sales_invoice_id = ? 
+	AND ref_type = 'inv_out' 
+	AND ref_dt_id IS NOT NULL
+	AND deleted_at IS NULL
+	`
+
+	if err := r.db.Raw(query, salesInvoiceID).Scan(&invDtIDs).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return invDtIDs, nil
+}
+
+func (r *SalesInvoiceRepository) GetInvDtInvoiceStatus(ctx *fiber.Ctx, invDtIDs []uint, span opentracing.Span) (map[uint]string, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetInvDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(invDtIDs) == 0 {
+		return make(map[uint]string), nil
+	}
+
+	type InvDtStatus struct {
+		ID            uint   `db:"id"`
+		InvoiceStatus string `db:"invoice_status"`
+	}
+
+	var statuses []InvDtStatus
+	query := `
+    SELECT id, invoice_status 
+    FROM inv_dts 
+    WHERE id IN (?) AND deleted_at IS NULL
+    `
+
+	query = r.db.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		return tx.Raw(query, invDtIDs)
+	})
+
+	err := r.sqlDB.SelectContext(ctx.Context(), &statuses, query)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	statusMap := make(map[uint]string)
+	for _, status := range statuses {
+		if status.InvoiceStatus != "" {
+			statusMap[status.ID] = status.InvoiceStatus
+		}
+	}
+
+	return statusMap, nil
+}
+
+func (r *SalesInvoiceRepository) RestoreInventoriesStatus(tx *gorm.DB, inventoryIDs []uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-RestoreInventoriesStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(inventoryIDs) == 0 {
+		return tx, nil
+	}
+
+	for _, invID := range inventoryIDs {
+		if _, err := r.CheckAndUpdateInventoryStatus(tx, invID, childSpan); err != nil {
+			return tx, err
+		}
+	}
+
+	return tx, nil
+}
+
 func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesInvoiceStatusWidget, int, error) {
 	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetWidgetSalesInvoices", opentracing.ChildOf(span.Context()))
 
@@ -1179,7 +1663,7 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 	var total int
 
 	filterDBColumnKey := []string{
-		"si.invoice_no", "si.remark", "si.status",
+		"si.invoice_no", "si.remark", "si.status", "title",
 		"c.name",
 		"sidt.remark",
 	}
@@ -1225,10 +1709,9 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 		}
 	}
 
-	// Add invoice_no and remark filters to condition
 	for key, value := range filters {
 		switch key {
-		case "invoice_no", "remark":
+		case "invoice_no", "remark", "title":
 			if value != "" {
 				condition += fmt.Sprintf(" AND si.%s ILIKE $%d", key, i)
 				args = append(args, "%"+value+"%")

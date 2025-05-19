@@ -46,7 +46,7 @@ func (r *InvoiceAdjustmentRepository) GetInvoiceAdjustments(ctx *fiber.Ctx, filt
 	var total int
 
 	filterDBColumnKey := []string{
-		"ia.invoice_no", "ia.reference", "ia.remark",
+		"ia.invoice_no", "ia.reference", "ia.remark", "ia.title",
 		"c.name",
 	}
 
@@ -113,10 +113,11 @@ func (r *InvoiceAdjustmentRepository) GetInvoiceAdjustments(ctx *fiber.Ctx, filt
     FROM ( 
         SELECT DISTINCT ON (ia.id)
             ia.id, ia.customer_id, ia.currency_id, ia.branch_id, ia.bank_id,
-            ia.invoice_no, ia.reference, ia.remark, ia.rev_no,
+            ia.invoice_no, ia.reference, ia.remark, ia.rev_no, ia.title,
             ia.exchange_rate, ia.total_invoice, ia.total_adjustment, ia.total_balance, ia.total_admin_bank, ia.grand_total, 
             ia.created_by_id, ia.updated_by_id, ia.deleted_by_id, ia.created_at, ia.updated_at, ia.deleted_at,
             TO_CHAR(ia.payment_date, 'YYYY-MM-DD') as payment_date,
+			TO_CHAR(ia.adjustment_date, 'YYYY-MM-DD') as adjustment_date,
             TO_CHAR(ia.ref_start_date, 'YYYY-MM-DD') as ref_start_date,
             TO_CHAR(ia.ref_end_date, 'YYYY-MM-DD') as ref_end_date,
             ia.payment_amount,
@@ -125,6 +126,8 @@ func (r *InvoiceAdjustmentRepository) GetInvoiceAdjustments(ctx *fiber.Ctx, filt
             cur.name as currency_name,
             b.name as branch_name,
             bi.name as bank_name,
+			bi.account_number as account_number,
+			bi.account_name as account_name,
 
             cu.name as created_by_name,
             uu.name as updated_by_name
@@ -148,7 +151,7 @@ func (r *InvoiceAdjustmentRepository) GetInvoiceAdjustments(ctx *fiber.Ctx, filt
 
 	for key, value := range filters {
 		switch key {
-		case "invoice_no", "reference", "remark":
+		case "invoice_no", "reference", "remark", "title":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -265,10 +268,11 @@ func (r *InvoiceAdjustmentRepository) GetInvoiceAdjustmentByID(ctx *fiber.Ctx, p
     FROM ( 
         SELECT DISTINCT ON (ia.id)
             ia.id, ia.customer_id, ia.currency_id, ia.branch_id, ia.bank_id,
-            ia.invoice_no, ia.reference, ia.remark, ia.rev_no,
+            ia.invoice_no, ia.reference, ia.remark, ia.rev_no, ia.title,
             ia.exchange_rate, ia.total_invoice, ia.total_adjustment, ia.total_balance, ia.total_admin_bank, ia.grand_total, 
             ia.created_by_id, ia.updated_by_id, ia.deleted_by_id, ia.created_at, ia.updated_at, ia.deleted_at,
             TO_CHAR(ia.payment_date, 'YYYY-MM-DD') as payment_date,
+			TO_CHAR(ia.adjustment_date, 'YYYY-MM-DD') as adjustment_date,
             TO_CHAR(ia.ref_start_date, 'YYYY-MM-DD') as ref_start_date,
             TO_CHAR(ia.ref_end_date, 'YYYY-MM-DD') as ref_end_date,
             ia.payment_amount,

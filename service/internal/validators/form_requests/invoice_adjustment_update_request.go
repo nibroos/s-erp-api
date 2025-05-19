@@ -19,6 +19,8 @@ func (r *InvoiceAdjustmentUpdateRequest) Validate(req *dtos.UpdateInvoiceAdjustm
 		"customer_id":             []string{"required", "exists:customers,id"},
 		"currency_id":             []string{"required", "exists:mix_values,id"},
 		"bank_id":                 []string{"exists:bank_informations,id"},
+		"title":                   []string{"required"},
+		"adjustment_date":         []string{"required", "date:yyyy-MM-dd"},
 		"payment_date":            []string{"required", "date:yyyy-MM-dd"},
 		"payment_amount":          []string{"required", "numeric"},
 		"exchange_rate":           []string{"numeric"},

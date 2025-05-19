@@ -4,6 +4,7 @@ import "time"
 
 type GetSalesInvoicesRequest struct {
 	Global         *string `json:"global"`
+	Title          *string `json:"title"`
 	InvoiceNo      *string `json:"invoice_no"`
 	Remark         *string `json:"remark"`
 	Status         *string `json:"status"`
@@ -52,8 +53,10 @@ type CreateSalesInvoiceRequest struct {
 	Pph23ID                  *uint                         `json:"pph23_id"`
 	BranchID                 *uint                         `json:"branch_id"`
 	BankID                   *uint                         `json:"bank_id"`
+	Title                    *string                       `json:"title"`
 	InvoiceNo                *string                       `json:"invoice_no"`
 	InvoiceDate              *string                       `json:"invoice_date"`
+	DueDate                  *string                       `json:"due_date"`
 	ExchangeRate             *float64                      `json:"exchange_rate"`
 	Remark                   *string                       `json:"remark"`
 	Status                   *string                       `json:"status"`
@@ -112,8 +115,10 @@ type UpdateSalesInvoiceRequest struct {
 	Pph23ID                  *uint                         `json:"pph23_id"`
 	BranchID                 *uint                         `json:"branch_id"`
 	BankID                   *uint                         `json:"bank_id"`
+	Title                    *string                       `json:"title"`
 	InvoiceNo                *string                       `json:"invoice_no"`
 	InvoiceDate              *string                       `json:"invoice_date"`
+	DueDate                  *string                       `json:"due_date"`
 	ExchangeRate             *float64                      `json:"exchange_rate"`
 	Remark                   *string                       `json:"remark"`
 	Status                   *string                       `json:"status"`
@@ -174,8 +179,13 @@ type SalesInvoiceListDTO struct {
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
 	BankID                   *uint    `json:"bank_id" db:"bank_id"`
+	BankName                 *string  `json:"bank_name" db:"bank_name"`
+	AccountNumber            *string  `json:"account_number" db:"account_number"`
+	AccountName              *string  `json:"account_name" db:"account_name"`
+	Title                    *string  `json:"title" db:"title"`
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
+	DueDate                  *string  `json:"due_date" db:"due_date"`
 	Remark                   *string  `json:"remark" db:"remark"`
 	Status                   *string  `json:"status" db:"status"`
 	RevNo                    *int     `json:"rev_no" db:"rev_no"`
@@ -224,8 +234,10 @@ type SalesInvoiceDetailDTO struct {
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
 	BankID                   *uint    `json:"bank_id" db:"bank_id"`
+	Title                    *string  `json:"title" db:"title"`
 	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
 	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
+	DueDate                  *string  `json:"due_date" db:"due_date"`
 	Remark                   *string  `json:"remark" db:"remark"`
 	Status                   *string  `json:"status" db:"status"`
 	RevNo                    *int     `json:"rev_no" db:"rev_no"`
@@ -474,4 +486,95 @@ type SalesInvoiceStatusWidget struct {
 	OrderCount int     `json:"order_count" db:"order_count"`
 	TotalQty   float64 `json:"total_qty" db:"total_qty"`
 	GrandTotal float64 `json:"grand_total" db:"grand_total"`
+}
+
+type GetRefInventoryOutForInvoiceRequest struct {
+	Global         *string `json:"global"`
+	InvoiceID      *string `json:"invoice_id"`
+	InventoryOutNo *string `json:"inventory_out_no"`
+	Remark         *string `json:"remark"`
+	CustomerID     *int    `json:"customer_id"`
+	WarehouseID    *int    `json:"warehouse_id"`
+	CurrencyID     *int    `json:"currency_id"`
+	VatID          *int    `json:"vat_id"`
+	Pph23ID        *int    `json:"pph23_id"`
+	BranchID       *int    `json:"branch_id"`
+	Status         *string `json:"status"`
+	DateType       *string `json:"date_type"`
+	StartDate      *string `json:"start_date"`
+	EndDate        *string `json:"end_date"`
+	SpecificIDs    *string `json:"specific_ids"`
+	PerPage        *string `json:"per_page" default:"10"`
+	Page           *string `json:"page" default:"1"`
+	OrderColumn    *string `json:"order_column" default:"id"`
+	OrderDirection *string `json:"order_direction" default:"asc"`
+}
+
+type RefInventoryOutForInvoiceListDTO struct {
+	ID             *uint     `json:"id" db:"id"`
+	InvDtID        *uint     `json:"inv_dt_id" db:"inv_dt_id"`
+	ProductUuid    *string   `json:"product_uuid" db:"product_uuid"`
+	InventoryOutID *uint     `json:"inventory_out_id" db:"inventory_out_id"`
+	ItemUnitID     *uint     `json:"item_unit_id" db:"item_unit_id"`
+	VatID          *uint     `json:"vat_id" db:"vat_id"`
+	Pph23ID        *uint     `json:"pph23_id" db:"pph23_id"`
+	RefID          *uint     `json:"ref_id" db:"ref_id"`
+	ItemID         *uint     `json:"item_id" db:"item_id"`
+	ItemName       *string   `json:"item_name" db:"item_name"`
+	ItemCode       *string   `json:"item_code" db:"item_code"`
+	UnitName       *string   `json:"unit_name" db:"unit_name"`
+	RefJSON        *string   `json:"ref_json" db:"ref_json"`
+	RefType        *string   `json:"ref_type" db:"ref_type"`
+	ItemType       *string   `json:"item_type" db:"item_type"`
+	GenCode        *string   `json:"gen_code" db:"gen_code"`
+	Remark         *string   `json:"remark" db:"remark"`
+	VatPerc        *float64  `json:"vat_perc" db:"vat_perc"`
+	VatPercAm      *float64  `json:"vat_perc_am" db:"vat_perc_am"`
+	VatName        *string   `json:"vat_name" db:"vat_name"`
+	Pph23Name      *string   `json:"pph23_name" db:"pph23_name"`
+	Pph23Perc      *float64  `json:"pph23_perc" db:"pph23_perc"`
+	Pph23PercAm    *float64  `json:"pph23_perc_am" db:"pph23_perc_am"`
+	DiscAm         *float64  `json:"disc_am" db:"disc_am"`
+	DiscPerc       *float64  `json:"disc_perc" db:"disc_perc"`
+	DiscPercNum    *float64  `json:"disc_perc_num" db:"disc_perc_num"`
+	DiscPercAm     *float64  `json:"disc_perc_am" db:"disc_perc_am"`
+	DiscType       *string   `json:"disc_type" db:"disc_type"`
+	IsVat          *int8     `json:"is_vat" db:"is_vat"`
+	IsPph23        *int8     `json:"is_pph23" db:"is_pph23"`
+	QtyInvoiced    *float64  `json:"qty_invoiced" db:"qty_invoiced"`
+	Qty            *float64  `json:"qty" db:"qty"`
+	QtyOut         *float64  `json:"qty_out" db:"qty_out"`
+	Price          *float64  `json:"price" db:"price"`
+	Subtotal       *float64  `json:"subtotal" db:"subtotal"`
+	DiscFinal      *float64  `json:"disc_final" db:"disc_final"`
+	TotalAm        *float64  `json:"total_am" db:"total_am"`
+	TotalDp        *float64  `json:"total_dp" db:"total_dp"`
+	TotalBalance   *float64  `json:"total_balance" db:"total_balance"`
+	InvoiceStatus  *string   `json:"invoice_status" db:"invoice_status"`
+	CreatedByName  *string   `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName  *string   `json:"updated_by_name" db:"updated_by_name"`
+	CreatedByID    *uint     `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID    *uint     `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID    *uint     `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      *string   `json:"updated_at" db:"updated_at"`
+	DeleteAt       *string   `json:"deleted_at" db:"deleted_at"`
+
+	CustomerID     *uint    `json:"customer_id" db:"customer_id"`
+	WarehouseID    *uint    `json:"warehouse_id" db:"warehouse_id"`
+	CurrencyID     *uint    `json:"currency_id" db:"currency_id"`
+	HeadVatID      *uint    `json:"head_vat_id" db:"head_vat_id"`
+	HeadPph23ID    *uint    `json:"head_pph23_id" db:"head_pph23_id"`
+	HeadVatPerc    *float64 `json:"head_vat_perc" db:"head_vat_perc"`
+	HeadPph23Perc  *float64 `json:"head_pph23_perc" db:"head_pph23_perc"`
+	HeadDiscAm     *float64 `json:"head_disc_am" db:"head_disc_am"`
+	HeadDiscPerc   *float64 `json:"head_disc_perc" db:"head_disc_perc"`
+	HeadRemark     *string  `json:"head_remark" db:"head_remark"`
+	ExchangeRate   *float64 `json:"exchange_rate" db:"exchange_rate"`
+	InventoryOutNo *string  `json:"inventory_out_no" db:"inventory_out_no"`
+	CustomerName   *string  `json:"customer_name" db:"customer_name"`
+	WarehouseName  *string  `json:"warehouse_name" db:"warehouse_name"`
+	OutDate        *string  `json:"out_date" db:"out_date"`
+	ItemSku        *string  `json:"item_sku" db:"item_sku"`
+	DueAt          *string  `json:"due_at" db:"due_at"`
 }

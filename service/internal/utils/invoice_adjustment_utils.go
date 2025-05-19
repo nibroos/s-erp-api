@@ -188,12 +188,23 @@ func MapCreateInvoiceAdjustment(ctx *fiber.Ctx, req dtos.CreateInvoiceAdjustment
 		refEndDate = &parsedTime
 	}
 
+	var adjustmentDate *time.Time
+	if req.AdjustmentDate != nil {
+		parsedTime, err := time.Parse("2006-01-02", *req.AdjustmentDate)
+		if err != nil {
+			return models.InvoiceAdjustment{}, err
+		}
+		adjustmentDate = &parsedTime
+	}
+
 	invoiceAdjustment := models.InvoiceAdjustment{
 		CustomerID:      req.CustomerID,
 		CurrencyID:      req.CurrencyID,
 		BranchID:        &branchID,
 		BankID:          req.BankID,
+		Title:           req.Title,
 		InvoiceNo:       &invoiceNo,
+		AdjustmentDate:  adjustmentDate,
 		PaymentDate:     paymentDate,
 		PaymentAmount:   req.PaymentAmount,
 		ExchangeRate:    req.ExchangeRate,
@@ -251,14 +262,25 @@ func MapUpdateInvoiceAdjustment(ctx *fiber.Ctx, req dtos.UpdateInvoiceAdjustment
 		refEndDate = &parsedTime
 	}
 
+	var adjustmentDate *time.Time
+	if req.AdjustmentDate != nil {
+		parsedTime, err := time.Parse("2006-01-02", *req.AdjustmentDate)
+		if err != nil {
+			return models.InvoiceAdjustment{}, err
+		}
+		adjustmentDate = &parsedTime
+	}
+
 	invoiceAdjustment := models.InvoiceAdjustment{
 		ID:              req.ID,
 		CustomerID:      req.CustomerID,
 		CurrencyID:      req.CurrencyID,
 		BranchID:        &branchID,
 		BankID:          req.BankID,
+		Title:           req.Title,
 		InvoiceNo:       &invoiceNo,
 		PaymentDate:     paymentDate,
+		AdjustmentDate:  adjustmentDate,
 		PaymentAmount:   req.PaymentAmount,
 		ExchangeRate:    req.ExchangeRate,
 		Reference:       req.Reference,

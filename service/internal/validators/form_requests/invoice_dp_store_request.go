@@ -17,7 +17,9 @@ func (r *InvoiceDpStoreRequest) Validate(req *dtos.CreateInvoiceDpRequest, ctx *
 	rules := map[string][]string{
 		"customer_id":  []string{"required", "exists:customers,id"},
 		"currency_id":  []string{"required", "exists:mix_values,id"},
+		"title":        []string{"required"},
 		"invoice_date": []string{"required", "date:yyyy-MM-dd"},
+		"due_date":     []string{"required", "date:yyyy-MM-dd"},
 		// "dp_percentage":               []string{"required", "numeric"},
 		"invoice_dp_dts":              []string{"required", "array"},
 		"invoice_dp_dts.*.product_id": []string{"required"},

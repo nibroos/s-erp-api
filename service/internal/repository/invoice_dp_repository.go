@@ -46,7 +46,7 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 	var total int
 
 	filterDBColumnKey := []string{
-		"idp.invoice_no", "idp.remark", "idp.status",
+		"idp.invoice_no", "idp.remark", "idp.status", "idp.title",
 		"c.name",
 		"idt.remark",
 		"idtb.remark",
@@ -136,9 +136,9 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
     FROM ( 
         SELECT DISTINCT ON (idp.id)
 					idp.id, idp.customer_id, idp.currency_id, idp.payment_term_id, idp.vat_id, idp.pph23_id, idp.branch_id, idp.bank_id,
-					idp.invoice_no, idp.remark, idp.status, 
+					idp.invoice_no, idp.remark, idp.status, idp.title, bk.name as bank_name, bk.account_number, bk.account_name, bk.account_name,
 					idp.exchange_rate, idp.pph23_percentage, idp.vat_percentage, idp.dp_percentage, idp.total_qty, idp.subtotal, idp.total_discount, idp.total_pph23, idp.total_vat, idp.grand_total, idp.created_by_id, idp.updated_by_id, idp.deleted_by_id, idp.created_at, idp.updated_at, idp.deleted_at,
-					TO_CHAR(idp.invoice_date, 'YYYY-MM-DD') as invoice_date,
+					TO_CHAR(idp.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(idp.due_date, 'YYYY-MM-DD') as due_date,
 					idp.discount_amount, idp.discount_percentage, idp.discount_percentage_amount, idp.discount_final, idp.discount_type, idp.total_amount_products, idp.total_dp_products,
 
 					c.name as customer_name,
@@ -161,7 +161,7 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 				LEFT JOIN mix_values vat ON idp.vat_id = vat.id
 				LEFT JOIN mix_values pph ON idp.pph23_id = pph.id
 				LEFT JOIN branches b ON idp.branch_id = b.id
-				LEFT JOIN bank_informations bn ON idp.bank_id = bn.id
+				LEFT JOIN bank_informations bk ON idp.bank_id = bk.id
 
         LEFT JOIN users cu ON idp.created_by_id = cu.id
         LEFT JOIN users uu ON idp.updated_by_id = uu.id
@@ -176,7 +176,7 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 
 	for key, value := range filters {
 		switch key {
-		case "invoice_no", "remark", "status":
+		case "invoice_no", "remark", "status", "title":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
@@ -293,9 +293,9 @@ func (r *InvoiceDpRepository) GetInvoiceDpByID(ctx *fiber.Ctx, params *dtos.GetI
     FROM ( 
         SELECT DISTINCT ON (idp.id)
             idp.id, idp.customer_id, idp.currency_id, idp.payment_term_id, idp.vat_id, idp.pph23_id, idp.branch_id, idp.bank_id,
-            idp.invoice_no, idp.remark, idp.status, 
+            idp.invoice_no, idp.remark, idp.status, idp.title,
             idp.exchange_rate, idp.pph23_percentage, idp.vat_percentage, idp.dp_percentage, idp.total_qty, idp.subtotal, idp.total_discount, idp.total_pph23, idp.total_vat, idp.grand_total, idp.created_by_id, idp.updated_by_id, idp.deleted_by_id, idp.created_at, idp.updated_at, idp.deleted_at,
-            TO_CHAR(idp.invoice_date, 'YYYY-MM-DD') as invoice_date,
+            TO_CHAR(idp.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(idp.due_date, 'YYYY-MM-DD') as due_date,
             idp.discount_amount, idp.discount_percentage, idp.discount_percentage_amount, idp.discount_final, idp.discount_type, idp.total_amount_products, idp.total_dp_products, idp.rev_no,
 
             cu.name as created_by_name,
@@ -1273,7 +1273,7 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
 	var total int
 
 	filterDBColumnKey := []string{
-		"idp.invoice_no", "idp.remark", "idp.status",
+		"idp.invoice_no", "idp.remark", "idp.status", "idp.title",
 		"c.name",
 		"idt.remark",
 	}
@@ -1321,7 +1321,7 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
 
 	for key, value := range filters {
 		switch key {
-		case "invoice_no", "remark":
+		case "invoice_no", "remark", "idp.title":
 			if value != "" {
 				condition += fmt.Sprintf(" AND idp.%s ILIKE $%d", key, i)
 				args = append(args, "%"+value+"%")

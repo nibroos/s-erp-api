@@ -46,6 +46,10 @@ func (s *SalesInvoiceService) CreateSalesInvoice(ctx *fiber.Ctx, req dtos.Create
 	soIDsMap := make(map[uint]bool)
 	soDtIDs := make(map[uint]uint)
 
+	uniqueInventoryIDs := make([]uint, 0)
+	inventoryIDsMap := make(map[uint]bool)
+	invDtIDs := make(map[uint]uint)
+
 	for _, dt := range req.SalesInvoiceDts {
 		if dt.RefType != nil && *dt.RefType == "so" && dt.RefID != nil && *dt.RefID > 0 {
 			if !soIDsMap[*dt.RefID] {
@@ -56,11 +60,27 @@ func (s *SalesInvoiceService) CreateSalesInvoice(ctx *fiber.Ctx, req dtos.Create
 			if dt.RefDtID != nil && *dt.RefDtID > 0 {
 				soDtIDs[*dt.RefDtID] = *dt.RefID
 			}
+		} else if dt.RefType != nil && *dt.RefType == "inv_out" && dt.RefID != nil && *dt.RefID > 0 {
+			if !inventoryIDsMap[*dt.RefID] {
+				inventoryIDsMap[*dt.RefID] = true
+				uniqueInventoryIDs = append(uniqueInventoryIDs, *dt.RefID)
+			}
+
+			if dt.RefDtID != nil && *dt.RefDtID > 0 {
+				invDtIDs[*dt.RefDtID] = *dt.RefID
+			}
 		}
 	}
 
 	if len(uniqueSOIDs) > 0 {
 		if err := s.repo.LockSalesOrders(tx, uniqueSOIDs, childSpan); err != nil {
+			tx.Rollback()
+			return nil, tx, err
+		}
+	}
+
+	if len(uniqueInventoryIDs) > 0 {
+		if err := s.repo.LockInventories(tx, uniqueInventoryIDs, childSpan); err != nil {
 			tx.Rollback()
 			return nil, tx, err
 		}
@@ -101,6 +121,20 @@ func (s *SalesInvoiceService) CreateSalesInvoice(ctx *fiber.Ctx, req dtos.Create
 		}
 
 		tx, err = s.repo.CheckAndUpdateSalesOrderStatus(tx, soID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, tx, err
+		}
+	}
+
+	for invDtID, invID := range invDtIDs {
+		tx, err = s.repo.UpdateInvDtInvoiceStatus(tx, invDtID, "INVOICE", childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, tx, err
+		}
+
+		tx, err = s.repo.CheckAndUpdateInventoryStatus(tx, invID, childSpan)
 		if err != nil {
 			tx.Rollback()
 			return nil, tx, err
@@ -164,6 +198,11 @@ func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.Update
 	allSOIDs := make([]uint, 0)
 	uniqueSOIDs := make(map[uint]bool)
 
+	existingInvDtIDs := make(map[uint]uint)
+	newInvDtIDs := make(map[uint]uint)
+	allInventoryIDs := make([]uint, 0)
+	uniqueInventoryIDs := make(map[uint]bool)
+
 	params := dtos.GetSalesInvoiceParams{ID: req.ID}
 	existingSalesInvoice, err := s.GetSalesInvoiceByID(ctx, &params, tx, childSpan)
 	if err != nil {
@@ -178,6 +217,12 @@ func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.Update
 				uniqueSOIDs[*dt.RefID] = true
 				allSOIDs = append(allSOIDs, *dt.RefID)
 			}
+		} else if dt.RefType != nil && *dt.RefType == "inv_out" && dt.RefID != nil && dt.RefDtID != nil {
+			existingInvDtIDs[*dt.RefDtID] = *dt.RefID
+			if !uniqueInventoryIDs[*dt.RefID] {
+				uniqueInventoryIDs[*dt.RefID] = true
+				allInventoryIDs = append(allInventoryIDs, *dt.RefID)
+			}
 		}
 	}
 
@@ -188,11 +233,24 @@ func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.Update
 				uniqueSOIDs[*dt.RefID] = true
 				allSOIDs = append(allSOIDs, *dt.RefID)
 			}
+		} else if dt.RefType != nil && *dt.RefType == "inv_out" && dt.RefID != nil && dt.RefDtID != nil {
+			newInvDtIDs[*dt.RefDtID] = *dt.RefID
+			if !uniqueInventoryIDs[*dt.RefID] {
+				uniqueInventoryIDs[*dt.RefID] = true
+				allInventoryIDs = append(allInventoryIDs, *dt.RefID)
+			}
 		}
 	}
 
 	if len(allSOIDs) > 0 {
 		if err := s.repo.LockSalesOrders(tx, allSOIDs, childSpan); err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	if len(allInventoryIDs) > 0 {
+		if err := s.repo.LockInventories(tx, allInventoryIDs, childSpan); err != nil {
 			tx.Rollback()
 			return nil, err
 		}
@@ -217,8 +275,30 @@ func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.Update
 		}
 	}
 
+	removedInvDtIDs := make(map[uint]uint)
+	for invDtID, invID := range existingInvDtIDs {
+		if _, exists := newInvDtIDs[invDtID]; !exists {
+			removedInvDtIDs[invDtID] = invID
+		}
+	}
+
+	addedInvDtIDs := make(map[uint]uint)
+	for invDtID, invID := range newInvDtIDs {
+		if _, exists := existingInvDtIDs[invDtID]; !exists {
+			addedInvDtIDs[invDtID] = invID
+		}
+	}
+
 	for soDtID := range removedSoDtIDs {
 		tx, err = s.repo.UpdateSoDtInvoiceStatus(tx, soDtID, nil, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	for invDtID := range removedInvDtIDs {
+		tx, err = s.repo.UpdateInvDtInvoiceStatus(tx, invDtID, nil, childSpan)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -316,6 +396,14 @@ func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.Update
 		}
 	}
 
+	for invDtID := range addedInvDtIDs {
+		tx, err = s.repo.UpdateInvDtInvoiceStatus(tx, invDtID, "INVOICE", childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
 	affectedSOIDs := make(map[uint]bool)
 	for _, soID := range removedSoDtIDs {
 		affectedSOIDs[soID] = true
@@ -326,6 +414,22 @@ func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.Update
 
 	for soID := range affectedSOIDs {
 		tx, err = s.repo.CheckAndUpdateSalesOrderStatus(tx, soID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	affectedInventoryIDs := make(map[uint]bool)
+	for _, invID := range removedInvDtIDs {
+		affectedInventoryIDs[invID] = true
+	}
+	for _, invID := range addedInvDtIDs {
+		affectedInventoryIDs[invID] = true
+	}
+
+	for invID := range affectedInventoryIDs {
+		tx, err = s.repo.CheckAndUpdateInventoryStatus(tx, invID, childSpan)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
@@ -350,6 +454,10 @@ func (s *SalesInvoiceService) DeleteSalesInvoice(ctx *fiber.Ctx, salesInvoiceID 
 	soIDs := make([]uint, 0)
 	soIDsMap := make(map[uint]bool)
 
+	invDtIDs := make(map[uint]uint)
+	invIDs := make([]uint, 0)
+	invIDsMap := make(map[uint]bool)
+
 	for _, dt := range salesInvoice.SalesInvoiceDts {
 		if dt.RefType != nil && *dt.RefType == "so" && dt.RefID != nil && dt.RefDtID != nil {
 			soDtIDs[*dt.RefDtID] = *dt.RefID
@@ -357,11 +465,24 @@ func (s *SalesInvoiceService) DeleteSalesInvoice(ctx *fiber.Ctx, salesInvoiceID 
 				soIDsMap[*dt.RefID] = true
 				soIDs = append(soIDs, *dt.RefID)
 			}
+		} else if dt.RefType != nil && *dt.RefType == "inv_out" && dt.RefID != nil && dt.RefDtID != nil {
+			invDtIDs[*dt.RefDtID] = *dt.RefID
+			if !invIDsMap[*dt.RefID] {
+				invIDsMap[*dt.RefID] = true
+				invIDs = append(invIDs, *dt.RefID)
+			}
 		}
 	}
 
 	if len(soIDs) > 0 {
 		if err := s.repo.LockSalesOrders(tx, soIDs, childSpan); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if len(invIDs) > 0 {
+		if err := s.repo.LockInventories(tx, invIDs, childSpan); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -380,6 +501,20 @@ func (s *SalesInvoiceService) DeleteSalesInvoice(ctx *fiber.Ctx, salesInvoiceID 
 		}
 
 		tx, err = s.repo.CheckAndUpdateSalesOrderStatus(tx, soID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	for invDtID, invID := range invDtIDs {
+		tx, err = s.repo.UpdateInvDtInvoiceStatus(tx, invDtID, nil, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		tx, err = s.repo.CheckAndUpdateInventoryStatus(tx, invID, childSpan)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -415,6 +550,10 @@ func (s *SalesInvoiceService) RestoreSalesInvoice(ctx *fiber.Ctx, params *dtos.G
 	soIDs := make([]uint, 0)
 	soIDsMap := make(map[uint]bool)
 
+	invDtIDs := make(map[uint]uint)
+	invIDs := make([]uint, 0)
+	invIDsMap := make(map[uint]bool)
+
 	for _, dt := range salesInvoice.SalesInvoiceDts {
 		if dt.RefType != nil && *dt.RefType == "so" && dt.RefID != nil && dt.RefDtID != nil {
 			soDtIDs[*dt.RefDtID] = *dt.RefID
@@ -422,11 +561,24 @@ func (s *SalesInvoiceService) RestoreSalesInvoice(ctx *fiber.Ctx, params *dtos.G
 				soIDsMap[*dt.RefID] = true
 				soIDs = append(soIDs, *dt.RefID)
 			}
+		} else if dt.RefType != nil && *dt.RefType == "inv_out" && dt.RefID != nil && dt.RefDtID != nil {
+			invDtIDs[*dt.RefDtID] = *dt.RefID
+			if !invIDsMap[*dt.RefID] {
+				invIDsMap[*dt.RefID] = true
+				invIDs = append(invIDs, *dt.RefID)
+			}
 		}
 	}
 
 	if len(soIDs) > 0 {
 		if err := s.repo.LockSalesOrders(tx, soIDs, childSpan); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if len(invIDs) > 0 {
+		if err := s.repo.LockInventories(tx, invIDs, childSpan); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -445,6 +597,20 @@ func (s *SalesInvoiceService) RestoreSalesInvoice(ctx *fiber.Ctx, params *dtos.G
 		}
 
 		tx, err = s.repo.CheckAndUpdateSalesOrderStatus(tx, soID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	for invDtID, invID := range invDtIDs {
+		tx, err = s.repo.UpdateInvDtInvoiceStatus(tx, invDtID, "INVOICE", childSpan)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		tx, err = s.repo.CheckAndUpdateInventoryStatus(tx, invID, childSpan)
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -505,6 +671,18 @@ func (s *SalesInvoiceService) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[st
 	return soDts, total, nil
 }
 
+func (s *SalesInvoiceService) GetRefInventoryOutDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefInventoryOutForInvoiceListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceService-GetRefInventoryOutDts", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	invDts, total, err := s.repo.GetRefInventoryOutDts(ctx, filters, childSpan)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return invDts, total, nil
+}
+
 func (s *SalesInvoiceService) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs []uint, span opentracing.Span) (map[uint]string, error) {
 	childSpan := opentracing.StartSpan("SalesInvoiceService-GetSoDtInvoiceStatus", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
@@ -514,6 +692,22 @@ func (s *SalesInvoiceService) GetSoDtInvoiceStatus(ctx *fiber.Ctx, soDtIDs []uin
 	}
 
 	statusMap, err := s.repo.GetSoDtInvoiceStatus(ctx, soDtIDs, childSpan)
+	if err != nil {
+		return nil, err
+	}
+
+	return statusMap, nil
+}
+
+func (s *SalesInvoiceService) GetInvDtInvoiceStatus(ctx *fiber.Ctx, invDtIDs []uint, span opentracing.Span) (map[uint]string, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceService-GetInvDtInvoiceStatus", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	if len(invDtIDs) == 0 {
+		return make(map[uint]string), nil
+	}
+
+	statusMap, err := s.repo.GetInvDtInvoiceStatus(ctx, invDtIDs, childSpan)
 	if err != nil {
 		return nil, err
 	}

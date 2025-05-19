@@ -40,6 +40,7 @@ type InvDt struct {
 	TotalAm         *float64 `json:"total_am" gorm:"column:total_am"`
 	ExpiredAt       *string  `json:"expired_at" gorm:"column:expired_at"`
 	ItemJSON        string   `json:"item_json" gorm:"column:item_json"`
+	InvoiceStatus   *int     `json:"invoice_status" gorm:"column:invoice_status"`
 	CreatedByID     *uint    `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID     *uint    `json:"updated_by_id" gorm:"column:updated_by_id"`
 	DeletedByID     *uint    `json:"deleted_by_id" gorm:"column:deleted_by_id"`
