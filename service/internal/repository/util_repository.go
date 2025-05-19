@@ -25,9 +25,10 @@ func NewUtilRepository(db *gorm.DB, sqlDB *sqlx.DB) *UtilRepository {
 }
 
 func (r *UtilRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params *dtos.GetCompanyProfileParams) (*dtos.CompanyProfileDetailDTO, error) {
-	var CompanyProfile dtos.CompanyProfileDetailDTO
+	var companyProfile dtos.CompanyProfileDetailDTO
 
 	query := `SELECT cp.id, cp.company_name, cp.company_address, cp.company_phone, cp.company_email, cp.company_website, cp.company_logo, cp.company_description, cp.company_remark, cp.company_status, cp.created_at, cp.updated_at, cp.deleted_at,
+	cp.company_owner_name,
 	cp.company_email_password,
 	cu.name as created_by_name,
 	uu.name as updated_by_name
@@ -51,11 +52,21 @@ func (r *UtilRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params *dtos.GetC
 
 	query += isDeletedQuery
 
-	if err := r.sqlDB.Get(&CompanyProfile, query, args...); err != nil {
+	if err := r.sqlDB.Get(&companyProfile, query, args...); err != nil {
 		return nil, err
 	}
 
-	return &CompanyProfile, nil
+	if companyProfile.CompanyLogo != nil {
+		logoUrl := utils.AddHostURLToImageURL(*companyProfile.CompanyLogo)
+		companyProfile.CompanyLogoUrl = &logoUrl
+
+	}
+	if companyProfile.CompanySign != nil {
+		signUrl := utils.AddHostURLToImageURL(*companyProfile.CompanySign)
+		companyProfile.CompanySignUrl = &signUrl
+	}
+
+	return &companyProfile, nil
 }
 
 // Upsert performs an INSERT ... ON CONFLICT operation for any table.

@@ -349,6 +349,18 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 				so.rev_no,
 				so.is_vat,
 
+				br.company_profile_id,
+				c.name as customer_name,
+				c.code as customer_code,
+				c.phone as phone,
+				c.address as address,
+				ot.name as order_type_name,
+				cur.name as currency_name,
+				vat.name as vat_name,
+				pph.name as pph23_name,
+				py.account_name,
+				py.name as bank_name,
+
 				cu.name as created_by_name,
 				uu.name as updated_by_name
 
@@ -363,7 +375,9 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 			LEFT JOIN mix_values vat ON so.vat_id = vat.id
 			LEFT JOIN mix_values pph ON so.pph23_id = pph.id
 			LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+			LEFT JOIN bank_informations py ON so.payment_id = py.id
 			LEFT JOIN customers c ON so.customer_id = c.id
+			LEFT JOIN branches br ON so.branch_id = br.id
 
 			LEFT JOIN users cu ON so.created_by_id = cu.id
 			LEFT JOIN users uu ON so.updated_by_id = uu.id

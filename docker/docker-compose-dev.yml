@@ -55,19 +55,27 @@ services:
       SEEDER_DIR: /apps/internal/database/seeders
     restart: on-failure
 
-  postgres:
-    image: postgres:17.4-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
-      POSTGRES_DB: ${POSTGRES_DB:-s_erp_api}
+  consumer-service:
+    build: 
+      context: ../service
+      dockerfile: Dockerfile.dev
+      network: host
+    image: nibroos/s-erp-service-dev:1.0.250216
     networks:
       - s-erp-api-network
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      SERVICE_TYPE: consumer
     volumes:
-      - postgres-s-erp-api:/var/lib/postgresql/data
-    restart: on-failure
+      - ./../service:/apps
+    restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:4.0-management
@@ -93,27 +101,19 @@ services:
       retries: 5
     restart: unless-stopped
 
-  consumer-service:
-    build: 
-      context: ../service
-      dockerfile: Dockerfile.dev
-      network: host
-    image: nibroos/s-erp-service-dev:1.0.250216
+  postgres:
+    image: postgres:17.4-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-s_erp_api}
     networks:
       - s-erp-api-network
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
-      SERVICE_TYPE: consumer
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - ./../service:/apps
-    restart: unless-stopped
+      - postgres-s-erp-api:/var/lib/postgresql/data
+    restart: on-failure
 
   # asynq-client:
   #   build:

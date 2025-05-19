@@ -611,7 +611,9 @@ type CompanyProfileDetailDTO struct {
 	CompanyEmailPassword *string `json:"company_email_password" db:"company_email_password"`
 	CompanyWebsite       *string `json:"company_website" db:"company_website"`
 	CompanyLogo          *string `json:"company_logo" db:"company_logo"`
+	CompanyLogoUrl       *string `json:"company_logo_url" db:"company_logo_url"`
 	CompanySign          *string `json:"company_sign" db:"company_sign"`
+	CompanySignUrl       *string `json:"company_sign_url" db:"company_sign_url"`
 	CompanyDescription   *string `json:"company_description" db:"company_description"`
 	CompanyRemark        *string `json:"company_remark" db:"company_remark"`
 	CompanyStatus        *int    `json:"company_status" db:"company_status"`

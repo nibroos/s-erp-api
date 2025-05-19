@@ -797,7 +797,7 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 		ivd.created_at, ivd.updated_at, ivd.deleted_at,
 		TO_CHAR(ivd.expired_at, 'YYYY-MM-DD') as expired_at,
 
-		ivd.ref_so_dt_id, ivd.ref_so_dt_bom_id, ivd.ref_po_dt_id, ivd.ref_po_dt_bom_id, ivd.ref_inv_dt_id, ivd.ref_product_id, ivd.ref_product_bom_id,
+		ivd.ref_so_dt_id, ivd.ref_so_dt_bom_id, ivd.ref_ro_dt_id, ivd.ref_po_dt_id, ivd.ref_po_dt_bom_id, ivd.ref_inv_dt_id, ivd.ref_product_id, ivd.ref_product_bom_id,
 
 		p.customer_id,
 
@@ -810,7 +810,7 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 		pi.name as item_name,
 		pi.code as item_code,
 		COALESCE(
-		 sd.qty_out, sdb.qty_out, ivd_refs.qty_out, 0
+		 sd.qty_out, sdb.qty_out, ivd_refs.qty_out, rd.qty_out, 0
 		) as qty_out,
 		COALESCE(
 		 pd.qty_in, 0
@@ -820,7 +820,7 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 		) as ref_qty,
 
 		COALESCE(
-			so.po_buyer_no, iv_refs.inventory_no, po.po_no, NULL
+			so.po_buyer_no, iv_refs.inventory_no, po.po_no, ro.request_no, NULL
 		) as ref_num,
 
 		cu.name as created_by_name,
@@ -829,6 +829,8 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 	FROM inv_dts ivd
 	LEFT JOIN so_dts sd ON sd.id = ivd.ref_so_dt_id AND ivd.ref_type = 'so'
 	LEFT JOIN so_dt_boms sdb ON sdb.id = ivd.ref_so_dt_bom_id AND ivd.ref_type = 'so'
+	LEFT JOIN request_order_dts rd ON rd.id = ivd.ref_ro_dt_id
+	LEFT JOIN request_orders ro ON ro.id = rd.request_order_id
 	LEFT JOIN sales_orders so ON (so.id = sd.sales_order_id OR so.id = sdb.sales_order_id)
 	LEFT JOIN purchase_order_dts pd ON pd.id               = ivd.ref_po_dt_id
 	LEFT JOIN purchase_orders po ON po.id                  = pd.po_id
@@ -1177,6 +1179,283 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 	}
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "so.order_at")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	for key, valueID := range columnIDsKey {
+		if value, ok := filters["order_column"]; ok && value != "" && key == value {
+			orderColumn = valueID
+		}
+	}
+
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return products, total, nil
+}
+
+func (r *InventoryRepository) GetRefIndexRoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefInvIndexRoDtListDTO, int, error) {
+
+	childSpan := opentracing.StartSpan("InventoryRepository-GetRefIndexRoDts", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	products := []dtos.RefInvIndexRoDtListDTO{}
+
+	var total int
+
+	filterDBColumnKey := []string{
+		"ro.request_no",
+		"pi.name",
+		"sd.remark",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND ro.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":        "ro.status",
+		"warehouse_id":  "ro.warehouse_id",
+		"order_type_id": "ro.order_type_id",
+		"currency_id":   "ro.currency_id",
+		"vat_id":        "ro.vat_id",
+		"payment_id":    "ro.payment_id",
+		"pph23_id":      "ro.pph23_id",
+		"product_id":    "sd.item_id",
+		"expired_at":    "ro.expired_at",
+		"due_at":        "ro.due_at",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"warehouse_ids":      "ro.warehouse_id",
+		"order_type_ids":     "ro.order_type_id",
+		"currency_ids":       "ro.currency_id",
+		"payment_ids":        "ro.payment_id",
+		"pph23_ids":          "ro.pph23_id",
+		"product_ids":        "sd.item_id",
+		"quotation_ids":      "ro.id",
+		"item_group_ids":     "ig.id",
+		"item_sub_group_ids": "pi.item_sub_group_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"ro.vat_id", "sd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	filterKeyLike := map[string]string{
+		"request_no": "ro.request_no",
+	}
+
+	for key, valColumn := range filterKeyLike {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s ILIKE $%d", valColumn, i)
+			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+	}
+
+	baseQuery := `
+    FROM ( 
+					SELECT
+						-- sd.id, 
+						sd.id as ref_ro_dt_id,
+						null as ref_ro_dt_bom_id,
+						'item' as item_type,
+						sd.request_order_id, 
+						sd.product_uuid,
+						sd.item_id, 
+						sd.item_unit_id, 
+						sd.qty_out,
+						sd.req_qty AS ref_qty, 
+						sd.price_sell,
+						COALESCE(sd.req_qty, 0) * COALESCE(sd.price_sell, 0) as subtotal_sell, 
+						COALESCE(sd.req_qty, 0) - COALESCE(sd.qty_out, 0) as balance, 
+						sd.remark
+					FROM request_order_dts sd
+    ) AS sd 
+		LEFT JOIN request_orders ro ON sd.request_order_id = ro.id
+		LEFT JOIN products pi ON sd.item_id = pi.id
+		LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
+		LEFT JOIN mix_values c ON ro.warehouse_id = c.id
+
+		LEFT JOIN mix_values isg ON pi.item_sub_group_id = isg.id
+		LEFT JOIN mix_values ig ON isg.parent_id = ig.id
+		LEFT JOIN mix_values u ON iu.unit_id = u.id
+		WHERE 1=1 AND COALESCE(sd.balance, 0) > 0`
+
+	query := `SELECT sd.*,
+			TO_CHAR(ro.request_date, 'YYYY-MM-DD') as request_date,
+			ro.warehouse_id as warehouse_id,
+			ro.request_no as ref_num,
+			isg.name as item_sub_group_name,
+			ig.name as item_group_name,
+			u.name as unit_name,
+			c.name as warehouse_name,
+			pi.name as item_name,
+			pi.code as item_code,
+			pi.sku as item_sku,
+			'ro' as ref_type
+		` + baseQuery + condition + queryGlobal
+
+	countQuery := `SELECT COUNT(*) as total
+		` + baseQuery + condition + queryGlobal
+
+	if filters["start_date"] != "" && filters["end_date"] != "" {
+		query += fmt.Sprintf(" AND (ro.request_date BETWEEN $%d AND $%d)", i, i+1)
+		countQuery += fmt.Sprintf(" AND (ro.request_date BETWEEN $%d AND $%d)", i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (ro.branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (ro.branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (ro.branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (ro.branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	columnIDsKey := map[string]string{
+		"ref_num":       "ro.po_buyer_no",
+		"order_at":      "ro.order_at",
+		"customer_name": "c.name",
+		"item_code":     "pi.code",
+		"item_name":     "pi.name",
+		"item_sku":      "pi.sku",
+		"unit_name":     "u.name",
+		"ref_qty":       "sd.ref_qty",
+		"balance":       "sd.balance",
+		"qty_out":       "sd.qty_out",
+		"remark":        "sd.remark",
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "ro.order_at")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	for key, valueID := range columnIDsKey {
 		if value, ok := filters["order_column"]; ok && value != "" && key == value {
@@ -3491,15 +3770,23 @@ func (r *InventoryRepository) CreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, d
 func (r *InventoryRepository) DeleteStockClosingByDate(ctx *fiber.Ctx, tx *gorm.DB, date string, userID uint, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("InvDtRepository-DeleteStockClosingByDate", opentracing.ChildOf(span.Context()))
 
-	now := time.Now()
-	deletedAt := gorm.DeletedAt{Time: now, Valid: true}
+	// now := time.Now()
+	// deletedAt := gorm.DeletedAt{Time: now, Valid: true}
 
-	query := tx.Model(&models.StockClosings{}).Where("closing_at = ?", date)
+	// query := tx.Model(&models.StockClosings{}).Where("closing_at = ?", date)
 
-	if err := query.Updates(map[string]interface{}{
-		"deleted_by_id": userID,
-		"deleted_at":    deletedAt,
-	}).Error; err != nil {
+	// if err := query.Updates(map[string]interface{}{
+	// 	"deleted_by_id": userID,
+	// 	"deleted_at":    deletedAt,
+	// }).Error; err != nil {
+	// 	defer childSpan.Finish()
+	// 	log.Printf("[ERROR]Error deleting stock closing: %v", err)
+	// 	utils.LogErrors(childSpan, err)
+	// 	return err
+	// }
+
+	// Use Unscoped() to bypass soft delete and Delete() for permanent deletion
+	if err := tx.Unscoped().Where("closing_at = ?", date).Delete(&models.StockClosings{}).Error; err != nil {
 		defer childSpan.Finish()
 		log.Printf("[ERROR]Error deleting stock closing: %v", err)
 		utils.LogErrors(childSpan, err)

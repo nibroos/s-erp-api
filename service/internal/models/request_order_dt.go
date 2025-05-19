@@ -28,6 +28,7 @@ type RequestOrderDt struct {
 	OrderItemQty    *float64         `json:"order_item_qty" gorm:"column:order_item_qty"`
 	WhQty           *float64         `json:"wh_qty" gorm:"column:wh_qty"`
 	ReqQty          *float64         `json:"req_qty" gorm:"column:req_qty"`
+	QtyOut          *float64         `json:"qty_out" gorm:"column:qty_out"`
 	CreatedByID     *uint            `json:"created_by_id" gorm:"column:created_by_id"`
 	UpdatedByID     *uint            `json:"updated_by_id" gorm:"column:updated_by_id"`
 	DeletedByID     *uint            `json:"deleted_by_id" gorm:"column:deleted_by_id"`
