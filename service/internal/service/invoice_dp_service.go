@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -9,6 +10,7 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -284,109 +286,6 @@ func (s *InvoiceDpService) CreateInvoiceDpDts(ctx *fiber.Ctx, req dtos.CreateInv
 	return tx, createdInvoiceDpDts, nil
 }
 
-// func (s *InvoiceDpService) ExcelGetInvoiceDps(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
-// 	childSpan := opentracing.StartSpan("InvoiceDpService-ExcelGetInvoiceDps", opentracing.ChildOf(span.Context()))
-// 	defer childSpan.Finish()
-
-// 	invoiceDps, _, err := s.GetInvoiceDps(ctx, filters, childSpan)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	file := excelize.NewFile()
-
-// 	sheetName := "InvoiceDps"
-// 	index, err := file.NewSheet(sheetName)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	file.SetSheetRow(sheetName, "A1", &[]string{
-// 		"ID", "Invoice No", "Invoice Date", "Customer", "Currency", "Payment Term",
-// 		"DP Percentage", "Subtotal", "Total Discount", "Total PPh23", "Total VAT", "Grand Total",
-// 		"Remark", "Created By", "Created At",
-// 	})
-
-// 	for i, invoiceDp := range invoiceDps {
-// 		row := []interface{}{
-// 			invoiceDp.ID,
-// 			utils.GetPtrVal(invoiceDp.InvoiceNo),
-// 			utils.GetPtrVal(invoiceDp.InvoiceDate),
-// 			utils.GetPtrVal(invoiceDp.CustomerName),
-// 			utils.GetPtrVal(invoiceDp.CurrencyName),
-// 			utils.GetPtrVal(invoiceDp.PaymentTermName),
-// 			utils.GetPtrVal(invoiceDp.DpPercentage),
-// 			utils.GetPtrVal(invoiceDp.Subtotal),
-// 			utils.GetPtrVal(invoiceDp.TotalDiscount),
-// 			utils.GetPtrVal(invoiceDp.TotalPph23),
-// 			utils.GetPtrVal(invoiceDp.TotalVat),
-// 			utils.GetPtrVal(invoiceDp.GrandTotal),
-// 			utils.GetPtrVal(invoiceDp.Remark),
-// 			utils.GetPtrVal(invoiceDp.CreatedByName),
-// 			utils.GetPtrVal(invoiceDp.CreatedAt),
-// 		}
-// 		file.SetSheetRow(sheetName, fmt.Sprintf("A%d", i+2), &row)
-// 	}
-
-// 	file.SetActiveSheet(index)
-
-// 	buffer, err := file.WriteToBuffer()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return buffer.Bytes(), nil
-// }
-
-// func (s *InvoiceDpService) CsvGetInvoiceDps(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
-// 	childSpan := opentracing.StartSpan("InvoiceDpService-CsvGetInvoiceDps", opentracing.ChildOf(span.Context()))
-// 	defer childSpan.Finish()
-
-// 	filters["is_csv"] = "1"
-
-// 	invoiceDps, _, err := s.GetInvoiceDps(ctx, filters, childSpan)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-// 	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
-// 	appName := "App"
-// 	if err != nil {
-// 	} else {
-// 		appName = *companyProfile.CompanyName
-// 	}
-
-// 	csv := fmt.Sprintf("%s\n", appName)
-// 	csv += "\n"
-// 	csv += "Invoice Down Payment\n"
-// 	csv += "\n"
-
-// 	csv += "ID,Invoice No,Invoice Date,Customer,Currency,Payment Term,DP Percentage,Subtotal,Total Discount,Total PPh23,Total VAT,Grand Total,Remark,Created By,Created At\n"
-
-// 	for _, invoiceDp := range invoiceDps {
-// 		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%v,%v,%v,%v,%v,%v,%s,%s,%s\n",
-// 			invoiceDp.ID,
-// 			utils.GetPtrValString(invoiceDp.InvoiceNo),
-// 			utils.GetPtrValString(invoiceDp.InvoiceDate),
-// 			utils.GetPtrValString(invoiceDp.CustomerName),
-// 			utils.GetPtrValString(invoiceDp.CurrencyName),
-// 			utils.GetPtrValString(invoiceDp.PaymentTermName),
-// 			utils.GetPtrValFloat64(invoiceDp.DpPercentage),
-// 			utils.GetPtrValFloat64(invoiceDp.Subtotal),
-// 			utils.GetPtrValFloat64(invoiceDp.TotalDiscount),
-// 			utils.GetPtrValFloat64(invoiceDp.TotalPph23),
-// 			utils.GetPtrValFloat64(invoiceDp.TotalVat),
-// 			utils.GetPtrValFloat64(invoiceDp.GrandTotal),
-// 			utils.GetPtrValString(invoiceDp.Remark),
-// 			utils.GetPtrValString(invoiceDp.CreatedByName),
-// 			utils.GetPtrValString(invoiceDp.CreatedAt),
-// 		)
-// 	}
-
-// 	return []byte(csv), nil
-// }
-
 func (s *InvoiceDpService) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefSalesOrderDtListDTO, int, error) {
 	childSpan := opentracing.StartSpan("InvoiceDpService-GetRefSalesOrderDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
@@ -530,4 +429,189 @@ func (s *InvoiceDpService) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[strin
 		return nil, 0, err
 	}
 	return invoiceDps, total, nil
+}
+
+func (s *InvoiceDpService) ExcelGetInvoiceDps(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpService-ExcelGetInvoiceDps", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	filters["is_csv"] = "1"
+	invoiceDps, _, err := s.GetInvoiceDps(ctx, filters, childSpan)
+	if err != nil {
+		return nil, err
+	}
+
+	file := excelize.NewFile()
+
+	sheetName := "InvoiceDps"
+	index, err := file.NewSheet(sheetName)
+	if err != nil {
+		return nil, err
+	}
+
+	headers := []string{
+		"Customer", "Invoice No", "Title", "Invoice Date", "Due Date",
+		"Bank", "Currency", "Exchange Rate", "VAT", "PPh23",
+		"Qty", "Sub Amount", "Grand Total DP", "Status", "Created By",
+	}
+	file.SetSheetRow(sheetName, "A1", &headers)
+
+	file.SetColWidth(sheetName, "A", "A", 25)
+	file.SetColWidth(sheetName, "B", "B", 15)
+	file.SetColWidth(sheetName, "C", "C", 30)
+	file.SetColWidth(sheetName, "D", "E", 15)
+	file.SetColWidth(sheetName, "F", "F", 20)
+	file.SetColWidth(sheetName, "G", "G", 15)
+	file.SetColWidth(sheetName, "H", "H", 15)
+	file.SetColWidth(sheetName, "I", "J", 15)
+	file.SetColWidth(sheetName, "K", "M", 15)
+	file.SetColWidth(sheetName, "N", "N", 15)
+	file.SetColWidth(sheetName, "O", "O", 20)
+
+	headerStyle, _ := file.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Bold: true,
+			Size: 12,
+		},
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#DCE6F1"},
+			Pattern: 1,
+		},
+		Border: []excelize.Border{
+			{Type: "bottom", Color: "#000000", Style: 1},
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+	})
+	file.SetCellStyle(sheetName, "A1", string(rune('A'+len(headers)-1))+"1", headerStyle)
+
+	currencyStyle, _ := file.NewStyle(&excelize.Style{
+		NumFmt: 4,
+	})
+
+	for i, invoice := range invoiceDps {
+		row := i + 2
+		file.SetSheetRow(sheetName, fmt.Sprintf("A%d", row), &[]interface{}{
+			invoice.CustomerName,
+			invoice.InvoiceNo,
+			invoice.Title,
+			invoice.InvoiceDate,
+			invoice.DueDate,
+			invoice.BankName,
+			invoice.CurrencyName,
+			invoice.ExchangeRate,
+			invoice.VatName,
+			invoice.Pph23Name,
+			invoice.TotalQty,
+			invoice.Subtotal,
+			invoice.GrandTotal,
+			invoice.Status,
+			invoice.CreatedByName,
+		})
+
+		file.SetCellStyle(sheetName, fmt.Sprintf("H%d", row), fmt.Sprintf("H%d", row), currencyStyle)
+		file.SetCellStyle(sheetName, fmt.Sprintf("K%d", row), fmt.Sprintf("M%d", row), currencyStyle)
+	}
+
+	file.SetActiveSheet(index)
+
+	buffer, err := file.WriteToBuffer()
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
+func (s *InvoiceDpService) CsvGetInvoiceDps(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpService-CsvGetInvoiceDps", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	filters["is_csv"] = "1"
+	invoiceDps, _, err := s.GetInvoiceDps(ctx, filters, childSpan)
+	if err != nil {
+		return nil, err
+	}
+
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err == nil && companyProfile != nil && companyProfile.CompanyName != nil {
+		appName = *companyProfile.CompanyName
+	}
+
+	csv := fmt.Sprintf("%s\n", appName)
+	csv += "\n"
+	csv += "Invoice Down Payments\n"
+	csv += "\n"
+
+	csv += "Customer,Invoice No,Title,Invoice Date,Due Date,Bank,Currency,Exchange Rate,Total VAT,Total PPh23,Qty,Sub Amount,Grand Total DP,Status,Created By\n"
+
+	for _, invoice := range invoiceDps {
+		customerName := utils.GetPtrVal(invoice.CustomerName)
+		invoiceNo := utils.GetPtrVal(invoice.InvoiceNo)
+		title := utils.GetPtrVal(invoice.Title)
+		invoiceDate := utils.GetPtrVal(invoice.InvoiceDate)
+		dueDate := utils.GetPtrVal(invoice.DueDate)
+
+		bankName := utils.GetPtrVal(invoice.BankName)
+		accountNumber := utils.GetPtrVal(invoice.AccountNumber)
+		accountName := utils.GetPtrVal(invoice.AccountName)
+
+		bankInfo := bankName
+		if accountNumber != "" {
+			if bankInfo != "" {
+				bankInfo += " - "
+			}
+			bankInfo += accountNumber
+		}
+		if accountName != "" {
+			if bankInfo != "" {
+				bankInfo += " - "
+			}
+			bankInfo += accountName
+		}
+
+		currencyName := utils.GetPtrVal(invoice.CurrencyName)
+		status := utils.GetPtrVal(invoice.Status)
+		createdByName := utils.GetPtrVal(invoice.CreatedByName)
+
+		exchangeRate := utils.GetFloatPtrVal(invoice.ExchangeRate)
+		totalQty := utils.GetFloatPtrVal(invoice.TotalQty)
+		subtotal := utils.GetFloatPtrVal(invoice.Subtotal)
+		grandTotal := utils.GetFloatPtrVal(invoice.GrandTotal)
+
+		totalVat := utils.GetFloatPtrVal(invoice.TotalVat)
+		totalPph23 := utils.GetFloatPtrVal(invoice.TotalPph23)
+
+		customerName = utils.EscapeCsvField(customerName)
+		invoiceNo = utils.EscapeCsvField(invoiceNo)
+		title = utils.EscapeCsvField(title)
+		bankInfo = utils.EscapeCsvField(bankInfo)
+		currencyName = utils.EscapeCsvField(currencyName)
+		status = utils.EscapeCsvField(status)
+		createdByName = utils.EscapeCsvField(createdByName)
+
+		csv += fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s\n",
+			customerName,
+			invoiceNo,
+			title,
+			invoiceDate,
+			dueDate,
+			bankInfo,
+			currencyName,
+			exchangeRate,
+			totalVat,
+			totalPph23,
+			totalQty,
+			subtotal,
+			grandTotal,
+			status,
+			createdByName,
+		)
+	}
+
+	return []byte(csv), nil
 }

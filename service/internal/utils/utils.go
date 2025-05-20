@@ -947,3 +947,11 @@ func ErrorToStringPtr(err error) *string {
 	}
 	return nil
 }
+
+func EscapeCsvField(field string) string {
+	if strings.ContainsAny(field, ",\"\n\r") {
+		field = strings.ReplaceAll(field, "\"", "\"\"")
+		field = "\"" + field + "\""
+	}
+	return field
+}

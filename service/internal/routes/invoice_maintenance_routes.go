@@ -21,10 +21,11 @@ func SetupInvoiceMaintenanceRoutes(invoiceMaintenances fiber.Router, gormDB *gor
 	invoiceMaintenances.Post("/update-invoice-maintenance", invoiceMaintenanceController.UpdateInvoiceMaintenance)
 	invoiceMaintenances.Post("/delete-invoice-maintenance", invoiceMaintenanceController.DeleteInvoiceMaintenance)
 	invoiceMaintenances.Post("/restore-invoice-maintenance", invoiceMaintenanceController.RestoreInvoiceMaintenance)
-	// invoiceMaintenances.Post("/excel-invoice-maintenance", invoiceMaintenanceController.ExcelGetInvoiceMaintenances)
-	// invoiceMaintenances.Post("/csv-invoice-maintenance", invoiceMaintenanceController.CsvGetInvoiceMaintenances)
+	invoiceMaintenances.Post("/excel-invoice-maintenance", invoiceMaintenanceController.ExcelGetInvoiceMaintenances)
+	invoiceMaintenances.Post("/csv-invoice-maintenance", invoiceMaintenanceController.CsvGetInvoiceMaintenances)
 	invoiceMaintenances.Post("/index-ref-so-dt", invoiceMaintenanceController.GetRefSalesOrderForInvoiceMaintenance)
 	invoiceMaintenances.Post("/approve-invoice-maintenance", invoiceMaintenanceController.ApproveInvoiceMaintenances)
 	invoiceMaintenances.Post("/cancel-approve-invoice-maintenance", invoiceMaintenanceController.CancelApproveInvoiceMaintenances)
 	invoiceMaintenances.Post("/widget-invoice-maintenance", invoiceMaintenanceController.GetWidgetInvoiceMaintenances)
+	invoiceMaintenances.Post("/repeat-invoice-maintenance", invoiceMaintenanceController.RepeatInvoiceMaintenances)
 }

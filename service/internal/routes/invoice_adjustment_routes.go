@@ -22,6 +22,6 @@ func SetupInvoiceAdjustmentRoutes(invoiceAdjustments fiber.Router, gormDB *gorm.
 	invoiceAdjustments.Post("/delete-invoice-adjustment", invoiceAdjustmentController.DeleteInvoiceAdjustment)
 	invoiceAdjustments.Post("/restore-invoice-adjustment", invoiceAdjustmentController.RestoreInvoiceAdjustment)
 	invoiceAdjustments.Post("/index-reference-invoices", invoiceAdjustmentController.GetReferenceInvoices)
-	// invoiceAdjustments.Post("/excel-invoice-adjustment", invoiceAdjustmentController.ExcelGetInvoiceAdjustments)
-	// invoiceAdjustments.Post("/csv-invoice-adjustment", invoiceAdjustmentController.CsvGetInvoiceAdjustments)
+	invoiceAdjustments.Post("/excel-invoice-adjustment", invoiceAdjustmentController.ExcelGetInvoiceAdjustments)
+	invoiceAdjustments.Post("/csv-invoice-adjustment", invoiceAdjustmentController.CsvGetInvoiceAdjustments)
 }

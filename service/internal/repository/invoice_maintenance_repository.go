@@ -1562,6 +1562,148 @@ func (r *InvoiceMaintenanceRepository) GetWidgetInvoiceMaintenances(ctx *fiber.C
 	return widgets, total, nil
 }
 
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceModelByID(ctx *fiber.Ctx, id uint, span opentracing.Span) (*models.InvoiceMaintenance, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetInvoiceMaintenanceModelByID", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var invoiceMaintenance models.InvoiceMaintenance
+	if err := r.db.Where("id = ? AND deleted_at IS NULL", id).First(&invoiceMaintenance).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return &invoiceMaintenance, nil
+}
+
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceDtModels(ctx *fiber.Ctx, invoiceMaintenanceID uint, span opentracing.Span) ([]models.InvoiceMaintenanceDt, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetInvoiceMaintenanceDtModels", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var invoiceMaintenanceDts []models.InvoiceMaintenanceDt
+	if err := r.db.Where("invoice_maintenance_id = ? AND deleted_at IS NULL", invoiceMaintenanceID).Find(&invoiceMaintenanceDts).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return invoiceMaintenanceDts, nil
+}
+
+func (r *InvoiceMaintenanceRepository) LockInvoiceNumberingProcess(tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-LockInvoiceNumberingProcess", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	lockQuery := "SELECT pg_advisory_xact_lock(1001)"
+	if err := tx.Exec(lockQuery).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *InvoiceMaintenanceRepository) RepeatInvoiceMaintenances(ctx *fiber.Ctx, req dtos.RepeatInvoiceMaintenanceRequest, userID uint, span opentracing.Span) ([]dtos.RepeatInvoiceMaintenanceResult, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-RepeatInvoiceMaintenances", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	claims, _ := auth.GetAuthUser(ctx)
+
+	var branchID uint
+	if bid, ok := claims["bid"]; ok {
+		switch v := bid.(type) {
+		case uint:
+			branchID = v
+		case float64:
+			branchID = uint(v)
+		case int:
+			branchID = uint(v)
+		case int64:
+			branchID = uint(v)
+		default:
+			utils.LogErrors(childSpan, fmt.Errorf("invalid branch ID type: %T", bid))
+			return nil, fmt.Errorf("invalid branch ID type")
+		}
+	} else {
+		utils.LogErrors(childSpan, fmt.Errorf("branch ID not found in claims"))
+		return nil, fmt.Errorf("branch ID not found in claims")
+	}
+
+	results := make([]dtos.RepeatInvoiceMaintenanceResult, 0, len(req.Invoices))
+
+	for _, item := range req.Invoices {
+		tx := r.db.Begin()
+		if tx.Error != nil {
+			utils.LogErrors(childSpan, tx.Error)
+			return nil, tx.Error
+		}
+
+		if err := r.LockInvoiceNumberingProcess(tx, childSpan); err != nil {
+			tx.Rollback()
+			utils.LogErrors(childSpan, err)
+			return nil, err
+		}
+
+		originalInvoice, err := r.GetInvoiceMaintenanceModelByID(ctx, item.ID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			utils.LogErrors(childSpan, err)
+			return nil, err
+		}
+
+		count, err := r.GetInvoiceMaintenanceCreatedThisMonth(ctx, tx, *originalInvoice.CustomerID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			utils.LogErrors(childSpan, err)
+			return nil, err
+		}
+
+		originalDts, err := r.GetInvoiceMaintenanceDtModels(ctx, item.ID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			utils.LogErrors(childSpan, err)
+			return nil, err
+		}
+
+		newInvoice, err := utils.MapRepeatInvoiceMaintenance(ctx, originalInvoice, item, userID, branchID, count+1, childSpan)
+		if err != nil {
+			tx.Rollback()
+			utils.LogErrors(childSpan, err)
+			return nil, err
+		}
+
+		tx, err = r.CreateInvoiceMaintenance(tx, &newInvoice, childSpan)
+		if err != nil {
+			tx.Rollback()
+			utils.LogErrors(childSpan, err)
+			return nil, err
+		}
+
+		newDts, err := utils.MapRepeatInvoiceMaintenanceDts(ctx, originalDts, newInvoice.ID, userID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			utils.LogErrors(childSpan, err)
+			return nil, err
+		}
+
+		if _, _, err := r.CreateInvoiceMaintenanceDts(tx, newDts, childSpan); err != nil {
+			tx.Rollback()
+			utils.LogErrors(childSpan, err)
+			return nil, err
+		}
+
+		if err := tx.Commit().Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return nil, err
+		}
+
+		results = append(results, dtos.RepeatInvoiceMaintenanceResult{
+			OriginalID:  item.ID,
+			DuplicateID: newInvoice.ID,
+		})
+	}
+
+	return results, nil
+}
+
 func (r *InvoiceMaintenanceRepository) Commit(tx *gorm.DB) error {
 	return tx.Commit().Error
 }

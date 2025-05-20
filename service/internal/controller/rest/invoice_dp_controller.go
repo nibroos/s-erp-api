@@ -281,58 +281,6 @@ func (c *InvoiceDpController) RestoreInvoiceDp(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, nil, nil, "Invoice DP restored successfully", http.StatusOK, nil, nil)
 }
 
-// func (c *InvoiceDpController) ExcelGetInvoiceDps(ctx *fiber.Ctx) error {
-// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-// 	parentSpan := opentracing.StartSpan("InvoiceDpController-ExcelGetInvoiceDps", opentracing.ChildOf(apiSpan.Context()))
-// 	defer func() {
-// 		// If no error, delete span
-// 		if utils.FilterOtel(ctx) {
-// 			defer apiSpan.Finish()
-// 			defer parentSpan.Finish()
-// 		}
-// 	}()
-
-// 	filters, ok := ctx.Locals("filters").(map[string]string)
-// 	if !ok {
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
-// 	}
-
-// 	invoiceDps, err := c.service.ExcelGetInvoiceDps(ctx, filters, parentSpan)
-// 	if err != nil {
-// 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-// 	}
-
-// 	return ctx.Send(invoiceDps)
-// }
-
-// func (c *InvoiceDpController) CsvGetInvoiceDps(ctx *fiber.Ctx) error {
-// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-// 	parentSpan := opentracing.StartSpan("InvoiceDpController-CsvGetInvoiceDps", opentracing.ChildOf(apiSpan.Context()))
-// 	defer func() {
-// 		// If no error, delete span
-// 		if utils.FilterOtel(ctx) {
-// 			defer apiSpan.Finish()
-// 			defer parentSpan.Finish()
-// 		}
-// 	}()
-
-// 	filters, ok := ctx.Locals("filters").(map[string]string)
-// 	if !ok {
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
-// 	}
-
-// 	invoiceDps, err := c.service.CsvGetInvoiceDps(ctx, filters, parentSpan)
-// 	if err != nil {
-// 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-// 	}
-
-// 	ctx.Set("Content-Type", "text/csv")
-// 	ctx.Set("Content-Disposition", "attachment; filename=invoice_dps.csv")
-// 	return ctx.Send(invoiceDps)
-// }
-
 func (c *InvoiceDpController) GetRefSalesOrderDts(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("InvoiceDpController-GetRefSalesOrderDts", opentracing.ChildOf(apiSpan.Context()))
@@ -388,4 +336,58 @@ func (c *InvoiceDpController) GetWidgetInvoiceDps(ctx *fiber.Ctx) error {
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
 	return utils.GetResponse(ctx, invoiceDps, paginationMeta, "Invoice DP fetched successfully", http.StatusOK, nil, nil)
+}
+
+func (c *InvoiceDpController) ExcelGetInvoiceDps(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceDpController-ExcelGetInvoiceDps", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	invoiceDps, err := c.service.ExcelGetInvoiceDps(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Set("Content-Disposition", "attachment; filename=invoice_dps.xlsx")
+
+	return ctx.Send(invoiceDps)
+}
+
+func (c *InvoiceDpController) CsvGetInvoiceDps(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceDpController-CsvGetInvoiceDps", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	invoiceDps, err := c.service.CsvGetInvoiceDps(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	ctx.Set("Content-Type", "text/csv")
+	ctx.Set("Content-Disposition", "attachment; filename=invoice_dps.csv")
+
+	return ctx.Send(invoiceDps)
 }

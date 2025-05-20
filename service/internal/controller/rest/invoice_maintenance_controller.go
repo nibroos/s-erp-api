@@ -3,6 +3,7 @@ package rest
 import (
 	"fmt"
 	"net/http"
+	"runtime/debug"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
@@ -431,56 +432,117 @@ func (c *InvoiceMaintenanceController) GetWidgetInvoiceMaintenances(ctx *fiber.C
 	return utils.GetResponse(ctx, invoiceMaintenances, paginationMeta, "Invoice Maintenance fetched successfully", http.StatusOK, nil, nil)
 }
 
-// Uncomment these functions if you need Excel and CSV export functionality
+func (c *InvoiceMaintenanceController) RepeatInvoiceMaintenances(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceMaintenanceController-RepeatInvoiceMaintenances", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
 
-// func (c *InvoiceMaintenanceController) ExcelGetInvoiceMaintenances(ctx *fiber.Ctx) error {
-// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-// 	parentSpan := opentracing.StartSpan("InvoiceMaintenanceController-ExcelGetInvoiceMaintenances", opentracing.ChildOf(apiSpan.Context()))
-// 	defer func() {
-// 		// If no error, delete span
-// 		if utils.FilterOtel(ctx) {
-// 			defer apiSpan.Finish()
-// 			defer parentSpan.Finish()
-// 		}
-// 	}()
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Recovered from panic in RepeatInvoiceMaintenances: %v\n", r)
+			debug.PrintStack()
+			ctx.Status(http.StatusInternalServerError).JSON(fiber.Map{
+				"error":   true,
+				"message": "Internal server error",
+			})
+		}
+	}()
 
-// 	filters, ok := ctx.Locals("filters").(map[string]string)
-// 	if !ok {
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
-// 	}
+	var req dtos.RepeatInvoiceMaintenanceRequest
 
-// 	invoiceMaintenances, err := c.service.ExcelGetInvoiceMaintenances(ctx, filters, parentSpan)
-// 	if err != nil {
-// 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-// 	}
+	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"errors":  err.Error(),
+			"message": "Invalid request",
+			"status":  http.StatusBadRequest,
+		})
+	}
 
-// 	return ctx.Send(invoiceMaintenances)
-// }
+	fmt.Printf("RepeatInvoiceMaintenances request: %+v\n", req)
 
-// func (c *InvoiceMaintenanceController) CsvGetInvoiceMaintenances(ctx *fiber.Ctx) error {
-// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-// 	parentSpan := opentracing.StartSpan("InvoiceMaintenanceController-CsvGetInvoiceMaintenances", opentracing.ChildOf(apiSpan.Context()))
-// 	defer func() {
-// 		// If no error, delete span
-// 		if utils.FilterOtel(ctx) {
-// 			defer apiSpan.Finish()
-// 			defer parentSpan.Finish()
-// 		}
-// 	}()
+	if len(req.Invoices) == 0 {
+		return utils.GetResponse(ctx, nil, nil, "No invoices provided for duplication", http.StatusBadRequest, "Invoices are required", nil)
+	}
 
-// 	filters, ok := ctx.Locals("filters").(map[string]string)
-// 	if !ok {
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
-// 	}
+	for _, invoice := range req.Invoices {
+		if invoice.ID == 0 {
+			return utils.GetResponse(ctx, nil, nil, "Invalid invoice ID", http.StatusBadRequest, "Invoice ID is required", nil)
+		}
+	}
 
-// 	invoiceMaintenances, err := c.service.CsvGetInvoiceMaintenances(ctx, filters, parentSpan)
-// 	if err != nil {
-// 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-// 	}
+	response, err := c.service.RepeatInvoiceMaintenances(ctx, req)
+	if err != nil {
+		fmt.Printf("Error repeating invoices: %v\n", err)
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to repeat invoice maintenances", http.StatusInternalServerError, err.Error(), nil)
+	}
 
-// 	ctx.Set("Content-Type", "text/csv")
-// 	ctx.Set("Content-Disposition", "attachment; filename=invoice_maintenances.csv")
-// 	return ctx.Send(invoiceMaintenances)
-// }
+	return utils.GetResponse(
+		ctx,
+		response.Results,
+		nil,
+		fmt.Sprintf("Successfully duplicated %d invoice maintenances", len(response.Results)),
+		http.StatusOK,
+		nil,
+		nil,
+	)
+}
+
+func (c *InvoiceMaintenanceController) ExcelGetInvoiceMaintenances(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceMaintenanceController-ExcelGetInvoiceMaintenances", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	invoiceMaintenances, err := c.service.ExcelGetInvoiceMaintenances(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Set("Content-Disposition", "attachment; filename=invoice_maintenances.xlsx")
+
+	return ctx.Send(invoiceMaintenances)
+}
+
+func (c *InvoiceMaintenanceController) CsvGetInvoiceMaintenances(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceMaintenanceController-CsvGetInvoiceMaintenances", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	invoiceMaintenances, err := c.service.CsvGetInvoiceMaintenances(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	ctx.Set("Content-Type", "text/csv")
+	ctx.Set("Content-Disposition", "attachment; filename=invoice_maintenances.csv")
+
+	return ctx.Send(invoiceMaintenances)
+}

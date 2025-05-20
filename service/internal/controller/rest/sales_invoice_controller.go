@@ -356,56 +356,56 @@ func (c *SalesInvoiceController) GetWidgetSalesInvoices(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, salesInvoices, paginationMeta, "Sales Invoice fetched successfully", http.StatusOK, nil, nil)
 }
 
-// Uncomment these functions if you need Excel and CSV export functionality
+func (c *SalesInvoiceController) ExcelGetSalesInvoices(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("SalesInvoiceController-ExcelGetSalesInvoices", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
 
-// func (c *SalesInvoiceController) ExcelGetSalesInvoices(ctx *fiber.Ctx) error {
-// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-// 	parentSpan := opentracing.StartSpan("SalesInvoiceController-ExcelGetSalesInvoices", opentracing.ChildOf(apiSpan.Context()))
-// 	defer func() {
-// 		// If no error, delete span
-// 		if utils.FilterOtel(ctx) {
-// 			defer apiSpan.Finish()
-// 			defer parentSpan.Finish()
-// 		}
-// 	}()
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
 
-// 	filters, ok := ctx.Locals("filters").(map[string]string)
-// 	if !ok {
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
-// 	}
+	salesInvoices, err := c.service.ExcelGetSalesInvoices(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 
-// 	salesInvoices, err := c.service.ExcelGetSalesInvoices(ctx, filters, parentSpan)
-// 	if err != nil {
-// 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-// 	}
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Set("Content-Disposition", "attachment; filename=sales_invoices.xlsx")
 
-// 	return ctx.Send(salesInvoices)
-// }
+	return ctx.Send(salesInvoices)
+}
 
-// func (c *SalesInvoiceController) CsvGetSalesInvoices(ctx *fiber.Ctx) error {
-// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-// 	parentSpan := opentracing.StartSpan("SalesInvoiceController-CsvGetSalesInvoices", opentracing.ChildOf(apiSpan.Context()))
-// 	defer func() {
-// 		// If no error, delete span
-// 		if utils.FilterOtel(ctx) {
-// 			defer apiSpan.Finish()
-// 			defer parentSpan.Finish()
-// 		}
-// 	}()
+func (c *SalesInvoiceController) CsvGetSalesInvoices(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("SalesInvoiceController-CsvGetSalesInvoices", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
 
-// 	filters, ok := ctx.Locals("filters").(map[string]string)
-// 	if !ok {
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
-// 	}
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
 
-// 	salesInvoices, err := c.service.CsvGetSalesInvoices(ctx, filters, parentSpan)
-// 	if err != nil {
-// 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-// 	}
+	salesInvoices, err := c.service.CsvGetSalesInvoices(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 
-// 	ctx.Set("Content-Type", "text/csv")
-// 	ctx.Set("Content-Disposition", "attachment; filename=sales_invoices.csv")
-// 	return ctx.Send(salesInvoices)
-// }
+	ctx.Set("Content-Type", "text/csv")
+	ctx.Set("Content-Disposition", "attachment; filename=sales_invoices.csv")
+
+	return ctx.Send(salesInvoices)
+}
