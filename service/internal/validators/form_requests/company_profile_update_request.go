@@ -21,19 +21,19 @@ func (r *CompanyProfileUpdateRequest) Validate(req *dtos.UpdateCompanyProfileReq
 	// utils.DD(req)
 	rules := map[string][]string{
 		// "name":        []string{"required"},
-		"company_name":           []string{"required"},
-		"company_owner_name":     []string{},
-		"company_sign_name":      []string{},
-		"company_address":        []string{},
-		"company_phone":          []string{},
-		"company_email":          []string{"required"},
-		"company_email_password": []string{"required"},
-		"company_website":        []string{},
-		"company_sign":           []string{},
-		"company_logo":           []string{},
-		"company_description":    []string{},
-		"company_remark":         []string{},
-		"company_status":         []string{},
+		"company_name":       []string{"required"},
+		"company_owner_name": []string{},
+		"company_sign_name":  []string{},
+		"company_address":    []string{},
+		"company_phone":      []string{},
+		"company_email":      []string{"required"},
+		// "company_email_password": []string{"required"},
+		"company_website":     []string{},
+		"company_sign":        []string{},
+		"company_logo":        []string{},
+		"company_description": []string{},
+		"company_remark":      []string{},
+		"company_status":      []string{},
 	}
 
 	customFieldNames := map[string]string{}

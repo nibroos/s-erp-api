@@ -295,56 +295,56 @@ func (c *InvoiceAdjustmentController) GetReferenceInvoices(ctx *fiber.Ctx) error
 	return utils.GetResponse(ctx, referenceInvoices, paginationMeta, "Reference invoices fetched successfully", http.StatusOK, nil, nil)
 }
 
-// Uncomment these functions if you need Excel and CSV export functionality
+func (c *InvoiceAdjustmentController) ExcelGetInvoiceAdjustments(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceAdjustmentController-ExcelGetInvoiceAdjustments", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
 
-// func (c *InvoiceAdjustmentController) ExcelGetInvoiceAdjustments(ctx *fiber.Ctx) error {
-// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-// 	parentSpan := opentracing.StartSpan("InvoiceAdjustmentController-ExcelGetInvoiceAdjustments", opentracing.ChildOf(apiSpan.Context()))
-// 	defer func() {
-// 		// If no error, delete span
-// 		if utils.FilterOtel(ctx) {
-// 			defer apiSpan.Finish()
-// 			defer parentSpan.Finish()
-// 		}
-// 	}()
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
 
-// 	filters, ok := ctx.Locals("filters").(map[string]string)
-// 	if !ok {
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
-// 	}
+	invoiceAdjustments, err := c.service.ExcelGetInvoiceAdjustments(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 
-// 	invoiceAdjustments, err := c.service.ExcelGetInvoiceAdjustments(ctx, filters, parentSpan)
-// 	if err != nil {
-// 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-// 	}
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Set("Content-Disposition", "attachment; filename=invoice_adjustments.xlsx")
 
-// 	return ctx.Send(invoiceAdjustments)
-// }
+	return ctx.Send(invoiceAdjustments)
+}
 
-// func (c *InvoiceAdjustmentController) CsvGetInvoiceAdjustments(ctx *fiber.Ctx) error {
-// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-// 	parentSpan := opentracing.StartSpan("InvoiceAdjustmentController-CsvGetInvoiceAdjustments", opentracing.ChildOf(apiSpan.Context()))
-// 	defer func() {
-// 		// If no error, delete span
-// 		if utils.FilterOtel(ctx) {
-// 			defer apiSpan.Finish()
-// 			defer parentSpan.Finish()
-// 		}
-// 	}()
+func (c *InvoiceAdjustmentController) CsvGetInvoiceAdjustments(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceAdjustmentController-CsvGetInvoiceAdjustments", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
 
-// 	filters, ok := ctx.Locals("filters").(map[string]string)
-// 	if !ok {
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
-// 	}
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
 
-// 	invoiceAdjustments, err := c.service.CsvGetInvoiceAdjustments(ctx, filters, parentSpan)
-// 	if err != nil {
-// 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-// 	}
+	invoiceAdjustments, err := c.service.CsvGetInvoiceAdjustments(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 
-// 	ctx.Set("Content-Type", "text/csv")
-// 	ctx.Set("Content-Disposition", "attachment; filename=invoice_adjustments.csv")
-// 	return ctx.Send(invoiceAdjustments)
-// }
+	ctx.Set("Content-Type", "text/csv")
+	ctx.Set("Content-Disposition", "attachment; filename=invoice_adjustments.csv")
+
+	return ctx.Send(invoiceAdjustments)
+}

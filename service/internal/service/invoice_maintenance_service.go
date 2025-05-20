@@ -5,11 +5,13 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/nibroos/s-erp-api/service/internal/auth"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -612,6 +614,49 @@ func (s *InvoiceMaintenanceService) GetWidgetInvoiceMaintenances(ctx *fiber.Ctx,
 	return invoiceMaintenances, total, nil
 }
 
+func (s *InvoiceMaintenanceService) RepeatInvoiceMaintenances(ctx *fiber.Ctx, req dtos.RepeatInvoiceMaintenanceRequest) (*dtos.RepeatInvoiceMaintenanceResponse, error) {
+	span := s.tracer.StartSpan("InvoiceMaintenanceService-RepeatInvoiceMaintenances")
+	defer span.Finish()
+
+	claims, err := auth.GetAuthUser(ctx)
+	if err != nil {
+		utils.LogErrors(span, err)
+		return nil, err
+	}
+
+	var userID uint
+	if uid, ok := claims["user_id"]; ok {
+		switch v := uid.(type) {
+		case uint:
+			userID = v
+		case float64:
+			userID = uint(v)
+		case int:
+			userID = uint(v)
+		case int64:
+			userID = uint(v)
+		default:
+			utils.LogErrors(span, fmt.Errorf("invalid user ID type: %T", uid))
+			return nil, fmt.Errorf("invalid user ID type")
+		}
+	} else {
+		utils.LogErrors(span, fmt.Errorf("user ID not found in claims"))
+		return nil, fmt.Errorf("user ID not found in claims")
+	}
+
+	results, err := s.repo.RepeatInvoiceMaintenances(ctx, req, userID, span)
+	if err != nil {
+		utils.LogErrors(span, err)
+		return nil, err
+	}
+
+	response := &dtos.RepeatInvoiceMaintenanceResponse{
+		Results: results,
+	}
+
+	return response, nil
+}
+
 func (s *InvoiceMaintenanceService) BeginTransaction() *gorm.DB {
 	return s.repo.BeginTransaction()
 }
@@ -622,6 +667,196 @@ func (s *InvoiceMaintenanceService) Commit(tx *gorm.DB) error {
 
 func (s *InvoiceMaintenanceService) Rollback(tx *gorm.DB) *gorm.DB {
 	return tx.Rollback()
+}
+
+func (s *InvoiceMaintenanceService) ExcelGetInvoiceMaintenances(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-ExcelGetInvoiceMaintenances", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	filters["is_csv"] = "1"
+	invoiceMaintenances, _, err := s.GetInvoiceMaintenances(ctx, filters, childSpan)
+	if err != nil {
+		return nil, err
+	}
+
+	file := excelize.NewFile()
+
+	sheetName := "InvoiceMaintenances"
+	index, err := file.NewSheet(sheetName)
+	if err != nil {
+		return nil, err
+	}
+
+	headers := []string{
+		"Customer", "Invoice No", "Title", "Invoice Date", "Due Date",
+		"Bank", "Currency", "Exchange Rate", "VAT", "PPh23",
+		"Qty", "Sub Amount", "DP Amount", "Balance", "Grand Total", "Status", "Created By",
+	}
+	file.SetSheetRow(sheetName, "A1", &headers)
+
+	file.SetColWidth(sheetName, "A", "A", 25)
+	file.SetColWidth(sheetName, "B", "B", 15)
+	file.SetColWidth(sheetName, "C", "C", 30)
+	file.SetColWidth(sheetName, "D", "E", 15)
+	file.SetColWidth(sheetName, "F", "F", 20)
+	file.SetColWidth(sheetName, "G", "G", 15)
+	file.SetColWidth(sheetName, "H", "H", 15)
+	file.SetColWidth(sheetName, "I", "J", 15)
+	file.SetColWidth(sheetName, "K", "O", 15)
+	file.SetColWidth(sheetName, "P", "P", 15)
+	file.SetColWidth(sheetName, "Q", "Q", 20)
+
+	headerStyle, _ := file.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Bold: true,
+			Size: 12,
+		},
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#DCE6F1"},
+			Pattern: 1,
+		},
+		Border: []excelize.Border{
+			{Type: "bottom", Color: "#000000", Style: 1},
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+	})
+	file.SetCellStyle(sheetName, "A1", string(rune('A'+len(headers)-1))+"1", headerStyle)
+
+	currencyStyle, _ := file.NewStyle(&excelize.Style{
+		NumFmt: 4,
+	})
+
+	for i, invoice := range invoiceMaintenances {
+		row := i + 2
+		file.SetSheetRow(sheetName, fmt.Sprintf("A%d", row), &[]interface{}{
+			invoice.CustomerName,
+			invoice.InvoiceNo,
+			invoice.Title,
+			invoice.InvoiceDate,
+			invoice.DueDate,
+			invoice.BankName,
+			invoice.CurrencyName,
+			invoice.ExchangeRate,
+			invoice.VatName,
+			invoice.Pph23Name,
+			invoice.TotalQty,
+			invoice.Subtotal,
+			invoice.TotalDpProducts,
+			invoice.TotalBalanceProducts,
+			invoice.GrandTotal,
+			invoice.Status,
+			invoice.CreatedByName,
+		})
+
+		file.SetCellStyle(sheetName, fmt.Sprintf("H%d", row), fmt.Sprintf("H%d", row), currencyStyle)
+		file.SetCellStyle(sheetName, fmt.Sprintf("K%d", row), fmt.Sprintf("O%d", row), currencyStyle)
+	}
+
+	file.SetActiveSheet(index)
+
+	buffer, err := file.WriteToBuffer()
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
+func (s *InvoiceMaintenanceService) CsvGetInvoiceMaintenances(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-CsvGetInvoiceMaintenances", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	filters["is_csv"] = "1"
+	invoiceMaintenances, _, err := s.GetInvoiceMaintenances(ctx, filters, childSpan)
+	if err != nil {
+		return nil, err
+	}
+
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err == nil && companyProfile != nil && companyProfile.CompanyName != nil {
+		appName = *companyProfile.CompanyName
+	}
+
+	csv := fmt.Sprintf("%s\n", appName)
+	csv += "\n"
+	csv += "Invoice Maintenances\n"
+	csv += "\n"
+
+	csv += "Customer,Invoice No,Title,Invoice Date,Due Date,Bank,Currency,Exchange Rate,VAT,PPh23,Qty,Sub Amount,DP Amount,Balance,Grand Total,Status,Created By\n"
+
+	for _, invoice := range invoiceMaintenances {
+		customerName := utils.GetPtrVal(invoice.CustomerName)
+		invoiceNo := utils.GetPtrVal(invoice.InvoiceNo)
+		title := utils.GetPtrVal(invoice.Title)
+		invoiceDate := utils.GetPtrVal(invoice.InvoiceDate)
+		dueDate := utils.GetPtrVal(invoice.DueDate)
+
+		bankName := utils.GetPtrVal(invoice.BankName)
+		accountNumber := utils.GetPtrVal(invoice.AccountNumber)
+		accountName := utils.GetPtrVal(invoice.AccountName)
+
+		bankInfo := bankName
+		if accountNumber != "" {
+			if bankInfo != "" {
+				bankInfo += " - "
+			}
+			bankInfo += accountNumber
+		}
+		if accountName != "" {
+			if bankInfo != "" {
+				bankInfo += " - "
+			}
+			bankInfo += accountName
+		}
+
+		currencyName := utils.GetPtrVal(invoice.CurrencyName)
+		totalVat := utils.GetFloatPtrVal(invoice.TotalVat)
+		totalPph23 := utils.GetFloatPtrVal(invoice.TotalPph23)
+		status := utils.GetPtrVal(invoice.Status)
+		createdByName := utils.GetPtrVal(invoice.CreatedByName)
+
+		exchangeRate := utils.GetFloatPtrVal(invoice.ExchangeRate)
+		totalQty := utils.GetFloatPtrVal(invoice.TotalQty)
+		subtotal := utils.GetFloatPtrVal(invoice.Subtotal)
+		totalDpProducts := utils.GetFloatPtrVal(invoice.TotalDpProducts)
+		totalBalanceProducts := utils.GetFloatPtrVal(invoice.TotalBalanceProducts)
+		grandTotal := utils.GetFloatPtrVal(invoice.GrandTotal)
+
+		customerName = utils.EscapeCsvField(customerName)
+		invoiceNo = utils.EscapeCsvField(invoiceNo)
+		title = utils.EscapeCsvField(title)
+		bankInfo = utils.EscapeCsvField(bankInfo)
+		currencyName = utils.EscapeCsvField(currencyName)
+		status = utils.EscapeCsvField(status)
+		createdByName = utils.EscapeCsvField(createdByName)
+
+		csv += fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s\n",
+			customerName,
+			invoiceNo,
+			title,
+			invoiceDate,
+			dueDate,
+			bankInfo,
+			currencyName,
+			exchangeRate,
+			totalVat,
+			totalPph23,
+			totalQty,
+			subtotal,
+			totalDpProducts,
+			totalBalanceProducts,
+			grandTotal,
+			status,
+			createdByName,
+		)
+	}
+
+	return []byte(csv), nil
 }
 
 func (s *InvoiceMaintenanceService) PublishBulkSendEmailSolutionTicket(ctx *fiber.Ctx, req dtos.FormTicketRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) error {

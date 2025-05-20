@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/opentracing/opentracing-go"
@@ -336,4 +337,124 @@ func MapUpdateSalesOrderStatusForInvoiceMaintenance(salesOrderStatusUpdate map[s
 	params.Status = salesOrderStatusUpdate["status"].(string)
 
 	return params
+}
+
+func MapRepeatInvoiceMaintenance(ctx *fiber.Ctx, originalInvoice *models.InvoiceMaintenance, item dtos.RepeatInvoiceMaintenanceItem, userID uint, branchID uint, orderedNumber int, span opentracing.Span) (models.InvoiceMaintenance, error) {
+	invoiceNo := GenInvoiceMaintenanceNo(ctx, dtos.CreateInvoiceMaintenanceRequest{}, orderedNumber, span)
+
+	var invoiceDate *time.Time
+	if item.InvoiceDate != nil {
+		parsedTime, err := time.Parse("2006-01-02", *item.InvoiceDate)
+		if err != nil {
+			return models.InvoiceMaintenance{}, fmt.Errorf("invalid invoice date format: %v", err)
+		}
+		invoiceDate = &parsedTime
+	} else if originalInvoice.InvoiceDate != nil {
+		// Use original invoice date if not provided
+		invoiceDate = originalInvoice.InvoiceDate
+	}
+
+	var dueDate *time.Time
+	if item.DueDate != nil {
+		parsedTime, err := time.Parse("2006-01-02", *item.DueDate)
+		if err != nil {
+			return models.InvoiceMaintenance{}, fmt.Errorf("invalid due date format: %v", err)
+		}
+		dueDate = &parsedTime
+	} else if originalInvoice.DueDate != nil {
+		// Use original due date if not provided
+		dueDate = originalInvoice.DueDate
+	}
+
+	// Use provided title or original title
+	title := originalInvoice.Title
+	if item.Title != nil {
+		title = item.Title
+	}
+
+	// Use provided remark or original one
+	remark := originalInvoice.Remark
+	if item.Remark != nil {
+		remark = item.Remark
+	}
+
+	// Set default status to "UNPAID"
+	defaultStatus := "UNPAID"
+	defaultApprovedStatus := "PENDING"
+	defaultRevNo := 0
+
+	invoiceMaintenance := models.InvoiceMaintenance{
+		CustomerID:               originalInvoice.CustomerID,
+		CurrencyID:               originalInvoice.CurrencyID,
+		PaymentTermID:            originalInvoice.PaymentTermID,
+		VatID:                    originalInvoice.VatID,
+		Pph23ID:                  originalInvoice.Pph23ID,
+		BranchID:                 &branchID,
+		BankID:                   originalInvoice.BankID,
+		Title:                    title,
+		InvoiceNo:                &invoiceNo,
+		InvoiceDate:              invoiceDate,
+		DueDate:                  dueDate,
+		ExchangeRate:             originalInvoice.ExchangeRate,
+		Remark:                   remark,
+		Status:                   &defaultStatus,
+		ApprovedStatus:           &defaultApprovedStatus,
+		RevNo:                    &defaultRevNo,
+		Pph23Percentage:          originalInvoice.Pph23Percentage,
+		VatPercentage:            originalInvoice.VatPercentage,
+		DiscountAmount:           originalInvoice.DiscountAmount,
+		DiscountPercentage:       originalInvoice.DiscountPercentage,
+		DiscountPercentageAmount: originalInvoice.DiscountPercentageAmount,
+		DiscountFinal:            originalInvoice.DiscountFinal,
+		DiscountType:             originalInvoice.DiscountType,
+		TotalAmountProducts:      originalInvoice.TotalAmountProducts,
+		TotalDpProducts:          originalInvoice.TotalDpProducts,
+		TotalBalanceProducts:     originalInvoice.TotalBalanceProducts,
+		Subtotal:                 originalInvoice.Subtotal,
+		TotalQty:                 originalInvoice.TotalQty,
+		TotalDiscount:            originalInvoice.TotalDiscount,
+		TotalPph23:               originalInvoice.TotalPph23,
+		TotalVat:                 originalInvoice.TotalVat,
+		GrandTotal:               originalInvoice.GrandTotal,
+		CreatedByID:              &userID,
+	}
+
+	return invoiceMaintenance, nil
+}
+
+func MapRepeatInvoiceMaintenanceDts(ctx *fiber.Ctx, originalDts []models.InvoiceMaintenanceDt, newInvoiceMaintenanceID uint, userID uint, span opentracing.Span) ([]models.InvoiceMaintenanceDt, error) {
+	newDts := make([]models.InvoiceMaintenanceDt, 0, len(originalDts))
+
+	for _, dt := range originalDts {
+		newProductUuid := uuid.New().String()
+
+		newDt := models.InvoiceMaintenanceDt{
+			ProductUuid:          newProductUuid,
+			InvoiceMaintenanceID: &newInvoiceMaintenanceID,
+			ItemUnitID:           dt.ItemUnitID,
+			VatID:                dt.VatID,
+			Pph23ID:              dt.Pph23ID,
+			RefID:                dt.RefID,
+			RefDtID:              dt.RefDtID,
+			ProductID:            dt.ProductID,
+			RefType:              dt.RefType,
+			ProductType:          dt.ProductType,
+			RefJSON:              dt.RefJSON,
+			ProductJSON:          dt.ProductJSON,
+			Remark:               dt.Remark,
+			IsVat:                dt.IsVat,
+			IsPph23:              dt.IsPph23,
+			Qty:                  dt.Qty,
+			Price:                dt.Price,
+			Subtotal:             dt.Subtotal,
+			Discount:             dt.Discount,
+			TotalAmount:          dt.TotalAmount,
+			TotalDp:              dt.TotalDp,
+			TotalBalance:         dt.TotalBalance,
+			CreatedByID:          &userID,
+		}
+		newDts = append(newDts, newDt)
+	}
+
+	return newDts, nil
 }

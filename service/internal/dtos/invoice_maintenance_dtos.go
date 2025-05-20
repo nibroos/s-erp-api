@@ -488,3 +488,24 @@ type InvoiceMaintenanceStatusWidget struct {
 	TotalQty   float64 `json:"total_qty" db:"total_qty"`
 	GrandTotal float64 `json:"grand_total" db:"grand_total"`
 }
+
+type RepeatInvoiceMaintenanceItem struct {
+	ID          uint    `json:"id" validate:"required"`
+	Title       *string `json:"title"`
+	InvoiceDate *string `json:"invoice_date"`
+	DueDate     *string `json:"due_date"`
+	Remark      *string `json:"remark"`
+}
+
+type RepeatInvoiceMaintenanceRequest struct {
+	Invoices []RepeatInvoiceMaintenanceItem `json:"invoices" validate:"required,min=1"`
+}
+
+type RepeatInvoiceMaintenanceResult struct {
+	OriginalID  uint `json:"original_id"`
+	DuplicateID uint `json:"duplicate_id"`
+}
+
+type RepeatInvoiceMaintenanceResponse struct {
+	Results []RepeatInvoiceMaintenanceResult `json:"results"`
+}

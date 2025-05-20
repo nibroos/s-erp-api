@@ -1,12 +1,15 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -378,6 +381,187 @@ func (s *InvoiceAdjustmentService) GetReferenceInvoices(ctx *fiber.Ctx, filters 
 		return nil, 0, err
 	}
 	return referenceInvoices, total, nil
+}
+
+func (s *InvoiceAdjustmentService) ExcelGetInvoiceAdjustments(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("InvoiceAdjustmentService-ExcelGetInvoiceAdjustments", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	filters["is_csv"] = "1"
+	invoiceAdjustments, _, err := s.GetInvoiceAdjustments(ctx, filters, childSpan)
+	if err != nil {
+		return nil, err
+	}
+
+	file := excelize.NewFile()
+
+	sheetName := "InvoiceAdjustments"
+	index, err := file.NewSheet(sheetName)
+	if err != nil {
+		return nil, err
+	}
+
+	headers := []string{
+		"Customer", "Invoice No", "Title", "Adjustment Date", "Payment Date",
+		"Bank", "Currency", "Exchange Rate", "Payment Amount", "Total Invoice",
+		"Total Adjustment", "Total Balance", "Admin Bank", "Grand Total", "Created By",
+	}
+	file.SetSheetRow(sheetName, "A1", &headers)
+
+	file.SetColWidth(sheetName, "A", "A", 25)
+	file.SetColWidth(sheetName, "B", "B", 15)
+	file.SetColWidth(sheetName, "C", "C", 30)
+	file.SetColWidth(sheetName, "D", "E", 15)
+	file.SetColWidth(sheetName, "F", "F", 20)
+	file.SetColWidth(sheetName, "G", "G", 15)
+	file.SetColWidth(sheetName, "H", "H", 15)
+	file.SetColWidth(sheetName, "I", "N", 15)
+	file.SetColWidth(sheetName, "O", "O", 20)
+
+	headerStyle, _ := file.NewStyle(&excelize.Style{
+		Font: &excelize.Font{
+			Bold: true,
+			Size: 12,
+		},
+		Fill: excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{"#DCE6F1"},
+			Pattern: 1,
+		},
+		Border: []excelize.Border{
+			{Type: "bottom", Color: "#000000", Style: 1},
+		},
+		Alignment: &excelize.Alignment{
+			Horizontal: "center",
+			Vertical:   "center",
+		},
+	})
+	file.SetCellStyle(sheetName, "A1", string(rune('A'+len(headers)-1))+"1", headerStyle)
+
+	currencyStyle, _ := file.NewStyle(&excelize.Style{
+		NumFmt: 4,
+	})
+
+	for i, adjustment := range invoiceAdjustments {
+		row := i + 2
+		file.SetSheetRow(sheetName, fmt.Sprintf("A%d", row), &[]interface{}{
+			adjustment.CustomerName,
+			adjustment.InvoiceNo,
+			adjustment.Title,
+			adjustment.AdjustmentDate,
+			adjustment.PaymentDate,
+			adjustment.BankName,
+			adjustment.CurrencyName,
+			adjustment.ExchangeRate,
+			adjustment.PaymentAmount,
+			adjustment.TotalInvoice,
+			adjustment.TotalAdjustment,
+			adjustment.TotalBalance,
+			adjustment.TotalAdminBank,
+			adjustment.GrandTotal,
+			adjustment.CreatedByName,
+		})
+
+		file.SetCellStyle(sheetName, fmt.Sprintf("H%d", row), fmt.Sprintf("H%d", row), currencyStyle)
+		file.SetCellStyle(sheetName, fmt.Sprintf("I%d", row), fmt.Sprintf("N%d", row), currencyStyle)
+	}
+
+	file.SetActiveSheet(index)
+
+	buffer, err := file.WriteToBuffer()
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
+func (s *InvoiceAdjustmentService) CsvGetInvoiceAdjustments(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("InvoiceAdjustmentService-CsvGetInvoiceAdjustments", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	filters["is_csv"] = "1"
+	invoiceAdjustments, _, err := s.GetInvoiceAdjustments(ctx, filters, childSpan)
+	if err != nil {
+		return nil, err
+	}
+
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err == nil && companyProfile != nil && companyProfile.CompanyName != nil {
+		appName = *companyProfile.CompanyName
+	}
+
+	csv := fmt.Sprintf("%s\n", appName)
+	csv += "\n"
+	csv += "Invoice Adjustments\n"
+	csv += "\n"
+
+	csv += "Customer,Invoice No,Title,Adjustment Date,Payment Date,Bank,Currency,Exchange Rate,Payment Amount,Total Invoice,Total Adjustment,Total Balance,Admin Bank,Grand Total,Created By\n"
+
+	for _, adjustment := range invoiceAdjustments {
+		customerName := utils.GetPtrVal(adjustment.CustomerName)
+		invoiceNo := utils.GetPtrVal(adjustment.InvoiceNo)
+		title := utils.GetPtrVal(adjustment.Title)
+		adjustmentDate := utils.GetPtrVal(adjustment.AdjustmentDate)
+		paymentDate := utils.GetPtrVal(adjustment.PaymentDate)
+
+		bankName := utils.GetPtrVal(adjustment.BankName)
+		accountNumber := utils.GetPtrVal(adjustment.AccountNumber)
+		accountName := utils.GetPtrVal(adjustment.AccountName)
+
+		bankInfo := bankName
+		if accountNumber != "" {
+			if bankInfo != "" {
+				bankInfo += " - "
+			}
+			bankInfo += accountNumber
+		}
+		if accountName != "" {
+			if bankInfo != "" {
+				bankInfo += " - "
+			}
+			bankInfo += accountName
+		}
+
+		currencyName := utils.GetPtrVal(adjustment.CurrencyName)
+		adminBank := utils.GetFloatPtrVal(adjustment.TotalAdminBank)
+		createdByName := utils.GetPtrVal(adjustment.CreatedByName)
+
+		exchangeRate := utils.GetFloatPtrVal(adjustment.ExchangeRate)
+		paymentAmount := utils.GetFloatPtrVal(adjustment.PaymentAmount)
+		totalInvoice := utils.GetFloatPtrVal(adjustment.TotalInvoice)
+		totalAdjustment := utils.GetFloatPtrVal(adjustment.TotalAdjustment)
+		totalBalance := utils.GetFloatPtrVal(adjustment.TotalBalance)
+		grandTotal := utils.GetFloatPtrVal(adjustment.GrandTotal)
+
+		customerName = utils.EscapeCsvField(customerName)
+		invoiceNo = utils.EscapeCsvField(invoiceNo)
+		title = utils.EscapeCsvField(title)
+		bankInfo = utils.EscapeCsvField(bankInfo)
+		currencyName = utils.EscapeCsvField(currencyName)
+		createdByName = utils.EscapeCsvField(createdByName)
+
+		csv += fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s\n",
+			customerName,
+			invoiceNo,
+			title,
+			adjustmentDate,
+			paymentDate,
+			bankInfo,
+			currencyName,
+			exchangeRate,
+			paymentAmount,
+			totalInvoice,
+			totalAdjustment,
+			totalBalance,
+			adminBank,
+			grandTotal,
+			createdByName,
+		)
+	}
+
+	return []byte(csv), nil
 }
 
 func (s *InvoiceAdjustmentService) BeginTransaction() *gorm.DB {
