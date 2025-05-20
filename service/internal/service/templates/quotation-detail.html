@@ -1,47 +1,348 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 	<style>
 		body {
-			font-family: Arial;
+			font-family: Arial, sans-serif;
 			margin: 20px;
+			padding: 0;
+			color: #333;
 		}
+		.container {
+			max-width: 800px;
+			margin: 0 auto;
+			border: 1px solid #ddd;
+			padding: 20px;
+			background: #fff;
+			box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+			border-radius: 8px;
+		}
+		.header {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 20px;
+			align-items: center;
+		}
+		.logo {
+			width: 80px;
+			height: 80px;
+			background-color: #fff;
+			border: 2px solid #0056b3;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: #0056b3;
+			font-weight: bold;
+		}
+		.company-name {
+			color: #0056b3;
+			font-weight: bold;
+			margin-left: 10px;
+		}
+		.company-address {
+			font-family: Inter;
+			font-weight: 300;
+			font-size: 15px;
+			text-align: right;
+			vertical-align: middle;
 
+		}
+		.title {
+			text-align: center;
+			margin: 20px 0 10px;
+			font-size: 20px;
+			font-weight: bold;
+		}
+		.quotation-number {
+			text-align: center;
+			margin-bottom: 20px;
+			font-size: 14px;
+		}
+		.info-section {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 20px;
+            background-color: #F8F9FB;
+		}
+		.left-info, .right-info {
+			width: 48%;
+		}
+		.info-row {
+			display: flex;
+			margin-bottom: 8px;
+		}
+		.info-label {
+			width: 120px;
+			font-weight: bold;
+		}
+		.info-value {
+			flex-grow: 1;
+		}
 		table {
 			width: 100%;
 			border-collapse: collapse;
+			margin-bottom: 20px;
 		}
-
-		th,
-		td {
+		th, td {
 			border: 1px solid #ddd;
 			padding: 8px;
+			text-align: left;
+		}
+		th {
+			background-color: #f2f2f2;
+		}
+		.remarks {
+			margin-bottom: 20px;
+		}
+		.remarks-title {
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+		.remarks-content {
+			font-size: 13px;
+		}
+		.totals {
+			width: 300px;
+			margin-left: auto;
+		}
+		.totals-row {
+			display: flex;
+			justify-content: space-between;
+			padding: 5px 0;
+		}
+		.grand-total {
+			background-color: #0056b3;
+			color: white;
+			font-weight: bold;
+			padding: 5px;
+			text-align: center;
+		}
+		.payment-section {
+			margin: 30px 0;
+			border-top: 1px solid #ddd;
+			padding-top: 20px;
+		}
+		.payment-title {
+			font-weight: bold;
+			margin-bottom: 10px;
+		}
+		.payment-info {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-end;
+		}
+		.payment-left {
+			width: 60%;
+		}
+		.payment-right {
+			width: 35%;
+			text-align: center;
+		}
+		.payment-right > div {
+			border: 2px solid #888;
+			padding: 10px;
+			display: inline-block;
+		}
+		.signature {
+			margin-top: 20px;
+		}
+		.footer {
+			margin-top: 20px;
+			height: 20px;
+		}
+		.footer-section {
+			margin-top: 2rem;
+		}
+		.vertical-top {
+			vertical-align: top;
+		}
+		.text-center {
+			text-align: center;
 		}
 	</style>
 </head>
 
 <body>
-	<h1>Invoice {{.InvoiceNumber}}</h1>
-	<p>Here are the details of your invoice:</p>
-	<table>
-		<thead>
-			<tr>
-				<th>Item</th>
-				<th>Quantity</th>
-				<th>Price</th>
-			</tr>
-		</thead>
-		<tbody>
-			{{range .Items}}
-			<tr>
-				<td>{{.Name}}</td>
-				<td>{{.Quantity}}</td>
-				<td>${{.Price}}</td>
-			</tr>
-			{{end}}
-		</tbody>
-	</table>
-</body>
+	<div class="container">
+		<div class="header">
+			<div style="display: flex; align-items: center;">
+				<div class="logo">{{.CompanyProfile.CompanyName}}</div>
+				<div class="company-name">{{.CompanyProfile.CompanyName}}</div>
+			</div>
+			<div class="company-address">
+				{{.CompanyProfile.CompanyAddress}}<br>
+				{{.CompanyProfile.CompanyPhone}} // {{.CompanyProfile.CompanyEmail}}
+			</div>
+		</div>
 
+		<div class="title">QUOTATION LICENSE POS</div>
+		<div class="quotation-number">{{.Quotation.QuoNo}}</div>
+		
+		<div class="info-section">
+			<div class="left-info">
+				<div class="info-row">
+					<div class="info-label">BILL TO</div>
+					<div class="info-value">: {{.Customer.Name}}</div>
+				</div>
+				<div class="info-row">
+					<div class="info-label">PHONE NO.</div>
+					<div class="info-value">: {{.Customer.Phone}}</div>
+				</div>
+				<div class="info-row">
+					<div class="info-label">PIC</div>
+					<div class="info-value">: {{.Customer.PicName}}</div>
+				</div>
+			</div>
+			<div class="right-info">
+				<div class="info-row">
+					<div class="info-label">REFERENCE</div>
+					<div class="info-value">: {{.Quotation.QuoNo}}</div>
+				</div>
+				<div class="info-row">
+					<div class="info-label">QUOT DATE</div>
+					<div class="info-value">: {{.Quotation.CreatedAt}}</div>
+				</div>
+				<div class="info-row">
+					<div class="info-label">EXPIRED DATE</div>
+					<div class="info-value">: {{.Quotation.ExpiredAt}}</div>
+				</div>
+			</div>
+		</div>
+
+		<table>
+			<thead>
+				<tr>
+					<th>NO</th>
+					<th>ITEM NAME</th>
+					<th>QTY</th>
+					<th>UNIT</th>
+					<th>PRICE</th>
+					<th>AMOUNT</th>
+				</tr>
+			</thead>
+			<tbody>
+				{{range $index, $quoDt := .Quotation.QuoDts}}
+				<tr>
+					<td>{{add $index 1}}</td>
+					<td>{{$quoDt.ItemName}}</td>
+					<td>{{$quoDt.Qty}}</td>
+					<td>{{$quoDt.UnitName}}</td>
+					<td>{{formatNumber $quoDt.PriceSell}}</td>
+					<td>{{formatNumber $quoDt.SubtotalSell}}</td>
+				</tr>
+				{{if $quoDt.QuoDtsBoms}}
+				{{range $bom := $quoDt.QuoDtsBoms}}
+				<tr>
+					<td></td>
+					<td style="padding-left: 20px;">{{$bom.ItemName}}</td>
+					<td>{{$bom.Qty}}</td>
+					<td>{{$bom.UnitName}}</td>
+					<td>{{formatNumber $bom.PriceSell}}</td>
+					<td>{{formatNumber $bom.SubtotalSell}}</td>
+				</tr>
+				{{end}}
+				{{end}}
+				{{end}}
+			</tbody>
+		</table>
+
+		<div style="display: block;">
+			<div class="remarks">
+				<div class="remarks-title">*REMARK</div>
+				<div class="remarks-content">
+					{{.Quotation.Remark}}
+				</div>
+			</div>
+
+			<div class="totals">
+				<div class="totals-row">
+					<div>SUB AMOUNT</div>
+					<div>{{formatNumber .Quotation.Subtotal}}</div>
+				</div>
+				<div class="totals-row">
+					<div>DISCOUNT</div>
+					<div>{{formatNumber .Quotation.TotalDiscount}}</div>
+				</div>
+				<div class="totals-row">
+					<div>TOTAL AMOUNT</div>
+					<div>{{formatNumber (subtract .Quotation.Subtotal .Quotation.TotalDiscount)}}</div>
+				</div>
+				<div class="totals-row">
+					<div>PPH23</div>
+					<div>{{formatNumber .Quotation.TotalPph23}}</div>
+				</div>
+				<div class="totals-row">
+					<div>VAT</div>
+					<div>{{formatNumber .Quotation.TotalVat}}</div>
+				</div>
+				<div class="grand-total">
+					<div class="totals-row" style="color: white;">
+						<div>GRAND TOTAL</div>
+						<div>{{formatNumber .Quotation.GrandTotal}}</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="footer-section" style="margin-top: 2rem;">
+			<table border="0" cellspacing="0" cellpadding="0" width="100%">
+				<tr>
+					<td width="50%" class="vertical-top">
+						<table>
+							<tr>
+								<td width="100%">
+									<div class="payment-title">PAYMENT INFORMATION</div>
+								</td>
+							</tr>
+							<tr>
+								<td width="100%">
+									<table>
+										<tr>
+											<td class="info-label">BANK</td>
+											<td style="white-space: nowrap;">: {{(index .BankInformation 0).Name}}, {{(index .BankInformation 0).AccountNumber}}</td>
+										</tr>
+										<tr>
+											<td class="info-label">BENEFICIARY</td>
+											<td style="white-space: nowrap;">: {{(index .BankInformation 0).AccountName}}</td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+						</table>
+					</td>
+					<td width="50%" class="vertical-top">
+						<table width="100%">
+							<tr>
+								<td width="100%" style="text-align: right;">
+									<table border="0" cellspacing="0" cellpadding="0" style="margin-left: auto;">
+										<tr>
+											<td class="text-center" style="min-width: 150px; font-weight: bold;">APPROVE</td>
+										</tr>
+										<tr>
+											<td height="60" width="100%" class="text-center" style="text-align: center;">
+												{{if .CompanyProfile.CompanySignUrl}}
+												<img src="{{.CompanyProfile.CompanySignUrl}}" alt="sign"
+													style="width: 70px; height: 70px; object-fit: contain; display: block; margin: 0 auto 5px auto;">
+												{{else}}
+												<div style="height: 70px;">&nbsp;</div>
+												{{end}}
+											</td>
+										</tr>
+										<tr>
+											<td class="text-center">
+												<div>({{.CompanyProfile.CompanySignName}})</div>
+											</td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<div class="footer"></div>
+	</div>
+</body>
 </html>

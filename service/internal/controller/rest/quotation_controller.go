@@ -94,7 +94,6 @@ func (c *QuotationController) GetQuotationByID(ctx *fiber.Ctx) error {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch quotation", http.StatusInternalServerError)
 	}
 
-	filters := ctx.Locals("filters").(map[string]string)
 	// get quoDtBoms
 	quoDtBoms, err := c.service.GetQuoDtsBomByQuotations(ctx, filters, createdQuotationIDs, parentSpan)
 	if err != nil {
@@ -411,19 +410,21 @@ func (c *QuotationController) GetWidgetQuotations(ctx *fiber.Ctx) error {
 
 func (c *QuotationController) PdfGetQuotations(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CustomerTypeController-PdfGetQuotations", opentracing.ChildOf(apiSpan.Context()))
+	parentSpan := opentracing.StartSpan("QuotationController-PdfGetQuotations", opentracing.ChildOf(apiSpan.Context()))
 	defer func() {
-		// If no error, delete span
 		if utils.FilterOtel(ctx) {
 			defer apiSpan.Finish()
 			defer parentSpan.Finish()
 		}
 	}()
 
-	var req dtos.FormQuotationRequest
+	var req dtos.GetQuotationByIDRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Invalid request", http.StatusBadRequest, err.Error(), nil)
+	}
 
-	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
-		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
+	if req.ID == 0 {
+		return utils.GetResponse(ctx, nil, nil, "ID is required", http.StatusBadRequest, "ID is required", nil)
 	}
 
 	// Extract user ID from JWT
@@ -432,7 +433,10 @@ func (c *QuotationController) PdfGetQuotations(ctx *fiber.Ctx) error {
 	branchID := utils.GetDefaultBranchID(ctx)
 
 	tx := c.repo.BeginTransaction()
-	link, err := c.service.PdfGetQuotations(ctx, req, userID, branchID, tx, parentSpan)
+
+	// Pass the request data to service
+	data := struct{ ID uint }{ID: req.ID}
+	link, err := c.service.PdfGetQuotations(ctx, data, userID, branchID, tx, parentSpan)
 	if err != nil {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
