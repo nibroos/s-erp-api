@@ -160,7 +160,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 	SetupSalesInvoiceRoutes(salesInvoices, gormDB, sqlDB, utilRepo, tracer)
 
 	invoiceMaintenances := version.Group("/invoice-maintenances")
-	SetupInvoiceMaintenanceRoutes(invoiceMaintenances, gormDB, sqlDB, utilRepo, tracer)
+	SetupInvoiceMaintenanceRoutes(invoiceMaintenances, gormDB, sqlDB, utilRepo, rabbitmq, tracer)
 
 	invoiceAdjustments := version.Group("/invoice-adjustments")
 	SetupInvoiceAdjustmentRoutes(invoiceAdjustments, gormDB, sqlDB, utilRepo, tracer)

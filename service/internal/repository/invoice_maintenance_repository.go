@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/nibroos/s-erp-api/service/internal/auth"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
@@ -21,14 +23,16 @@ type InvoiceMaintenanceRepository struct {
 	db       *gorm.DB
 	sqlDB    *sqlx.DB
 	utilRepo *UtilRepository
+	rabbitmq *config.RabbitMQ
 	tracer   opentracing.Tracer
 }
 
-func NewInvoiceMaintenanceRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, tracer opentracing.Tracer) *InvoiceMaintenanceRepository {
+func NewInvoiceMaintenanceRepository(db *gorm.DB, sqlDB *sqlx.DB, utilRepo *UtilRepository, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) *InvoiceMaintenanceRepository {
 	return &InvoiceMaintenanceRepository{
 		db:       db,
 		sqlDB:    sqlDB,
 		tracer:   tracer,
+		rabbitmq: rabbitmq,
 		utilRepo: utilRepo,
 	}
 }
@@ -73,6 +77,281 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 
 	if filters["ids"] != "" {
 		condition += fmt.Sprintf(" AND im.id IN (%s)", filters["ids"])
+	}
+
+	if filters["invoice_maintenance_ids"] != "" {
+		condition += fmt.Sprintf(" AND im.id IN (%s)", filters["invoice_maintenance_ids"])
+	}
+
+	filterKey := map[string]string{
+		"customer_id":     "im.customer_id",
+		"currency_id":     "im.currency_id",
+		"payment_term_id": "im.payment_term_id",
+		"vat_id":          "im.vat_id",
+		"pph23_id":        "im.pph23_id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":     "im.customer_id",
+		"currency_ids":     "im.currency_id",
+		"payment_term_ids": "im.payment_term_id",
+		"pph23_ids":        "im.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			ids := strings.Split(value, ",")
+			intIDs, err := utils.SplitStringArrayOfInts(ids)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				return nil, 0, err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs))
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": []string{"im.vat_id", "imdt.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+	log.Println("condition", condition)
+
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (im.id)
+					im.id, im.customer_id, im.currency_id, im.payment_term_id, im.vat_id, im.pph23_id, im.branch_id, im.bank_id,
+					im.invoice_no, im.remark, im.status, im.approved_status, im.approved_by_id, im.rev_no, im.title, bk.name as bank_name, bk.account_number as account_number, bk.account_name as account_name,
+					im.exchange_rate, im.pph23_percentage, im.vat_percentage, im.total_qty, im.subtotal, im.total_discount, im.total_pph23, im.total_vat, im.grand_total, im.created_by_id, im.updated_by_id, im.deleted_by_id, im.created_at, im.updated_at, im.deleted_at,
+					TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(im.due_date, 'YYYY-MM-DD') as due_date,
+					im.discount_amount, im.discount_percentage, im.discount_percentage_amount, im.discount_final, im.discount_type, im.total_amount_products, im.total_dp_products, im.total_balance_products, im.total_adjustment,
+
+					c.name as customer_name,
+					c.email as customer_email,
+					cur.name as currency_name,
+					pt.name as payment_term_name,
+					vat.name as vat_name,
+					pph.name as pph23_name,
+					b.name as branch_name,
+
+					imdt.remark as invoice_maintenance_dt_remark,
+
+					cu.name as created_by_name,
+					uu.name as updated_by_name,
+					au.name as approved_by_name
+
+        FROM invoice_maintenances im
+				LEFT JOIN invoice_maintenance_dts imdt ON imdt.invoice_maintenance_id = im.id
+				LEFT JOIN customers c ON im.customer_id = c.id
+				LEFT JOIN mix_values cur ON im.currency_id = cur.id
+				LEFT JOIN mix_values pt ON im.payment_term_id = pt.id
+				LEFT JOIN mix_values vat ON im.vat_id = vat.id
+				LEFT JOIN mix_values pph ON im.pph23_id = pph.id
+				LEFT JOIN branches b ON im.branch_id = b.id
+				LEFT JOIN bank_informations bk ON im.bank_id = bk.id
+
+        LEFT JOIN users cu ON im.created_by_id = cu.id
+        LEFT JOIN users uu ON im.updated_by_id = uu.id
+		LEFT JOIN users au ON im.approved_by_id = au.id
+				WHERE 1=1` + condition + queryGlobal + `
+    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+
+	query := `SELECT *
+		` + baseQuery
+
+	countQuery := `SELECT COUNT(*) as total
+		` + baseQuery
+
+	log.Println("query", query)
+
+	for key, value := range filters {
+		switch key {
+		case "invoice_no", "remark", "status", "title":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if startDate, ok := filters["start_date"]; ok && startDate != "" {
+		query += fmt.Sprintf(" AND invoice_date >= $%d", i)
+		countQuery += fmt.Sprintf(" AND invoice_date >= $%d", i)
+		args = append(args, startDate)
+		i++
+	}
+
+	if endDate, ok := filters["end_date"]; ok && endDate != "" {
+		query += fmt.Sprintf(" AND invoice_date <= $%d", i)
+		countQuery += fmt.Sprintf(" AND invoice_date <= $%d", i)
+		args = append(args, endDate)
+		i++
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	type tempInvoiceMaintenanceDTO struct {
+		dtos.InvoiceMaintenanceListDTO
+		// InvoiceMaintenanceDts interface{}
+	}
+	var tempResults []tempInvoiceMaintenanceDTO
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "invoice_date")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		// err := r.sqlDB.SelectContext(ctx.Context(), &invoiceMaintenances, query, args...)
+		// err := r.sqlDB.SelectContext(ctx.Context(), &tempResults, query, args...)
+		err := r.db.Raw(query, args...).Scan(&tempResults).Error
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	// Convert to final type
+	invoiceMaintenances = make([]dtos.InvoiceMaintenanceListDTO, len(tempResults))
+	for i, temp := range tempResults {
+		invoiceMaintenances[i] = temp.InvoiceMaintenanceListDTO
+		// invoiceMaintenances[i].InvoiceMaintenanceDts = []*dtos.InvoiceMaintenanceDtListDTO{}
+	}
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return invoiceMaintenances, total, nil
+}
+
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceDtsRawByIDs(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InvoiceMaintenanceDtListNoBomDTO, int, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetInvoiceMaintenanceDtsRawByIDs", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	invoiceMaintenances := []dtos.InvoiceMaintenanceDtListNoBomDTO{}
+
+	var total int
+
+	filterDBColumnKey := []string{
+		"im.invoice_no", "im.remark", "im.status", "im.title",
+		"c.name",
+		"imdt.remark",
+	}
+
+	var args []interface{}
+
+	queryGlobal := ""
+
+	i := 1
+	if value, ok := filters["global"]; ok && value != "" {
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	condition := ""
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND im.id IN (%s)", filters["ids"])
+	}
+
+	if filters["invoice_maintenance_ids"] != "" {
+		condition += fmt.Sprintf(" AND imdt.invoice_maintenance_id IN (%s)", filters["invoice_maintenance_ids"])
 	}
 
 	filterKey := map[string]string{
@@ -133,46 +412,38 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 
 	baseQuery := `
     FROM ( 
-        SELECT DISTINCT ON (im.id)
-					im.id, im.customer_id, im.currency_id, im.payment_term_id, im.vat_id, im.pph23_id, im.branch_id, im.bank_id,
-					im.invoice_no, im.remark, im.status, im.approved_status, im.approved_by_id, im.rev_no, im.title, bk.name as bank_name, bk.account_number as account_number, bk.account_name as account_name,
-					im.exchange_rate, im.pph23_percentage, im.vat_percentage, im.total_qty, im.subtotal, im.total_discount, im.total_pph23, im.total_vat, im.grand_total, im.created_by_id, im.updated_by_id, im.deleted_by_id, im.created_at, im.updated_at, im.deleted_at,
-					TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(im.due_date, 'YYYY-MM-DD') as due_date,
-					im.discount_amount, im.discount_percentage, im.discount_percentage_amount, im.discount_final, im.discount_type, im.total_amount_products, im.total_dp_products, im.total_balance_products, im.total_adjustment,
+        SELECT DISTINCT ON (imdt.id)
+					imdt.id, imdt.product_uuid, imdt.invoice_maintenance_id, imdt.item_unit_id, imdt.vat_id, imdt.pph23_id, imdt.ref_id, imdt.ref_dt_id,
+					imdt.product_id, imdt.ref_type, imdt.ref_json, imdt.product_type, imdt.product_json, imdt.remark, imdt.is_vat, imdt.is_pph23,
+					imdt.qty, imdt.price, imdt.subtotal, imdt.discount, imdt.total_amount, imdt.total_dp, imdt.total_balance,
 
-					c.name as customer_name,
-					cur.name as currency_name,
-					pt.name as payment_term_name,
-					vat.name as vat_name,
-					pph.name as pph23_name,
-					b.name as branch_name,
-
-					imdt.remark as invoice_maintenance_dt_remark,
+					p.name as item_name, 
+					u.name as unit_name,
 
 					cu.name as created_by_name,
-					uu.name as updated_by_name,
-					au.name as approved_by_name
+					uu.name as updated_by_name
 
-        FROM invoice_maintenances im
-				LEFT JOIN invoice_maintenance_dts imdt ON imdt.invoice_maintenance_id = im.id
+        FROM invoice_maintenance_dts imdt
+				LEFT JOIN invoice_maintenances im ON imdt.invoice_maintenance_id = im.id
 				LEFT JOIN customers c ON im.customer_id = c.id
 				LEFT JOIN mix_values cur ON im.currency_id = cur.id
 				LEFT JOIN mix_values pt ON im.payment_term_id = pt.id
 				LEFT JOIN mix_values vat ON im.vat_id = vat.id
 				LEFT JOIN mix_values pph ON im.pph23_id = pph.id
+				LEFT JOIN item_units iu ON imdt.item_unit_id = iu.id
+
+				LEFT JOIN products p ON imdt.product_id = p.id
+				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN branches b ON im.branch_id = b.id
 				LEFT JOIN bank_informations bk ON im.bank_id = bk.id
 
         LEFT JOIN users cu ON im.created_by_id = cu.id
         LEFT JOIN users uu ON im.updated_by_id = uu.id
 		LEFT JOIN users au ON im.approved_by_id = au.id
-				WHERE 1=1` + condition + queryGlobal + `
-    ) AS alias WHERE 1=1 AND deleted_at IS NULL`
+				WHERE 1=1 AND imdt.deleted_at IS NULL ` + condition + queryGlobal + `
+    ) AS alias WHERE 1=1 `
 
 	query := `SELECT *
-		` + baseQuery
-
-	countQuery := `SELECT COUNT(*) as total
 		` + baseQuery
 
 	for key, value := range filters {
@@ -180,66 +451,27 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 		case "invoice_no", "remark", "status", "title":
 			if value != "" {
 				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
-				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
 				args = append(args, "%"+value+"%")
 				i++
 			}
 		}
 	}
 
-	if startDate, ok := filters["start_date"]; ok && startDate != "" {
-		query += fmt.Sprintf(" AND invoice_date >= $%d", i)
-		countQuery += fmt.Sprintf(" AND invoice_date >= $%d", i)
-		args = append(args, startDate)
-		i++
-	}
-
-	if endDate, ok := filters["end_date"]; ok && endDate != "" {
-		query += fmt.Sprintf(" AND invoice_date <= $%d", i)
-		countQuery += fmt.Sprintf(" AND invoice_date <= $%d", i)
-		args = append(args, endDate)
-		i++
-	}
-
 	if !isAdmin && branchID != nil {
 		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
 		args = append(args, branchID)
 		i++
 	}
 
 	if isAdmin && filters["branch_id"] != "" {
 		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
 		args = append(args, filters["branch_id"])
 		i++
 	}
 
-	countArgs := append([]interface{}{}, args...)
+	var selectErr error
 
-	var wg sync.WaitGroup
-	var countErr, selectErr error
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if filters["is_csv"] != "1" {
-			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
-
-			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
-			if err != nil {
-				utils.LogErrors(countSpan, err)
-				countSpan.LogKV("query", countQuery)
-				countErr = err
-			}
-		}
-	}()
-
-	if countErr != nil {
-		return nil, 0, countErr
-	}
-
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "invoice_date")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "id")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
@@ -251,30 +483,18 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 		args = append(args, perPage, (currentPage-1)*perPage)
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+	log.Println("query", query)
 
-		err := r.sqlDB.SelectContext(ctx.Context(), &invoiceMaintenances, query, args...)
-		if err != nil {
-			selectSpan.LogKV("query", query)
-			utils.LogErrors(selectSpan, err)
-			selectErr = err
-		}
-	}()
-
-	wg.Wait()
-
-	if countErr != nil || selectErr != nil {
-		defer childSpan.Finish()
-	}
-
-	if countErr != nil {
-		return nil, 0, countErr
+	// err := r.sqlDB.SelectContext(ctx.Context(), &invoiceMaintenances, query, args...)
+	err := r.db.Raw(query, args...).Scan(&invoiceMaintenances).Error
+	if err != nil {
+		childSpan.LogKV("query", query)
+		utils.LogErrors(childSpan, err)
+		selectErr = err
 	}
 
 	if selectErr != nil {
+		defer childSpan.Finish()
 		return nil, 0, selectErr
 	}
 
@@ -299,11 +519,105 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceByID(ctx *fiber.Ctx,
             TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(im.due_date, 'YYYY-MM-DD') as due_date,
             im.discount_amount, im.discount_percentage, im.discount_percentage_amount, im.discount_final, im.discount_type, im.total_amount_products, im.total_dp_products, im.total_balance_products,
 
+						br.company_profile_id,
+						c.name as customer_name,
+						c.code as customer_code,
+						c.phone as phone,
+						c.address as address,
+						cur.name as currency_name,
+						vat.name as vat_name,
+						pph.name as pph23_name,
+						py.account_name,
+						py.name as bank_name,
+						
             cu.name as created_by_name,
             uu.name as updated_by_name
 
         FROM invoice_maintenances im
         LEFT JOIN invoice_maintenance_dts imdt ON imdt.invoice_maintenance_id = im.id
+				LEFT JOIN bank_informations py ON im.bank_id = py.id
+				LEFT JOIN mix_values cur ON im.currency_id = cur.id
+				LEFT JOIN mix_values pt ON im.payment_term_id = pt.id
+				LEFT JOIN mix_values vat ON im.vat_id = vat.id
+				LEFT JOIN mix_values pph ON im.pph23_id = pph.id
+				LEFT JOIN customers c ON im.customer_id = c.id
+				LEFT JOIN branches br ON im.branch_id = br.id
+        LEFT JOIN users cu ON im.created_by_id = cu.id
+        LEFT JOIN users uu ON im.updated_by_id = uu.id
+    ) AS alias WHERE 1=1`
+
+	if params.IsDeleted != nil && *params.IsDeleted == 1 {
+		baseQuery += " AND deleted_at IS NOT NULL"
+	} else {
+		baseQuery += " AND deleted_at IS NULL"
+	}
+
+	query := `SELECT *
+        ` + baseQuery
+
+	var args []interface{}
+
+	i := 1
+	query += " AND id = $1"
+	args = append(args, params.ID)
+	i++
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if err := r.sqlDB.Get(&invoiceMaintenance, query, args...); err != nil {
+		utils.LogErrors(childSpan, err)
+		childSpan.LogKV("query", query)
+		return nil, err
+	}
+
+	return &invoiceMaintenance, nil
+}
+
+func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceByNoBomID(ctx *fiber.Ctx, params *dtos.GetInvoiceMaintenanceParams, tx *gorm.DB, span opentracing.Span) (*dtos.InvoiceMaintenanceDetailNoBomDTO, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-GetInvoiceMaintenanceByNoBomID", opentracing.ChildOf(span.Context()))
+	var invoiceMaintenance dtos.InvoiceMaintenanceDetailNoBomDTO
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (im.id)
+            im.id, im.customer_id, im.currency_id, im.payment_term_id, im.vat_id, im.pph23_id, im.branch_id, im.bank_id,
+            im.invoice_no, im.remark, im.status, im.approved_status, im.rev_no, im.title,
+            im.exchange_rate, im.pph23_percentage, im.vat_percentage, im.total_qty, im.subtotal, im.total_discount, im.total_pph23, im.total_vat, im.grand_total, im.created_by_id, im.updated_by_id, im.deleted_by_id, im.created_at, im.updated_at, im.deleted_at,
+            TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(im.due_date, 'YYYY-MM-DD') as due_date,
+            im.discount_amount, im.discount_percentage, im.discount_percentage_amount, im.discount_final, im.discount_type, im.total_amount_products, im.total_dp_products, im.total_balance_products,
+
+						br.company_profile_id,
+						c.name as customer_name,
+						c.code as customer_code,
+						c.phone as phone,
+						c.address as address,
+						cur.name as currency_name,
+						vat.name as vat_name,
+						pph.name as pph23_name,
+						py.account_name,
+						py.name as bank_name,
+						
+            cu.name as created_by_name,
+            uu.name as updated_by_name
+
+        FROM invoice_maintenances im
+        LEFT JOIN invoice_maintenance_dts imdt ON imdt.invoice_maintenance_id = im.id
+				LEFT JOIN bank_informations py ON im.bank_id = py.id
+				LEFT JOIN mix_values cur ON im.currency_id = cur.id
+				LEFT JOIN mix_values pt ON im.payment_term_id = pt.id
+				LEFT JOIN mix_values vat ON im.vat_id = vat.id
+				LEFT JOIN mix_values pph ON im.pph23_id = pph.id
+				LEFT JOIN customers c ON im.customer_id = c.id
+				LEFT JOIN branches br ON im.branch_id = br.id
         LEFT JOIN users cu ON im.created_by_id = cu.id
         LEFT JOIN users uu ON im.updated_by_id = uu.id
     ) AS alias WHERE 1=1`
@@ -346,7 +660,7 @@ func (r *InvoiceMaintenanceRepository) GetUpdatedInvoiceMaintenanceDts(ctx *fibe
 	invoiceMaintenanceDts := []dtos.InvoiceMaintenanceDtListUpdateDTO{}
 
 	query := `
-	SELECT 
+	SELECT InvoiceMaintenanceDetailDTO
 		imdt.id, imdt.product_uuid, imdt.invoice_maintenance_id, imdt.item_unit_id, imdt.vat_id, imdt.pph23_id, 
 				imdt.ref_id, imdt.ref_dt_id, imdt.product_id, imdt.ref_type, imdt.product_type, imdt.remark, 
 		imdt.is_vat, imdt.is_pph23, imdt.qty, imdt.price, imdt.subtotal,

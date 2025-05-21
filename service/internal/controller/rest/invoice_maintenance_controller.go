@@ -546,3 +546,70 @@ func (c *InvoiceMaintenanceController) CsvGetInvoiceMaintenances(ctx *fiber.Ctx)
 
 	return ctx.Send(invoiceMaintenances)
 }
+
+func (c *InvoiceMaintenanceController) EmailsApproveInvoiceMaintenances(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceMaintenanceController-EmailsApproveInvoiceMaintenances", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.BulkSendEmailApprovedInvoiceMaintenancesRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Invalid request", http.StatusBadRequest, err.Error(), nil)
+	}
+
+	if len(req.IDs) == 0 {
+		return utils.GetResponse(ctx, nil, nil, "No invoice maintenance IDs provided", http.StatusBadRequest, "IDs are required", nil)
+	}
+
+	claims := utils.GetClaims(ctx, parentSpan)
+	userID := uint(claims["user_id"].(float64))
+	branchID := utils.GetDefaultBranchID(ctx)
+
+	tx := c.repo.BeginTransaction()
+
+	err := c.service.PublishBulkSendEmailApproved(ctx, req, userID, branchID, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to send email of invoice maintenances", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	tx.Commit()
+
+	return utils.GetResponse(ctx, nil, nil, fmt.Sprintf("Successfully send email approved for %d invoice maintenances", len(req.IDs)), http.StatusOK, nil, nil)
+}
+
+func (c *InvoiceMaintenanceController) Pdf(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceMaintenanceController-Pdf", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.InvoiceMaintenanceDetailNoBomDTO
+
+	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
+	}
+
+	tx := c.repo.BeginTransaction()
+	link, err := c.service.Pdf(ctx, req, tx, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	link = utils.MapStringToURL(link)
+
+	return utils.GetResponse(ctx, map[string]string{"link": *link}, nil, "PDF generated successfully", http.StatusOK, nil, nil)
+}

@@ -232,6 +232,7 @@ func (r *CompanyProfileRepository) GetCompanyProfileByID(ctx *fiber.Ctx, params 
 					cp.company_address,
 					cp.company_phone,
 					cp.company_email,
+					cp.company_email_password,
 					cp.company_website,
 					cp.company_logo,
 					cp.company_sign,

@@ -173,7 +173,7 @@ type DeleteInvoiceMaintenanceRequest struct {
 }
 
 type InvoiceMaintenanceListDTO struct {
-	ID                       int      `json:"id" db:"id"`
+	ID                       uint     `json:"id" db:"id"`
 	CustomerID               *uint    `json:"customer_id" db:"customer_id"`
 	CurrencyID               *uint    `json:"currency_id" db:"currency_id"`
 	PaymentTermID            *uint    `json:"payment_term_id" db:"payment_term_id"`
@@ -223,11 +223,17 @@ type InvoiceMaintenanceListDTO struct {
 
 	CurrencyName               *string `json:"currency_name" db:"currency_name"`
 	CustomerName               *string `json:"customer_name" db:"customer_name"`
+	CustomerEmail              *string `json:"customer_email" db:"customer_email"`
 	PaymentTermName            *string `json:"payment_term_name" db:"payment_term_name"`
 	VatName                    *string `json:"vat_name" db:"vat_name"`
 	Pph23Name                  *string `json:"pph23_name" db:"pph23_name"`
 	BranchName                 *string `json:"branch_name" db:"branch_name"`
 	InvoiceMaintenanceDtRemark *string `json:"invoice_maintenance_dt_remark" db:"invoice_maintenance_dt_remark"`
+
+	// InvoiceMaintenanceDts []*InvoiceMaintenanceDtListDTO `json:"invoice_maintenance_dts,omitempty" db:"invoice_maintenance_dts" gorm:"-"`
+	// InvoiceMaintenanceDts []*InvoiceMaintenanceDtListDTO `json:"invoice_maintenance_dts,omitempty"`
+	// InvoiceMaintenanceDts *[]*InvoiceMaintenanceDtListDTO `json:"invoice_maintenance_dts,omitempty" db:"invoice_maintenance_dts" gorm:"foreignKey:InvoiceMaintenanceID"`
+	// InvoiceMaintenanceDts interface{} `json:"invoice_maintenance_dts" db:"invoice_maintenance_dts"`
 }
 
 type InvoiceMaintenanceDetailDTO struct {
@@ -274,6 +280,82 @@ type InvoiceMaintenanceDetailDTO struct {
 	UpdatedAt             *string                       `json:"updated_at" db:"updated_at"`
 	DeleteAt              *string                       `json:"deleted_at" db:"deleted_at"`
 	InvoiceMaintenanceDts []InvoiceMaintenanceDtListDTO `json:"invoice_maintenance_dts"`
+
+	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
+	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
+	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
+	Phone            *string                 `json:"phone" db:"phone"`
+	Address          *string                 `json:"address" db:"address"`
+	Company          CompanyProfileDetailDTO `json:"company"`
+	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
+	CurrencyName     *string                 `json:"currency_name" db:"currency_name"`
+	VatName          *string                 `json:"vat_name" db:"vat_name"`
+	Pph23Name        *string                 `json:"pph23_name" db:"pph23_name"`
+	BankName         *string                 `json:"bank_name" db:"bank_name"`
+	AccountName      *string                 `json:"account_name" db:"account_name"`
+	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
+	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
+}
+
+type InvoiceMaintenanceDetailNoBomDTO struct {
+	ID                       uint     `json:"id" db:"id"`
+	CustomerID               *uint    `json:"customer_id" db:"customer_id"`
+	CurrencyID               *uint    `json:"currency_id" db:"currency_id"`
+	PaymentTermID            *uint    `json:"payment_term_id" db:"payment_term_id"`
+	VatID                    *uint    `json:"vat_id" db:"vat_id"`
+	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
+	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
+	BankID                   *uint    `json:"bank_id" db:"bank_id"`
+	Title                    *string  `json:"title" db:"title"`
+	InvoiceNo                *string  `json:"invoice_no" db:"invoice_no"`
+	InvoiceDate              *string  `json:"invoice_date" db:"invoice_date"`
+	DueDate                  *string  `json:"due_date" db:"due_date"`
+	Remark                   *string  `json:"remark" db:"remark"`
+	Status                   *string  `json:"status" db:"status"`
+	ApprovedStatus           *string  `json:"approved_status" db:"approved_status"`
+	RevNo                    *int     `json:"rev_no" db:"rev_no"`
+	ExchangeRate             float64  `json:"exchange_rate" db:"exchange_rate"`
+	VatPercentage            *float64 `json:"vat_percentage" db:"vat_percentage"`
+	Pph23Percentage          *float64 `json:"pph23_percentage" db:"pph23_percentage"`
+	DiscountAmount           *float64 `json:"discount_amount" db:"discount_amount"`
+	DiscountPercentage       *float64 `json:"discount_percentage" db:"discount_percentage"`
+	DiscountPercentageAmount *float64 `json:"discount_percentage_amount" db:"discount_percentage_amount"`
+	DiscountFinal            *float64 `json:"discount_final" db:"discount_final"`
+	DiscountType             *string  `json:"discount_type" db:"discount_type"`
+	TotalAmountProducts      *float64 `json:"total_amount_products" db:"total_amount_products"`
+	TotalDpProducts          *float64 `json:"total_dp_products" db:"total_dp_products"`
+	TotalBalanceProducts     *float64 `json:"total_balance_products" db:"total_balance_products"`
+	TotalQty                 float64  `json:"total_qty" db:"total_qty"`
+	Subtotal                 float64  `json:"subtotal" db:"subtotal"`
+	TotalDiscount            float64  `json:"total_discount" db:"total_discount"`
+	TotalPph23               float64  `json:"total_pph23" db:"total_pph23"`
+	TotalVat                 float64  `json:"total_vat" db:"total_vat"`
+	GrandTotal               float64  `json:"grand_total" db:"grand_total"`
+
+	CreatedByID           *uint                              `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID           *uint                              `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID           *uint                              `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedByName         *string                            `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName         *string                            `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt             *string                            `json:"created_at" db:"created_at"`
+	UpdatedAt             *string                            `json:"updated_at" db:"updated_at"`
+	DeleteAt              *string                            `json:"deleted_at" db:"deleted_at"`
+	InvoiceMaintenanceDts []InvoiceMaintenanceDtListNoBomDTO `json:"invoice_maintenance_dts"`
+
+	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
+	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
+	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
+	Phone            *string                 `json:"phone" db:"phone"`
+	Address          *string                 `json:"address" db:"address"`
+	Company          CompanyProfileDetailDTO `json:"company"`
+	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
+	CurrencyName     *string                 `json:"currency_name" db:"currency_name"`
+	VatName          *string                 `json:"vat_name" db:"vat_name"`
+	Pph23Name        *string                 `json:"pph23_name" db:"pph23_name"`
+	BankName         *string                 `json:"bank_name" db:"bank_name"`
+	AccountName      *string                 `json:"account_name" db:"account_name"`
+	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
+	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
 }
 
 type InvoiceMaintenanceDtListDTO struct {
@@ -318,7 +400,50 @@ type InvoiceMaintenanceDtListDTO struct {
 
 	RefNum *string `json:"ref_num" db:"ref_num"`
 
-	SoDtsBoms []SalesOrderSoDtBomListDTO `json:"so_dts_boms"`
+	SoDtsBoms []SalesOrderSoDtBomListDTO `json:"so_dts_boms,omitempty"`
+}
+
+type InvoiceMaintenanceDtListNoBomDTO struct {
+	ID                     *uint    `json:"id" db:"id"`
+	InvoiceMaintenanceDtID *uint    `json:"invoice_maintenance_dt_id" db:"invoice_maintenance_dt_id"`
+	ProductUuid            *string  `json:"product_uuid" db:"product_uuid"`
+	CustomerID             *uint    `json:"customer_id" db:"customer_id"`
+	InvoiceMaintenanceID   *uint    `json:"invoice_maintenance_id" db:"invoice_maintenance_id"`
+	ItemUnitID             *uint    `json:"item_unit_id" db:"item_unit_id"`
+	VatID                  *uint    `json:"vat_id" db:"vat_id"`
+	Pph23ID                *uint    `json:"pph23_id" db:"pph23_id"`
+	RefID                  *uint    `json:"ref_id" db:"ref_id"`
+	RefDtID                *uint    `json:"ref_dt_id" db:"ref_dt_id"`
+	ProductID              *uint    `json:"product_id" db:"product_id"`
+	ItemName               *string  `json:"item_name" db:"item_name"`
+	ItemCode               *string  `json:"item_code" db:"item_code"`
+	UnitName               *string  `json:"unit_name" db:"unit_name"`
+	RefJSON                *string  `json:"ref_json" db:"ref_json"`
+	RefType                *string  `json:"ref_type" db:"ref_type"`
+	ProductType            *string  `json:"product_type" db:"product_type"`
+	Remark                 *string  `json:"remark" db:"remark"`
+	IsVat                  *uint    `json:"is_vat" db:"is_vat"`
+	IsPph23                *uint    `json:"is_pph23" db:"is_pph23"`
+	VatName                *string  `json:"vat_name" db:"vat_name"`
+	Pph23Name              *string  `json:"pph23_name" db:"pph23_name"`
+	Qty                    *float64 `json:"qty" db:"qty"`
+	Price                  *float64 `json:"price" db:"price"`
+	Subtotal               *float64 `json:"subtotal" db:"subtotal"`
+	Discount               *float64 `json:"discount" db:"discount"`
+	TotalAmount            *float64 `json:"total_amount" db:"total_amount"`
+	TotalDp                *float64 `json:"total_dp" db:"total_dp"`
+	TotalBalance           *float64 `json:"total_balance" db:"total_balance"`
+
+	CreatedByName *string   `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string   `json:"updated_by_name" db:"updated_by_name"`
+	CreatedByID   *uint     `json:"created_by_id" db:"created_by_id"`
+	UpdatedByID   *uint     `json:"updated_by_id" db:"updated_by_id"`
+	DeletedByID   *uint     `json:"deleted_by_id" db:"deleted_by_id"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     *string   `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string   `json:"deleted_at" db:"deleted_at"`
+
+	RefNum *string `json:"ref_num" db:"ref_num"`
 }
 
 type InvoiceMaintenanceDtListUpdateDTO struct {
@@ -482,6 +607,12 @@ type CancelApproveInvoiceMaintenancesRequest struct {
 	IDs []uint `json:"ids" validate:"required,min=1"`
 }
 
+type BulkSendEmailApprovedInvoiceMaintenancesRequest struct {
+	IDs        []uint                 `json:"ids" validate:"required,min=1"`
+	SenderID   uint                   `json:"sender_id"`
+	SentEmails []FormSentEmailRequest `json:"sent_emails"`
+}
+
 type InvoiceMaintenanceStatusWidget struct {
 	Status     string  `json:"status" db:"status"`
 	OrderCount int     `json:"order_count" db:"order_count"`
@@ -508,4 +639,30 @@ type RepeatInvoiceMaintenanceResult struct {
 
 type RepeatInvoiceMaintenanceResponse struct {
 	Results []RepeatInvoiceMaintenanceResult `json:"results"`
+}
+
+type BulkSendEmailApprovedInvoiceMaintenancesEmailData struct {
+	Req          InvoiceMaintenanceListDTO          `json:"req"`
+	Dts          []InvoiceMaintenanceDtListNoBomDTO `json:"dts"`
+	CustomerName string                             `json:"customer_name"`
+	Message      string                             `json:"message"`
+	Subject      string                             `json:"subject"`
+	ButtonURL    string                             `json:"button_url"`
+	ButtonText   string                             `json:"button_string"`
+	SentAt       string                             `json:"sent_at"`
+	Company      *CompanyProfileDetailDTO           `json:"company"`
+
+	Attachments []BulkSendEmailApprovedInvoiceMaintenancesEmailAttachment `json:"attachments"`
+}
+
+type BulkSendEmailApprovedInvoiceMaintenancesEmailAttachment struct {
+	Label string `json:"label"`
+	Path  string `json:"path"`
+}
+
+type InvoiceMaintenancePDFData struct {
+	Num string `json:"num"`
+	// Form FormInvoiceMaintenanceRequest
+	Form   InvoiceMaintenanceDetailNoBomDTO
+	QrCode string `json:"qr_code"`
 }

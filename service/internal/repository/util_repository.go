@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
+	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
@@ -239,6 +240,44 @@ func (r *UtilRepository) LockRowTable(ctx *fiber.Ctx, tx *gorm.DB, ids []*uint, 
 		utils.LogErrors(childSpan, result.Error)
 		childSpan.LogKV("error", result.Error.Error())
 		return tx, result.Error
+	}
+
+	return tx, nil
+}
+
+// UpdateAttachmentsDesc
+func (r *UtilRepository) CreateSentEmails(ctx *fiber.Ctx, tx *gorm.DB, sentEmails []models.SentEmail, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("UtilRepository-CreateSentEmails", opentracing.ChildOf(span.Context()))
+
+	// if err := r.Upsert(tx, "sent_emails", "id", sentEmails, childSpan); err != nil {
+	// 	utils.LogErrors(childSpan, err)
+	// 	return nil, err
+	// }
+	if err := tx.Create(&sentEmails).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (r *UtilRepository) UpdateSentEmail(tx *gorm.DB, sentEmail *models.SentEmail, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("UtilRepository-UpdateSentEmail", opentracing.ChildOf(span.Context()))
+	if err := tx.Model(&models.SentEmail{}).Where("id = ?", sentEmail.ID).Select("*").Omit(
+		"created_at", "created_by_id",
+	).Updates(&sentEmail).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (r *UtilRepository) DeleteSentEmailsByRefIDs(ctx *fiber.Ctx, tx *gorm.DB, refIDs []uint, refType string, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("UtilRepository-DeleteSentEmailsByRefIDs", opentracing.ChildOf(span.Context()))
+	if err := tx.Unscoped().Where("ref_id IN (?)", refIDs).Where("ref_type = ?", refType).Delete(&models.SentEmail{}).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, err
 	}
 
 	return tx, nil

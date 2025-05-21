@@ -1685,6 +1685,7 @@ func (s *SalesOrderService) Pdf(ctx *fiber.Ctx, req dtos.SalesOrderDetailDTO, us
 	}
 
 	htmlFileName := "sales-order-detail"
+	log.Println("Pdf-htmlFileName-so", htmlFileName)
 
 	// 2. Render HTML template with data
 	// templateFile, err := templateFS.Open("templates/sales-order-detail.html")

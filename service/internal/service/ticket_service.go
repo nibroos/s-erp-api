@@ -1415,7 +1415,7 @@ func (s *TicketService) ConsumeSendEmailSolutionTicket(req dtos.FormTicketReques
 			SenderID:     req.CreatedByID,
 			RefType:      &refType,
 			FromEmail:    &fromEmail,
-			ToEmail:      &to,
+			ToEmail:      to,
 			Subject:      &subject,
 			ErrorMessage: utils.ErrorToStringPtr(err),
 			Status:       &status,

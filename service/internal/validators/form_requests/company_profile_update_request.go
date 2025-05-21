@@ -26,7 +26,7 @@ func (r *CompanyProfileUpdateRequest) Validate(req *dtos.UpdateCompanyProfileReq
 		"company_sign_name":  []string{},
 		"company_address":    []string{},
 		"company_phone":      []string{},
-		"company_email":      []string{"required"},
+		// "company_email":          []string{"required"},
 		// "company_email_password": []string{"required"},
 		"company_website":     []string{},
 		"company_sign":        []string{},

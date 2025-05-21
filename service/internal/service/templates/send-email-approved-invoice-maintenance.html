@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>{{.Subject}}</title>
+	<!-- cdn tailwind -->
+	<style>
+		/* Base Styles */
+		body {
+			font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+			line-height: 1.6;
+			color: #333;
+			background-color: #f5f5f5;
+			margin: 0;
+			padding: 0;
+		}
+
+		/* Email Container */
+		.email-container {
+			max-width: 700px;
+			margin: 20px auto;
+			background-color: #ffffff;
+			overflow: hidden;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+		}
+
+		/* Header */
+		.email-header {
+			padding: 20px;
+			border-top: 4px dotted #e4e4e7;
+			border-bottom: 4px dotted #e4e4e7;
+		}
+
+		.company-name {
+			font-size: 22px;
+			color: #3498db;
+			font-weight: 700;
+			margin-bottom: 5px;
+		}
+
+		.company-details {
+			font-size: 12px;
+			opacity: 0.8;
+			margin-bottom: 5px;
+			line-height: 1.4;
+		}
+
+		/* Body */
+		.email-body {
+			padding: 25px;
+		}
+
+		.recipient {
+			font-weight: 600;
+			margin-bottom: 20px;
+		}
+
+		.greeting {
+			font-size: 16px;
+			color: #2980b9;
+			margin-bottom: 15px;
+		}
+
+		/* Accordion Styles */
+		.accordion {
+			margin: 20px 0;
+			border-radius: 4px;
+			overflow: hidden;
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+		}
+
+		.accordion-section {
+			margin: 0 0 0 0;
+			/* border-bottom: 1px solid #eaeaea; */
+		}
+
+		.accordion-section:last-child {
+			border-bottom: none;
+		}
+
+		.accordion-header {
+			/* background-color: #f8f9fa; */
+			padding: 15px;
+			cursor: pointer;
+			position: relative;
+			font-weight: 600;
+			transition: background-color 0.3s;
+			width: 100%;
+		}
+
+		.accordion-header:hover {
+			background-color: #e9ecef;
+		}
+
+		.accordion-header:after {
+			position: absolute;
+			right: 15px;
+			font-size: 18px;
+			font-weight: bold;
+			transition: transform 0.3s;
+		}
+
+		.accordion-checkbox {
+			display: none;
+		}
+
+		.accordion-content {
+			max-height: 0;
+			transition: max-height 0.3s ease-out;
+			background-color: #fff;
+		}
+
+		.accordion-checkbox:checked+.accordion-header+.accordion-content {
+			max-height: 500px;
+			/* Adjust based on content */
+		}
+
+		/* Content Styles */
+		.issue-content {
+			padding: 15px;
+			margin-top: 5px;
+			background-color: #fff9f9;
+			border-left: 3px solid #e74c3c;
+		}
+
+		.solution-content {
+			padding: 15px;
+			margin-top: 5px;
+			background-color: #f8f9fa;
+			/* border-left: 3px solid #3498db; */
+		}
+
+		.timestamp {
+			font-size: 12px;
+			color: #7f8c8d;
+			margin-bottom: 10px;
+			text-decoration: underline;
+		}
+
+		.status-badge {
+			display: inline-block;
+			padding: 3px 8px;
+			border-radius: 4px;
+			font-size: 12px;
+			font-weight: 600;
+			margin-left: 10px;
+		}
+
+		.status-open {
+			background-color: #f39c12;
+			color: white;
+		}
+
+		.status-resolved {
+			background-color: #27ae60;
+			color: white;
+		}
+
+		/* Footer */
+		.email-footer {
+			background-color: #f8f9fa;
+			padding: 20px;
+			text-align: center;
+			border-top: 1px solid #eaeaea;
+		}
+
+		.signature {
+			margin-bottom: 20px;
+		}
+
+		.cta-button {
+			display: inline-block;
+			background-color: #2980b9;
+			color: white !important;
+			text-decoration: none;
+			padding: 12px 25px;
+			border-radius: 4px;
+			font-weight: 600;
+			margin-top: 10px;
+			transition: background-color 0.3s;
+		}
+
+		.cta-button:hover {
+			background-color: #2675aa;
+			color: white !important;
+		}
+
+		.contact-info {
+			font-size: 12px;
+			color: #7f8c8d;
+		}
+
+		.attachments {
+			margin-top: 1rem;
+		}
+
+		.attachments-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+			gap: 1rem;
+			margin-top: 0.5rem;
+		}
+
+		.attachment-image {
+			width: 100%;
+			max-width: 200px;
+			height: 150px;
+			object-fit: cover;
+			border-radius: 4px;
+			border: 1px solid #eaeaea;
+		}
+
+		.attachment-card {
+			padding: 12px;
+			border: 1px solid #eaeaea;
+			border-radius: 4px;
+			background-color: #ffffff;
+			display: flex;
+			align-items: center;
+			text-decoration: none;
+			color: inherit;
+			transition: box-shadow 0.2s;
+		}
+
+		.attachment-card:hover {
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		}
+
+		.attachment-icon {
+			width: 24px;
+			height: 24px;
+			margin-right: 12px;
+		}
+
+		.attachment-details {
+			flex: 1;
+		}
+
+		.attachment-name {
+			font-size: 14px;
+			font-weight: 500;
+			margin-bottom: 4px;
+			color: #2980b9;
+		}
+
+		.attachment-type {
+			font-size: 12px;
+			color: #7f8c8d;
+		}
+
+		.text-right {
+			text-align: right;
+		}
+
+		.text-center {
+			text-align: center;
+		}
+
+		.main-table {
+			width: 100%;
+			border-collapse: collapse;
+			margin: 1rem 0;
+		}
+
+		.main-table th {
+			padding: 4px;
+			border: 1px solid #262626;
+		}
+
+		.main-table td {
+			padding: 4px;
+			border: 1px solid #262626;
+		}
+
+		.main-table tbody tr {
+			page-break-inside: avoid;
+		}
+
+		.text-grey {
+			color: #949494;
+		}
+
+		.totals-table {
+			width: 100%;
+			margin-left: auto;
+			border-collapse: collapse;
+		}
+
+		.totals-table td {
+			padding: 5px;
+		}
+
+		.totals-label {
+			font-weight: bold;
+		}
+	</style>
+</head>
+
+<body>
+	<!-- <div>
+		<h1 class="text-rose-600">Hello Mr.{{.CustomerName}}!</h1>
+		<p>{{.Message}}</p>
+
+		{{if .ButtonURL}}
+		<a href="{{.ButtonURL}}" class="bg-rose-900">
+			{{.ButtonText}}
+		</a>
+		{{end}}
+
+		<p class="footer">Sent at: {{.SentAt}}</p>
+	</div> -->
+	<div class="email-container">
+		<!-- Header -->
+		<div class="email-header">
+			<div class="company-name">{{ .Company.CompanyName }}</div>
+			<div class="company-details">
+				<div style="color: gray">
+					{{ .Company.CompanyAddress }}
+				</div>
+				<div style="color: black; margin-top: 0.5rem">
+					{{ .Company.CompanyWebsite }}
+				</div>
+				<div style="color: black">{{ .Company.CompanyPhone }}</div>
+			</div>
+		</div>
+
+		<!-- Body -->
+		<div class="email-body">
+			<div class="greeting">Kpd Yth. {{.Req.CustomerName}}</div>
+
+			<p>Kami dengan senang hati menginformasikan bahwa invoice Anda telah diterbitkan dengan detail sebagai berikut:
+			</p>
+
+			<div class="accordion" style="margin: 1rem 0;">
+				<div class="accordion-section">
+					<div class="solution-content">
+						<div class="timestamp">
+							INFORMASI INVOICE
+						</div>
+						<div>No. Invoice: {{ .Req.InvoiceNo }}</div>
+						<div>Tanggal Invoice: {{ .Req.InvoiceDate }}</div>
+						<div>Jatuh Tempo: {{ .Req.DueDate }}</div>
+						<div>Grand Total: {{ .Req.CurrencyName }}. {{formatNumber .Req.GrandTotal }}</div>
+
+					</div>
+
+					<div style="margin: 1rem 0;">
+						<div style="text-decoration: underline;">
+							REMARK
+						</div>
+						<div style="color:#7f8c8d;">
+							{{ .Req.Remark }}
+						</div>
+					</div>
+
+					<div class="solution-content">
+						<div class="timestamp">
+							INFORMASI PEMBAYARAN
+						</div>
+						<div>Bank: {{ .Req.BankName }}, {{ .Req.AccountNumber }}</div>
+						<div>Atas Nama: {{ .Req.AccountName }}</div>
+					</div>
+					{{ if .Attachments }}
+					<div class="attachments">
+						<p>File Terlampir:</p>
+						<ul>
+							{{ range .Attachments }}
+							<li>
+								<a href="{{ .Path }}">{{ .Label }}</a>
+							</li>
+							{{ end }}
+						</ul>
+					</div>
+					{{ end }}
+				</div>
+			</div>
+
+			<div style="text-align: left;">
+				<div class="signature">
+					Hormat kami,<br />
+					<strong>{{ .Company.CompanyName }}</strong><br />
+				</div>
+
+				<a href="https://wa.me/6281510020656" class="cta-button">
+					Hubungi CS 👋
+				</a>
+			</div>
+
+		</div>
+
+		<!-- Footer -->
+		<div class="email-footer">
+			<div class="contact-info">
+				Email ini dikirimkan kepada Anda sebagai bentuk komunikasi resmi dari
+				PT Yubi Technology. Segala bentuk penggunaan layanan tunduk pada Syarat & Ketentuan serta Kebijakan Privasi yang
+				berlaku. Untuk pertanyaan lebih lanjut, hubungi kami di {{ .Company.CompanyPhone }} atau email
+				{{ .Company.CompanyEmail }}.
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

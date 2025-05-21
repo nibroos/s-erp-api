@@ -211,7 +211,7 @@ type FormSentEmailRequest struct {
 	SenderID     *uint   `json:"sender_id"`
 	RefType      *string `json:"ref_type"`
 	FromEmail    *string `json:"from_email"`
-	ToEmail      *string `json:"to_email"`
+	ToEmail      string  `json:"to_email"`
 	Subject      *string `json:"subject"`
 	Remark       *string `json:"remark"`
 	ErrorMessage *string `json:"error_message"`

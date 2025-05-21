@@ -3,14 +3,17 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/opentracing/opentracing-go"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func GetInvoiceMaintenanceIDs(req dtos.UpdateInvoiceMaintenanceRequest) ([]*uint, []*uint, []*uint) {
@@ -457,4 +460,159 @@ func MapRepeatInvoiceMaintenanceDts(ctx *fiber.Ctx, originalDts []models.Invoice
 	}
 
 	return newDts, nil
+}
+
+func MapBulkSendEmailApprovedSingle(emailObject *dtos.FormSentEmailRequest, userID uint, branchID uint, span opentracing.Span) models.SentEmail {
+
+	email := models.SentEmail{}
+	email.ID = *emailObject.ID
+	email.RefID = emailObject.ID
+	email.SenderID = &userID
+	email.FromEmail = *emailObject.FromEmail
+	email.ToEmail = emailObject.ToEmail
+	email.Subject = *emailObject.Subject
+	email.Remark = emailObject.Remark
+	email.ErrorMessage = emailObject.ErrorMessage
+	email.UpdatedByID = &userID
+
+	return email
+}
+
+func MapBulkSendEmailApproved(invoiceMaintenances []dtos.InvoiceMaintenanceListDTO, req dtos.BulkSendEmailApprovedInvoiceMaintenancesRequest, userID uint, branchID uint, span opentracing.Span) ([]models.SentEmail, []uint, error) {
+	status := "PROCESS"
+	refType := "invoice_maintenances"
+
+	refIDs := []uint{}
+	emails := []models.SentEmail{}
+	for _, im := range invoiceMaintenances {
+		// logJson, err := json.Marshal(invoiceMaintenances)
+		// if err != nil {
+		// 	return nil, nil, err
+		// }
+		// logJsonStr := string(logJson)
+		mail := models.SentEmail{
+			SenderID: &userID,
+			RefID:    &im.ID,
+			RefType:  refType,
+			Subject:  *im.Title,
+			Status:   status,
+			ToEmail:  *im.CustomerEmail,
+			// LogJson:     &logJsonStr,
+			CreatedByID: &userID,
+		}
+
+		emails = append(emails, mail)
+		refIDs = append(refIDs, im.ID)
+	}
+
+	return emails, refIDs, nil
+}
+
+func MapBulkSendEmailApprovedModelToDTO(ctx *fiber.Ctx, newEmails []models.SentEmail, userID uint, branchID uint, span opentracing.Span) ([]dtos.FormSentEmailRequest, error) {
+	emails := []dtos.FormSentEmailRequest{}
+	for _, newMail := range newEmails {
+		mail := dtos.FormSentEmailRequest{
+			ID:           &newMail.ID,
+			RefID:        newMail.RefID,
+			RefType:      &newMail.RefType,
+			Status:       &newMail.Status,
+			SenderID:     newMail.SenderID,
+			FromEmail:    &newMail.FromEmail,
+			ToEmail:      newMail.ToEmail,
+			Subject:      &newMail.Subject,
+			Remark:       newMail.Remark,
+			ErrorMessage: newMail.ErrorMessage,
+			LogJson:      newMail.LogJson,
+			CreatedByID:  newMail.CreatedByID,
+			UpdatedByID:  newMail.UpdatedByID,
+		}
+		if newMail.ID > 0 {
+			mail.ID = &newMail.ID
+			mail.UpdatedByID = &userID
+		} else {
+			mail.CreatedByID = &userID
+		}
+		emails = append(emails, mail)
+	}
+
+	return emails, nil
+}
+
+func PublishBulkSendEmailApprovedInvoiceMaintenance(ctx *fiber.Ctx, rabbitmq *config.RabbitMQ, data dtos.BulkSendEmailApprovedInvoiceMaintenancesRequest) error {
+	body, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	// PublishBulkSendEmailApprovedInvoiceMaintenance
+	return rabbitmq.Channel.PublishWithContext(ctx.Context(),
+		"", // exchange
+		"bulk_send_email_approved_invoice_maintenance_queue", // routing key (queue name)
+		false, // mandatory
+		false, // immediate
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "application/json",
+			Body:         body,
+		},
+	)
+}
+
+func MapGetInvoiceMaintenancesIDs(req []dtos.InvoiceMaintenanceListDTO) []uint {
+	invoiceMaintenanceIDs := []uint{}
+
+	for _, reqInvoiceMaintenance := range req {
+		if reqInvoiceMaintenance.ID > 0 {
+			invoiceMaintenanceIDs = append(invoiceMaintenanceIDs, uint(reqInvoiceMaintenance.ID))
+		}
+	}
+
+	return invoiceMaintenanceIDs
+}
+
+// MapInvoiceMaintenancesDts
+func MapInvoiceMaintenancesDts(parents []dtos.InvoiceMaintenanceListDTO, dts []dtos.InvoiceMaintenanceDtListNoBomDTO) []dtos.InvoiceMaintenanceListDTO {
+	invoiceMaintenanceDts := []dtos.InvoiceMaintenanceListDTO{}
+
+	for _, parent := range parents {
+		newDts := make([]*dtos.InvoiceMaintenanceDtListNoBomDTO, 0)
+		for _, dt := range dts {
+			if parent.ID == *dt.InvoiceMaintenanceID {
+				dtCopy := dt
+				newDts = append(newDts, &dtCopy)
+			}
+		}
+
+		// parent.InvoiceMaintenanceDts = newDts
+		invoiceMaintenanceDts = append(invoiceMaintenanceDts, parent)
+	}
+
+	return invoiceMaintenanceDts
+}
+
+func GetSelectedEmailInvoiceMaintenance(invoiceMaintenance dtos.InvoiceMaintenanceListDTO, req dtos.BulkSendEmailApprovedInvoiceMaintenancesRequest) dtos.FormSentEmailRequest {
+	var selectedEmail dtos.FormSentEmailRequest
+	log.Println("GetSelectedEmailInvoiceMaintenance", invoiceMaintenance.ID, req.SentEmails)
+
+	for i, email := range req.SentEmails {
+		log.Println("req.SentEmails1", email.ToEmail, "abc", email, "idx", i, email.ToEmail)
+		log.Println("req.SentEmails1.2", *email.RefID)
+		// if email.RefID != nil && *email.RefID == invoiceMaintenance.ID && email.RefType != nil && *email.RefType == "invoice_maintenances" {
+		if *email.RefID == invoiceMaintenance.ID {
+			log.Println("req.SentEmails2", email, "idx", i)
+			selectedEmail = email
+		}
+	}
+
+	return selectedEmail
+}
+
+func GetSelectedDtsInvoiceMaintenance(parent dtos.InvoiceMaintenanceListDTO, invoiceMaintenanceDts []dtos.InvoiceMaintenanceDtListNoBomDTO) []dtos.InvoiceMaintenanceDtListNoBomDTO {
+	var selectedDts []dtos.InvoiceMaintenanceDtListNoBomDTO
+	for _, dt := range invoiceMaintenanceDts {
+		if dt.InvoiceMaintenanceID != nil && *dt.InvoiceMaintenanceID == parent.ID && dt.ID != nil && *dt.ID > 0 {
+			selectedDts = append(selectedDts, dt)
+		}
+	}
+
+	return selectedDts
 }

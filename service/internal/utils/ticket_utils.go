@@ -222,7 +222,7 @@ func MapFormSentEmailSolution(ctx *fiber.Ctx, req dtos.FormTicketRequest, emailO
 		mail.RefID = emailObject.RefID
 		mail.SenderID = emailObject.SenderID
 		mail.FromEmail = *emailObject.FromEmail
-		mail.ToEmail = *emailObject.ToEmail
+		mail.ToEmail = emailObject.ToEmail
 		mail.Subject = *emailObject.Subject
 		mail.Remark = emailObject.Remark
 		mail.ErrorMessage = emailObject.ErrorMessage

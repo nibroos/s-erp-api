@@ -1,40 +1,59 @@
 package service
 
 import (
+	"bytes"
+	"crypto/tls"
 	"fmt"
+	"image/png"
+	"io"
+	"log"
+	"net/smtp"
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
 	"time"
 
+	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
+	"github.com/boombuler/barcode"
+	"github.com/boombuler/barcode/qr"
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/auth"
+	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
+	"github.com/valyala/fasthttp"
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"gorm.io/gorm"
 )
 
 type InvoiceMaintenanceService struct {
 	repo     *repository.InvoiceMaintenanceRepository
 	utilRepo *repository.UtilRepository
+	rabbitmq *config.RabbitMQ
 	tracer   opentracing.Tracer
 }
 
-func NewInvoiceMaintenanceService(repo *repository.InvoiceMaintenanceRepository, utilRepo *repository.UtilRepository, tracer opentracing.Tracer) *InvoiceMaintenanceService {
+func NewInvoiceMaintenanceService(repo *repository.InvoiceMaintenanceRepository, utilRepo *repository.UtilRepository, rabbitmq *config.RabbitMQ, tracer opentracing.Tracer) *InvoiceMaintenanceService {
 	return &InvoiceMaintenanceService{
 		repo:     repo,
 		utilRepo: utilRepo,
+		rabbitmq: rabbitmq,
 		tracer:   tracer,
 	}
 }
 
 func (s *InvoiceMaintenanceService) GetInvoiceMaintenances(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InvoiceMaintenanceListDTO, int, error) {
 	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-GetInvoiceMaintenances", opentracing.ChildOf(span.Context()))
-	defer childSpan.Finish()
 
 	invoiceMaintenances, total, err := s.repo.GetInvoiceMaintenances(ctx, filters, childSpan)
 	if err != nil {
+		defer childSpan.Finish()
 		return nil, 0, err
 	}
 	return invoiceMaintenances, total, nil
@@ -153,6 +172,18 @@ func (s *InvoiceMaintenanceService) GetInvoiceMaintenanceByID(ctx *fiber.Ctx, pa
 	}
 
 	invoiceMaintenance.InvoiceMaintenanceDts = invoiceMaintenanceDts
+
+	return invoiceMaintenance, nil
+}
+
+func (s *InvoiceMaintenanceService) GetInvoiceMaintenanceDtsByID(ctx *fiber.Ctx, filters map[string]string, tx *gorm.DB, span opentracing.Span) ([]dtos.InvoiceMaintenanceDtListNoBomDTO, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-GetInvoiceMaintenanceByID", opentracing.ChildOf(span.Context()))
+
+	invoiceMaintenance, _, err := s.repo.GetInvoiceMaintenanceDtsRawByIDs(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
 
 	return invoiceMaintenance, nil
 }
@@ -671,6 +702,7 @@ func (s *InvoiceMaintenanceService) Rollback(tx *gorm.DB) *gorm.DB {
 
 func (s *InvoiceMaintenanceService) ExcelGetInvoiceMaintenances(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
 	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-ExcelGetInvoiceMaintenances", opentracing.ChildOf(span.Context()))
+
 	defer childSpan.Finish()
 
 	filters["is_csv"] = "1"
@@ -859,50 +891,608 @@ func (s *InvoiceMaintenanceService) CsvGetInvoiceMaintenances(ctx *fiber.Ctx, fi
 	return []byte(csv), nil
 }
 
-func (s *InvoiceMaintenanceService) PublishBulkSendEmailSolutionTicket(ctx *fiber.Ctx, req dtos.FormTicketRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) error {
-	// childSpan := opentracing.StartSpan("TicketSeInvoiceMaintenanceServicervice-PublishBulkSendEmailSolutionTicket", opentracing.ChildOf(span.Context()))
+func (s *InvoiceMaintenanceService) PublishBulkSendEmailApproved(ctx *fiber.Ctx, req dtos.BulkSendEmailApprovedInvoiceMaintenancesRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-PublishBulkSendEmailApproved", opentracing.ChildOf(span.Context()))
 
-	// log sent_emails
-	// make *dtos.FormSentEmailRequest
+	strIDs := make([]string, len(req.IDs))
+	for i, id := range req.IDs {
+		strIDs[i] = fmt.Sprint(id)
+	}
+	filters := map[string]string{
+		// "invoice_maintenance_ids": req.IDs,
+		"invoice_maintenance_ids": strings.Join(strIDs, ","),
+		"is_csv":                  "1",
+	}
+	log.Println("PublishBulkSendEmailApproved-filters", filters)
+	invoiceMaintenances, _, err := s.repo.GetInvoiceMaintenances(ctx, filters, childSpan)
+	if err != nil {
+		return err
+	}
 
-	// refType := "tickets"
-	// status := "PROCESS"
-	// emailObject := dtos.FormSentEmailRequest{
-	// 	RefType: &refType,
-	// 	Status:  &status,
-	// }
+	refType := "invoice_maintenances"
 
-	// // MapFormSentEmailSolution
-	// email, err := utils.MapFormSentEmailSolution(ctx, req, &emailObject, userID, branchID, childSpan)
-	// if err != nil {
-	// 	defer childSpan.Finish()
-	// 	utils.LogErrors(childSpan, err)
-	// 	tx.Rollback()
-	// 	return err
-	// }
+	// MapFormSentEmailSolution
+	emails, refIDs, err := utils.MapBulkSendEmailApproved(invoiceMaintenances, req, userID, branchID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+		return err
+	}
 
-	// // create sent_emails
-	// if tx, err := s.repo.CreateSentEmail(tx, email, childSpan); err != nil {
-	// 	defer childSpan.Finish()
-	// 	utils.LogErrors(childSpan, err)
-	// 	tx.Rollback()
-	// 	return err
-	// }
+	// delete all emails with the same refIDs
+	if tx, err := s.utilRepo.DeleteSentEmailsByRefIDs(ctx, tx, refIDs, refType, childSpan); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+		return err
+	}
 
-	// req.SentEmailID = &email.ID
+	// create sent_emails
+	if tx, err := s.utilRepo.CreateSentEmails(ctx, tx, emails, childSpan); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+		return err
+	}
+
+	mappedEmails, err := utils.MapBulkSendEmailApprovedModelToDTO(ctx, emails, userID, branchID, childSpan)
+	req.SentEmails = mappedEmails
+	req.SenderID = userID
 	// log.Println("PublishSendEmailSolutionTicket-req.SentEmailID", req.SentEmailID)
 	// log.Println("PublishSendEmailSolutionTicket-email.ID", email.ID)
 
-	// err = utils.PublishSendEmailSolutionTicket(ctx, s.rabbitmq, req)
-	// if err != nil {
-	// 	defer childSpan.Finish()
-	// 	utils.LogErrors(childSpan, err)
-	// 	return err
-	// }
+	err = utils.PublishBulkSendEmailApprovedInvoiceMaintenance(ctx, s.rabbitmq, req)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
 
-	// tx.Commit()
+	tx.Commit()
 
-	// fmt.Println("PublishSendEmailSolutionTicket", req)
+	fmt.Println("PublishBulkSendEmailApproved-emails", emails)
+	fmt.Println("PublishBulkSendEmailApproved-refIDs", refIDs)
+	fmt.Println("PublishBulkSendEmailApproved", req)
 
 	return nil
+}
+
+func (s *InvoiceMaintenanceService) ConsumeBulkSendEmailApprovedInvoiceMaintenance(req dtos.BulkSendEmailApprovedInvoiceMaintenancesRequest) error {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-ConsumeBulkSendEmailApprovedInvoiceMaintenance")
+
+	// Start transaction early to ensure we can update status
+	tx := s.repo.BeginTransaction()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	host := os.Getenv("SMTP_HOST")
+	port := os.Getenv("SMTP_PORT")
+
+	address := host + ":" + port
+
+	app := fiber.New()
+	ctx := app.AcquireCtx(&fasthttp.RequestCtx{})
+	defer app.ReleaseCtx(ctx)
+
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+
+	company, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+	}
+	fromEmail := *company.CompanyEmail
+	fromEmailPassword := company.CompanyEmailPassword
+
+	strIDs := make([]string, len(req.IDs))
+	for i, id := range req.IDs {
+		strIDs[i] = fmt.Sprint(id)
+	}
+	filters := map[string]string{
+		"invoice_maintenance_ids": strings.Join(strIDs, ","),
+		"is_csv":                  "1",
+	}
+	invoiceMaintenances, _, err := s.repo.GetInvoiceMaintenances(ctx, filters, childSpan)
+	if err != nil {
+		return err
+	}
+
+	log.Println("consumer-invoiceMaintenances", invoiceMaintenances)
+
+	invoiceMaintenancesIDs := utils.MapGetInvoiceMaintenancesIDs(invoiceMaintenances)
+	log.Println("consumer-invoiceMaintenancesIDs", invoiceMaintenancesIDs)
+	if len(invoiceMaintenancesIDs) == 0 {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, fmt.Errorf("no invoice maintenances found"))
+		tx.Rollback()
+		return fmt.Errorf("no invoice maintenances found")
+	}
+
+	invoiceMaintenanceDts, _, err := s.repo.GetInvoiceMaintenanceDtsRawByIDs(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+		return err
+	}
+	log.Println("consumer-invoiceMaintenanceDts", invoiceMaintenanceDts)
+
+	invoiceMaintenances = utils.MapInvoiceMaintenancesDts(invoiceMaintenances, invoiceMaintenanceDts)
+	// foreach the selected invoice maintenances
+	log.Println("consumer-invoiceMaintenances2", invoiceMaintenances)
+
+	for _, invoiceMaintenance := range invoiceMaintenances {
+		// Create the multipart email message
+		email := utils.GetSelectedEmailInvoiceMaintenance(invoiceMaintenance, req)
+		selectedDts := utils.GetSelectedDtsInvoiceMaintenance(invoiceMaintenance, invoiceMaintenanceDts)
+
+		isIDOnly := 1
+		invoiceMaintenanceParam := dtos.InvoiceMaintenanceDetailNoBomDTO{
+			ID:       invoiceMaintenance.ID,
+			IsIDOnly: &isIDOnly,
+		}
+		pdfLink, err := s.Pdf(ctx, invoiceMaintenanceParam, tx, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			utils.LogErrors(childSpan, err)
+		}
+		pdfLink = utils.MapStringToURL(pdfLink)
+
+		attachments := []dtos.BulkSendEmailApprovedInvoiceMaintenancesEmailAttachment{}
+		attachments = append(attachments, dtos.BulkSendEmailApprovedInvoiceMaintenancesEmailAttachment{
+			Label: "Invoice Maintenance - " + *invoiceMaintenance.Title + ".pdf",
+			Path:  *pdfLink,
+		})
+
+		to := email.ToEmail
+		subject := ""
+		subject = "Invoice Maintenance: " + *invoiceMaintenance.Title
+		fromString := fmt.Sprintf("From: %s <%s>\r\n", *company.CompanyName, fromEmail)
+		toString := fmt.Sprintf("To: Me <%s>\r\n", to)
+		subjectString := fmt.Sprintf("Subject: %s\r\n", subject)
+
+		// Update status function
+		updateEmailStatus := func(status string, err error) error {
+
+			refType := "invoice_maintenances"
+			emailObject := dtos.FormSentEmailRequest{
+				ID:           email.ID,
+				RefID:        &invoiceMaintenance.ID,
+				SenderID:     &req.SenderID,
+				RefType:      &refType,
+				FromEmail:    &fromEmail,
+				ToEmail:      to,
+				Subject:      &subject,
+				ErrorMessage: utils.ErrorToStringPtr(err),
+				Status:       &status,
+				UpdatedByID:  &req.SenderID,
+			}
+
+			// MapFormSentEmailSolution
+			emailModel := utils.MapBulkSendEmailApprovedSingle(&emailObject, req.SenderID, *invoiceMaintenance.BranchID, childSpan)
+			if err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+			}
+
+			emailModel.Status = status
+			if err != nil {
+				errMsg := err.Error()
+				emailModel.ErrorMessage = &errMsg
+			}
+
+			if _, err := s.utilRepo.UpdateSentEmail(tx, &emailModel, childSpan); err != nil {
+				utils.LogErrors(childSpan, err)
+				tx.Rollback()
+				return err
+			}
+
+			return tx.Commit().Error
+		}
+
+		// Handle email sending process with error handling
+		if err := func() error {
+
+			// attachments := utils.MapAttachmentsTicket(ctx, req.SolutionAttachments, req.SelectedSolutionAttachments)
+
+			sentAt := time.Now().Format("2006-01-02 15:04:05")
+			data := dtos.BulkSendEmailApprovedInvoiceMaintenancesEmailData{
+				Subject:     subject,
+				Req:         invoiceMaintenance,
+				Dts:         selectedDts,
+				SentAt:      sentAt,
+				Company:     company,
+				Attachments: attachments,
+			}
+
+			// Read the embedded template file
+			templateFile, err := templateFS.Open("templates/send-email-approved-invoice-maintenance.html")
+			if err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to open embedded template: %v", err)
+				return err
+			}
+			log.Println("templateFile", templateFile)
+			defer templateFile.Close()
+
+			// Read the template content
+			templateContent, err := io.ReadAll(templateFile)
+			if err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to read template content: %v", err)
+				return err
+			}
+
+			// Inside the Pdf function, before parsing the template
+			funcMap := template.FuncMap{
+				"formatNumber": func(n float64, args ...int) string {
+					decimals := 2
+					if len(args) > 0 {
+						decimals = args[0]
+					}
+
+					format := fmt.Sprintf("%%.%df", decimals)
+					p := message.NewPrinter(language.English)
+					return p.Sprintf(format, n)
+				},
+				"inc": func(i int) int {
+					return i + 1
+				},
+			}
+
+			// Parse the template
+			tmpl, err := template.New("email").Funcs(funcMap).Parse(string(templateContent))
+			if err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to parse template: %v", err)
+				return err
+			}
+
+			// // Execute template with data
+			var body bytes.Buffer
+			if err := tmpl.Execute(&body, data); err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to execute template: %v", err)
+				return err
+			}
+
+			var msg bytes.Buffer
+			msg.WriteString(fromString)
+			msg.WriteString(toString)
+			msg.WriteString(subjectString)
+			msg.WriteString("MIME-Version: 1.0\r\n")
+			msg.WriteString("Content-Type: text/html; charset=\"utf-8\"\r\n")
+			msg.WriteString("\r\n")
+			msg.Write(body.Bytes())
+
+			// TLS config (important for port 465)
+			tlsConfig := &tls.Config{
+				InsecureSkipVerify: true, // For testing ONLY (remove in production)
+				ServerName:         host,
+			}
+
+			// Set up authentication
+			auth := smtp.PlainAuth("", fromEmail, *fromEmailPassword, host)
+			log.Println("auth", auth)
+			// Connect to the server via TLS
+			conn, err := tls.Dial("tcp", address, tlsConfig)
+			if err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				return err
+			}
+
+			// Create a new SMTP client
+			client, err := smtp.NewClient(conn, host)
+			if err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to create SMTP client: %v", err)
+				return err
+			}
+			defer client.Quit()
+
+			if err := client.Auth(auth); err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("SMTP authentication failed: %v", err)
+				return err
+			}
+
+			// Set sender and recipient
+			if err := client.Mail(fromEmail); err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to set sender: %v", err)
+				return err
+			}
+			if err := client.Rcpt(to); err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to set recipient: %v", err)
+				return err
+			}
+
+			// Write the email data
+			w, err := client.Data()
+			if err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to get Data writer: %v", err)
+				return err
+			}
+			defer w.Close()
+
+			_, err = w.Write(msg.Bytes())
+			if err != nil {
+				defer childSpan.Finish()
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to write email data: %v", err)
+				return err
+			}
+			// return w.Close()
+			// // Send the email
+			// err = smtp.SendMail(
+			// 	host+":"+port,
+			// 	auth,
+			// 	from,
+			// 	[]string{to},
+			// 	msg.Bytes(),
+			// )
+
+			log.Println("Email sent successfully!")
+			return nil
+		}(); err != nil {
+			// If there's an error, update status to FAILED
+			if updateErr := updateEmailStatus("FAILED", err); updateErr != nil {
+				return fmt.Errorf("failed to update email status: %v (original error: %v)", updateErr, err)
+			}
+			return err
+		}
+		// If successful, update status to SUCCESS
+		if err := updateEmailStatus("SUCCESS", nil); err != nil {
+			return fmt.Errorf("failed to update success status: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// PdfGetQuotations
+func (s *InvoiceMaintenanceService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceMaintenanceDetailNoBomDTO, tx *gorm.DB, span opentracing.Span) (*string, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-Pdf", opentracing.ChildOf(span.Context()))
+
+	form := req
+	var invoiceMaintenance *dtos.InvoiceMaintenanceDetailNoBomDTO
+	var err error
+
+	// req.IsIDOnly != nil
+	var params dtos.GetInvoiceMaintenanceParams
+	if req.IsIDOnly != nil && *req.IsIDOnly == 1 {
+		params.ID = req.ID
+
+		invoiceMaintenance, err = s.repo.GetInvoiceMaintenanceByNoBomID(ctx, &params, tx, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			return nil, err
+		}
+
+		createdInvoiceMaintenanceIDs := make([]uint, 0)
+		createdInvoiceMaintenanceIDs = append(createdInvoiceMaintenanceIDs, invoiceMaintenance.ID)
+		dtsFilters := map[string]string{
+			"invoice_maintenance_ids": fmt.Sprintf("%d", invoiceMaintenance.ID),
+			"is_csv":                  "1",
+		}
+
+		invoiceMaintenanceDts, err := s.GetInvoiceMaintenanceDtsByID(ctx, dtsFilters, tx, childSpan)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to fetch invoiceMaintenanceDts: %v", err)
+		}
+
+		companyParams := &dtos.GetCompanyProfileParams{ID: uint(*invoiceMaintenance.CompanyProfileID)}
+		invoiceMaintenance.InvoiceMaintenanceDts = invoiceMaintenanceDts
+		company, err := s.utilRepo.GetCompanyProfileByID(ctx, companyParams)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to fetch company: %v", err)
+		}
+
+		invoiceMaintenance.Company = *company
+
+		form = *invoiceMaintenance
+		req.InvoiceNo = invoiceMaintenance.InvoiceNo
+	}
+
+	var num string
+	if req.InvoiceNo != nil {
+		num = *req.InvoiceNo
+	} else {
+		num = ""
+	}
+
+	uploadDir := "./public/generated_pdfs"
+	// Ensure the directory exists
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		utils.LogErrors(childSpan, err)
+		log.Println("Error mkdirall:", err)
+		return nil, err
+	}
+
+	fileName := fmt.Sprintf("invoice-maintenance-%s.pdf", time.Now().Format("20060102150405"))
+	pdfPath := filepath.Join(uploadDir, fileName)
+	pdfPublicPath := utils.MapStringToURL(&pdfPath)
+
+	uploadDir = "./public/barcodes"
+	// Ensure the directory exists
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		utils.LogErrors(childSpan, err)
+		log.Println("Error mkdirall:", err)
+		return nil, err
+	}
+
+	// Create the barcode
+	qrCodeFilename := fmt.Sprintf("barcodes-%s-%s.png", *form.Title, time.Now().Format("20060102150405"))
+	qrCodePath := filepath.Join(uploadDir, qrCodeFilename)
+	qrCodePublicPath := utils.MapStringToURL(&qrCodePath)
+	log.Println("qrCodePublicPath", *qrCodePublicPath)
+
+	qrCode, _ := qr.Encode(*pdfPublicPath, qr.M, qr.Auto)
+	qrCode, _ = barcode.Scale(qrCode, 200, 200)
+
+	// create the output file
+	qrCodeImg, err := os.Create(qrCodePath)
+	defer qrCodeImg.Close()
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error creating qrCodeImg:", err)
+		return nil, err
+	}
+
+	// encode the barcode as png
+	png.Encode(qrCodeImg, qrCode)
+
+	data := dtos.InvoiceMaintenancePDFData{
+		Num:    num,
+		Form:   form,
+		QrCode: *qrCodePublicPath,
+	}
+
+	htmlFileName := "invoice-maintenance-detail"
+	log.Println("Pdf-htmlFileName-im", htmlFileName)
+
+	// 2. Render HTML template with data
+	// templateFile, err := templateFS.Open("templates/sales-order-detail.html")
+	templateFile, err := templateFS.Open(fmt.Sprintf("templates/%s.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to open embedded template: %v", err)
+		return nil, err
+	}
+
+	// Read the template content
+	templateContent, err := io.ReadAll(templateFile)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to read template content: %v", err)
+		return nil, err
+	}
+
+	// htmlFile, err := os.CreateTemp("", "sales-order-detail-*.html")
+	htmlFile, err := os.CreateTemp("", fmt.Sprintf("%s-*.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error writing htmlFile:", err)
+		return nil, err
+	}
+	defer os.Remove(htmlFile.Name())
+
+	// Inside the Pdf function, before parsing the template
+	funcMap := template.FuncMap{
+		"formatNumber": func(n float64, args ...int) string {
+			decimals := 2
+			if len(args) > 0 {
+				decimals = args[0]
+			}
+
+			format := fmt.Sprintf("%%.%df", decimals)
+			p := message.NewPrinter(language.English)
+			return p.Sprintf(format, n)
+		},
+		"inc": func(i int) int {
+			return i + 1
+		},
+	}
+
+	// Parse the template
+	tmpl, err := template.New(fmt.Sprintf("%s.html", htmlFileName)).Funcs(funcMap).Parse(string(templateContent))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to parse template: %v", err)
+		return nil, err
+	}
+
+	if err := tmpl.Execute(htmlFile, data); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error Execute:", err)
+		return nil, err
+	}
+
+	// 3. Generate PDF using wkhtmltopdf (Docker or local)
+	pdfg, err := wkhtmltopdf.NewPDFGenerator()
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg:", err)
+		return nil, err
+	}
+
+	// Read embedded templates
+	headerContent, err := templateFS.ReadFile("templates/header.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
+
+	footerContent, err := templateFS.ReadFile("templates/footer.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read footer: %w", err)
+	}
+
+	// Write to temp files
+	headerPath, err := createTempFileFromEmbed(string(headerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create header temp file: %w", err)
+	}
+	defer os.Remove(headerPath) // Clean up
+
+	footerPath, err := createTempFileFromEmbed(string(footerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create footer temp file: %w", err)
+	}
+	defer os.Remove(footerPath) // Clean up
+
+	page := wkhtmltopdf.NewPage(htmlFile.Name())
+	page.EnableLocalFileAccess.Set(true)
+	page.HeaderHTML.Set("file://" + headerPath) // Set header
+	page.FooterHTML.Set("file://" + footerPath) // Set footer
+	page.FooterSpacing.Set(10)                  // Space below content (mm)
+
+	pdfg.AddPage(page)
+	// pdfg.MarginBottom.Set(0)
+	// pdfg.MarginTop.Set(0)
+	pdfg.MarginLeft.Set(0)
+	pdfg.MarginRight.Set(0)
+	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
+	// pdfg.Dpi.Set(300)
+
+	if err := pdfg.Create(); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg create:", err)
+		return nil, err
+	}
+
+	if err := pdfg.WriteFile(pdfPath); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdf path:", err)
+		return nil, err
+	}
+
+	return &pdfPath, nil
 }

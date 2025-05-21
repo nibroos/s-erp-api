@@ -420,3 +420,13 @@ func MapStringToURL(path *string) *string {
 	}
 	return path
 }
+
+// add url before path file by env
+func MapDotStringToURL(path *string) *string {
+	if path != nil {
+		// remove first letter from file url
+		newPath := fmt.Sprintf("%s/%s", os.Getenv("APP_HOST"), (*path)[1:])
+		path = &newPath
+	}
+	return path
+}

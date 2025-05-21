@@ -4,8 +4,13 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>{{ .Num}} - Sales Order</title>
+	<title>{{ .Num}} - Invoice Maintenance</title>
 	<style>
+		@font-face {
+			font-family: 'LibreBarcode39';
+			src: url('https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap');
+		}
+
 		body {
 			font-family: Arial, sans-serif;
 			margin: 0 2rem;
@@ -162,6 +167,14 @@
 		.text-grey {
 			color: #949494;
 		}
+
+		.barcode-font {
+			font-family: 'LibreBarcode39';
+			font-size: 40px;
+			line-height: 1;
+			text-align: center;
+			margin: 20px 0;
+		}
 	</style>
 </head>
 
@@ -221,7 +234,7 @@
 			</tr>
 		</table>
 
-		<div class="document-title">SALES ORDER</div>
+		<div class="document-title">INVOICE MAINTENANCE {{ .Form.Title }}</div>
 		<div class="text-center ref-number">{{.Num}}</div>
 
 		<table class="reference-container" border="0" cellspacing="0" cellpadding="0">
@@ -258,26 +271,18 @@
 					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
 						<tr>
 							<td width="30%">
-								<div class="info-label">ORDER DATE</div>
+								<div class="info-label">INVOICE DATE</div>
 							</td>
 							<td width="70%">
-								<div>{{.Form.OrderAt}}</div>
+								<div>{{.Form.InvoiceDate}}</div>
 							</td>
 						</tr>
 						<tr>
 							<td width="30%">
-								<div class="info-label">SHIPPING DATE</div>
+								<div class="info-label">DUE DATE</div>
 							</td>
 							<td width="70%">
-								<div>{{.Form.ShippingAt}}</div>
-							</td>
-						</tr>
-						<tr>
-							<td width="30%">
-								<div class="info-label">ORDER TYPE</div>
-							</td>
-							<td width="70%">
-								<div>{{.Form.OrderTypeName}}</div>
+								<div>{{.Form.DueDate}}</div>
 							</td>
 						</tr>
 						<tr>
@@ -322,16 +327,16 @@
 					{{.Form.ExchangeRate}}
 				</td>
 				<td>
-					{{.Form.DiscPerc}}
+					{{.Form.DiscountPercentage}}
 				</td>
 				<td>
-					{{.Form.DiscAm}}
+					{{.Form.DiscountAmount}}
 				</td>
 				<td>
-					{{.Form.Pph23Perc}}
+					{{.Form.Pph23Percentage}}
 				</td>
 				<td>
-					{{.Form.VatPerc}}
+					{{.Form.VatPercentage}}
 				</td>
 			</tr>
 		</table>
@@ -342,51 +347,23 @@
 					<th width="5%" class="text-center">NO</th>
 					<th width="45%" style="text-align: left;">PRODUCT NAME</th>
 					<th width="20%" style="text-align: left;">REMARK</th>
-					<th width="10%" style="text-align: left;">UNIT</th>
-					<th width="10%" class="text-right">DISC (%)</th>
-					<th width="10%" class="text-right">DISC Amount</th>
 					<th width="10%" class="text-right">QTY</th>
+					<th width="10%" style="text-align: left;">UNIT</th>
 					<th width="15%" class="text-right">PRICE</th>
 					<th width="15%" class="text-right">AMOUNT</th>
 				</tr>
 			</thead>
 			<tbody>
-				{{range $index, $item := .Form.SoDts}}
+				{{range $index, $item := .Form.InvoiceMaintenanceDts}}
 				<tr>
 					<td class="text-center">{{ inc $index}}</td>
 					<td>{{$item.ItemName}} </td>
 					<td class="">{{$item.Remark}} </td>
-					<td class="">{{$item.UnitName}} </td>
-					<td class="text-right">{{formatNumber $item.DiscPerc}} </td>
-					<td class="text-right">{{formatNumber $item.DiscAm}} </td>
 					<td class="text-right">{{formatNumber $item.Qty}} </td>
-					<td class="text-right">{{formatNumber $item.PriceSell}} </td>
-					<td class="text-right">{{formatNumber $item.SubtotalSell}} </td>
+					<td class="">{{$item.UnitName}} </td>
+					<td class="text-right">{{formatNumber $item.Price}} </td>
+					<td class="text-right">{{formatNumber $item.TotalBalance}} </td>
 				</tr>
-				{{ if $item.SoDtsBoms }}
-				<tr style="padding: 0 !important;">
-					<td colspan="9" class="text-left" style="padding: 0 !important;">
-						<table class="sub-table" cellspacing="0" cellpadding="0">
-							<tr>
-								<th width="5%" class="text-center">NO</th>
-								<th width="45%" style="text-align: left;">ITEM NAME</th>
-								<th width="20%" style="text-align: left;">REMARK</th>
-								<th width="10%" style="text-align: left;">UNIT</th>
-								<th width="10%" class="text-right">QTY</th>
-							</tr>
-							{{range $index, $subitem := $item.SoDtsBoms}}
-							<tr>
-								<td class="text-center">{{ inc $index}}</td>
-								<td>{{$subitem.ItemName}} </td>
-								<td class="">{{$subitem.Remark}} </td>
-								<td class="">{{$subitem.UnitName}} </td>
-								<td class="text-right">{{formatNumber $subitem.Qty}} </td>
-							</tr>
-							{{end}}
-						</table>
-					</td>
-				</tr>
-				{{end}}
 				{{end}}
 			</tbody>
 		</table>
@@ -411,26 +388,6 @@
 				</td>
 				<td width="40%" class="vertical-top">
 					<table class="totals-table" width="100%" border="0" cellspacing="0" cellpadding="0">
-						<tr>
-							<td class="totals-label">SUB AMOUNT</td>
-							<td class="text-right">{{formatNumber .Form.Subtotal}}</td>
-						</tr>
-						<tr>
-							<td class="totals-label">TOTAL DISCOUNT</td>
-							<td class="text-right">{{formatNumber .Form.TotalDiscount}}</td>
-						</tr>
-						<tr>
-							<td class="totals-label">AFTER DISCOUNT</td>
-							<td class="text-right">{{formatNumber .Form.TotalAfterDisc}}</td>
-						</tr>
-						<tr>
-							<td class="totals-label">PPH23</td>
-							<td class="text-right">{{formatNumber .Form.TotalPph23}}</td>
-						</tr>
-						<tr>
-							<td class="totals-label">VAT</td>
-							<td class="text-right">{{formatNumber .Form.TotalVat}}</td>
-						</tr>
 						<tr style="background-color: #195093; color: white;">
 							<td class="totals-label">GRAND TOTAL</td>
 							<td class="text-right">{{formatNumber .Form.GrandTotal}}</td>
@@ -443,6 +400,10 @@
 	<!-- Footer section with payment info and approval -->
 	<div class="footer-section" style="margin-top: 2rem;">
 		<!-- <div class="line">&nbsp;</div> -->
+		{{if .QrCode}}
+		<img src="{{.QrCode}}" alt="logo"
+			style="width: 70px; height: 70px; object-fit: contain; display: block; margin-bottom: 5px;">
+		{{end}}
 		<table border="0" cellspacing="0" cellpadding="0" width="100%" style="width: 100%;">
 			<tr>
 				<td width="100%">

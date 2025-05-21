@@ -43,6 +43,11 @@ func (r *ConsumerRouter) SetupConsumers() error {
 		return err
 	}
 
+	// Notification consumer
+	if err := r.setupBulkSendEmailApprovedInvoiceMaintenanceConsumer(); err != nil {
+		return err
+	}
+
 	// Other consumers...
 
 	return nil
