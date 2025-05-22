@@ -1210,6 +1210,7 @@ type SalesOrderStatusWidget struct {
 }
 
 type SalesOrderByTypeWidget struct {
+	ID          *int    `json:"id" db:"id"`
 	OrderTypeID int     `json:"order_type_id" db:"order_type_id"`
 	Status      string  `json:"status" db:"status"`
 	WidgetType  string  `json:"widget_type" db:"widget_type"`

@@ -3588,6 +3588,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrdersByBestCustomer(ctx *fiber.Ctx
 	baseQuery := `
 		FROM (
 			SELECT DISTINCT ON (so.customer_id)
+			so.customer_id as id,
 			so.customer_id as order_type_id,
 			c.name as status,
 			'sales_orders' as widget_type,

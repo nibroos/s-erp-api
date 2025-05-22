@@ -149,7 +149,14 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 					TO_CHAR(im.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(im.due_date, 'YYYY-MM-DD') as due_date,
 					im.discount_amount, im.discount_percentage, im.discount_percentage_amount, im.discount_final, im.discount_type, im.total_amount_products, im.total_dp_products, im.total_balance_products, im.total_adjustment,
 
+					(im.due_date - CURRENT_DATE) as days_remaining,
+					CASE
+							WHEN im.due_date < CURRENT_DATE THEN 'expired'
+							ELSE 'expiring soon'
+					END AS status_expired,
+
 					c.name as customer_name,
+					c.address as customer_address,
 					c.email as customer_email,
 					cur.name as currency_name,
 					pt.name as payment_term_name,
@@ -1066,12 +1073,13 @@ func (r *InvoiceMaintenanceRepository) GetRefSalesOrderForInvoiceMaintenance(ctx
 				sodt.created_by_id, 
 				sodt.updated_by_id, sodt.deleted_by_id, sodt.created_at, sodt.updated_at, sodt.deleted_at,
 
-				so.customer_id, so.order_type_id, so.currency_id, so.vat_id as head_vat_id, 
+				so.customer_id, so.order_type_id, so.currency_id, so.vat_id as head_vat_id, so.payment_id,
 				so.pph23_id as head_pph23_id, so.vat_perc as head_vat_perc, 
 				so.pph23_perc as head_pph23_perc, so.disc_am as head_disc_am, 
 				so.disc_perc as head_disc_perc, so.markup_perc as head_markup_perc, 
 				so.remark as head_remark, so.exchange_rate, so.sales_order_no, so.po_buyer_no, 
 				so.order_at as order_date, so.shipping_at as shipping_date,
+				TO_CHAR(so.agree_at, 'YYYY-MM-DD') as agree_at,
 				TO_CHAR(so.due_at, 'YYYY-MM-DD') as due_at,
 
 				c.name as customer_name,

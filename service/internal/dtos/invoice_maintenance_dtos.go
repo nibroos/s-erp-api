@@ -224,11 +224,14 @@ type InvoiceMaintenanceListDTO struct {
 	CurrencyName               *string `json:"currency_name" db:"currency_name"`
 	CustomerName               *string `json:"customer_name" db:"customer_name"`
 	CustomerEmail              *string `json:"customer_email" db:"customer_email"`
+	CustomerAddress            *string `json:"customer_address" db:"customer_address"`
 	PaymentTermName            *string `json:"payment_term_name" db:"payment_term_name"`
 	VatName                    *string `json:"vat_name" db:"vat_name"`
 	Pph23Name                  *string `json:"pph23_name" db:"pph23_name"`
 	BranchName                 *string `json:"branch_name" db:"branch_name"`
 	InvoiceMaintenanceDtRemark *string `json:"invoice_maintenance_dt_remark" db:"invoice_maintenance_dt_remark"`
+	DaysRemaining              *int    `json:"days_remaining" db:"days_remaining"`
+	StatusExpired              *string `json:"status_expired" db:"status_expired"`
 
 	// InvoiceMaintenanceDts []*InvoiceMaintenanceDtListDTO `json:"invoice_maintenance_dts,omitempty" db:"invoice_maintenance_dts" gorm:"-"`
 	// InvoiceMaintenanceDts []*InvoiceMaintenanceDtListDTO `json:"invoice_maintenance_dts,omitempty"`
@@ -589,7 +592,9 @@ type RefSalesOrderForInvoiceMaintenanceListDTO struct {
 	OrderDate        *string  `json:"order_date" db:"order_date"`
 	ShippingDate     *string  `json:"shipping_date" db:"shipping_date"`
 	ItemSku          *string  `json:"item_sku" db:"item_sku"`
+	AgreeAt          *string  `json:"agree_at" db:"agree_at"`
 	DueAt            *string  `json:"due_at" db:"due_at"`
+	PaymentID        *uint    `json:"payment_id" db:"payment_id"`
 
 	SoDtsBoms []SalesOrderSoDtBomListDTO `json:"so_dts_boms"`
 }
