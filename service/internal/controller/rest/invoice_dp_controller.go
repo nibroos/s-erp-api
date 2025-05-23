@@ -391,3 +391,37 @@ func (c *InvoiceDpController) CsvGetInvoiceDps(ctx *fiber.Ctx) error {
 
 	return ctx.Send(invoiceDps)
 }
+
+func (c *InvoiceDpController) Pdf(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceDpController-Pdf", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.InvoiceDpDetailDTO
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid request body",
+			"error":   err.Error(),
+		})
+	}
+
+	tx := c.repo.BeginTransaction()
+
+	pdfPath, err := c.service.Pdf(ctx, req, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	tx.Commit()
+
+	pdfPath = utils.MapStringToURL(pdfPath)
+
+	return utils.GetResponse(ctx, map[string]string{"link": *pdfPath}, nil, "PDF generated successfully", http.StatusOK, nil, nil)
+}

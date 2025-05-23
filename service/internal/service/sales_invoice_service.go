@@ -2,8 +2,14 @@ package service
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"text/template"
 	"time"
 
+	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -11,6 +17,8 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"gorm.io/gorm"
 )
 
@@ -190,6 +198,256 @@ func (s *SalesInvoiceService) GetSalesInvoiceByID(ctx *fiber.Ctx, params *dtos.G
 	return salesInvoice, nil
 }
 
+// func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.UpdateSalesInvoiceRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.SalesInvoice, error) {
+// 	childSpan := opentracing.StartSpan("SalesInvoiceService-UpdateSalesInvoice", opentracing.ChildOf(span.Context()))
+// 	defer childSpan.Finish()
+
+// 	existingSoDtIDs := make(map[uint]uint)
+// 	newSoDtIDs := make(map[uint]uint)
+// 	allSOIDs := make([]uint, 0)
+// 	uniqueSOIDs := make(map[uint]bool)
+
+// 	existingInvDtIDs := make(map[uint]uint)
+// 	newInvDtIDs := make(map[uint]uint)
+// 	allInventoryIDs := make([]uint, 0)
+// 	uniqueInventoryIDs := make(map[uint]bool)
+
+// 	params := dtos.GetSalesInvoiceParams{ID: req.ID}
+// 	existingSalesInvoice, err := s.GetSalesInvoiceByID(ctx, &params, tx, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	for _, dt := range existingSalesInvoice.SalesInvoiceDts {
+// 		if dt.RefType != nil && *dt.RefType == "so" && dt.RefID != nil && dt.RefDtID != nil {
+// 			existingSoDtIDs[*dt.RefDtID] = *dt.RefID
+// 			if !uniqueSOIDs[*dt.RefID] {
+// 				uniqueSOIDs[*dt.RefID] = true
+// 				allSOIDs = append(allSOIDs, *dt.RefID)
+// 			}
+// 		} else if dt.RefType != nil && *dt.RefType == "inv_out" && dt.RefID != nil && dt.RefDtID != nil {
+// 			existingInvDtIDs[*dt.RefDtID] = *dt.RefID
+// 			if !uniqueInventoryIDs[*dt.RefID] {
+// 				uniqueInventoryIDs[*dt.RefID] = true
+// 				allInventoryIDs = append(allInventoryIDs, *dt.RefID)
+// 			}
+// 		}
+// 	}
+
+// 	for _, dt := range req.SalesInvoiceDts {
+// 		if dt.RefType != nil && *dt.RefType == "so" && dt.RefID != nil && dt.RefDtID != nil {
+// 			newSoDtIDs[*dt.RefDtID] = *dt.RefID
+// 			if !uniqueSOIDs[*dt.RefID] {
+// 				uniqueSOIDs[*dt.RefID] = true
+// 				allSOIDs = append(allSOIDs, *dt.RefID)
+// 			}
+// 		} else if dt.RefType != nil && *dt.RefType == "inv_out" && dt.RefID != nil && dt.RefDtID != nil {
+// 			newInvDtIDs[*dt.RefDtID] = *dt.RefID
+// 			if !uniqueInventoryIDs[*dt.RefID] {
+// 				uniqueInventoryIDs[*dt.RefID] = true
+// 				allInventoryIDs = append(allInventoryIDs, *dt.RefID)
+// 			}
+// 		}
+// 	}
+
+// 	if len(allSOIDs) > 0 {
+// 		if err := s.repo.LockSalesOrders(tx, allSOIDs, childSpan); err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if len(allInventoryIDs) > 0 {
+// 		if err := s.repo.LockInventories(tx, allInventoryIDs, childSpan); err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if err := s.repo.LockSalesInvoice(tx, req.ID, childSpan); err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	removedSoDtIDs := make(map[uint]uint)
+// 	for soDtID, soID := range existingSoDtIDs {
+// 		if _, exists := newSoDtIDs[soDtID]; !exists {
+// 			removedSoDtIDs[soDtID] = soID
+// 		}
+// 	}
+
+// 	addedSoDtIDs := make(map[uint]uint)
+// 	for soDtID, soID := range newSoDtIDs {
+// 		if _, exists := existingSoDtIDs[soDtID]; !exists {
+// 			addedSoDtIDs[soDtID] = soID
+// 		}
+// 	}
+
+// 	removedInvDtIDs := make(map[uint]uint)
+// 	for invDtID, invID := range existingInvDtIDs {
+// 		if _, exists := newInvDtIDs[invDtID]; !exists {
+// 			removedInvDtIDs[invDtID] = invID
+// 		}
+// 	}
+
+// 	addedInvDtIDs := make(map[uint]uint)
+// 	for invDtID, invID := range newInvDtIDs {
+// 		if _, exists := existingInvDtIDs[invDtID]; !exists {
+// 			addedInvDtIDs[invDtID] = invID
+// 		}
+// 	}
+
+// 	for soDtID := range removedSoDtIDs {
+// 		tx, err = s.repo.UpdateSoDtInvoiceStatus(tx, soDtID, nil, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	for invDtID := range removedInvDtIDs {
+// 		tx, err = s.repo.UpdateInvDtInvoiceStatus(tx, invDtID, nil, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	salesInvoice, err := utils.MapUpdateSalesInvoice(ctx, req, userID, branchID, existingSalesInvoice.RevNo, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	tx, err = s.repo.UpdateSalesInvoice(tx, &salesInvoice, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	existingDtMap := make(map[string]*dtos.SalesInvoiceDtListDTO)
+// 	for i, dt := range existingSalesInvoice.SalesInvoiceDts {
+// 		if dt.ID != nil {
+// 			key := fmt.Sprintf("%d-%d-%d",
+// 				utils.GetValueOrDefault(dt.ProductID, 0),
+// 				utils.GetValueOrDefault(dt.RefID, 0),
+// 				utils.GetValueOrDefault(dt.RefDtID, 0))
+// 			existingDtMap[key] = &existingSalesInvoice.SalesInvoiceDts[i]
+// 		}
+// 	}
+
+// 	salesInvoiceDts, err := utils.MapUpdateSalesInvoiceDts(ctx, req, &salesInvoice, userID, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	var createSalesInvoiceDts []models.SalesInvoiceDt
+// 	var updateSalesInvoiceDts []models.SalesInvoiceDt
+// 	var deleteSalesInvoiceDtIDs []uint
+
+// 	processedExistingDts := make(map[uint]bool)
+
+// 	for i, dt := range salesInvoiceDts {
+// 		key := fmt.Sprintf("%d-%d-%d",
+// 			utils.GetValueOrDefault(dt.ProductID, 0),
+// 			utils.GetValueOrDefault(dt.RefID, 0),
+// 			utils.GetValueOrDefault(dt.RefDtID, 0))
+
+// 		if existingDt, exists := existingDtMap[key]; exists {
+// 			salesInvoiceDts[i].ID = *existingDt.ID
+// 			salesInvoiceDts[i].UpdatedByID = &userID
+// 			updateSalesInvoiceDts = append(updateSalesInvoiceDts, salesInvoiceDts[i])
+// 			processedExistingDts[*existingDt.ID] = true
+// 		} else {
+// 			salesInvoiceDts[i].CreatedByID = &userID
+// 			salesInvoiceDts[i].CreatedAt = time.Now()
+// 			createSalesInvoiceDts = append(createSalesInvoiceDts, salesInvoiceDts[i])
+// 		}
+// 	}
+
+// 	for _, dt := range existingSalesInvoice.SalesInvoiceDts {
+// 		if dt.ID != nil && !processedExistingDts[*dt.ID] {
+// 			deleteSalesInvoiceDtIDs = append(deleteSalesInvoiceDtIDs, *dt.ID)
+// 		}
+// 	}
+
+// 	if len(deleteSalesInvoiceDtIDs) > 0 {
+// 		tx, err = s.repo.DeleteSalesInvoiceDtsByIDs(tx, deleteSalesInvoiceDtIDs, userID, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if len(createSalesInvoiceDts) > 0 {
+// 		tx, err = s.repo.BulkCreateSalesInvoiceDts(tx, createSalesInvoiceDts, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if len(updateSalesInvoiceDts) > 0 {
+// 		tx, err = s.repo.BulkUpdateSalesInvoiceDts(tx, updateSalesInvoiceDts, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	for soDtID := range addedSoDtIDs {
+// 		tx, err = s.repo.UpdateSoDtInvoiceStatus(tx, soDtID, "INVOICE", childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	for invDtID := range addedInvDtIDs {
+// 		tx, err = s.repo.UpdateInvDtInvoiceStatus(tx, invDtID, "INVOICE", childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	affectedSOIDs := make(map[uint]bool)
+// 	for _, soID := range removedSoDtIDs {
+// 		affectedSOIDs[soID] = true
+// 	}
+// 	for _, soID := range addedSoDtIDs {
+// 		affectedSOIDs[soID] = true
+// 	}
+
+// 	for soID := range affectedSOIDs {
+// 		tx, err = s.repo.CheckAndUpdateSalesOrderStatus(tx, soID, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	affectedInventoryIDs := make(map[uint]bool)
+// 	for _, invID := range removedInvDtIDs {
+// 		affectedInventoryIDs[invID] = true
+// 	}
+// 	for _, invID := range addedInvDtIDs {
+// 		affectedInventoryIDs[invID] = true
+// 	}
+
+// 	for invID := range affectedInventoryIDs {
+// 		tx, err = s.repo.CheckAndUpdateInventoryStatus(tx, invID, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	return &salesInvoice, nil
+// }
+
 func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.UpdateSalesInvoiceRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.SalesInvoice, error) {
 	childSpan := opentracing.StartSpan("SalesInvoiceService-UpdateSalesInvoice", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
@@ -209,6 +467,25 @@ func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.Update
 	if err != nil {
 		tx.Rollback()
 		return nil, err
+	}
+
+	isChangingToCancelled := req.Status != nil && *req.Status == "CANCELLED" &&
+		(existingSalesInvoice.Status == nil || *existingSalesInvoice.Status != "CANCELLED")
+
+	for _, dt := range existingSalesInvoice.SalesInvoiceDts {
+		if dt.RefType != nil && *dt.RefType == "so" && dt.RefID != nil && dt.RefDtID != nil {
+			existingSoDtIDs[*dt.RefDtID] = *dt.RefID
+			if !uniqueSOIDs[*dt.RefID] {
+				uniqueSOIDs[*dt.RefID] = true
+				allSOIDs = append(allSOIDs, *dt.RefID)
+			}
+		} else if dt.RefType != nil && *dt.RefType == "inv_out" && dt.RefID != nil && dt.RefDtID != nil {
+			existingInvDtIDs[*dt.RefDtID] = *dt.RefID
+			if !uniqueInventoryIDs[*dt.RefID] {
+				uniqueInventoryIDs[*dt.RefID] = true
+				allInventoryIDs = append(allInventoryIDs, *dt.RefID)
+			}
+		}
 	}
 
 	for _, dt := range existingSalesInvoice.SalesInvoiceDts {
@@ -312,10 +589,22 @@ func (s *SalesInvoiceService) UpdateSalesInvoice(ctx *fiber.Ctx, req dtos.Update
 		return nil, err
 	}
 
+	if isChangingToCancelled {
+		tx, err = s.repo.ResetReferencesForCancelled(tx, salesInvoice.ID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
 	tx, err = s.repo.UpdateSalesInvoice(tx, &salesInvoice, childSpan)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
+	}
+
+	if isChangingToCancelled {
+		return &salesInvoice, nil
 	}
 
 	existingDtMap := make(map[string]*dtos.SalesInvoiceDtListDTO)
@@ -927,4 +1216,182 @@ func (s *SalesInvoiceService) Commit(tx *gorm.DB) error {
 
 func (s *SalesInvoiceService) Rollback(tx *gorm.DB) *gorm.DB {
 	return tx.Rollback()
+}
+
+func (s *SalesInvoiceService) Pdf(ctx *fiber.Ctx, req dtos.SalesInvoiceDetailDTO, tx *gorm.DB, span opentracing.Span) (*string, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceService-Pdf", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	form := req
+	var salesInvoice *dtos.SalesInvoiceDetailDTO
+	var err error
+
+	var params dtos.GetSalesInvoiceParams
+	if req.IsIDOnly != nil && *req.IsIDOnly == 1 {
+		params.ID = req.ID
+
+		salesInvoice, err = s.repo.GetSalesInvoiceByID(ctx, &params, tx, childSpan)
+		if err != nil {
+			return nil, err
+		}
+
+		salesInvoiceDts, err := s.repo.GetSalesInvoiceDts(ctx, salesInvoice.ID, nil, childSpan)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to fetch salesInvoiceDts: %v", err)
+		}
+
+		if salesInvoice.CompanyProfileID != nil {
+			companyParams := &dtos.GetCompanyProfileParams{ID: uint(*salesInvoice.CompanyProfileID)}
+			company, err := s.utilRepo.GetCompanyProfileByID(ctx, companyParams)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to fetch company: %v", err)
+			} else if company != nil {
+				salesInvoice.Company = *company
+			}
+		}
+
+		salesInvoice.SalesInvoiceDts = salesInvoiceDts
+		form = *salesInvoice
+		req.InvoiceNo = salesInvoice.InvoiceNo
+	}
+
+	var num string
+	if req.InvoiceNo != nil {
+		num = *req.InvoiceNo
+	} else {
+		num = ""
+	}
+
+	data := dtos.SalesInvoicePDFData{
+		Num:  num,
+		Form: form,
+	}
+
+	htmlFileName := "sales-invoice-detail"
+	log.Println("Pdf-htmlFileName-si", htmlFileName)
+
+	templateFile, err := templateFS.Open(fmt.Sprintf("templates/%s.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to open embedded template: %v", err)
+		return nil, err
+	}
+
+	templateContent, err := io.ReadAll(templateFile)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to read template content: %v", err)
+		return nil, err
+	}
+
+	htmlFile, err := os.CreateTemp("", fmt.Sprintf("%s-*.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error writing htmlFile:", err)
+		return nil, err
+	}
+	defer os.Remove(htmlFile.Name())
+
+	funcMap := template.FuncMap{
+		"formatNumber": func(n float64, args ...int) string {
+			decimals := 2
+			if len(args) > 0 {
+				decimals = args[0]
+			}
+
+			format := fmt.Sprintf("%%.%df", decimals)
+			p := message.NewPrinter(language.English)
+			return p.Sprintf(format, n)
+		},
+		"inc": func(i int) int {
+			return i + 1
+		},
+	}
+
+	tmpl, err := template.New(fmt.Sprintf("%s.html", htmlFileName)).Funcs(funcMap).Parse(string(templateContent))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to parse template: %v", err)
+		return nil, err
+	}
+
+	if err := tmpl.Execute(htmlFile, data); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error Execute:", err)
+		return nil, err
+	}
+
+	pdfg, err := wkhtmltopdf.NewPDFGenerator()
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg:", err)
+		return nil, err
+	}
+
+	headerContent, err := templateFS.ReadFile("templates/header.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
+
+	footerContent, err := templateFS.ReadFile("templates/footer.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read footer: %w", err)
+	}
+
+	headerPath, err := createTempFileFromEmbed(string(headerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create header temp file: %w", err)
+	}
+	defer os.Remove(headerPath)
+
+	footerPath, err := createTempFileFromEmbed(string(footerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create footer temp file: %w", err)
+	}
+	defer os.Remove(footerPath)
+
+	page := wkhtmltopdf.NewPage(htmlFile.Name())
+	page.EnableLocalFileAccess.Set(true)
+	page.HeaderHTML.Set("file://" + headerPath)
+	page.FooterHTML.Set("file://" + footerPath)
+	page.FooterSpacing.Set(10)
+
+	pdfg.AddPage(page)
+	pdfg.MarginLeft.Set(0)
+	pdfg.MarginRight.Set(0)
+	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
+
+	if err := pdfg.Create(); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg create:", err)
+		return nil, err
+	}
+
+	uploadDir := "./public/generated_pdfs"
+
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		utils.LogErrors(childSpan, err)
+		log.Println("Error mkdirall:", err)
+		return nil, err
+	}
+
+	fileName := fmt.Sprintf("sales-invoice-%s.pdf", time.Now().Format("20060102150405"))
+	pdfPath := filepath.Join(uploadDir, fileName)
+	if err := pdfg.WriteFile(pdfPath); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdf path:", err)
+		return nil, err
+	}
+
+	return &pdfPath, nil
 }

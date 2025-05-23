@@ -297,6 +297,9 @@ func (r *RequestOrderRepository) GetRequestOrderByID(ctx *fiber.Ctx, params *dto
             ro.created_by_id, ro.updated_by_id, ro.deleted_by_id, ro.created_at, ro.updated_at, ro.deleted_at,
             TO_CHAR(ro.request_date, 'YYYY-MM-DD') as request_date,
 
+            br.company_profile_id,
+            w.name as warehouse_name,
+
             cu.name as created_by_name,
             uu.name as updated_by_name
 
@@ -304,6 +307,8 @@ func (r *RequestOrderRepository) GetRequestOrderByID(ctx *fiber.Ctx, params *dto
         LEFT JOIN request_order_dts rodt ON rodt.request_order_id = ro.id
         LEFT JOIN users cu ON ro.created_by_id = cu.id
         LEFT JOIN users uu ON ro.updated_by_id = uu.id
+		LEFT JOIN branches br ON ro.branch_id = br.id
+        LEFT JOIN mix_values w ON ro.warehouse_id = w.id
     ) AS alias WHERE 1=1`
 
 	if params.IsDeleted != nil && *params.IsDeleted == 1 {
@@ -418,68 +423,6 @@ func (r *RequestOrderRepository) CreateRequestOrderDts(tx *gorm.DB, requestOrder
 	return tx, requestOrderDts, nil
 }
 
-// func (r *RequestOrderRepository) GetRequestOrderDts(ctx *fiber.Ctx, requestOrderID uint, isDeleted *int, span opentracing.Span) ([]dtos.RequestOrderDtListDTO, error) {
-// 	childSpan := opentracing.StartSpan("RequestOrderRepository-GetRequestOrderDts", opentracing.ChildOf(span.Context()))
-// 	defer childSpan.Finish()
-
-// 	requestOrderDts := []dtos.RequestOrderDtListDTO{}
-
-// 	query := `
-// 	SELECT
-// 		rodt.id, rodt.product_uuid, rodt.request_order_id, rodt.item_unit_id,
-// 		rodt.ref_id, rodt.product_id, rodt.item_id, rodt.ref_type, rodt.product_type, rodt.remark,
-// 		rodt.order_product_qty, rodt.order_item_qty, rodt.wh_qty, rodt.req_qty,
-// 		rodt.created_by_id, rodt.updated_by_id, rodt.deleted_by_id,
-// 		rodt.created_at, rodt.updated_at, rodt.deleted_at,
-
-// 		CASE
-// 			WHEN rodt.product_type = 'product' THEN p_product.name
-// 			ELSE NULL
-// 		END as product_name,
-
-// 		CASE
-// 			WHEN rodt.product_type = 'product' THEN p_product.code
-// 			ELSE NULL
-// 		END as product_code,
-
-// 		p.name as item_name,
-// 		p.code as item_code,
-
-// 		rodt.price_sell,
-// 		u.name as unit_name,
-
-// 		cu.name as created_by_name,
-// 		uu.name as updated_by_name,
-
-// 		CASE WHEN rodt.ref_type = 'so' THEN so.sales_order_no ELSE NULL END as ref_num
-// 	FROM request_order_dts rodt
-// 	LEFT JOIN products p ON rodt.item_id = p.id
-// 	LEFT JOIN products p_product ON rodt.product_id = p_product.id
-// 	LEFT JOIN item_units iu ON rodt.item_unit_id = iu.id
-// 	LEFT JOIN mix_values u ON iu.unit_id = u.id
-// 	LEFT JOIN sales_orders so ON rodt.ref_id = so.id AND rodt.ref_type = 'so'
-// 	LEFT JOIN users cu ON rodt.created_by_id = cu.id
-// 	LEFT JOIN users uu ON rodt.updated_by_id = uu.id
-// 	WHERE rodt.request_order_id = $1
-// 	`
-
-// 	if isDeleted != nil && *isDeleted == 1 {
-// 		query += " AND rodt.deleted_at IS NOT NULL"
-// 	} else {
-// 		query += " AND rodt.deleted_at IS NULL"
-// 	}
-
-// 	query += " ORDER BY rodt.id ASC"
-
-// 	err := r.sqlDB.SelectContext(ctx.Context(), &requestOrderDts, query, requestOrderID)
-// 	if err != nil {
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
-
-// 	return requestOrderDts, nil
-// }
-
 func (r *RequestOrderRepository) GetRequestOrderDts(ctx *fiber.Ctx, requestOrderID uint, isDeleted *int, span opentracing.Span) ([]dtos.RequestOrderDtListDTO, error) {
 	childSpan := opentracing.StartSpan("RequestOrderRepository-GetRequestOrderDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
@@ -494,15 +437,9 @@ func (r *RequestOrderRepository) GetRequestOrderDts(ctx *fiber.Ctx, requestOrder
 		rodt.created_by_id, rodt.updated_by_id, rodt.deleted_by_id, 
 		rodt.created_at, rodt.updated_at, rodt.deleted_at,
 		
-		CASE 
-			WHEN rodt.product_type = 'product' THEN p_product.name 
-			ELSE NULL 
-		END as product_name,
+		p_product.name as product_name,
 		
-		CASE 
-			WHEN rodt.product_type = 'product' THEN p_product.code 
-			ELSE NULL 
-		END as product_code,
+		p_product.code as product_code,
 		
 		p.name as item_name, 
 		p.code as item_code,
@@ -663,7 +600,7 @@ func (r *RequestOrderRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 	if filters["specific_ids"] != "" {
 		baseCondition += fmt.Sprintf(" AND (sodt.id IN (%s))", filters["specific_ids"])
 	} else {
-		baseCondition += " AND sales_orders.status NOT IN ('CANCELED', 'FINISH')"
+		baseCondition += " AND sales_orders.status NOT IN ('CANCELLED', 'FINISH')"
 	}
 
 	if filters["ids"] != "" {
@@ -1389,7 +1326,7 @@ func (r *RequestOrderRepository) GetWidgetRequestOrders(ctx *fiber.Ctx, filters 
             ('TOTAL', 0),
             ('PENDING', 1),
             ('APPROVED', 2),
-            ('CANCELED', 3)
+            ('CANCELLED', 3)
         ) AS s(status)
     ),
     filtered_requests AS (

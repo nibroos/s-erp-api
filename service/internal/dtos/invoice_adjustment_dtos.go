@@ -249,7 +249,7 @@ type GetReferenceInvoicesRequest struct {
 	CustomerID     *int    `json:"customer_id"`
 	RefStartDate   *string `json:"ref_start_date"`
 	RefEndDate     *string `json:"ref_end_date"`
-	PerPage        *string `json:"per_page" default:"10"`
+	PerPage        *string `json:"per_page" default:"100"`
 	Page           *string `json:"page" default:"1"`
 	OrderColumn    *string `json:"order_column" default:"id"`
 	OrderDirection *string `json:"order_direction" default:"asc"`

@@ -217,7 +217,7 @@ func (r *InvoiceAdjustmentRepository) GetInvoiceAdjustments(ctx *fiber.Ctx, filt
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
 
-	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	perPage := utils.GetIntOrDefault(filters["per_page"], 100)
 	currentPage := utils.GetIntOrDefault(filters["page"], 1)
 
 	if filters["is_csv"] != "1" {
@@ -1197,7 +1197,7 @@ func (r *InvoiceAdjustmentRepository) GetReferenceInvoices(ctx *fiber.Ctx, filte
 
 	finalQuery += " ORDER BY raw_invoice_date ASC, sort_order ASC"
 
-	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	perPage := utils.GetIntOrDefault(filters["per_page"], 100)
 	currentPage := utils.GetIntOrDefault(filters["page"], 1)
 
 	finalQuery += fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(finalArgs)+1, len(finalArgs)+2)

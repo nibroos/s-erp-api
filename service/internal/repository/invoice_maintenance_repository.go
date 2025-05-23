@@ -99,6 +99,12 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 		}
 	}
 
+	if value, ok := filters["status"]; ok && value != "" {
+		condition += fmt.Sprintf(" AND im.status = $%d", i)
+		args = append(args, value)
+		i++
+	}
+
 	filterIDsKey := map[string]string{
 		"customer_ids":     "im.customer_id",
 		"currency_ids":     "im.currency_id",
@@ -957,14 +963,12 @@ func (r *InvoiceMaintenanceRepository) GetRefSalesOrderForInvoiceMaintenance(ctx
 			for i, id := range refDtIDs {
 				refDtIDsStr[i] = fmt.Sprintf("%d", id)
 			}
-			condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at))", strings.Join(refDtIDsStr, ","))
+			condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELLED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at))", strings.Join(refDtIDsStr, ","))
 		} else {
-			condition += " AND so.status NOT IN ('CANCELED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at"
+			condition += " AND so.status NOT IN ('CANCELLED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at"
 		}
-	} else if filters["specific_ids"] != "" {
-		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('CANCELED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at))", filters["specific_ids"])
 	} else {
-		condition += " AND so.status NOT IN ('CANCELED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at"
+		condition += " AND so.status NOT IN ('CANCELLED', 'FINISH') AND CURRENT_DATE BETWEEN so.agree_at AND so.due_at"
 	}
 
 	if filters["ids"] != "" {
@@ -1749,6 +1753,12 @@ func (r *InvoiceMaintenanceRepository) GetWidgetInvoiceMaintenances(ctx *fiber.C
 		}
 	}
 
+	if value, ok := filters["status"]; ok && value != "" {
+		condition += fmt.Sprintf(" AND im.status = $%d", i)
+		args = append(args, value)
+		i++
+	}
+
 	for key, value := range filters {
 		switch key {
 		case "invoice_no", "remark", "title":
@@ -1825,7 +1835,7 @@ func (r *InvoiceMaintenanceRepository) GetWidgetInvoiceMaintenances(ctx *fiber.C
             ('TOTAL', 0),
             ('PAID', 1),
             ('UNPAID', 2),
-            ('CANCELED', 3)
+            ('CANCELLED', 3)
         ) AS s(status)
     ),
     filtered_invoices AS (
@@ -1851,7 +1861,7 @@ func (r *InvoiceMaintenanceRepository) GetWidgetInvoiceMaintenances(ctx *fiber.C
         LEFT JOIN filtered_invoices fi ON
             (sv.status = fi.im_status) OR
             (sv.status = 'TOTAL') OR
-            (sv.status = 'UNPAID' AND fi.im_status NOT IN ('PAID', 'CANCELED'))
+            (sv.status = 'UNPAID' AND fi.im_status NOT IN ('PAID', 'CANCELLED'))
         GROUP BY sv.status, sv.status_order
     )
     SELECT
@@ -2024,6 +2034,62 @@ func (r *InvoiceMaintenanceRepository) RepeatInvoiceMaintenances(ctx *fiber.Ctx,
 	}
 
 	return results, nil
+}
+
+func (r *InvoiceMaintenanceRepository) ResetReferencesForCancelled(tx *gorm.DB, invoiceMaintenanceID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceRepository-ResetReferencesForCancelled", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var invoiceMaintenanceDts []struct {
+		ID      uint    `gorm:"column:id"`
+		RefDtID *uint   `gorm:"column:ref_dt_id"`
+		RefType *string `gorm:"column:ref_type"`
+	}
+
+	if err := tx.Table("invoice_maintenance_dts").
+		Select("id, ref_dt_id, ref_type").
+		Where("invoice_maintenance_id = ? AND deleted_at IS NULL", invoiceMaintenanceID).
+		Find(&invoiceMaintenanceDts).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	var soDtIDs []uint
+	for _, dt := range invoiceMaintenanceDts {
+		if dt.RefDtID != nil && dt.RefType != nil && *dt.RefType == "so" {
+			soDtIDs = append(soDtIDs, *dt.RefDtID)
+		}
+	}
+
+	if len(soDtIDs) > 0 {
+		if err := tx.Exec("SELECT id FROM so_dts WHERE id IN ? FOR UPDATE", soDtIDs).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return tx, err
+		}
+		if err := tx.Exec("UPDATE so_dts SET invoice_status = NULL WHERE id IN ?", soDtIDs).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return tx, err
+		}
+	}
+
+	if len(soDtIDs) > 0 {
+		var soIDs []uint
+		if err := tx.Model(&models.SoDt{}).
+			Where("id IN ?", soDtIDs).
+			Distinct().
+			Pluck("sales_order_id", &soIDs).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return tx, err
+		}
+		for _, soID := range soIDs {
+			tx, err := r.CheckAndUpdateSalesOrderStatus(tx, soID, childSpan)
+			if err != nil {
+				return tx, err
+			}
+		}
+	}
+
+	return tx, nil
 }
 
 func (r *InvoiceMaintenanceRepository) Commit(tx *gorm.DB) error {

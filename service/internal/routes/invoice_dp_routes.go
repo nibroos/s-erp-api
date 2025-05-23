@@ -25,4 +25,5 @@ func SetupInvoiceDpRoutes(invoiceDps fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.
 	invoiceDps.Post("/csv-invoice-dp", invoiceDpController.CsvGetInvoiceDps)
 	invoiceDps.Post("/index-ref-so-dt", invoiceDpController.GetRefSalesOrderDts)
 	invoiceDps.Post("/widget-invoice-dp", invoiceDpController.GetWidgetInvoiceDps)
+	invoiceDps.Post("/pdf-invoice-dp", invoiceDpController.Pdf)
 }

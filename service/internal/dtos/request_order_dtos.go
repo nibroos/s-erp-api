@@ -168,6 +168,7 @@ type RequestOrderDetailDTO struct {
 	GrandTotalOrderItemQty    *float64 `json:"grand_total_order_item_qty" db:"grand_total_order_item_qty"`
 	GrandTotalWhQty           *float64 `json:"grand_total_wh_qty" db:"grand_total_wh_qty"`
 	GrandTotalReqQty          *float64 `json:"grand_total_req_qty" db:"grand_total_req_qty"`
+	IsIDOnly                  *int     `json:"is_id_only" db:"is_id_only"`
 
 	CreatedByID     *uint                   `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID     *uint                   `json:"updated_by_id" db:"updated_by_id"`
@@ -178,6 +179,11 @@ type RequestOrderDetailDTO struct {
 	UpdatedAt       *string                 `json:"updated_at" db:"updated_at"`
 	DeleteAt        *string                 `json:"deleted_at" db:"deleted_at"`
 	RequestOrderDts []RequestOrderDtListDTO `json:"request_order_dts"`
+
+	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
+	Company          CompanyProfileDetailDTO `json:"company"`
+	BranchName       *string                 `json:"branch_name" db:"branch_name"`
+	WarehouseName    *string                 `json:"warehouse_name" db:"warehouse_name"`
 }
 
 type RequestOrderDtListDTO struct {
@@ -404,4 +410,9 @@ type RequestOrderStatusWidget struct {
 	Status     string  `json:"status" db:"status"`
 	OrderCount int     `json:"order_count" db:"order_count"`
 	TotalQty   float64 `json:"total_qty" db:"total_qty"`
+}
+
+type RequestOrderPDFData struct {
+	Num  string                `json:"num"`
+	Form RequestOrderDetailDTO `json:"form"`
 }

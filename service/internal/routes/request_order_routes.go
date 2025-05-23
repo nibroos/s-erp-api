@@ -24,4 +24,5 @@ func SetupRequestOrderRoutes(requestOrders fiber.Router, gormDB *gorm.DB, sqlDB 
 	requestOrders.Post("/index-ref-so-dt", requestOrderController.GetRefSalesOrderDts)
 	requestOrders.Post("/index-ref-product", requestOrderController.GetRefProductForRequestOrder)
 	requestOrders.Post("/widget-request-order", requestOrderController.GetWidgetRequestOrders)
+	requestOrders.Post("/pdf-request-order", requestOrderController.Pdf)
 }

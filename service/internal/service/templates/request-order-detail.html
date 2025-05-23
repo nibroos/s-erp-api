@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Num}} - Request Order</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0 2rem;
+            padding: 0;
+            color: #212529;
+            font-size: 12px;
+        }
+
+        .document-title {
+            text-align: center;
+            font-weight: bold;
+            margin-top: 15px;
+            font-size: 24px;
+        }
+
+        .ref-number {
+            text-decoration-line: underline !important;
+            text-decoration: underline !important;
+            margin-bottom: 25px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            white-space: nowrap;
+            margin-bottom: 5px;
+        }
+
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5px;
+        }
+
+        .main-table th {
+            padding: 4px;
+            border: 1px solid #262626;
+        }
+
+        .main-table td {
+            padding: 4px;
+            border: 1px solid #262626;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .totals-table {
+            width: 100%;
+            margin-left: auto;
+            border-collapse: collapse;
+        }
+
+        .totals-table td {
+            padding: 5px;
+        }
+
+        .totals-label {
+            font-weight: bold;
+        }
+
+        .table-container {
+            width: 100%;
+        }
+
+        .reference-container {
+            width: 100%;
+        }
+
+        .vertical-top {
+            vertical-align: top;
+        }
+
+        .remark {
+            font-style: italic;
+            padding: 5px 4rem 5px 0;
+            font-style: italic;
+        }
+
+        .company-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .company-address {
+            line-height: 1.4;
+        }
+
+        .line {
+            border-top: 1px solid #d1d0d0;
+            padding-top: 15px;
+            width: 20px;
+        }
+
+        .content-wrapper {
+            min-height: 100%;
+            position: relative;
+        }
+
+        .footer-section {
+            page-break-inside: avoid;
+            page-break-before: auto;
+            position: relative;
+        }
+
+        .main-table tbody tr {
+            page-break-inside: avoid;
+        }
+
+        .text-grey {
+            color: #949494;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="content-wrapper">
+        <div>&nbsp;</div>
+        <table border="0" cellspacing="0" cellpadding="0" style="margin-top: 0.4rem;">
+            <tr>
+                <td width="50%">
+                    <table border="0" cellspacing="0" cellpadding="0" width="100%">
+                        <tr>
+                            <td width="100%" style="vertical-align: top;">
+                                <table border="0" cellspacing="0" cellpadding="0">
+                                    <tr>
+                                        <td>
+                                            {{if .Form.Company.CompanyLogoUrl}}
+                                            <img src="{{.Form.Company.CompanyLogoUrl}}" alt="logo"
+                                                style="width: 70px; height: 70px; object-fit: contain; display: block; margin-bottom: 5px;">
+                                            {{else}}
+                                            <div>
+                                                &nbsp;
+                                            </div>
+                                            {{end}}
+                                        </td>
+                                        <td style="padding-left: 10px;">
+                                            <span class="company-name">{{.Form.Company.CompanyName}}</span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td width="50%">
+                    <table border="0" cellspacing="0" cellpadding="0" class="text-right">
+                        <tr>
+                            <td class="text-right">
+                                <div class="company-address text-right">
+                                    {{.Form.Company.CompanyAddress}}
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-right">
+                                {{.Form.Company.CompanyPhone}} / {{.Form.Company.CompanyEmail}}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        <table border="0" cellspacing="0" cellpadding="0" width="100%" style="width: 100%;">
+            <tr>
+                <td width="100%">
+                    <div class="line" style="width: 100%;"></div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="document-title">REQUEST ORDER</div>
+        <div class="text-center ref-number" style="margin-top: 6px; margin-bottom: 10px; font-size: 15px;">{{.Num}}</div>
+
+        <table class="reference-container" border="0" cellspacing="0" cellpadding="0" style="background-color: #F8F9FB; margin-top: 20px; margin-bottom: 20px; padding: 10px;">
+            <tr>
+                <td width="100%" class="vertical-top">
+                    <div style="font-weight: medium; color: #6C757D; font-size: 15px; margin-bottom: 7px;">
+                        Request Information
+                    </div>
+                    <table class="table-container" border="0" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td width="20%">
+                                <div class="info-label">WAREHOUSE</div>
+                            </td>
+                            <td width="5%">
+                                <div class="info-label">:</div>
+                            </td>
+                            <td width="65%">
+                                <div>{{.Form.WarehouseName}}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td width="20%">
+                                <div class="info-label">REQUESTED BY</div>
+                            </td>
+                            <td width="5%">
+                                <div class="info-label">:</div>
+                            </td>
+                            <td width="65%">
+                                <div>{{.Form.Requested}}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td width="20%">
+                                <div class="info-label">REQUEST DATE</div>
+                            </td>
+                            <td width="5%">
+                                <div class="info-label">:</div>
+                            </td>
+                            <td width="65%">
+                                <div>{{.Form.RequestDate}}</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td width="20%">
+                                <div class="info-label">STATUS</div>
+                            </td>
+                            <td width="5%">
+                                <div class="info-label">:</div>
+                            </td>
+                            <td width="65%">
+                                <div>{{.Form.Status}}</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <table class="main-table" border="1" cellspacing="0" cellpadding="0">
+            <thead>
+                <tr>
+                    <th width="3%" class="text-center">NO</th>
+                    <th width="25%" style="text-align: left;">PRODUCT NAME</th>
+                    <th width="25%" style="text-align: left;">ITEM NAME</th>
+                    <th width="7%" style="text-align: left;">UNIT</th>
+                    <th width="10%" class="text-right">ORDER QTY</th>
+                    <th width="10%" class="text-right">WH QTY</th>
+                    <th width="10%" class="text-right">REQUEST QTY</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $index, $item := .Form.RequestOrderDts}}
+                <tr>
+                    <td class="text-center">{{ inc $index}}</td>
+                    <td>{{$item.ProductName}}</td>
+                    <td>{{$item.ItemName}}</td>
+                    <td>{{$item.UnitName}}</td>
+                    <td class="text-right">{{formatNumber $item.OrderItemQty}}</td>
+                    <td class="text-right">{{formatNumber $item.WhQty}}</td>
+                    <td class="text-right">{{formatNumber $item.ReqQty}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+
+        <table border="0" cellspacing="0" cellpadding="0" width="100%" style="margin-top: 1rem;">
+            <tr>
+                <td width="50%" class="vertical-top" style="padding-right: 20px;">
+                    <table width="100%">
+                        <tr>
+                            <td class="vertical-top">
+                                <div style="font-weight: bold;"><span style="color:red;">*</span>REMARK</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="vertical-top">
+                                <div class="remark" style="padding: 5px 0;">
+                                    {{.Form.Remark}}
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td width="10%" class="vertical-top">
+                </td>
+                <td width="40%" class="vertical-top">
+                    <table class="totals-table" width="100%" border="0" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td class="totals-label">TOTAL ORDER QTY</td>
+                            <td class="text-right">{{formatNumber .Form.GrandTotalOrderItemQty}}</td>
+                        </tr>
+                        <tr>
+                            <td class="totals-label">TOTAL WH QTY</td>
+                            <td class="text-right">{{formatNumber .Form.GrandTotalWhQty}}</td>
+                        </tr>
+                        <tr style="background-color: #195093; color: white;">
+                            <td class="totals-label">TOTAL REQUEST QTY</td>
+                            <td class="text-right">{{formatNumber .Form.GrandTotalReqQty}}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer-section" style="margin-top: 2rem;">
+        <table border="0" cellspacing="0" cellpadding="0" width="100%" style="width: 100%;">
+            <tr>
+                <td width="100%">
+                    <div class="line" style="width: 100%;"></div>
+                </td>
+            </tr>
+        </table>
+        <table border="0" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+                <td width="50%" class="vertical-top">
+                    <table width="100%">
+                        <tr>
+                            <td width="100%" style="text-align: right;">
+                                <table border="0" cellspacing="0" cellpadding="0" style="margin-left: auto;">
+                                    <tr>
+                                        <td class="text-center" style="min-width: 150px;">APPROVE</td>
+                                    </tr>
+                                    <tr>
+                                        <td height="60" width="100%" class="text-center" style="text-align: center;">
+                                            {{if .Form.Company.CompanySignUrl}}
+                                            <img src="{{.Form.Company.CompanySignUrl}}" alt="logo"
+                                                style="width: 70px; height: 70px; object-fit: contain; display: block; margin: 0 auto 5px auto;">
+                                            {{else}}
+                                            <div>
+                                                &nbsp;
+                                            </div>
+                                            {{end}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center">
+                                            <div>({{.Form.Company.CompanyOwnerName}})</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+
+</html>

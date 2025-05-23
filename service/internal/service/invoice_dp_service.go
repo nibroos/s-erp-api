@@ -2,8 +2,15 @@ package service
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
 	"time"
 
+	"text/template"
+
+	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -11,6 +18,8 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"gorm.io/gorm"
 )
 
@@ -122,8 +131,120 @@ func (s *InvoiceDpService) GetInvoiceDpByID(ctx *fiber.Ctx, params *dtos.GetInvo
 
 	invoiceDp.InvoiceDpDts = invoiceDpDts
 
+	if invoiceDp.CompanyProfileID != nil {
+		companyParams := &dtos.GetCompanyProfileParams{ID: uint(*invoiceDp.CompanyProfileID)}
+		company, err := s.utilRepo.GetCompanyProfileByID(ctx, companyParams)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to fetch company: %v", err)
+		} else {
+			invoiceDp.Company = *company
+		}
+	}
+
 	return invoiceDp, nil
 }
+
+// func (s *InvoiceDpService) UpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.InvoiceDp, error) {
+// 	childSpan := opentracing.StartSpan("InvoiceDpService-UpdateInvoiceDp", opentracing.ChildOf(span.Context()))
+// 	defer childSpan.Finish()
+
+// 	params := dtos.GetInvoiceDpParams{ID: req.ID}
+// 	existingInvoiceDp, err := s.GetInvoiceDpByID(ctx, &params, tx, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	invoiceDp, err := utils.MapUpdateInvoiceDp(ctx, req, userID, branchID, existingInvoiceDp.RevNo, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	tx, err = s.repo.UpdateInvoiceDp(tx, &invoiceDp, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	invoiceDpDts, err := utils.MapUpdateInvoiceDpDts(ctx, req, &invoiceDp, userID, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	var createInvoiceDpDts []models.InvoiceDpDt
+// 	var updateInvoiceDpDts []models.InvoiceDpDt
+// 	var deleteInvoiceDpDtIDs []uint
+
+// 	existingDtMap := make(map[uint]bool)
+// 	for _, dt := range existingInvoiceDp.InvoiceDpDts {
+// 		if dt.ID != nil {
+// 			existingDtMap[*dt.ID] = true
+// 		}
+// 	}
+
+// 	for _, dt := range invoiceDpDts {
+// 		if dt.ID == 0 {
+// 			dt.CreatedByID = &userID
+// 			dt.CreatedAt = time.Now()
+// 			createInvoiceDpDts = append(createInvoiceDpDts, dt)
+// 		} else {
+// 			dt.UpdatedByID = &userID
+// 			updateInvoiceDpDts = append(updateInvoiceDpDts, dt)
+// 			delete(existingDtMap, dt.ID)
+// 		}
+// 	}
+
+// 	for dtID := range existingDtMap {
+// 		deleteInvoiceDpDtIDs = append(deleteInvoiceDpDtIDs, dtID)
+// 	}
+
+// 	if len(deleteInvoiceDpDtIDs) > 0 {
+// 		tx, err = s.repo.ResetSoDtsTotalDp(tx, deleteInvoiceDpDtIDs, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+
+// 		tx, err = s.repo.DeleteInvoiceDpDtsByIDs(tx, deleteInvoiceDpDtIDs, userID, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if len(createInvoiceDpDts) > 0 {
+// 		tx, err = s.repo.BulkCreateInvoiceDpDts(tx, createInvoiceDpDts, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+
+// 		tx, err = s.repo.UpdateSoDtsTotalDp(tx, createInvoiceDpDts, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if len(updateInvoiceDpDts) > 0 {
+// 		tx, err = s.repo.BulkUpdateInvoiceDpDts(tx, updateInvoiceDpDts, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+
+// 		tx, err = s.repo.UpdateSoDtsTotalDp(tx, updateInvoiceDpDts, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	return &invoiceDp, nil
+// }
 
 func (s *InvoiceDpService) UpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.InvoiceDp, error) {
 	childSpan := opentracing.StartSpan("InvoiceDpService-UpdateInvoiceDp", opentracing.ChildOf(span.Context()))
@@ -136,16 +257,31 @@ func (s *InvoiceDpService) UpdateInvoiceDp(ctx *fiber.Ctx, req dtos.UpdateInvoic
 		return nil, err
 	}
 
+	isChangingToCancelled := req.Status != nil && *req.Status == "CANCELLED" &&
+		(existingInvoiceDp.Status == nil || *existingInvoiceDp.Status != "CANCELLED")
+
 	invoiceDp, err := utils.MapUpdateInvoiceDp(ctx, req, userID, branchID, existingInvoiceDp.RevNo, childSpan)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
+	if isChangingToCancelled {
+		tx, err = s.repo.ResetSoDtsTotalDpForCancelled(tx, invoiceDp.ID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
 	tx, err = s.repo.UpdateInvoiceDp(tx, &invoiceDp, childSpan)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
+	}
+
+	if isChangingToCancelled {
+		return &invoiceDp, nil
 	}
 
 	invoiceDpDts, err := utils.MapUpdateInvoiceDpDts(ctx, req, &invoiceDp, userID, childSpan)
@@ -614,4 +750,182 @@ func (s *InvoiceDpService) CsvGetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 	}
 
 	return []byte(csv), nil
+}
+
+func (s *InvoiceDpService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceDpDetailDTO, tx *gorm.DB, span opentracing.Span) (*string, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpService-Pdf", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	form := req
+	var invoiceDp *dtos.InvoiceDpDetailDTO
+	var err error
+
+	var params dtos.GetInvoiceDpParams
+	if req.IsIDOnly != nil && *req.IsIDOnly == 1 {
+		params.ID = req.ID
+
+		invoiceDp, err = s.repo.GetInvoiceDpByID(ctx, &params, tx, childSpan)
+		if err != nil {
+			return nil, err
+		}
+
+		invoiceDpDts, err := s.repo.GetInvoiceDpDts(ctx, invoiceDp.ID, childSpan)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to fetch invoiceDpDts: %v", err)
+		}
+
+		if invoiceDp.CompanyProfileID != nil {
+			companyParams := &dtos.GetCompanyProfileParams{ID: uint(*invoiceDp.CompanyProfileID)}
+			company, err := s.utilRepo.GetCompanyProfileByID(ctx, companyParams)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to fetch company: %v", err)
+			} else if company != nil {
+				invoiceDp.Company = *company
+			}
+		}
+
+		invoiceDp.InvoiceDpDts = invoiceDpDts
+		form = *invoiceDp
+		req.InvoiceNo = invoiceDp.InvoiceNo
+	}
+
+	var num string
+	if req.InvoiceNo != nil {
+		num = *req.InvoiceNo
+	} else {
+		num = ""
+	}
+
+	data := dtos.InvoiceDpPDFData{
+		Num:  num,
+		Form: form,
+	}
+
+	htmlFileName := "invoice-dp-detail"
+	log.Println("Pdf-htmlFileName-idp", htmlFileName)
+
+	templateFile, err := templateFS.Open(fmt.Sprintf("templates/%s.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to open embedded template: %v", err)
+		return nil, err
+	}
+
+	templateContent, err := io.ReadAll(templateFile)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to read template content: %v", err)
+		return nil, err
+	}
+
+	htmlFile, err := os.CreateTemp("", fmt.Sprintf("%s-*.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error writing htmlFile:", err)
+		return nil, err
+	}
+	defer os.Remove(htmlFile.Name())
+
+	funcMap := template.FuncMap{
+		"formatNumber": func(n float64, args ...int) string {
+			decimals := 2
+			if len(args) > 0 {
+				decimals = args[0]
+			}
+
+			format := fmt.Sprintf("%%.%df", decimals)
+			p := message.NewPrinter(language.English)
+			return p.Sprintf(format, n)
+		},
+		"inc": func(i int) int {
+			return i + 1
+		},
+	}
+
+	tmpl, err := template.New(fmt.Sprintf("%s.html", htmlFileName)).Funcs(funcMap).Parse(string(templateContent))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to parse template: %v", err)
+		return nil, err
+	}
+
+	if err := tmpl.Execute(htmlFile, data); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error Execute:", err)
+		return nil, err
+	}
+
+	pdfg, err := wkhtmltopdf.NewPDFGenerator()
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg:", err)
+		return nil, err
+	}
+
+	headerContent, err := templateFS.ReadFile("templates/header.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
+
+	footerContent, err := templateFS.ReadFile("templates/footer.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read footer: %w", err)
+	}
+
+	headerPath, err := createTempFileFromEmbed(string(headerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create header temp file: %w", err)
+	}
+	defer os.Remove(headerPath)
+
+	footerPath, err := createTempFileFromEmbed(string(footerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create footer temp file: %w", err)
+	}
+	defer os.Remove(footerPath)
+
+	page := wkhtmltopdf.NewPage(htmlFile.Name())
+	page.EnableLocalFileAccess.Set(true)
+	page.HeaderHTML.Set("file://" + headerPath)
+	page.FooterHTML.Set("file://" + footerPath)
+	page.FooterSpacing.Set(10)
+
+	pdfg.AddPage(page)
+	pdfg.MarginLeft.Set(0)
+	pdfg.MarginRight.Set(0)
+	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
+
+	if err := pdfg.Create(); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg create:", err)
+		return nil, err
+	}
+
+	uploadDir := "./public/generated_pdfs"
+
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		utils.LogErrors(childSpan, err)
+		log.Println("Error mkdirall:", err)
+		return nil, err
+	}
+
+	fileName := fmt.Sprintf("invoice-dp-%s.pdf", time.Now().Format("20060102150405"))
+	pdfPath := filepath.Join(uploadDir, fileName)
+	if err := pdfg.WriteFile(pdfPath); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdf path:", err)
+		return nil, err
+	}
+
+	return &pdfPath, nil
 }

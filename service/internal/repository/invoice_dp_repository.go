@@ -49,7 +49,6 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 		"idp.invoice_no", "idp.remark", "idp.status", "idp.title",
 		"c.name",
 		"idt.remark",
-		"idtb.remark",
 	}
 
 	var args []interface{}
@@ -90,6 +89,12 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 			args = append(args, value)
 			i++
 		}
+	}
+
+	if value, ok := filters["status"]; ok && value != "" {
+		condition += fmt.Sprintf(" AND idp.status = $%d", i)
+		args = append(args, value)
+		i++
 	}
 
 	filterIDsKey := map[string]string{
@@ -298,13 +303,26 @@ func (r *InvoiceDpRepository) GetInvoiceDpByID(ctx *fiber.Ctx, params *dtos.GetI
             TO_CHAR(idp.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(idp.due_date, 'YYYY-MM-DD') as due_date,
             idp.discount_amount, idp.discount_percentage, idp.discount_percentage_amount, idp.discount_final, idp.discount_type, idp.total_amount_products, idp.total_dp_products, idp.rev_no,
 
+            br.company_profile_id,
+
+			b.name as bank_name,
+            b.account_name,
+
             cu.name as created_by_name,
-            uu.name as updated_by_name
+            uu.name as updated_by_name,
+
+			c.name as customer_name,
+            c.code as customer_code,
+            c.phone,
+            c.address
 
         FROM invoice_dps idp
         LEFT JOIN invoice_dp_dts idt ON idt.invoice_dp_id = idp.id
+		LEFT JOIN customers c ON idp.customer_id = c.id
         LEFT JOIN users cu ON idp.created_by_id = cu.id
         LEFT JOIN users uu ON idp.updated_by_id = uu.id
+        LEFT JOIN branches br ON idp.branch_id = br.id
+		LEFT JOIN bank_informations b ON idp.bank_id = b.id
     ) AS alias WHERE 1=1`
 
 	if params.IsDeleted != nil && *params.IsDeleted == 1 {
@@ -627,14 +645,14 @@ func (r *InvoiceDpRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[st
 			for i, id := range refDtIDs {
 				refDtIDsStr[i] = fmt.Sprintf("%d", id)
 			}
-			condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH')))", strings.Join(refDtIDsStr, ","))
+			condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('INVOICE', 'CANCELLED', 'FINISH')))", strings.Join(refDtIDsStr, ","))
 		} else {
-			condition += " AND so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH') AND sodt.total_dp IS NULL"
+			condition += " AND so.status NOT IN ('INVOICE', 'CANCELLED', 'FINISH') AND sodt.total_dp IS NULL"
 		}
 	} else if filters["specific_ids"] != "" {
-		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH')))", filters["specific_ids"])
+		condition += fmt.Sprintf(" AND (sodt.id IN (%s) OR (so.status NOT IN ('INVOICE', 'CANCELLED', 'FINISH')))", filters["specific_ids"])
 	} else {
-		condition += " AND so.status NOT IN ('INVOICE', 'CANCELED', 'FINISH') AND sodt.total_dp IS NULL"
+		condition += " AND so.status NOT IN ('INVOICE', 'CANCELLED', 'FINISH') AND sodt.total_dp IS NULL"
 	}
 
 	if filters["ids"] != "" {
@@ -1319,6 +1337,12 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
 		}
 	}
 
+	if value, ok := filters["status"]; ok && value != "" {
+		condition += fmt.Sprintf(" AND idp.status = $%d", i)
+		args = append(args, value)
+		i++
+	}
+
 	for key, value := range filters {
 		switch key {
 		case "invoice_no", "remark", "idp.title":
@@ -1395,7 +1419,7 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
             ('TOTAL', 0),
             ('PAID', 1),
             ('UNPAID', 2),
-            ('CANCELED', 3)
+            ('CANCELLED', 3)
         ) AS s(status)
     ),
     filtered_invoices AS (
@@ -1421,7 +1445,7 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
         LEFT JOIN filtered_invoices fi ON
             (sv.status = fi.idp_status) OR
             (sv.status = 'TOTAL') OR
-            (sv.status = 'UNPAID' AND fi.idp_status NOT IN ('PAID', 'CANCELED'))
+            (sv.status = 'UNPAID' AND fi.idp_status NOT IN ('PAID', 'CANCELLED'))
         GROUP BY sv.status, sv.status_order
     )
     SELECT
@@ -1452,6 +1476,54 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
 	}
 
 	return widgets, total, nil
+}
+
+func (r *InvoiceDpRepository) ResetSoDtsTotalDpForCancelled(tx *gorm.DB, invoiceDpID uint, span opentracing.Span) (*gorm.DB, error) {
+	childSpan := opentracing.StartSpan("InvoiceDpRepository-ResetSoDtsTotalDpForCancelled", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	var invoiceDpDts []struct {
+		ID      uint     `gorm:"column:id"`
+		RefDtID *uint    `gorm:"column:ref_dt_id"`
+		RefType *string  `gorm:"column:ref_type"`
+		TotalDp *float64 `gorm:"column:total_dp"`
+	}
+
+	if err := tx.Table("invoice_dp_dts").
+		Select("id, ref_dt_id, ref_type, total_dp").
+		Where("invoice_dp_id = ? AND deleted_at IS NULL", invoiceDpID).
+		Find(&invoiceDpDts).Error; err != nil {
+		utils.LogErrors(childSpan, err)
+		return tx, err
+	}
+
+	var soDtIDs []uint
+	for _, dt := range invoiceDpDts {
+		if dt.RefDtID != nil && dt.RefType != nil && *dt.RefType == "so" {
+			soDtIDs = append(soDtIDs, *dt.RefDtID)
+		}
+	}
+
+	if len(soDtIDs) > 0 {
+		query := `
+        UPDATE so_dts
+        SET history_total_dp = total_dp,
+            total_dp = NULL
+        WHERE id IN (?)
+        `
+
+		if err := tx.Exec("SELECT id FROM so_dts WHERE id IN ? FOR UPDATE", soDtIDs).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return tx, err
+		}
+
+		if err := tx.Exec(query, soDtIDs).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return tx, err
+		}
+	}
+
+	return tx, nil
 }
 
 func (r *InvoiceDpRepository) Commit(tx *gorm.DB) error {

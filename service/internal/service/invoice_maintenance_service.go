@@ -188,6 +188,186 @@ func (s *InvoiceMaintenanceService) GetInvoiceMaintenanceDtsByID(ctx *fiber.Ctx,
 	return invoiceMaintenance, nil
 }
 
+// func (s *InvoiceMaintenanceService) UpdateInvoiceMaintenance(ctx *fiber.Ctx, req dtos.UpdateInvoiceMaintenanceRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.InvoiceMaintenance, error) {
+// 	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-UpdateInvoiceMaintenance", opentracing.ChildOf(span.Context()))
+// 	defer childSpan.Finish()
+
+// 	existingSoDtIDs := make(map[uint]uint)
+// 	newSoDtIDs := make(map[uint]uint)
+// 	allSOIDs := make([]uint, 0)
+// 	uniqueSOIDs := make(map[uint]bool)
+
+// 	params := dtos.GetInvoiceMaintenanceParams{ID: req.ID}
+// 	existingInvoiceMaintenance, err := s.GetInvoiceMaintenanceByID(ctx, &params, tx, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	for _, dt := range existingInvoiceMaintenance.InvoiceMaintenanceDts {
+// 		if dt.RefType != nil && *dt.RefType == "so" && dt.RefID != nil && dt.RefDtID != nil {
+// 			existingSoDtIDs[*dt.RefDtID] = *dt.RefID
+// 			if !uniqueSOIDs[*dt.RefID] {
+// 				uniqueSOIDs[*dt.RefID] = true
+// 				allSOIDs = append(allSOIDs, *dt.RefID)
+// 			}
+// 		}
+// 	}
+
+// 	for _, dt := range req.InvoiceMaintenanceDts {
+// 		if dt.RefType != nil && *dt.RefType == "so" && dt.RefID != nil && dt.RefDtID != nil {
+// 			newSoDtIDs[*dt.RefDtID] = *dt.RefID
+// 			if !uniqueSOIDs[*dt.RefID] {
+// 				uniqueSOIDs[*dt.RefID] = true
+// 				allSOIDs = append(allSOIDs, *dt.RefID)
+// 			}
+// 		}
+// 	}
+
+// 	if len(allSOIDs) > 0 {
+// 		if err := s.repo.LockSalesOrders(tx, allSOIDs, childSpan); err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if _, err := s.repo.GetInvoiceMaintenanceForUpdate(tx, req.ID, childSpan); err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	removedSoDtIDs := make(map[uint]uint)
+// 	for soDtID, soID := range existingSoDtIDs {
+// 		if _, exists := newSoDtIDs[soDtID]; !exists {
+// 			removedSoDtIDs[soDtID] = soID
+// 		}
+// 	}
+
+// 	addedSoDtIDs := make(map[uint]uint)
+// 	for soDtID, soID := range newSoDtIDs {
+// 		if _, exists := existingSoDtIDs[soDtID]; !exists {
+// 			addedSoDtIDs[soDtID] = soID
+// 		}
+// 	}
+
+// 	for soDtID := range removedSoDtIDs {
+// 		tx, err = s.repo.UpdateSoDtInvoiceStatus(tx, soDtID, nil, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	invoiceMaintenance, err := utils.MapUpdateInvoiceMaintenance(ctx, req, userID, branchID, existingInvoiceMaintenance.RevNo, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	tx, err = s.repo.UpdateInvoiceMaintenance(tx, &invoiceMaintenance, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	existingDtMap := make(map[string]*dtos.InvoiceMaintenanceDtListDTO)
+// 	for i, dt := range existingInvoiceMaintenance.InvoiceMaintenanceDts {
+// 		if dt.ID != nil {
+// 			key := fmt.Sprintf("%d-%d-%d",
+// 				utils.GetValueOrDefault(dt.ProductID, 0),
+// 				utils.GetValueOrDefault(dt.RefID, 0),
+// 				utils.GetValueOrDefault(dt.RefDtID, 0))
+// 			existingDtMap[key] = &existingInvoiceMaintenance.InvoiceMaintenanceDts[i]
+// 		}
+// 	}
+
+// 	invoiceMaintenanceDts, err := utils.MapUpdateInvoiceMaintenanceDts(ctx, req, &invoiceMaintenance, userID, childSpan)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, err
+// 	}
+
+// 	var createInvoiceMaintenanceDts []models.InvoiceMaintenanceDt
+// 	var updateInvoiceMaintenanceDts []models.InvoiceMaintenanceDt
+// 	var deleteInvoiceMaintenanceDtIDs []uint
+
+// 	processedExistingDts := make(map[uint]bool)
+
+// 	for i, dt := range invoiceMaintenanceDts {
+// 		key := fmt.Sprintf("%d-%d-%d",
+// 			utils.GetValueOrDefault(dt.ProductID, 0),
+// 			utils.GetValueOrDefault(dt.RefID, 0),
+// 			utils.GetValueOrDefault(dt.RefDtID, 0))
+
+// 		if existingDt, exists := existingDtMap[key]; exists {
+// 			invoiceMaintenanceDts[i].ID = *existingDt.ID
+// 			invoiceMaintenanceDts[i].UpdatedByID = &userID
+// 			updateInvoiceMaintenanceDts = append(updateInvoiceMaintenanceDts, invoiceMaintenanceDts[i])
+// 			processedExistingDts[*existingDt.ID] = true
+// 		} else {
+// 			invoiceMaintenanceDts[i].CreatedByID = &userID
+// 			invoiceMaintenanceDts[i].CreatedAt = time.Now()
+// 			createInvoiceMaintenanceDts = append(createInvoiceMaintenanceDts, invoiceMaintenanceDts[i])
+// 		}
+// 	}
+
+// 	for _, dt := range existingInvoiceMaintenance.InvoiceMaintenanceDts {
+// 		if dt.ID != nil && !processedExistingDts[*dt.ID] {
+// 			deleteInvoiceMaintenanceDtIDs = append(deleteInvoiceMaintenanceDtIDs, *dt.ID)
+// 		}
+// 	}
+
+// 	if len(deleteInvoiceMaintenanceDtIDs) > 0 {
+// 		tx, err = s.repo.DeleteInvoiceMaintenanceDtsByIDs(tx, deleteInvoiceMaintenanceDtIDs, userID, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if len(createInvoiceMaintenanceDts) > 0 {
+// 		tx, err = s.repo.BulkCreateInvoiceMaintenanceDts(tx, createInvoiceMaintenanceDts, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if len(updateInvoiceMaintenanceDts) > 0 {
+// 		tx, err = s.repo.BulkUpdateInvoiceMaintenanceDts(tx, updateInvoiceMaintenanceDts, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	for soDtID := range addedSoDtIDs {
+// 		tx, err = s.repo.UpdateSoDtInvoiceStatus(tx, soDtID, "INVOICE", childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	affectedSOIDs := make(map[uint]bool)
+// 	for _, soID := range removedSoDtIDs {
+// 		affectedSOIDs[soID] = true
+// 	}
+// 	for _, soID := range addedSoDtIDs {
+// 		affectedSOIDs[soID] = true
+// 	}
+
+// 	for soID := range affectedSOIDs {
+// 		tx, err = s.repo.CheckAndUpdateSalesOrderStatus(tx, soID, childSpan)
+// 		if err != nil {
+// 			tx.Rollback()
+// 			return nil, err
+// 		}
+// 	}
+
+// 	return &invoiceMaintenance, nil
+// }
+
 func (s *InvoiceMaintenanceService) UpdateInvoiceMaintenance(ctx *fiber.Ctx, req dtos.UpdateInvoiceMaintenanceRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*models.InvoiceMaintenance, error) {
 	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-UpdateInvoiceMaintenance", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
@@ -203,6 +383,9 @@ func (s *InvoiceMaintenanceService) UpdateInvoiceMaintenance(ctx *fiber.Ctx, req
 		tx.Rollback()
 		return nil, err
 	}
+
+	isChangingToCancelled := req.Status != nil && *req.Status == "CANCELLED" &&
+		(existingInvoiceMaintenance.Status == nil || *existingInvoiceMaintenance.Status != "CANCELLED")
 
 	for _, dt := range existingInvoiceMaintenance.InvoiceMaintenanceDts {
 		if dt.RefType != nil && *dt.RefType == "so" && dt.RefID != nil && dt.RefDtID != nil {
@@ -264,10 +447,22 @@ func (s *InvoiceMaintenanceService) UpdateInvoiceMaintenance(ctx *fiber.Ctx, req
 		return nil, err
 	}
 
+	if isChangingToCancelled {
+		tx, err = s.repo.ResetReferencesForCancelled(tx, invoiceMaintenance.ID, childSpan)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
 	tx, err = s.repo.UpdateInvoiceMaintenance(tx, &invoiceMaintenance, childSpan)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
+	}
+
+	if isChangingToCancelled {
+		return &invoiceMaintenance, nil
 	}
 
 	existingDtMap := make(map[string]*dtos.InvoiceMaintenanceDtListDTO)

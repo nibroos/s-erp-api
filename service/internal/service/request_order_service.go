@@ -2,14 +2,22 @@ package service
 
 import (
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"text/template"
 	"time"
 
+	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/repository"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"gorm.io/gorm"
 )
 
@@ -306,4 +314,182 @@ func (s *RequestOrderService) Commit(tx *gorm.DB) error {
 
 func (s *RequestOrderService) Rollback(tx *gorm.DB) *gorm.DB {
 	return tx.Rollback()
+}
+
+func (s *RequestOrderService) Pdf(ctx *fiber.Ctx, req dtos.RequestOrderDetailDTO, tx *gorm.DB, span opentracing.Span) (*string, error) {
+	childSpan := opentracing.StartSpan("RequestOrderService-Pdf", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	form := req
+	var requestOrder *dtos.RequestOrderDetailDTO
+	var err error
+
+	var params dtos.GetRequestOrderParams
+	if req.IsIDOnly != nil && *req.IsIDOnly == 1 {
+		params.ID = req.ID
+
+		requestOrder, err = s.repo.GetRequestOrderByID(ctx, &params, tx, childSpan)
+		if err != nil {
+			return nil, err
+		}
+
+		requestOrderDts, err := s.repo.GetRequestOrderDts(ctx, requestOrder.ID, nil, childSpan)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to fetch requestOrderDts: %v", err)
+		}
+
+		if requestOrder.CompanyProfileID != nil {
+			companyParams := &dtos.GetCompanyProfileParams{ID: uint(*requestOrder.CompanyProfileID)}
+			company, err := s.utilRepo.GetCompanyProfileByID(ctx, companyParams)
+			if err != nil {
+				utils.LogErrors(childSpan, err)
+				log.Printf("Failed to fetch company: %v", err)
+			} else if company != nil {
+				requestOrder.Company = *company
+			}
+		}
+
+		requestOrder.RequestOrderDts = requestOrderDts
+		form = *requestOrder
+		req.RequestNo = requestOrder.RequestNo
+	}
+
+	var num string
+	if req.RequestNo != nil {
+		num = *req.RequestNo
+	} else {
+		num = ""
+	}
+
+	data := dtos.RequestOrderPDFData{
+		Num:  num,
+		Form: form,
+	}
+
+	htmlFileName := "request-order-detail"
+	log.Println("Pdf-htmlFileName-ro", htmlFileName)
+
+	templateFile, err := templateFS.Open(fmt.Sprintf("templates/%s.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to open embedded template: %v", err)
+		return nil, err
+	}
+
+	templateContent, err := io.ReadAll(templateFile)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to read template content: %v", err)
+		return nil, err
+	}
+
+	htmlFile, err := os.CreateTemp("", fmt.Sprintf("%s-*.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error writing htmlFile:", err)
+		return nil, err
+	}
+	defer os.Remove(htmlFile.Name())
+
+	funcMap := template.FuncMap{
+		"formatNumber": func(n float64, args ...int) string {
+			decimals := 2
+			if len(args) > 0 {
+				decimals = args[0]
+			}
+
+			format := fmt.Sprintf("%%.%df", decimals)
+			p := message.NewPrinter(language.English)
+			return p.Sprintf(format, n)
+		},
+		"inc": func(i int) int {
+			return i + 1
+		},
+	}
+
+	tmpl, err := template.New(fmt.Sprintf("%s.html", htmlFileName)).Funcs(funcMap).Parse(string(templateContent))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to parse template: %v", err)
+		return nil, err
+	}
+
+	if err := tmpl.Execute(htmlFile, data); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error Execute:", err)
+		return nil, err
+	}
+
+	pdfg, err := wkhtmltopdf.NewPDFGenerator()
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg:", err)
+		return nil, err
+	}
+
+	headerContent, err := templateFS.ReadFile("templates/header.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
+
+	footerContent, err := templateFS.ReadFile("templates/footer.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read footer: %w", err)
+	}
+
+	headerPath, err := createTempFileFromEmbed(string(headerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create header temp file: %w", err)
+	}
+	defer os.Remove(headerPath)
+
+	footerPath, err := createTempFileFromEmbed(string(footerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create footer temp file: %w", err)
+	}
+	defer os.Remove(footerPath)
+
+	page := wkhtmltopdf.NewPage(htmlFile.Name())
+	page.EnableLocalFileAccess.Set(true)
+	page.HeaderHTML.Set("file://" + headerPath)
+	page.FooterHTML.Set("file://" + footerPath)
+	page.FooterSpacing.Set(10)
+
+	pdfg.AddPage(page)
+	pdfg.MarginLeft.Set(0)
+	pdfg.MarginRight.Set(0)
+	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
+
+	if err := pdfg.Create(); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg create:", err)
+		return nil, err
+	}
+
+	uploadDir := "./public/generated_pdfs"
+
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		utils.LogErrors(childSpan, err)
+		log.Println("Error mkdirall:", err)
+		return nil, err
+	}
+
+	fileName := fmt.Sprintf("request-order-%s.pdf", time.Now().Format("20060102150405"))
+	pdfPath := filepath.Join(uploadDir, fileName)
+	if err := pdfg.WriteFile(pdfPath); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdf path:", err)
+		return nil, err
+	}
+
+	return &pdfPath, nil
 }
