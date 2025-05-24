@@ -61,13 +61,80 @@ func (s *CustomerService) GetCustomerByID(ctx *fiber.Ctx, params *dtos.GetCustom
 	return customer, nil
 }
 
-func (s *CustomerService) UpdateCustomer(ctx *fiber.Ctx, customer *models.Customer, tx *gorm.DB, span opentracing.Span) (*models.Customer, error) {
+func (s *CustomerService) GetCustomerPicEmails(ctx *fiber.Ctx, params *dtos.GetCustomerParams, span opentracing.Span) ([]dtos.FormCustomerPICEmailsRequest, error) {
+	childSpan := opentracing.StartSpan("CustomerService-GetCustomerPicEmails", opentracing.ChildOf(span.Context()))
+
+	customerEmails, err := s.repo.GetCustomerPicEmails(ctx, params, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return customerEmails, nil
+}
+
+func (s *CustomerService) GetCustomerContracts(ctx *fiber.Ctx, params *dtos.GetCustomerParams, span opentracing.Span) ([]dtos.FormCustomerContractsRequest, error) {
+	childSpan := opentracing.StartSpan("CustomerService-GetCustomerContracts", opentracing.ChildOf(span.Context()))
+
+	customerEmails, err := s.repo.GetCustomerContracts(ctx, params, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+	return customerEmails, nil
+}
+
+func (s *CustomerService) UpdateCustomer(ctx *fiber.Ctx, req dtos.FormCrmCustomerRequest, customer *models.Customer, userID uint, tx *gorm.DB, span opentracing.Span) (*models.Customer, error) {
 	childSpan := opentracing.StartSpan("CustomerService-UpdateCustomer", opentracing.ChildOf(span.Context()))
 
 	if err := s.repo.UpdateCustomer(tx, customer, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, err
+	}
+
+	// create/update customer emails
+	customerEmails, customerEmailIDs, err := utils.MapUpdatePicEmails(ctx, req, customer, userID, span)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+	err = s.repo.DeletePicEmails(tx, customerEmailIDs, customer.ID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	if len(customerEmails) > 0 {
+		if err := s.utilRepo.BatchUpsertModels(tx, customerEmails, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	// create/update customer contracts
+	customerContracts, customerContractIDs, err := utils.MapUpdateCustomerContracts(ctx, req, customer, userID, span)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	err = s.repo.DeleteCustomerContracts(tx, customerContractIDs, customer.ID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
+
+	if len(customerContracts) > 0 {
+		if err := s.utilRepo.BatchUpsertModels(tx, customerContracts, childSpan); err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	return customer, nil

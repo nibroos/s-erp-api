@@ -15,7 +15,7 @@ func NewCustomerUpdateRequest() *CustomerUpdateRequest {
 }
 
 // Validate validates the RegisterRequest.
-func (r *CustomerUpdateRequest) Validate(req *dtos.UpdateCustomerRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
+func (r *CustomerUpdateRequest) Validate(req *dtos.FormCrmCustomerRequest, ctx *fiber.Ctx) (map[string][]string, bool) {
 	rules := map[string][]string{
 		"id":               []string{"required", "exists:customers,id"},
 		"customer_type_id": []string{"required", "exists:mix_values,id"},

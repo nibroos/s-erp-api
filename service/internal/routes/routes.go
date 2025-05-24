@@ -141,6 +141,12 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 	purchaseTypes := version.Group("/purchase-types")
 	SetupPurchaseTypeRoutes(purchaseTypes, gormDB, sqlDB, utilRepo, tracer)
 
+	paymentTypes := version.Group("/payment-types")
+	SetupPaymentTypeRoutes(paymentTypes, gormDB, sqlDB, utilRepo, tracer)
+
+	categoryTypes := version.Group("/category-types")
+	SetupCategoryTypeRoutes(categoryTypes, gormDB, sqlDB, utilRepo, tracer)
+
 	ioTypes := version.Group("/io-types")
 	SetupIOTypeRoutes(ioTypes, gormDB, sqlDB, utilRepo, tracer)
 

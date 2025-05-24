@@ -189,6 +189,17 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		}
 	}
 
+	customConditionKey := map[string]string{
+		"group_type": ` AND ig.name ILIKE $%d `,
+	}
+	for key, custValue := range customConditionKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(custValue, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)
@@ -309,9 +320,9 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		return nil, 0, countErr
 	}
 
-	orderColumn := utils.GetStringOrDefault(filters["order_column"], "updated_at")
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "item_group_name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
-	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+	query += fmt.Sprintf(" ORDER BY item_group_name, item_sub_group_name, %s %s", orderColumn, orderDirection)
 
 	// another order col & dir
 	orderColumns := map[string]string{

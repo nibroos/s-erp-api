@@ -161,7 +161,7 @@ func (r *ItemSubGroupRepository) GetItemSubGroups(ctx *fiber.Ctx, filters map[st
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "name")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "asc")
-	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+	query += fmt.Sprintf(" ORDER BY group_name, %s %s", orderColumn, orderDirection)
 
 	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
 	currentPage := utils.GetIntOrDefault(filters["page"], 1)

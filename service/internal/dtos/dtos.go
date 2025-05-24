@@ -826,6 +826,160 @@ type GetCustomerTypesResult struct {
 	Err           error
 }
 
+type GetCategoryTypesRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	SimulateError  string `json:"simulate_error"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreateCategoryTypeRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type UpdateCategoryTypeRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type GetCategoryTypeByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetCategoryTypeParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetCategoryTypeParams(id uint) *GetCategoryTypeParams {
+	defaultIsDeleted := 0
+	return &GetCategoryTypeParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeleteCategoryTypeRequest struct {
+	ID uint `json:"id"`
+}
+
+type CategoryTypeListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type CategoryTypeDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetCategoryTypesResult struct {
+	CategoryTypes []CategoryTypeListDTO
+	Total         int
+	Err           error
+}
+
+type GetPaymentTypesRequest struct {
+	Global         string `json:"global"`
+	Name           string `json:"name"`
+	SimulateError  string `json:"simulate_error"`
+	PerPage        string `json:"per_page" default:"10"`         // Default per_page to 10
+	Page           string `json:"page" default:"1"`              // Default page to 1
+	OrderColumn    string `json:"order_column" default:"id"`     // Default order column to "id"
+	OrderDirection string `json:"order_direction" default:"asc"` // Default order direction to "asc"
+}
+
+type CreatePaymentTypeRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type UpdatePaymentTypeRequest struct {
+	ID          uint    `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Remark      *string `json:"remark"`
+	Status      int8    `json:"status"`
+}
+
+type GetPaymentTypeByIDRequest struct {
+	ID uint `json:"id"`
+}
+
+type GetPaymentTypeParams struct {
+	ID        uint
+	IsDeleted *int
+}
+
+func NewGetPaymentTypeParams(id uint) *GetPaymentTypeParams {
+	defaultIsDeleted := 0
+	return &GetPaymentTypeParams{
+		ID:        id,
+		IsDeleted: &defaultIsDeleted,
+	}
+}
+
+type DeletePaymentTypeRequest struct {
+	ID uint `json:"id"`
+}
+
+type PaymentTypeListDTO struct {
+	ID            int     `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeleteAt      *string `json:"deleted_at" db:"deleted_at"`
+}
+
+type PaymentTypeDetailDTO struct {
+	ID            uint    `json:"id" db:"id"`
+	Name          string  `json:"name" db:"name"`
+	Description   *string `json:"description" db:"description"`
+	Remark        *string `json:"remark" db:"remark"`
+	Status        int8    `json:"status" db:"status"`
+	CreatedByName *string `json:"created_by_name" db:"created_by_name"`
+	UpdatedByName *string `json:"updated_by_name" db:"updated_by_name"`
+	CreatedAt     *string `json:"created_at" db:"created_at"`
+	UpdatedAt     *string `json:"updated_at" db:"updated_at"`
+	DeletedAt     *string `json:"deleted_at" db:"deleted_at"`
+}
+type GetPaymentTypesResult struct {
+	CategoryTypes []CategoryTypeListDTO
+	Total         int
+	Err           error
+}
+
 type GetOrderTypesRequest struct {
 	Global         string `json:"global"`
 	Name           string `json:"name"`
@@ -1824,6 +1978,19 @@ type CustomerListDTO struct {
 	CreatedAt        *string `json:"created_at" db:"created_at"`
 	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
 	DeleteAt         *string `json:"deleted_at" db:"deleted_at"`
+	// 	category_type_name
+	// payment_type_name
+	// contract_date
+	// is_contract
+	// contract_price
+	// due_at
+
+	CategoryTypeName *string  `json:"category_type_name" db:"category_type_name"`
+	PaymentTypeName  *string  `json:"payment_type_name" db:"payment_type_name"`
+	ContractDate     *string  `json:"contract_date" db:"contract_date"`
+	IsContract       *int     `json:"is_contract" db:"is_contract"`
+	ContractPrice    *float64 `json:"contract_price" db:"contract_price"`
+	DueAt            *string  `json:"due_at" db:"due_at"`
 }
 
 type CustomerDetailDTO struct {
@@ -1841,12 +2008,28 @@ type CustomerDetailDTO struct {
 	Email            *string `json:"email" db:"email"`
 	Pic              *string `json:"pic" db:"pic"`
 	Status           int8    `json:"status" db:"status"`
+
+	Remark         *string `json:"remark" db:"remark"`
+	OwnerName      *string `json:"owner_name" db:"owner_name"`
+	OwnerPhone     *string `json:"owner_phone" db:"owner_phone"`
+	OwnerEmail     *string `json:"owner_email" db:"owner_email"`
+	CategoryTypeID *uint   `json:"category_type_id" db:"category_type_id"`
+	ContractDate   *string `json:"contract_date" db:"contract_date"`
+	IsContract     *int    `json:"is_contract" db:"is_contract"`
+	PicName        *string `json:"pic_name" db:"pic_name"`
+	PicPhone       *string `json:"pic_phone" db:"pic_phone"`
+
+	CategoryTypeName *string `json:"category_type_name" db:"category_type_name"`
 	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt        *string `json:"created_at" db:"created_at"`
 	UpdatedAt        *string `json:"updated_at" db:"updated_at"`
 	DeletedAt        *string `json:"deleted_at" db:"deleted_at"`
+
+	PicEmails         []FormCustomerPICEmailsRequest `json:"pic_emails"`
+	CustomerContracts []FormCustomerContractsRequest `json:"customer_contracts"`
 }
+
 type GetCustomersResult struct {
 	Customers []CustomerListDTO
 	Total     int

@@ -24,4 +24,6 @@ const (
 	RoleID         = 12
 	WarehouseID    = 38
 	TaskID         = 39
+	CategoryTypeID = 41
+	PaymentTypeID  = 42
 )

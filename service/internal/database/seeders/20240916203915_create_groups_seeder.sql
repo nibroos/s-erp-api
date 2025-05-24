@@ -411,6 +411,26 @@ VALUES
     '{}',
     1,
     1
+  ),
+  (
+    41,
+    'category_types',
+    'Category types',
+    'Category types table for storing category types master data',
+    1,
+    '{}',
+    1,
+    1
+  ),
+  (
+    42,
+    'payment_types',
+    'Payment types',
+    'Payment types table for storing payment types master data',
+    1,
+    '{}',
+    1,
+    1
   );
 
 -- vats, pph23s, cap_types, cap_sizes, cap_categories, cap_colors, cap_statuses

@@ -128,6 +128,7 @@ func (c *CustomerController) CreateCustomer(ctx *fiber.Ctx) error {
 
 	return utils.GetResponse(ctx, []interface{}{getCustomer}, paginationMeta, "Customer created successfully", http.StatusCreated, nil, nil)
 }
+
 func (c *CustomerController) GetCustomerByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("CustomerController-GetCustomerByID", opentracing.ChildOf(apiSpan.Context()))
@@ -157,6 +158,20 @@ func (c *CustomerController) GetCustomerByID(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Customer not found", http.StatusNotFound, err.Error(), nil)
 	}
 
+	customer.PicEmails, err = c.service.GetCustomerPicEmails(ctx, params, parentSpan)
+	if err != nil {
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Customer not found", http.StatusNotFound, err.Error(), nil)
+	}
+
+	customer.CustomerContracts, err = c.service.GetCustomerContracts(ctx, params, parentSpan)
+	if err != nil {
+		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
+		utils.LogResponse(apiSpan, response)
+		return utils.GetResponse(ctx, nil, nil, "Customer not found", http.StatusNotFound, err.Error(), nil)
+	}
+
 	customerArray := []interface{}{customer}
 
 	filters := ctx.Locals("filters").(map[string]string)
@@ -177,7 +192,7 @@ func (c *CustomerController) UpdateCustomer(ctx *fiber.Ctx) error {
 		}
 	}()
 
-	var req dtos.UpdateCustomerRequest
+	var req dtos.FormCrmCustomerRequest
 
 	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
 		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
@@ -198,7 +213,7 @@ func (c *CustomerController) UpdateCustomer(ctx *fiber.Ctx) error {
 	userID := uint(claims["user_id"].(float64))
 
 	customer := models.Customer{
-		ID:             req.ID,
+		ID:             *req.ID,
 		CustomerTypeID: req.CustomerTypeID,
 		AgentID:        req.AgentID,
 		CurrencyID:     req.CurrencyID,
@@ -210,12 +225,23 @@ func (c *CustomerController) UpdateCustomer(ctx *fiber.Ctx) error {
 		Email:          req.Email,
 		Pic:            req.Pic,
 		Status:         req.Status,
-		UpdatedByID:    &userID,
+
+		Remark:         req.Remark,
+		OwnerName:      req.OwnerName,
+		OwnerPhone:     req.OwnerPhone,
+		OwnerEmail:     req.OwnerEmail,
+		CategoryTypeID: req.CategoryTypeID,
+		ContractDate:   req.ContractDate,
+		IsContract:     req.IsContract,
+		PicName:        req.PicName,
+		PicPhone:       req.PicPhone,
+
+		UpdatedByID: &userID,
 	}
 
 	tx := c.repo.BeginTransaction()
 
-	updatedCustomer, err := c.service.UpdateCustomer(ctx, &customer, tx, parentSpan)
+	updatedCustomer, err := c.service.UpdateCustomer(ctx, req, &customer, userID, tx, parentSpan)
 
 	if err != nil {
 		tx.Rollback()

@@ -11,6 +11,7 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type UtilRepository struct {
@@ -281,4 +282,45 @@ func (r *UtilRepository) DeleteSentEmailsByRefIDs(ctx *fiber.Ctx, tx *gorm.DB, r
 	}
 
 	return tx, nil
+}
+
+// UpsertModel performs an upsert operation for any model using GORM
+func (r *UtilRepository) UpsertModel(tx *gorm.DB, model interface{}, data interface{}, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UtilRepository-UpsertModel", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	// Try to update first
+	result := tx.Model(model).Updates(data)
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return result.Error
+	}
+
+	// If no rows were affected, create new record
+	if result.RowsAffected == 0 {
+		result = tx.Create(data)
+		if result.Error != nil {
+			utils.LogErrors(childSpan, result.Error)
+			return result.Error
+		}
+	}
+
+	return nil
+}
+
+// BatchUpsertModels performs batch upsert operations for any model slice
+func (r *UtilRepository) BatchUpsertModels(tx *gorm.DB, models interface{}, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UtilRepository-BatchUpsertModels", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	result := tx.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(models)
+
+	if result.Error != nil {
+		utils.LogErrors(childSpan, result.Error)
+		return result.Error
+	}
+
+	return nil
 }
