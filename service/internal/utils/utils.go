@@ -25,6 +25,8 @@ import (
 	"github.com/opentracing/opentracing-go/ext"
 	jLog "github.com/opentracing/opentracing-go/log"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"gorm.io/gorm"
 )
 
@@ -954,4 +956,38 @@ func EscapeCsvField(field string) string {
 		field = "\"" + field + "\""
 	}
 	return field
+}
+
+// formatNumberSeparator
+func FormatNumberSeparator(n float64, args ...int) string {
+	decimals := 2
+	if len(args) > 0 {
+		decimals = args[0]
+	}
+
+	format := fmt.Sprintf("%%.%df", decimals)
+	p := message.NewPrinter(language.English)
+	return p.Sprintf(format, n)
+	// // Convert the number to a string with two decimal places
+	// formatted := fmt.Sprintf("%.2f", n)
+
+	// // Replace the decimal point with a comma
+	// formatted = strings.ReplaceAll(formatted, ".", ",")
+
+	// // Add thousand separators
+	// parts := strings.Split(formatted, ",")
+	// if len(parts) > 1 {
+	// 	// Handle the integer part
+	// 	intPart := parts[0]
+	// 	intPartWithCommas := ""
+	// 	for i, digit := range intPart {
+	// 		if i > 0 && (len(intPart)-i)%3 == 0 {
+	// 			intPartWithCommas += "."
+	// 		}
+	// 		intPartWithCommas += string(digit)
+	// 	}
+	// 	return intPartWithCommas + "," + parts[1]
+	// }
+
+	// return formatted
 }

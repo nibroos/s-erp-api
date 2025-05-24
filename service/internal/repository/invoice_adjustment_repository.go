@@ -109,6 +109,26 @@ func (r *InvoiceAdjustmentRepository) GetInvoiceAdjustments(ctx *fiber.Ctx, filt
 		}
 	}
 
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+
+		filterDateTypeKey := map[string]string{
+			"payment_date":    "ia.payment_date",
+			"adjustment_date": "ia.adjustment_date",
+		}
+
+		dateTypeColumn := "ia.payment_date"
+		for key := range filterDateTypeKey {
+			if key == filters["date_type"] {
+				dateTypeColumn = filterDateTypeKey[filters["date_type"]]
+			}
+		}
+
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (ia.id)
@@ -159,20 +179,6 @@ func (r *InvoiceAdjustmentRepository) GetInvoiceAdjustments(ctx *fiber.Ctx, filt
 				i++
 			}
 		}
-	}
-
-	if startDate, ok := filters["start_date"]; ok && startDate != "" {
-		query += fmt.Sprintf(" AND payment_date >= $%d", i)
-		countQuery += fmt.Sprintf(" AND payment_date >= $%d", i)
-		args = append(args, startDate)
-		i++
-	}
-
-	if endDate, ok := filters["end_date"]; ok && endDate != "" {
-		query += fmt.Sprintf(" AND payment_date <= $%d", i)
-		countQuery += fmt.Sprintf(" AND payment_date <= $%d", i)
-		args = append(args, endDate)
-		i++
 	}
 
 	if !isAdmin && branchID != nil {

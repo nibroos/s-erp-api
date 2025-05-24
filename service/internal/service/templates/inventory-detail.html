@@ -4,7 +4,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>{{ .Num}} - Sales Order</title>
+	<title>{{ .Num}} - Inventory</title>
 	<style>
 		body {
 			font-family: Arial, sans-serif;
@@ -225,7 +225,7 @@
 			</tr>
 		</table>
 
-		<div class="document-title">SALES ORDER</div>
+		<div class="document-title">SURAT JALAN</div>
 		<div class="text-center ref-number">{{.Num}}</div>
 
 		<table class="reference-container" border="0" cellspacing="0" cellpadding="0">
@@ -233,26 +233,26 @@
 				<td width="50%" class="vertical-top">
 					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
 						<tr class="info-row">
-							<td width="30%">
+							<td width="30%" style="text-align: left;">
 								<div class="info-label">CUSTOMER</div>
 							</td>
-							<td width="70%">
+							<td width="70%" style="text-align: left;">
 								<div>{{.Form.CustomerName}}</div>
 							</td>
 						</tr>
 						<tr class="info-row">
-							<td width="30%">
+							<td width="30%" style="text-align: left;">
 								<div class="info-label">PHONE NO</div>
 							</td>
-							<td width="70%">
+							<td width="70%" style="text-align: left;">
 								<div>{{.Form.Phone}}</div>
 							</td>
 						</tr>
 						<tr class="info-row">
-							<td width="30%">
+							<td width="30%" style="text-align: left;">
 								<div class="info-label">ADDRESS</div>
 							</td>
-							<td width="70%">
+							<td width="70%" style="text-align: left;">
 								<div>{{.Form.Address}}</div>
 							</td>
 						</tr>
@@ -261,34 +261,18 @@
 				<td width="50%" class="vertical-top">
 					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
 						<tr class="info-row">
-							<td width="30%">
-								<div class="info-label">ORDER DATE</div>
+							<td width="30%" style="text-align: left;">
+								<div class="info-label">OUT DATE</div>
 							</td>
-							<td width="70%">
-								<div>{{.Form.OrderAt}}</div>
-							</td>
-						</tr>
-						<tr class="info-row">
-							<td width="30%">
-								<div class="info-label">SHIPPING DATE</div>
-							</td>
-							<td width="70%">
-								<div>{{.Form.ShippingAt}}</div>
+							<td width="70%" style="text-align: left;">
+								<div>{{.Form.IngoingAt}}</div>
 							</td>
 						</tr>
 						<tr class="info-row">
-							<td width="30%">
-								<div class="info-label">ORDER TYPE</div>
-							</td>
-							<td width="70%">
-								<div>{{.Form.OrderTypeName}}</div>
-							</td>
-						</tr>
-						<tr class="info-row">
-							<td width="30%">
+							<td width="30%" style="text-align: left;">
 								<div class="info-label">STATUS</div>
 							</td>
-							<td width="70%">
+							<td width="70%" style="text-align: left;">
 								<div>{{.Form.Status}}</div>
 							</td>
 						</tr>
@@ -296,65 +280,34 @@
 				</td>
 			</tr>
 		</table>
-
 		<table class="main-table" border="1" cellspacing="0" cellpadding="0" style="margin-top: 1rem;">
 			<thead>
 				<tr>
 					<th width="5%" class="text-center">NO</th>
-					<th width="45%" style="text-align: left;">PRODUCT NAME</th>
+					<th width="45%" style="text-align: left;">ITEM NAME</th>
 					<th width="20%" style="text-align: left;">REMARK</th>
 					<th width="10%" style="text-align: left;">UNIT</th>
-					<th width="10%" class="text-right">DISC (%)</th>
-					<th width="10%" class="text-right">DISC Amount</th>
-					<th width="10%" class="text-right">QTY</th>
-					<th width="15%" class="text-right">PRICE</th>
-					<th width="15%" class="text-right">AMOUNT</th>
+					<th width="10%" class="text-right">QTY REF</th>
+					<th width="10%" class="text-right">QTY OUT</th>
 				</tr>
 			</thead>
 			<tbody>
-				{{range $index, $item := .Form.SoDts}}
+				{{range $index, $item := .Form.InvDts}}
 				<tr>
 					<td class="text-center">{{ inc $index}}</td>
 					<td>{{$item.ItemName}} </td>
 					<td class="">{{$item.Remark}} </td>
 					<td class="">{{$item.UnitName}} </td>
-					<td class="text-right">{{formatNumber $item.DiscPerc}} </td>
-					<td class="text-right">{{formatNumber $item.DiscAm}} </td>
+					<td class="text-right">{{formatNumber $item.RefQty}} </td>
 					<td class="text-right">{{formatNumber $item.Qty}} </td>
-					<td class="text-right">{{formatNumber $item.PriceSell}} </td>
-					<td class="text-right">{{formatNumber $item.SubtotalSell}} </td>
 				</tr>
-				{{ if $item.SoDtsBoms }}
-				<tr style="padding: 0 !important;">
-					<td colspan="9" class="text-left" style="padding: 0 !important;">
-						<table class="sub-table" cellspacing="0" cellpadding="0">
-							<tr>
-								<th width="5%" class="text-center">NO</th>
-								<th width="45%" style="text-align: left;">ITEM NAME</th>
-								<th width="20%" style="text-align: left;">REMARK</th>
-								<th width="10%" style="text-align: left;">UNIT</th>
-								<th width="10%" class="text-right">QTY</th>
-							</tr>
-							{{range $index, $subitem := $item.SoDtsBoms}}
-							<tr>
-								<td class="text-center">{{ inc $index}}</td>
-								<td>{{$subitem.ItemName}} </td>
-								<td class="">{{$subitem.Remark}} </td>
-								<td class="">{{$subitem.UnitName}} </td>
-								<td class="text-right">{{formatNumber $subitem.Qty}} </td>
-							</tr>
-							{{end}}
-						</table>
-					</td>
-				</tr>
-				{{end}}
 				{{end}}
 			</tbody>
 		</table>
 		<!-- Replace the remark and totals table section with this -->
 		<table border="0" cellspacing="0" cellpadding="0" width="100%" style="margin-top: 1rem;">
 			<tr>
-				<td width="60%" class="vertical-top" style="padding-right: 20px;">
+				<td width="100%" class="vertical-top" style="padding-right: 20px;">
 					<table width="100%">
 						<tr>
 							<td class="vertical-top">
@@ -364,46 +317,21 @@
 						<tr>
 							<td class="vertical-top">
 								<div class="remark" style="padding: 5px 0;">
+									{{ if .Form.Remark }}
 									{{.Form.Remark}}
+									{{else}}
+									-
+									{{end}}
 								</div>
 							</td>
-						</tr>
-					</table>
-				</td>
-				<td width="40%" class="vertical-top">
-					<table class="totals-table" width="100%" border="0" cellspacing="0" cellpadding="0">
-						<tr>
-							<td class="totals-label">SUB AMOUNT</td>
-							<td class="text-right">{{formatNumber .Form.Subtotal}}</td>
-						</tr>
-						<tr>
-							<td class="totals-label">TOTAL DISCOUNT</td>
-							<td class="text-right">{{formatNumber .Form.TotalDiscount}}</td>
-						</tr>
-						<tr>
-							<td class="totals-label">AFTER DISCOUNT</td>
-							<td class="text-right">{{formatNumber .Form.TotalAfterDisc}}</td>
-						</tr>
-						<tr>
-							<td class="totals-label">PPH23</td>
-							<td class="text-right">{{formatNumber .Form.TotalPph23}}</td>
-						</tr>
-						<tr>
-							<td class="totals-label">VAT</td>
-							<td class="text-right">{{formatNumber .Form.TotalVat}}</td>
-						</tr>
-						<tr style="background-color: #195093; color: white;">
-							<td class="totals-label">GRAND TOTAL</td>
-							<td class="text-right">{{formatNumber .Form.GrandTotal}}</td>
 						</tr>
 					</table>
 				</td>
 			</tr>
 		</table>
 	</div>
-	<!-- Footer section with payment info and approval -->
+
 	<div class="footer-section" style="margin-top: 2rem;">
-		<!-- <div class="line">&nbsp;</div> -->
 		<table border="0" cellspacing="0" cellpadding="0" width="100%" style="width: 100%;">
 			<tr>
 				<td width="100%">
@@ -413,55 +341,53 @@
 		</table>
 		<table border="0" cellspacing="0" cellpadding="0" width="100%">
 			<tr>
-				<td width="50%">
-					<table>
+				<td width="33.33%" style="text-align: center;">
+					<table width="100%" style="margin: 0 auto;">
 						<tr>
-							<td width="100%">
-								<div class="text-grey">PAYMENT INFORMATION</div>
+							<td class="text-center">WAREHOUSE</td>
+						</tr>
+						<tr>
+							<td height="60" class="text-center">
+								<div>&nbsp;</div>
 							</td>
 						</tr>
 						<tr>
-							<td width="100%">
-								<table>
-									<tr>
-										<td width="50%" class="info-label">BANK</td>
-										<td width="50%" style="white-space: nowrap;">: {{.Form.BankName}}</td>
-									</tr>
-									<tr>
-										<td width="50%" class="info-label">BENEFICIARY</td>
-										<td width="50%" style="white-space: nowrap;">: {{.Form.AccountName}}</td>
-									</tr>
-								</table>
+							<td class="text-center">
+								<div>.....................................</div>
 							</td>
 						</tr>
 					</table>
 				</td>
-				<td width="50%" class="vertical-top">
-					<table width="100%">
+				<td width="33.33%" style="text-align: center;">
+					<table width="100%" style="margin: 0 auto;">
 						<tr>
-							<td width="100%" style="text-align: right;">
-								<table border="0" cellspacing="0" cellpadding="0" style="margin-left: auto;">
-									<tr>
-										<td class="text-center" style="min-width: 150px;">APPROVE</td>
-									</tr>
-									<tr>
-										<td height="60" width="100%" class="text-center" style="text-align: center;">
-											{{if .Form.Company.CompanySignUrl}}
-											<img src="{{.Form.Company.CompanySignUrl}}" alt="logo"
-												style="width: 70px; height: 70px; object-fit: contain; display: block; margin: 0 auto 5px auto;">
-											{{else}}
-											<div>
-												&nbsp;
-											</div>
-											{{end}}
-										</td>
-									</tr>
-									<tr>
-										<td class="text-center">
-											<div>({{.Form.Company.CompanyOwnerName}})</div>
-										</td>
-									</tr>
-								</table>
+							<td class="text-center">TECHNICIAN</td>
+						</tr>
+						<tr>
+							<td height="60" class="text-center">
+								<div>&nbsp;</div>
+							</td>
+						</tr>
+						<tr>
+							<td class="text-center">
+								<div>.....................................</div>
+							</td>
+						</tr>
+					</table>
+				</td>
+				<td width="33.33%" style="text-align: center;">
+					<table width="100%" style="margin: 0 auto;">
+						<tr>
+							<td class="text-center">RECIPIENT</td>
+						</tr>
+						<tr>
+							<td height="60" class="text-center">
+								<div>&nbsp;</div>
+							</td>
+						</tr>
+						<tr>
+							<td class="text-center">
+								<div>.....................................</div>
 							</td>
 						</tr>
 					</table>

@@ -609,7 +609,6 @@ func (s *QuotationService) Pdf(ctx *fiber.Ctx, req dtos.QuotationDetailDTO, user
 	}
 
 	htmlFileName := "quotation-detail"
-	log.Println("Pdf-htmlFileName-so", htmlFileName)
 
 	// 2. Render HTML template with data
 	// templateFile, err := templateFS.Open("templates/quotation-detail.html")

@@ -153,6 +153,10 @@
 		.text-grey {
 			color: #949494;
 		}
+
+		.info-row td {
+			vertical-align: top;
+		}
 	</style>
 </head>
 
@@ -215,14 +219,15 @@
 		<div class="document-title">{{.Form.Title}}</div>
 		<div class="text-center ref-number" style="margin-top: 6px; margin-bottom: 10px; font-size: 15px;">{{.Num}}</div>
 
-		<table class="reference-container" border="0" cellspacing="0" cellpadding="0" style="background-color: #F8F9FB; margin-top: 20px; margin-bottom: 20px; padding: 10px;">
+		<table class="reference-container" border="0" cellspacing="0" cellpadding="0"
+			style="background-color: #F8F9FB; margin-top: 20px; padding: 10px;">
 			<tr>
 				<td width="50%" class="vertical-top">
 					<div style="font-weight: medium; color: #6C757D; font-size: 15px; margin-bottom: 7px;">
 						Bill To
 					</div>
 					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">CUSTOMER</div>
 							</td>
@@ -233,7 +238,7 @@
 								<div>{{.Form.CustomerName}}</div>
 							</td>
 						</tr>
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">PHONE NO</div>
 							</td>
@@ -244,7 +249,7 @@
 								<div>{{.Form.Phone}}</div>
 							</td>
 						</tr>
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">ADDRESS</div>
 							</td>
@@ -262,7 +267,7 @@
 						Reference
 					</div>
 					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">INVOICE DATE</div>
 							</td>
@@ -273,7 +278,7 @@
 								<div>{{.Form.InvoiceDate}}</div>
 							</td>
 						</tr>
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">DUE DATE</div>
 							</td>
@@ -284,7 +289,7 @@
 								<div>{{.Form.DueDate}}</div>
 							</td>
 						</tr>
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">STATUS</div>
 							</td>
@@ -353,7 +358,7 @@
 				</td>
 				<td width="40%" class="vertical-top">
 					<table class="totals-table" width="100%" border="0" cellspacing="0" cellpadding="0">
-                        <tr>
+						<tr>
 							<td class="totals-label">TOTAL AMOUNT</td>
 							<td class="text-right">{{formatNumber .Form.TotalBalanceProducts}}</td>
 						</tr>

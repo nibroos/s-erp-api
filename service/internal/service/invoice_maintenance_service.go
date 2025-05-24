@@ -1541,7 +1541,16 @@ func (s *InvoiceMaintenanceService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceMaintena
 	qrCodePublicPath := utils.MapStringToURL(&qrCodePath)
 	log.Println("qrCodePublicPath", *qrCodePublicPath)
 
-	qrCode, _ := qr.Encode(*pdfPublicPath, qr.M, qr.Auto)
+	grandTotal := utils.FormatNumberSeparator(form.GrandTotal)
+	qrCodeContent := fmt.Sprintf("To: %s\nInvoice No: %s\nGrand Total: %s.%s\nLink: %s",
+		*form.CustomerName,
+		num,
+		*form.CurrencyName,
+		grandTotal,
+		*pdfPublicPath,
+	)
+
+	qrCode, _ := qr.Encode(qrCodeContent, qr.M, qr.Auto)
 	qrCode, _ = barcode.Scale(qrCode, 200, 200)
 
 	// create the output file

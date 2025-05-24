@@ -137,6 +137,25 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 		}
 	}
 
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+
+		filterDateTypeKey := map[string]string{
+			"invoice_date": "idp.invoice_date",
+			"due_date":     "idp.due_date",
+		}
+
+		dateTypeColumn := "idp.invoice_date"
+		for key := range filterDateTypeKey {
+			if key == filters["date_type"] {
+				dateTypeColumn = filterDateTypeKey[filters["date_type"]]
+			}
+		}
+
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (idp.id)
@@ -189,20 +208,6 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 				i++
 			}
 		}
-	}
-
-	if startDate, ok := filters["start_date"]; ok && startDate != "" {
-		query += fmt.Sprintf(" AND invoice_date >= $%d", i)
-		countQuery += fmt.Sprintf(" AND invoice_date >= $%d", i)
-		args = append(args, startDate)
-		i++
-	}
-
-	if endDate, ok := filters["end_date"]; ok && endDate != "" {
-		query += fmt.Sprintf(" AND invoice_date <= $%d", i)
-		countQuery += fmt.Sprintf(" AND invoice_date <= $%d", i)
-		args = append(args, endDate)
-		i++
 	}
 
 	if !isAdmin && branchID != nil {
@@ -1406,8 +1411,22 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
 		}
 	}
 
-	if filters["start_date"] != "" && filters["end_date"] != "" {
-		condition += fmt.Sprintf(" AND (idp.invoice_date BETWEEN $%d AND $%d)", i, i+1)
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+
+		filterDateTypeKey := map[string]string{
+			"invoice_date": "idp.invoice_date",
+			"due_date":     "idp.due_date",
+		}
+
+		dateTypeColumn := "idp.invoice_date"
+		for key := range filterDateTypeKey {
+			if key == filters["date_type"] {
+				dateTypeColumn = filterDateTypeKey[filters["date_type"]]
+			}
+		}
+
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
 		args = append(args, filters["start_date"], filters["end_date"])
 		i += 2
 	}

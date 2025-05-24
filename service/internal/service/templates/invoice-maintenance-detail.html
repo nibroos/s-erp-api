@@ -175,6 +175,10 @@
 			text-align: center;
 			margin: 20px 0;
 		}
+
+		.info-row td {
+			vertical-align: top;
+		}
 	</style>
 </head>
 
@@ -241,7 +245,7 @@
 			<tr>
 				<td width="50%" class="vertical-top">
 					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">CUSTOMER</div>
 							</td>
@@ -249,7 +253,7 @@
 								<div>{{.Form.CustomerName}}</div>
 							</td>
 						</tr>
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">PHONE NO</div>
 							</td>
@@ -257,7 +261,7 @@
 								<div>{{.Form.Phone}}</div>
 							</td>
 						</tr>
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">ADDRESS</div>
 							</td>
@@ -269,7 +273,7 @@
 				</td>
 				<td width="50%" class="vertical-top">
 					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">INVOICE DATE</div>
 							</td>
@@ -277,7 +281,7 @@
 								<div>{{.Form.InvoiceDate}}</div>
 							</td>
 						</tr>
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">DUE DATE</div>
 							</td>
@@ -285,7 +289,7 @@
 								<div>{{.Form.DueDate}}</div>
 							</td>
 						</tr>
-						<tr>
+						<tr class="info-row">
 							<td width="30%">
 								<div class="info-label">STATUS</div>
 							</td>
@@ -297,7 +301,7 @@
 				</td>
 			</tr>
 		</table>
-		<table class="main-table" width="100%" cellspacing="0" cellpadding="0" border="1"
+		<!-- <table class="main-table" width="100%" cellspacing="0" cellpadding="0" border="1"
 			style="margin: 1rem 0 20px 0; text-align: left;">
 			<tr>
 				<th class="">
@@ -339,9 +343,9 @@
 					{{.Form.VatPercentage}}
 				</td>
 			</tr>
-		</table>
+		</table> -->
 
-		<table class="main-table" border="1" cellspacing="0" cellpadding="0">
+		<table class="main-table" border="1" cellspacing="0" cellpadding="0" style="margin-top: 1rem;">
 			<thead>
 				<tr>
 					<th width="5%" class="text-center">NO</th>

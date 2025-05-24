@@ -609,6 +609,15 @@ func (r *InventoryRepository) GetInventoryByID(ctx *fiber.Ctx, params *dtos.GetI
 				TO_CHAR(iv.do_at, 'YYYY-MM-DD') as do_at,
 				TO_CHAR(iv.invoice_at, 'YYYY-MM-DD') as invoice_at,
 
+				br.company_profile_id,
+				c.name as customer_name,
+				c.code as customer_code,
+				c.phone as phone,
+				c.address as address,
+				cur.name as currency_name,
+				vat.name as vat_name,
+				pph.name as pph23_name,
+
 				-- io_type
 				ot.options_json->>'io_type' as io_type,
 
@@ -625,6 +634,7 @@ func (r *InventoryRepository) GetInventoryByID(ctx *fiber.Ctx, params *dtos.GetI
 			LEFT JOIN mix_values pph ON iv.pph23_id = pph.id
 			LEFT JOIN mix_values ot ON iv.io_type_id = ot.id
 			LEFT JOIN customers c ON iv.customer_id = c.id
+			LEFT JOIN branches br ON iv.branch_id = br.id
 
 			LEFT JOIN users cu ON iv.created_by_id = cu.id
 			LEFT JOIN users uu ON iv.updated_by_id = uu.id

@@ -220,6 +220,21 @@ type InventoryDetailDTO struct {
 	UpdatedAt     *string                 `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string                 `json:"deleted_at" db:"deleted_at"`
 	InvDts        []InventoryInvDtListDTO `json:"inv_dts,omitempty" gorm:"-"`
+
+	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
+	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
+	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
+	Phone            *string                 `json:"phone" db:"phone"`
+	Address          *string                 `json:"address" db:"address"`
+	Company          CompanyProfileDetailDTO `json:"company,omitempty" gorm:"-"`
+	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
+	CurrencyName     *string                 `json:"currency_name" db:"currency_name"`
+	VatName          *string                 `json:"vat_name" db:"vat_name"`
+	Pph23Name        *string                 `json:"pph23_name" db:"pph23_name"`
+	BankName         *string                 `json:"bank_name" db:"bank_name"`
+	AccountName      *string                 `json:"account_name" db:"account_name"`
+	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
+	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
 }
 
 type InventoryInvDtListDTO struct {
@@ -707,4 +722,10 @@ type SyncStockInventoryRequest struct {
 	Password       string  `json:"password"`
 	UserID         uint    `json:"user_id"`
 	BranchID       uint    `json:"branch_id"`
+}
+
+type InventoryPDFData struct {
+	Num string `json:"num"`
+	// Form FormInventoryRequest
+	Form InventoryDetailDTO
 }
