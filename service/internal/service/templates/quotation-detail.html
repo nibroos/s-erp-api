@@ -1,348 +1,454 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{{ .Num}} - Quotation</title>
 	<style>
 		body {
 			font-family: Arial, sans-serif;
-			margin: 20px;
+			margin: 0 2rem;
 			padding: 0;
-			color: #333;
+			color: #212529;
+			font-size: 12px;
 		}
-		.container {
-			max-width: 800px;
-			margin: 0 auto;
-			border: 1px solid #ddd;
-			padding: 20px;
-			background: #fff;
-			box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-			border-radius: 8px;
-		}
-		.header {
-			display: flex;
-			justify-content: space-between;
-			margin-bottom: 20px;
-			align-items: center;
-		}
-		.logo {
-			width: 80px;
-			height: 80px;
-			background-color: #fff;
-			border: 2px solid #0056b3;
-			border-radius: 50%;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			color: #0056b3;
-			font-weight: bold;
-		}
-		.company-name {
-			color: #0056b3;
-			font-weight: bold;
-			margin-left: 10px;
-		}
-		.company-address {
-			font-family: Inter;
-			font-weight: 300;
-			font-size: 15px;
-			text-align: right;
-			vertical-align: middle;
 
-		}
-		.title {
+		.document-title {
 			text-align: center;
-			margin: 20px 0 10px;
-			font-size: 20px;
 			font-weight: bold;
+			margin-top: 15px;
+			font-size: 24px;
 		}
-		.quotation-number {
-			text-align: center;
-			margin-bottom: 20px;
-			font-size: 14px;
+
+		.ref-number {
+			text-decoration-line: underline !important;
+			text-decoration: underline !important;
+			margin-bottom: 25px;
 		}
-		.info-section {
-			display: flex;
-			justify-content: space-between;
-			margin-bottom: 20px;
-            background-color: #F8F9FB;
-		}
-		.left-info, .right-info {
-			width: 48%;
-		}
-		.info-row {
-			display: flex;
-			margin-bottom: 8px;
-		}
+
 		.info-label {
-			width: 120px;
 			font-weight: bold;
-		}
-		.info-value {
-			flex-grow: 1;
-		}
-		table {
-			width: 100%;
-			border-collapse: collapse;
-			margin-bottom: 20px;
-		}
-		th, td {
-			border: 1px solid #ddd;
-			padding: 8px;
-			text-align: left;
-		}
-		th {
-			background-color: #f2f2f2;
-		}
-		.remarks {
-			margin-bottom: 20px;
-		}
-		.remarks-title {
-			font-weight: bold;
+			white-space: nowrap;
 			margin-bottom: 5px;
 		}
-		.remarks-content {
-			font-size: 13px;
+
+		.main-table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-bottom: 5px;
 		}
-		.totals {
-			width: 300px;
+
+		.main-table th {
+			padding: 4px;
+			border: 1px solid #262626;
+		}
+
+		.main-table td {
+			padding: 4px;
+			border: 1px solid #262626;
+		}
+
+		.sub-table {
+			width: 100%;
+			border: none;
+			border-collapse: collapse;
+		}
+
+		.sub-table th,
+		.sub-table td {
+			padding: 4px;
+			border: 1px solid #262626;
+			/* Inner borders */
+		}
+
+		/* Remove bottom border for last row */
+		.sub-table tr:last-child td {
+			border-bottom: none;
+		}
+
+		/* Remove right border for last column */
+		.sub-table th:last-child,
+		.sub-table td:last-child {
+			border-right: none;
+		}
+
+		/* Remove left border for first column */
+		.sub-table th:first-child,
+		.sub-table td:first-child {
+			border-left: none;
+		}
+
+		/* Remove top border for first row */
+		.sub-table tr:first-child th {
+			border-top: none;
+		}
+
+		.text-right {
+			text-align: right;
+		}
+
+		.text-center {
+			text-align: center;
+		}
+
+		.totals-table {
+			width: 100%;
 			margin-left: auto;
+			border-collapse: collapse;
 		}
-		.totals-row {
-			display: flex;
-			justify-content: space-between;
-			padding: 5px 0;
-		}
-		.grand-total {
-			background-color: #0056b3;
-			color: white;
-			font-weight: bold;
+
+		.totals-table td {
 			padding: 5px;
-			text-align: center;
 		}
-		.payment-section {
-			margin: 30px 0;
-			border-top: 1px solid #ddd;
-			padding-top: 20px;
-		}
-		.payment-title {
+
+		.totals-label {
 			font-weight: bold;
-			margin-bottom: 10px;
 		}
-		.payment-info {
-			display: flex;
-			justify-content: space-between;
-			align-items: flex-end;
+
+		.table-container {
+			width: 100%;
 		}
-		.payment-left {
-			width: 60%;
+
+		.reference-container {
+			width: 100%;
 		}
-		.payment-right {
-			width: 35%;
-			text-align: center;
-		}
-		.payment-right > div {
-			border: 2px solid #888;
-			padding: 10px;
-			display: inline-block;
-		}
-		.signature {
-			margin-top: 20px;
-		}
-		.footer {
-			margin-top: 20px;
-			height: 20px;
-		}
-		.footer-section {
-			margin-top: 2rem;
-		}
+
 		.vertical-top {
 			vertical-align: top;
 		}
-		.text-center {
-			text-align: center;
+
+		.remark {
+			font-style: italic;
+			padding: 5px 4rem 5px 0;
+			font-style: italic;
+		}
+
+		.company-name {
+			font-size: 18px;
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		.company-address {
+			line-height: 1.4;
+		}
+
+		.line {
+			border-top: 1px solid #d1d0d0;
+			padding-top: 15px;
+			width: 20px;
+		}
+
+		.content-wrapper {
+			/* page-break-after: always; */
+			min-height: 100%;
+			position: relative;
+			/* Height of your footer section */
+		}
+
+		/* Update footer section styles */
+		.footer-section {
+			page-break-inside: avoid;
+			page-break-before: auto;
+			position: relative;
+		}
+
+		/* Add this to handle table rows */
+		.main-table tbody tr {
+			page-break-inside: avoid;
+		}
+
+		.text-grey {
+			color: #949494;
 		}
 	</style>
 </head>
 
 <body>
-	<div class="container">
-		<div class="header">
-			<div style="display: flex; align-items: center;">
-				<div class="logo">{{.CompanyProfile.CompanyName}}</div>
-				<div class="company-name">{{.CompanyProfile.CompanyName}}</div>
-			</div>
-			<div class="company-address">
-				{{.CompanyProfile.CompanyAddress}}<br>
-				{{.CompanyProfile.CompanyPhone}} // {{.CompanyProfile.CompanyEmail}}
-			</div>
-		</div>
+	<div class="content-wrapper">
+		<div>&nbsp;</div>
+		<table border="0" cellspacing="0" cellpadding="0" style="margin-top: 0.4rem;">
+			<tr>
+				<td width="50%">
+					<table border="0" cellspacing="0" cellpadding="0" width="100%">
+						<tr>
+							<td width="100%" style="vertical-align: top;">
+								<table border="0" cellspacing="0" cellpadding="0">
+									<tr>
+										<td>
+											{{if .Form.Company.CompanyLogoUrl}}
+											<img src="{{.Form.Company.CompanyLogoUrl}}" alt="logo"
+												style="width: 70px; height: 70px; object-fit: contain; display: block; margin-bottom: 5px;">
+											{{else}}
+											<div>
+												&nbsp;
+											</div>
+											{{end}}
+										</td>
+										<td style="padding-left: 10px;">
+											<span class="company-name">{{.Form.Company.CompanyName}}</span>
+										</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+					</table>
+				</td>
+				<td width="50%">
+					<table border="0" cellspacing="0" cellpadding="0" class="text-right">
+						<tr>
+							<td class="text-right">
+								<div class="company-address text-right">
+									{{.Form.Company.CompanyAddress}}
+								</div>
+							</td>
+						</tr>
+						<tr>
+							<td class="text-right">
+								{{.Form.Company.CompanyPhone}} / {{.Form.Company.CompanyEmail}}
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+		<table border="0" cellspacing="0" cellpadding="0" width="100%" style="width: 100%;">
+			<tr>
+				<td width="100%">
+					<div class="line" style="width: 100%;"></div>
+				</td>
+			</tr>
+		</table>
 
-		<div class="title">QUOTATION LICENSE POS</div>
-		<div class="quotation-number">{{.Quotation.QuoNo}}</div>
-		
-		<div class="info-section">
-			<div class="left-info">
-				<div class="info-row">
-					<div class="info-label">BILL TO</div>
-					<div class="info-value">: {{.Customer.Name}}</div>
-				</div>
-				<div class="info-row">
-					<div class="info-label">PHONE NO.</div>
-					<div class="info-value">: {{.Customer.Phone}}</div>
-				</div>
-				<div class="info-row">
-					<div class="info-label">PIC</div>
-					<div class="info-value">: {{.Customer.PicName}}</div>
-				</div>
-			</div>
-			<div class="right-info">
-				<div class="info-row">
-					<div class="info-label">REFERENCE</div>
-					<div class="info-value">: {{.Quotation.QuoNo}}</div>
-				</div>
-				<div class="info-row">
-					<div class="info-label">QUOT DATE</div>
-					<div class="info-value">: {{.Quotation.CreatedAt}}</div>
-				</div>
-				<div class="info-row">
-					<div class="info-label">EXPIRED DATE</div>
-					<div class="info-value">: {{.Quotation.ExpiredAt}}</div>
-				</div>
-			</div>
-		</div>
+		<div class="document-title">QUOTATION {{.Form.Title}}</div>
+		<div class="text-center ref-number">{{.Num}}</div>
 
-		<table>
+		<table class="reference-container" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 1rem;">
+			<tr>
+				<td width="50%" class="vertical-top">
+					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
+						<tr>
+							<td width="30%">
+								<div class="info-label">CUSTOMER</div>
+							</td>
+							<td width="70%">
+								<div>{{.Form.CustomerName}}</div>
+							</td>
+						</tr>
+						<tr>
+							<td width="30%">
+								<div class="info-label">PHONE NO</div>
+							</td>
+							<td width="70%">
+								<div>{{.Form.Phone}}</div>
+							</td>
+						</tr>
+						<tr>
+							<td width="30%">
+								<div class="info-label">ADDRESS</div>
+							</td>
+							<td width="70%">
+								<div>{{.Form.Address}}</div>
+							</td>
+						</tr>
+					</table>
+				</td>
+				<td width="50%" class="vertical-top">
+					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
+						<tr>
+							<td width="30%">
+								<div class="info-label">DUE DATE</div>
+							</td>
+							<td width="70%">
+								<div>{{.Form.DueAt}}</div>
+							</td>
+						</tr>
+						<tr>
+							<td width="30%">
+								<div class="info-label">EXPIRED DATE</div>
+							</td>
+							<td width="70%">
+								<div>{{.Form.ExpiredAt}}</div>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+
+		<table class="main-table" border="1" cellspacing="0" cellpadding="0">
 			<thead>
 				<tr>
-					<th>NO</th>
-					<th>ITEM NAME</th>
-					<th>QTY</th>
-					<th>UNIT</th>
-					<th>PRICE</th>
-					<th>AMOUNT</th>
+					<th width="5%" class="text-center">NO</th>
+					<th width="45%" style="text-align: left;">PRODUCT NAME</th>
+					<th width="20%" style="text-align: left;">REMARK</th>
+					<th width="10%" style="text-align: left;">UNIT</th>
+					<th width="10%" class="text-right">DISC (%)</th>
+					<th width="10%" class="text-right">DISC Amount</th>
+					<th width="10%" class="text-right">QTY</th>
+					<th width="15%" class="text-right">PRICE</th>
+					<th width="15%" class="text-right">AMOUNT</th>
 				</tr>
 			</thead>
 			<tbody>
-				{{range $index, $quoDt := .Quotation.QuoDts}}
+				{{range $index, $item := .Form.QuoDts}}
 				<tr>
-					<td>{{add $index 1}}</td>
-					<td>{{$quoDt.ItemName}}</td>
-					<td>{{$quoDt.Qty}}</td>
-					<td>{{$quoDt.UnitName}}</td>
-					<td>{{formatNumber $quoDt.PriceSell}}</td>
-					<td>{{formatNumber $quoDt.SubtotalSell}}</td>
+					<td class="text-center">{{ inc $index}}</td>
+					<td>{{$item.ItemName}} </td>
+					<td class="">{{$item.Remark}} </td>
+					<td class="">{{$item.UnitName}} </td>
+					<td class="text-right">{{formatNumber $item.DiscPerc}} </td>
+					<td class="text-right">{{formatNumber $item.DiscAm}} </td>
+					<td class="text-right">{{formatNumber $item.Qty}} </td>
+					<td class="text-right">{{formatNumber $item.PriceSell}} </td>
+					<td class="text-right">{{formatNumber $item.SubtotalSell}} </td>
 				</tr>
-				{{if $quoDt.QuoDtsBoms}}
-				{{range $bom := $quoDt.QuoDtsBoms}}
-				<tr>
-					<td></td>
-					<td style="padding-left: 20px;">{{$bom.ItemName}}</td>
-					<td>{{$bom.Qty}}</td>
-					<td>{{$bom.UnitName}}</td>
-					<td>{{formatNumber $bom.PriceSell}}</td>
-					<td>{{formatNumber $bom.SubtotalSell}}</td>
+				{{ if $item.QuoDtsBoms }}
+				<tr style="padding: 0 !important;">
+					<td colspan="9" class="text-left" style="padding: 0 !important;">
+						<table class="sub-table" cellspacing="0" cellpadding="0">
+							<tr>
+								<th width="5%" class="text-center">NO</th>
+								<th width="45%" style="text-align: left;">ITEM NAME</th>
+								<th width="20%" style="text-align: left;">REMARK</th>
+								<th width="10%" style="text-align: left;">UNIT</th>
+								<th width="10%" class="text-right">QTY</th>
+							</tr>
+							{{range $index, $subitem := $item.QuoDtsBoms}}
+							<tr>
+								<td class="text-center">{{ inc $index}}</td>
+								<td>{{$subitem.ItemName}} </td>
+								<td class="">{{$subitem.Remark}} </td>
+								<td class="">{{$subitem.UnitName}} </td>
+								<td class="text-right">{{formatNumber $subitem.Qty}} </td>
+							</tr>
+							{{end}}
+						</table>
+					</td>
 				</tr>
-				{{end}}
 				{{end}}
 				{{end}}
 			</tbody>
 		</table>
-
-		<div style="display: block;">
-			<div class="remarks">
-				<div class="remarks-title">*REMARK</div>
-				<div class="remarks-content">
-					{{.Quotation.Remark}}
-				</div>
-			</div>
-
-			<div class="totals">
-				<div class="totals-row">
-					<div>SUB AMOUNT</div>
-					<div>{{formatNumber .Quotation.Subtotal}}</div>
-				</div>
-				<div class="totals-row">
-					<div>DISCOUNT</div>
-					<div>{{formatNumber .Quotation.TotalDiscount}}</div>
-				</div>
-				<div class="totals-row">
-					<div>TOTAL AMOUNT</div>
-					<div>{{formatNumber (subtract .Quotation.Subtotal .Quotation.TotalDiscount)}}</div>
-				</div>
-				<div class="totals-row">
-					<div>PPH23</div>
-					<div>{{formatNumber .Quotation.TotalPph23}}</div>
-				</div>
-				<div class="totals-row">
-					<div>VAT</div>
-					<div>{{formatNumber .Quotation.TotalVat}}</div>
-				</div>
-				<div class="grand-total">
-					<div class="totals-row" style="color: white;">
-						<div>GRAND TOTAL</div>
-						<div>{{formatNumber .Quotation.GrandTotal}}</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<div class="footer-section" style="margin-top: 2rem;">
-			<table border="0" cellspacing="0" cellpadding="0" width="100%">
-				<tr>
-					<td width="50%" class="vertical-top">
-						<table>
-							<tr>
-								<td width="100%">
-									<div class="payment-title">PAYMENT INFORMATION</div>
-								</td>
-							</tr>
-							<tr>
-								<td width="100%">
-									<table>
-										<tr>
-											<td class="info-label">BANK</td>
-											<td style="white-space: nowrap;">: {{(index .BankInformation 0).Name}}, {{(index .BankInformation 0).AccountNumber}}</td>
-										</tr>
-										<tr>
-											<td class="info-label">BENEFICIARY</td>
-											<td style="white-space: nowrap;">: {{(index .BankInformation 0).AccountName}}</td>
-										</tr>
-									</table>
-								</td>
-							</tr>
-						</table>
-					</td>
-					<td width="50%" class="vertical-top">
-						<table width="100%">
-							<tr>
-								<td width="100%" style="text-align: right;">
-									<table border="0" cellspacing="0" cellpadding="0" style="margin-left: auto;">
-										<tr>
-											<td class="text-center" style="min-width: 150px; font-weight: bold;">APPROVE</td>
-										</tr>
-										<tr>
-											<td height="60" width="100%" class="text-center" style="text-align: center;">
-												{{if .CompanyProfile.CompanySignUrl}}
-												<img src="{{.CompanyProfile.CompanySignUrl}}" alt="sign"
-													style="width: 70px; height: 70px; object-fit: contain; display: block; margin: 0 auto 5px auto;">
-												{{else}}
-												<div style="height: 70px;">&nbsp;</div>
-												{{end}}
-											</td>
-										</tr>
-										<tr>
-											<td class="text-center">
-												<div>({{.CompanyProfile.CompanySignName}})</div>
-											</td>
-										</tr>
-									</table>
-								</td>
-							</tr>
-						</table>
-					</td>
-				</tr>
-			</table>
-		</div>
-		<div class="footer"></div>
+		<!-- Replace the remark and totals table section with this -->
+		<table border="0" cellspacing="0" cellpadding="0" width="100%" style="margin-top: 1rem;">
+			<tr>
+				<td width="60%" class="vertical-top" style="padding-right: 20px;">
+					<table width="100%">
+						<tr>
+							<td class="vertical-top">
+								<div style="font-weight: bold;"><span style="color:red;">*</span>REMARK</div>
+							</td>
+						</tr>
+						<tr>
+							<td class="vertical-top">
+								<div class="remark" style="padding: 5px 0;">
+									{{.Form.Remark}}
+								</div>
+							</td>
+						</tr>
+					</table>
+				</td>
+				<td width="40%" class="vertical-top">
+					<table class="totals-table" width="100%" border="0" cellspacing="0" cellpadding="0">
+						<tr>
+							<td class="totals-label">SUB AMOUNT</td>
+							<td class="text-right">{{formatNumber .Form.Subtotal}}</td>
+						</tr>
+						<tr>
+							<td class="totals-label">TOTAL DISCOUNT</td>
+							<td class="text-right">{{formatNumber .Form.TotalDiscount}}</td>
+						</tr>
+						<tr>
+							<td class="totals-label">AFTER DISCOUNT</td>
+							<td class="text-right">{{formatNumber .Form.TotalAfterDisc}}</td>
+						</tr>
+						<tr>
+							<td class="totals-label">PPH23</td>
+							<td class="text-right">{{formatNumber .Form.TotalPph23}}</td>
+						</tr>
+						<tr>
+							<td class="totals-label">VAT</td>
+							<td class="text-right">{{formatNumber .Form.TotalVat}}</td>
+						</tr>
+						<tr style="background-color: #195093; color: white;">
+							<td class="totals-label">GRAND TOTAL</td>
+							<td class="text-right">{{formatNumber .Form.GrandTotal}}</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+	<!-- Footer section with payment info and approval -->
+	<div class="footer-section" style="margin-top: 2rem;">
+		<!-- <div class="line">&nbsp;</div> -->
+		<table border="0" cellspacing="0" cellpadding="0" width="100%" style="width: 100%;">
+			<tr>
+				<td width="100%">
+					<div class="line" style="width: 100%;"></div>
+				</td>
+			</tr>
+		</table>
+		<table border="0" cellspacing="0" cellpadding="0" width="100%">
+			<tr>
+				<td width="50%">
+					<table>
+						<tr>
+							<td width="100%">
+								<div class="text-grey">PAYMENT INFORMATION</div>
+							</td>
+						</tr>
+						<tr>
+							<td width="100%">
+								<table>
+									<tr>
+										<td width="50%" class="info-label">BANK</td>
+										<td width="50%" style="white-space: nowrap;">: {{.Form.BankName}}</td>
+									</tr>
+									<tr>
+										<td width="50%" class="info-label">BENEFICIARY</td>
+										<td width="50%" style="white-space: nowrap;">: {{.Form.AccountName}}</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+					</table>
+				</td>
+				<td width="50%" class="vertical-top">
+					<table width="100%">
+						<tr>
+							<td width="100%" style="text-align: right;">
+								<table border="0" cellspacing="0" cellpadding="0" style="margin-left: auto;">
+									<tr>
+										<td class="text-center" style="min-width: 150px;">APPROVE</td>
+									</tr>
+									<tr>
+										<td height="60" width="100%" class="text-center" style="text-align: center;">
+											{{if .Form.Company.CompanySignUrl}}
+											<img src="{{.Form.Company.CompanySignUrl}}" alt="logo"
+												style="width: 70px; height: 70px; object-fit: contain; display: block; margin: 0 auto 5px auto;">
+											{{else}}
+											<div>
+												&nbsp;
+											</div>
+											{{end}}
+										</td>
+									</tr>
+									<tr>
+										<td class="text-center">
+											<div>({{.Form.Company.CompanyOwnerName}})</div>
+										</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
 	</div>
 </body>
+
 </html>

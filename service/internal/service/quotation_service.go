@@ -2,9 +2,14 @@ package service
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"os"
+	"path/filepath"
+	"text/template"
 	"time"
 
+	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
 	"github.com/gofiber/fiber/v2"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -12,6 +17,8 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/utils"
 	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"gorm.io/gorm"
 )
 
@@ -538,213 +545,224 @@ func (s *QuotationService) LockQuotationTable(ctx *fiber.Ctx, tx *gorm.DB, req d
 	return tx, nil
 }
 
-// // PdfGetQuotations
-// func (s *QuotationService) PdfGetQuotations(ctx *fiber.Ctx, data interface{}, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*string, error) {
-// 	childSpan := opentracing.StartSpan("QuotationService-PdfGetQuotations", opentracing.ChildOf(span.Context()))
+// PdfGetQuotations
+func (s *QuotationService) Pdf(ctx *fiber.Ctx, req dtos.QuotationDetailDTO, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) (*string, error) {
+	childSpan := opentracing.StartSpan("QuotationService-Pdf", opentracing.ChildOf(span.Context()))
 
-// 	// Get company profile with branch info
-// 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-// 	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	form := req
+	var quotation *dtos.QuotationDetailDTO
+	var err error
 
-// 	// Get quotation details
-// 	params := &dtos.GetQuotationParams{ID: data.(struct{ ID uint }).ID}
-// 	quotation, err := s.repo.GetQuotationByID(ctx, params, tx, childSpan)
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	// req.IsIDOnly != nil
+	var params dtos.GetQuotationParams
+	if req.IsIDOnly != nil && *req.IsIDOnly == 1 {
+		params.ID = req.ID
 
-// 	// Get customer details
-// 	customer, err := s.utilRepo.GetCustomerByID(ctx, quotation.CustomerID)
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+		quotation, err = s.repo.GetQuotationByID(ctx, &params, tx, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			return nil, err
+		}
 
-// 	// Get quotation details (QuoDts)
-// 	createdQuotationIDs := []uint{quotation.ID}
-// 	quoDts, err := s.GetQuoDtsByQuotationIDs(ctx, tx, createdQuotationIDs, childSpan)
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+		createdSalesOrderIDs := make([]uint, 0)
+		createdSalesOrderIDs = append(createdSalesOrderIDs, quotation.ID)
 
-// 	// Get quotation BOMs
-// 	filters := make(map[string]string)
-// 	quoDtBoms, err := s.GetQuoDtsBomByQuotations(ctx, filters, createdQuotationIDs, childSpan)
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+		quoDts, err := s.GetQuoDtsByQuotationIDs(ctx, tx, createdSalesOrderIDs, childSpan)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to fetch quoDts: %v", err)
+		}
 
-// 	// Filter and map QuoDts with BOMs
-// 	quoDts = s.MapFilterQuoDtBomsToQuoDts(ctx, quoDtBoms, quoDts, childSpan)
-// 	quotation.QuoDts = quoDts
+		filters := ctx.Locals("filters").(map[string]string)
+		quoDtBoms, err := s.GetQuoDtsBomByQuotations(ctx, filters, createdSalesOrderIDs, childSpan)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to fetch quoDtBoms: %v", err)
+		}
 
-// 	// Get bank information
-// 	bankInfo, err := s.utilRepo.GetBankInformationByCompanyID(ctx, companyProfile.ID)
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+		quoDts = s.MapFilterQuoDtBomsToQuoDts(ctx, quoDtBoms, quoDts, childSpan)
 
-// 	// Format dates
-// 	if quotation.CreatedAt != nil {
-// 		createdTime, _ := time.Parse(time.RFC3339, *quotation.CreatedAt)
-// 		formattedCreatedAt := createdTime.Format("2006-01-02")
-// 		quotation.CreatedAt = &formattedCreatedAt
-// 	}
-// 	if quotation.ExpiredAt != nil {
-// 		expiredTime, _ := time.Parse(time.RFC3339, *quotation.ExpiredAt)
-// 		formattedExpiredAt := expiredTime.Format("2006-01-02")
-// 		quotation.ExpiredAt = &formattedExpiredAt
-// 	}
+		companyParams := &dtos.GetCompanyProfileParams{ID: uint(*quotation.CompanyProfileID)}
+		quotation.QuoDts = quoDts
+		company, err := s.utilRepo.GetCompanyProfileByID(ctx, companyParams)
+		if err != nil {
+			utils.LogErrors(childSpan, err)
+			log.Printf("Failed to fetch company: %v", err)
+		}
 
-// 	// Prepare template data
-// 	templateData := struct {
-// 		CompanyProfile  *dtos.CompanyProfileDTO
-// 		Customer        *dtos.CustomerDTO
-// 		Quotation       *dtos.QuotationDetailDTO
-// 		BankInformation *dtos.BankInformationDTO
-// 	}{
-// 		CompanyProfile:  companyProfile,
-// 		Customer:        customer,
-// 		Quotation:       quotation,
-// 		BankInformation: bankInfo,
-// 	}
+		quotation.Company = *company
 
-// 	log.Printf("TEMPLATE DATA: %+v", templateData)
+		form = *quotation
+		req.QuoNo = quotation.QuoNo
+	}
 
-// 	// Generate PDF
-// 	htmlFileName := "quotation-detail"
-// 	templateFile, err := templateFS.Open(fmt.Sprintf("templates/%s.html", htmlFileName))
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	var num string
+	if req.QuoNo != nil {
+		num = *req.QuoNo
+	} else {
+		num = ""
+	}
 
-// 	// Read template content
-// 	templateContent, err := io.ReadAll(templateFile)
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	data := dtos.QuotationPDFData{
+		Num:  num,
+		Form: form,
+	}
 
-// 	// Create temporary HTML file
-// 	htmlFile, err := os.CreateTemp("", fmt.Sprintf("%s-*.html", htmlFileName))
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
-// 	defer os.Remove(htmlFile.Name())
+	htmlFileName := "quotation-detail"
+	log.Println("Pdf-htmlFileName-so", htmlFileName)
 
-// 	funcMap := template.FuncMap{
-// 		"formatNumber": func(n interface{}) string {
-// 			// Format number with commas and 2 decimal places
-// 			if f, ok := n.(float64); ok {
-// 				return fmt.Sprintf("%.2f", f)
-// 			}
-// 			return fmt.Sprintf("%v", n)
-// 		},
-// 		"subtract": func(a, b float64) float64 {
-// 			return a - b
-// 		},
-// 		"add": func(a, b int) int {
-// 			return a + b
-// 		},
-// 	}
+	// 2. Render HTML template with data
+	// templateFile, err := templateFS.Open("templates/quotation-detail.html")
+	templateFile, err := templateFS.Open(fmt.Sprintf("templates/%s.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to open embedded template: %v", err)
+		return nil, err
+	}
 
-// 	tmpl := template.New(fmt.Sprintf("%s.html", htmlFileName)).Funcs(funcMap)
-// 	tmpl, err = tmpl.Parse(string(templateContent))
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	// Read the template content
+	templateContent, err := io.ReadAll(templateFile)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to read template content: %v", err)
+		return nil, err
+	}
 
-// 	if err := tmpl.Execute(htmlFile, templateData); err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	// htmlFile, err := os.CreateTemp("", "quotation-detail-*.html")
+	htmlFile, err := os.CreateTemp("", fmt.Sprintf("%s-*.html", htmlFileName))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error writing htmlFile:", err)
+		return nil, err
+	}
+	defer os.Remove(htmlFile.Name())
 
-// 	// Generate PDF
-// 	pdfg, err := wkhtmltopdf.NewPDFGenerator()
-// 	if err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	// Inside the Pdf function, before parsing the template
+	funcMap := template.FuncMap{
+		"formatNumber": func(n float64, args ...int) string {
+			decimals := 2
+			if len(args) > 0 {
+				decimals = args[0]
+			}
 
-// 	// Read header and footer templates
-// 	headerContent, err := templateFS.ReadFile("templates/header.html")
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to read header: %w", err)
-// 	}
+			format := fmt.Sprintf("%%.%df", decimals)
+			p := message.NewPrinter(language.English)
+			return p.Sprintf(format, n)
+			// Handle different numeric types
+			// switch v := n.(type) {
+			// case float64:
+			// 	return p.Sprintf(format, v)
+			// case float32:
+			// 	return p.Sprintf(format, v)
+			// case int:
+			// 	return p.Sprintf(format, float64(v))
+			// case nil:
+			// 	return "0"
+			// default:
+			// 	return "0"
+			// }
+		},
+		"inc": func(i int) int {
+			return i + 1
+		},
+	}
 
-// 	footerContent, err := templateFS.ReadFile("templates/footer.html")
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to read footer: %w", err)
-// 	}
+	// Parse the template
+	tmpl, err := template.New(fmt.Sprintf("%s.html", htmlFileName)).Funcs(funcMap).Parse(string(templateContent))
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Printf("Failed to parse template: %v", err)
+		return nil, err
+	}
 
-// 	// Create temporary files for header and footer
-// 	headerPath, err := createTempFileFromEmbed(string(headerContent))
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to create header temp file: %w", err)
-// 	}
-// 	defer os.Remove(headerPath)
+	if err := tmpl.Execute(htmlFile, data); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error Execute:", err)
+		return nil, err
+	}
 
-// 	footerPath, err := createTempFileFromEmbed(string(footerContent))
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to create footer temp file: %w", err)
-// 	}
-// 	defer os.Remove(footerPath)
+	// 3. Generate PDF using wkhtmltopdf (Docker or local)
+	pdfg, err := wkhtmltopdf.NewPDFGenerator()
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg:", err)
+		return nil, err
 
-// 	// Configure PDF page
-// 	page := wkhtmltopdf.NewPage(htmlFile.Name())
-// 	page.EnableLocalFileAccess.Set(true)
-// 	page.HeaderHTML.Set("file://" + headerPath)
-// 	page.FooterHTML.Set("file://" + footerPath)
+	}
 
-// 	pdfg.AddPage(page)
+	// Read embedded templates
+	headerContent, err := templateFS.ReadFile("templates/header.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
 
-// 	// Create PDF
-// 	if err := pdfg.Create(); err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	footerContent, err := templateFS.ReadFile("templates/footer.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read footer: %w", err)
+	}
 
-// 	// Save PDF
-// 	uploadDir := "./public/generated_pdfs"
-// 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	// Write to temp files
+	headerPath, err := createTempFileFromEmbed(string(headerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create header temp file: %w", err)
+	}
+	defer os.Remove(headerPath) // Clean up
 
-// 	fileName := fmt.Sprintf("quotation-%s-%s.pdf", *quotation.QuoNo, time.Now().Format("20060102150405"))
-// 	pdfPath := filepath.Join(uploadDir, fileName)
-// 	if err := pdfg.WriteFile(pdfPath); err != nil {
-// 		defer childSpan.Finish()
-// 		utils.LogErrors(childSpan, err)
-// 		return nil, err
-// 	}
+	footerPath, err := createTempFileFromEmbed(string(footerContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create footer temp file: %w", err)
+	}
+	defer os.Remove(footerPath) // Clean up
 
-// 	return &pdfPath, nil
-// }
+	page := wkhtmltopdf.NewPage(htmlFile.Name())
+	page.EnableLocalFileAccess.Set(true)
+	page.HeaderHTML.Set("file://" + headerPath) // Set header
+	page.FooterHTML.Set("file://" + footerPath) // Set footer
+	page.FooterSpacing.Set(10)                  // Space below content (mm)
+
+	pdfg.AddPage(page)
+	// pdfg.MarginBottom.Set(0)
+	// pdfg.MarginTop.Set(0)
+	pdfg.MarginLeft.Set(0)
+	pdfg.MarginRight.Set(0)
+	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
+	// pdfg.Dpi.Set(300)
+
+	if err := pdfg.Create(); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdfg create:", err)
+		return nil, err
+	}
+
+	uploadDir := "./public/generated_pdfs"
+
+	// Ensure the directory exists
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		utils.LogErrors(childSpan, err)
+		log.Println("Error mkdirall:", err)
+		return nil, err
+	}
+
+	// 4. Save PDF to the "public" folder
+	fileName := fmt.Sprintf("so-%s.pdf", time.Now().Format("20060102150405"))
+	// pdfPath := filepath.Join("public", pdfName)
+	pdfPath := filepath.Join(uploadDir, fileName)
+	if err := pdfg.WriteFile(pdfPath); err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		log.Println("Error pdf path:", err)
+		return nil, err
+	}
+
+	return &pdfPath, nil
+}
 
 func createTempFileFromEmbed(content string) (string, error) {
 	tmpFile, err := os.CreateTemp("", "wkhtml-*.html")

@@ -324,17 +324,27 @@ type QuotationListDTO struct {
 	ProductID       *string `json:"product_id" db:"product_id"`
 	ItemID          *string `json:"item_id" db:"item_id"`
 	QuoDtVatID      *string `json:"quo_dt_vat_id" db:"quo_dt_vat_id"`
-	CurrencyName    *string `json:"currency_name" db:"currency_name"`
-	OrderTypeName   *string `json:"order_type_name" db:"order_type_name"`
-	CustomerName    *string `json:"customer_name" db:"customer_name"`
 	ProductName     *string `json:"product_name" db:"product_name"`
 	ItemName        *string `json:"item_name" db:"item_name"`
-	VatName         *string `json:"vat_name" db:"vat_name"`
-	Pph23Name       *string `json:"pph23_name" db:"pph23_name"`
 	QuoDtRemark     *string `json:"quo_dt_remark" db:"quo_dt_remark"`
 	QuoDtGenCode    *string `json:"quo_dt_gen_code" db:"quo_dt_gen_code"`
 	QuoDtBomGenCode *string `json:"quo_dt_bom_gen_code" db:"quo_dt_bom_gen_code"`
 	QuoDtBomRemark  *string `json:"quo_dt_bom_remark" db:"quo_dt_bom_remark"`
+
+	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
+	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
+	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
+	Phone            *string                 `json:"phone" db:"phone"`
+	Address          *string                 `json:"address" db:"address"`
+	Company          CompanyProfileDetailDTO `json:"company"`
+	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
+	CurrencyName     *string                 `json:"currency_name" db:"currency_name"`
+	VatName          *string                 `json:"vat_name" db:"vat_name"`
+	Pph23Name        *string                 `json:"pph23_name" db:"pph23_name"`
+	BankName         *string                 `json:"bank_name" db:"bank_name"`
+	AccountName      *string                 `json:"account_name" db:"account_name"`
+	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
+	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
 
 	PdfPath    *string `json:"pdf_path" db:"pdf_path"`
 	PdfPathUrl *string `json:"pdf_path_url" db:"pdf_path_url"`
@@ -383,6 +393,21 @@ type QuotationDetailDTO struct {
 	UpdatedAt     *string                 `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string                 `json:"deleted_at" db:"deleted_at"`
 	QuoDts        []QuotationQuoDtListDTO `json:"quo_dts"`
+
+	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
+	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
+	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
+	Phone            *string                 `json:"phone" db:"phone"`
+	Address          *string                 `json:"address" db:"address"`
+	Company          CompanyProfileDetailDTO `json:"company"`
+	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
+	CurrencyName     *string                 `json:"currency_name" db:"currency_name"`
+	VatName          *string                 `json:"vat_name" db:"vat_name"`
+	Pph23Name        *string                 `json:"pph23_name" db:"pph23_name"`
+	BankName         *string                 `json:"bank_name" db:"bank_name"`
+	AccountName      *string                 `json:"account_name" db:"account_name"`
+	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
+	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
 }
 
 type QuotationQuoDtListDTO struct {
@@ -550,4 +575,10 @@ type QuotationStatusWidget struct {
 	OrderCount int     `json:"order_count" db:"order_count"`
 	TotalQty   float64 `json:"total_qty" db:"total_qty"`
 	GrandTotal float64 `json:"grand_total" db:"grand_total"`
+}
+
+type QuotationPDFData struct {
+	Num string `json:"num"`
+	// Form FormQuotationRequest
+	Form QuotationDetailDTO
 }

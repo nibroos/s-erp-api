@@ -409,41 +409,36 @@ func (c *QuotationController) GetWidgetQuotations(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, quotations, paginationMeta, "quotation fetched successfully", http.StatusOK, nil, nil)
 }
 
-// func (c *QuotationController) PdfGetQuotations(ctx *fiber.Ctx) error {
-// 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-// 	parentSpan := opentracing.StartSpan("QuotationController-PdfGetQuotations", opentracing.ChildOf(apiSpan.Context()))
-// 	defer func() {
-// 		if utils.FilterOtel(ctx) {
-// 			defer apiSpan.Finish()
-// 			defer parentSpan.Finish()
-// 		}
-// 	}()
+func (c *QuotationController) Pdf(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("QuotationController-Pdf", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
 
-// 	var req dtos.GetQuotationByIDRequest
-// 	if err := ctx.BodyParser(&req); err != nil {
-// 		return utils.GetResponse(ctx, nil, nil, "Invalid request", http.StatusBadRequest, err.Error(), nil)
-// 	}
+	var req dtos.QuotationDetailDTO
 
-// 	if req.ID == 0 {
-// 		return utils.GetResponse(ctx, nil, nil, "ID is required", http.StatusBadRequest, "ID is required", nil)
-// 	}
+	if err := utils.BodyParserWithNull(ctx, &req); err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(fiber.Map{"errors": err.Error(), "message": "Invalid request", "status": http.StatusBadRequest})
+	}
 
-// 	// Extract user ID from JWT
-// 	claims := utils.GetClaims(ctx, parentSpan)
-// 	userID := uint(claims["user_id"].(float64))
-// 	branchID := utils.GetDefaultBranchID(ctx)
+	// Extract user ID from JWT
+	claims := utils.GetClaims(ctx, parentSpan)
+	userID := uint(claims["user_id"].(float64))
+	branchID := utils.GetDefaultBranchID(ctx)
 
-// 	tx := c.repo.BeginTransaction()
+	tx := c.repo.BeginTransaction()
+	link, err := c.service.Pdf(ctx, req, userID, branchID, tx, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
 
-// 	// Pass the request data to service
-// 	data := struct{ ID uint }{ID: req.ID}
-// 	link, err := c.service.PdfGetQuotations(ctx, data, userID, branchID, tx, parentSpan)
-// 	if err != nil {
-// 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-// 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-// 	}
+	link = utils.MapStringToURL(link)
 
-// 	link = utils.MapStringToURL(link)
-
-// 	return utils.GetResponse(ctx, map[string]string{"link": *link}, nil, "PDF generated successfully", http.StatusOK, nil, nil)
-// }
+	return utils.GetResponse(ctx, map[string]string{"link": *link}, nil, "PDF generated successfully", http.StatusOK, nil, nil)
+}

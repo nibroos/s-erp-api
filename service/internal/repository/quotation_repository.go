@@ -200,6 +200,18 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 					qdb.remark as quo_dt_bom_remark,
 					qdb.gen_code as quo_dt_bom_gen_code,
 
+					br.company_profile_id,
+					c.name as customer_name,
+					c.code as customer_code,
+					c.phone as phone,
+					c.address as address,
+					ot.name as order_type_name,
+					cur.name as currency_name,
+					vat.name as vat_name,
+					pph.name as pph23_name,
+					py.account_name,
+					py.name as bank_name,
+
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
@@ -214,7 +226,9 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 				LEFT JOIN mix_values vat ON q.vat_id = vat.id
 				LEFT JOIN mix_values pph ON q.pph23_id = pph.id
 				LEFT JOIN mix_values ot ON q.order_type_id = ot.id
+				LEFT JOIN bank_informations py ON q.payment_id = py.id
 				LEFT JOIN customers c ON q.customer_id = c.id
+				LEFT JOIN branches br ON q.branch_id = br.id
 
         LEFT JOIN users cu ON q.created_by_id = cu.id
         LEFT JOIN users uu ON q.updated_by_id = uu.id
@@ -560,6 +574,18 @@ func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQ
 					-- q.quotation_id,
 					q.rev_no, q.is_vat, q.is_pph23,
 
+					br.company_profile_id,
+					c.name as customer_name,
+					c.code as customer_code,
+					c.phone as phone,
+					c.address as address,
+					ot.name as order_type_name,
+					cur.name as currency_name,
+					vat.name as vat_name,
+					pph.name as pph23_name,
+					py.account_name,
+					py.name as bank_name,
+
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
@@ -573,6 +599,10 @@ func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQ
 				LEFT JOIN mix_values cur ON q.currency_id = cur.id
 				LEFT JOIN mix_values vat ON q.vat_id = vat.id
 				LEFT JOIN mix_values pph ON q.pph23_id = pph.id
+				LEFT JOIN mix_values ot ON q.order_type_id = ot.id
+				LEFT JOIN bank_informations py ON q.payment_id = py.id
+				LEFT JOIN customers c ON q.customer_id = c.id
+				LEFT JOIN branches br ON q.branch_id = br.id
 
         LEFT JOIN users cu ON q.created_by_id = cu.id
         LEFT JOIN users uu ON q.updated_by_id = uu.id

@@ -25,5 +25,5 @@ func SetupQuotationRoutes(quotations fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.
 	quotations.Post("/restore-quotation", quotationController.RestoreQuotation)
 	quotations.Post("/excel-quotation", quotationController.ExcelGetQuotations)
 	quotations.Post("/csv-quotation", quotationController.CsvGetQuotations)
-	// quotations.Post("/pdf-quotation", quotationController.PdfGetQuotations)
+	quotations.Post("/pdf-quotation", quotationController.Pdf)
 }
