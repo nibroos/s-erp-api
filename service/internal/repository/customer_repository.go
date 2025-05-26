@@ -382,6 +382,20 @@ func (r *CustomerRepository) UpdateCustomer(tx *gorm.DB, customer *models.Custom
 	return nil
 }
 
+func (r *CustomerRepository) UpdateDeleteCrmCustomer(tx *gorm.DB, customer map[string]interface{}, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CustomerRepository-UpdateDeleteCrmCustomer", opentracing.ChildOf(span.Context()))
+
+	if err := tx.Model(&models.Customer{}).
+		Where("id = ?", customer["id"]).
+		Updates(customer).
+		Error; err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+	return nil
+}
+
 func (r *CustomerRepository) DeleteCustomer(tx *gorm.DB, params *dtos.GetCustomerParams, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CustomerRepository-DeleteCustomer", opentracing.ChildOf(span.Context()))
 

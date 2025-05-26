@@ -21,6 +21,7 @@ func SetupCustomerRoutes(customers fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.DB
 	customers.Post("/create-customer", customerController.CreateCustomer)
 	customers.Post("/update-customer", customerController.UpdateCustomer)
 	customers.Post("/delete-customer", customerController.DeleteCustomer)
+	customers.Post("/delete-crm-customer", customerController.DeleteCrmCustomer)
 	customers.Post("/restore-customer", customerController.RestoreCustomer)
 	customers.Post("/excel-customer", customerController.ExcelGetCustomers)
 	customers.Post("/csv-customer", customerController.CsvGetCustomers)

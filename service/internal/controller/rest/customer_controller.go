@@ -312,6 +312,50 @@ func (c *CustomerController) DeleteCustomer(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, nil, nil, "Customer deleted successfully", http.StatusOK, nil, nil)
 }
 
+// delete customer
+func (c *CustomerController) DeleteCrmCustomer(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("CustomerController-DeleteCrmCustomer", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	var req dtos.DeleteCustomerRequest
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Customer not found", http.StatusBadRequest, err.Error(), nil)
+	}
+
+	if req.ID == 0 {
+		return utils.GetResponse(ctx, nil, nil, "Customer not found", http.StatusBadRequest, "ID is required", nil)
+	}
+
+	params := &dtos.GetCustomerParams{ID: req.ID}
+	// GET customer by ID
+	_, err := c.service.GetCustomerByID(ctx, params, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Customer not found", http.StatusNotFound, err.Error(), nil)
+	}
+
+	// Transaction handling
+	tx := c.repo.BeginTransaction()
+	err = c.service.DeleteCrmCustomer(ctx, params, tx, parentSpan)
+	if err != nil {
+		tx.Rollback()
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.GetResponse(ctx, nil, nil, "Failed to delete Customer", http.StatusInternalServerError, err.Error(), nil)
+	}
+
+	tx.Commit()
+
+	return utils.GetResponse(ctx, nil, nil, "Customer deleted successfully", http.StatusOK, nil, nil)
+}
+
 // restore customer
 func (c *CustomerController) RestoreCustomer(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())

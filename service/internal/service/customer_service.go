@@ -152,6 +152,40 @@ func (s *CustomerService) DeleteCustomer(ctx *fiber.Ctx, params *dtos.GetCustome
 	return nil
 }
 
+func (s *CustomerService) DeleteCrmCustomer(ctx *fiber.Ctx, params *dtos.GetCustomerParams, tx *gorm.DB, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("CustomerService-DeleteCrmCustomer", opentracing.ChildOf(span.Context()))
+
+	// customerUpdateCrm := []map[string]interface{}{}
+	// customerUpdateCrm = append(customerUpdateCrm, map[string]interface{}{
+	// 	"id":     params.ID,
+	// 	"is_crm": 0,
+	// })
+
+	// if err := s.utilRepo.Upsert(tx, "customers", "id", customerUpdateCrm, childSpan); err != nil {
+	// 	defer childSpan.Finish()
+	// 	tx.Rollback()
+	// 	return err
+	// }
+
+	customerUpdateCrm := map[string]interface{}{
+		"id":     params.ID,
+		"is_crm": 0,
+	}
+
+	// customerUpdateCrm := &models.Customer{
+	// 	ID:     params.ID,
+	// 	IsCrm:  0,
+	// }
+
+	if err := s.repo.UpdateDeleteCrmCustomer(tx, customerUpdateCrm, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
+	return nil
+}
+
 func (s *CustomerService) RestoreCustomer(ctx *fiber.Ctx, params *dtos.GetCustomerParams, tx *gorm.DB, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("CustomerService-RestoreCustomer", opentracing.ChildOf(span.Context()))
 
