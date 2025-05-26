@@ -2213,7 +2213,7 @@ func (r *SalesOrderRepository) GetAttachmentsByScheduleID(ctx *fiber.Ctx, tx *go
 
 			LEFT JOIN users cu ON ltr.created_by_id = cu.id
 			LEFT JOIN users uu ON ltr.updated_by_id = uu.id
-			WHERE 1=1` + condition + `
+			WHERE ltr.ref_id != 0 AND ltr.ref_type = 'schedules' ` + condition + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *
