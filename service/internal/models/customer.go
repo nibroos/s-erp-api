@@ -18,6 +18,7 @@ type Customer struct {
 	Email          *string `json:"email" gorm:"column:email"`
 	Pic            *string `json:"pic" gorm:"column:pic"`
 	Status         int8    `json:"status" gorm:"column:status"`
+	IsCrm          int8    `json:"is_crm" gorm:"column:is_crm"`
 
 	Remark         *string `json:"remark" gorm:"column:remark"`
 	OwnerName      *string `json:"owner_name" gorm:"column:owner_name"`

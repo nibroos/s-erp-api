@@ -275,8 +275,10 @@ type InventoryInvDtListDTO struct {
 	IsPph23          *int8    `json:"is_pph23" db:"is_pph23"`
 	QtyInvoice       *float64 `json:"qty_invoice" db:"qty_invoice"`
 	QtyOut           *float64 `json:"qty_out" db:"qty_out"`
+	QtyOutOnIn       *float64 `json:"qty_out_on_in" db:"qty_out_on_in"`
 	QtyIn            *float64 `json:"qty_in" db:"qty_in"`
 	Qty              *float64 `json:"qty" db:"qty"`
+	QtyInit          *float64 `json:"qty_init" db:"qty_init"`
 	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
 	PriceBuy         *float64 `json:"price_buy" db:"price_buy"`
 	SubtotalSell     *float64 `json:"subtotal_sell" db:"subtotal_sell"`

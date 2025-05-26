@@ -39,8 +39,14 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 	i := 1
 
 	filterEqual := map[string]string{
-		"status":    "c.status",
-		"is_active": "c.status",
+		"status":           "c.status",
+		"is_active":        "c.status",
+		"is_crm":           "c.is_crm",
+		"customer_type_id": "c.customer_type_id",
+		"agent_id":         "c.agent_id",
+		"category_type_id": "c.category_type_id",
+		"currency_id":      "c.currency_id",
+		"payment_type_id":  "cc.payment_type_id",
 	}
 	for key, colDB := range filterEqual {
 		if value, ok := filters[key]; ok && value != "" {
@@ -62,6 +68,7 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 				COALESCE(c.is_contract, 0) as is_contract,
 				cc.price as contract_price,
 				TO_CHAR(cc.due_at, 'YYYY-MM-DD') as due_at,
+				COALESCE(c.is_crm, 0) as is_crm,
 
         cu.name as created_by_name,
         uu.name as updated_by_name
@@ -120,20 +127,20 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 		}
 	}
 
-	filterKey := []string{
-		"customer_type_id",
-		"agent_id",
-		"status",
-	}
+	// filterKey := []string{
+	// 	"customer_type_id",
+	// 	"agent_id",
+	// 	"status",
+	// }
 
-	for key := range filterKey {
-		if filters[filterKey[key]] != "" {
-			query += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
-			countQuery += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
-			args = append(args, filters[filterKey[key]])
-			i++
-		}
-	}
+	// for key := range filterKey {
+	// 	if filters[filterKey[key]] != "" {
+	// 		query += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+	// 		countQuery += fmt.Sprintf(" AND %s = $%d", filterKey[key], i)
+	// 		args = append(args, filters[filterKey[key]])
+	// 		i++
+	// 	}
+	// }
 
 	if filters["ids"] != "" {
 		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
@@ -227,6 +234,7 @@ func (r *CustomerRepository) GetCustomerByID(ctx *fiber.Ctx, params *dtos.GetCus
 		c.remark, c.owner_name, c.owner_phone, c.owner_email, c.category_type_id, c.is_contract,
 		c.pic_name, c.pic_phone,
 		c.created_at, c.updated_at, c.deleted_at,
+		COALESCE(c.is_crm, 0) as is_crm,
 
 		TO_CHAR(c.contract_date, 'YYYY-MM-DD') as contract_date,
 		

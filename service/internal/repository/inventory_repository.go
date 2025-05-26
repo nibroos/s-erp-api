@@ -211,6 +211,7 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 			"invoice_at":  "iv.invoice_at",
 			"do_at":       "iv.do_at",
 			"shipping_at": "so.shipping_at",
+			"expired_at":  "ivd.expired_at",
 		}
 
 		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
@@ -851,6 +852,10 @@ func (r *InventoryRepository) GetInvDtsByInventoryIDs(ctx *fiber.Ctx, tx *gorm.D
 		COALESCE(
 		 sd.qty_out, sdb.qty_out, ivd_refs.qty_out, rd.qty_out, 0
 		) as qty_out,
+		COALESCE(
+		 ivd.qty_out, 0
+		) as qty_out_on_in,
+		ivd.qty as qty_init,
 		COALESCE(
 		 pd.qty_in, 0
 		) as qty_in,

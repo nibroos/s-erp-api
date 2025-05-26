@@ -1,0 +1,4 @@
+ALTER TABLE
+  customers
+ADD
+  COLUMN is_crm INT8 NOT NULL DEFAULT 0;

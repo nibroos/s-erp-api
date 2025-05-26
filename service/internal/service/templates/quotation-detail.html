@@ -141,13 +141,10 @@
 		}
 
 		.content-wrapper {
-			/* page-break-after: always; */
 			min-height: 100%;
 			position: relative;
-			/* Height of your footer section */
 		}
 
-		/* Update footer section styles */
 		.footer-section {
 			page-break-inside: avoid;
 			page-break-before: auto;
@@ -225,7 +222,7 @@
 			</tr>
 		</table>
 
-		<div class="document-title">QUOTATION {{.Form.Title}}</div>
+		<div class="document-title">{{.Form.Title}}</div>
 		<div class="text-center ref-number">{{.Num}}</div>
 
 		<table class="reference-container" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 1rem;">
@@ -420,13 +417,38 @@
 						</tr>
 					</table>
 				</td>
-				<td width="50%" class="vertical-top">
+				<td width="25%" class="vertical-top">
 					<table width="100%">
 						<tr>
 							<td width="100%" style="text-align: right;">
 								<table border="0" cellspacing="0" cellpadding="0" style="margin-left: auto;">
 									<tr>
-										<td class="text-center" style="min-width: 150px;">APPROVE</td>
+										<td class="text-center" style="min-width: 150px;">APPROVED BY</td>
+									</tr>
+									<tr>
+										<td height="60" width="100%" class="text-center" style="text-align: center;">
+											<div>
+												&nbsp;
+											</div>
+										</td>
+									</tr>
+									<tr>
+										<td class="text-center">
+											<div>({{.Form.CustomerName}})</div>
+										</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+					</table>
+				</td>
+				<td width="25%" class="vertical-top">
+					<table width="100%">
+						<tr>
+							<td width="100%" style="text-align: right;">
+								<table border="0" cellspacing="0" cellpadding="0" style="margin-left: auto;">
+									<tr>
+										<td class="text-center" style="min-width: 150px;">{{.Form.Company.CompanyName}}</td>
 									</tr>
 									<tr>
 										<td height="60" width="100%" class="text-center" style="text-align: center;">

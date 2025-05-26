@@ -692,8 +692,10 @@ func (s *QuotationService) Pdf(ctx *fiber.Ctx, req dtos.QuotationDetailDTO, user
 		utils.LogErrors(childSpan, err)
 		log.Println("Error pdfg:", err)
 		return nil, err
-
 	}
+	pdfg.MarginLeft.Set(0)
+	pdfg.MarginRight.Set(0)
+	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
 
 	// Read embedded templates
 	headerContent, err := templateFS.ReadFile("templates/header.html")
@@ -728,9 +730,6 @@ func (s *QuotationService) Pdf(ctx *fiber.Ctx, req dtos.QuotationDetailDTO, user
 	pdfg.AddPage(page)
 	// pdfg.MarginBottom.Set(0)
 	// pdfg.MarginTop.Set(0)
-	pdfg.MarginLeft.Set(0)
-	pdfg.MarginRight.Set(0)
-	pdfg.PageSize.Set(wkhtmltopdf.PageSizeA4)
 	// pdfg.Dpi.Set(300)
 
 	if err := pdfg.Create(); err != nil {

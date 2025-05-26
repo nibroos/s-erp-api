@@ -1973,6 +1973,7 @@ type CustomerListDTO struct {
 	Email            *string `json:"email" db:"email"`
 	Pic              *string `json:"pic" db:"pic"`
 	Status           int8    `json:"status" db:"status"`
+	IsCrm            int8    `json:"is_crm" db:"is_crm"`
 	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName    *string `json:"updated_by_name" db:"updated_by_name"`
 	CreatedAt        *string `json:"created_at" db:"created_at"`
@@ -2018,6 +2019,7 @@ type CustomerDetailDTO struct {
 	IsContract     *int    `json:"is_contract" db:"is_contract"`
 	PicName        *string `json:"pic_name" db:"pic_name"`
 	PicPhone       *string `json:"pic_phone" db:"pic_phone"`
+	IsCrm          int8    `json:"is_crm" db:"is_crm"`
 
 	CategoryTypeName *string `json:"category_type_name" db:"category_type_name"`
 	CreatedByName    *string `json:"created_by_name" db:"created_by_name"`

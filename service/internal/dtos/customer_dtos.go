@@ -13,6 +13,7 @@ type FormCrmCustomerRequest struct {
 	Email          *string `json:"email"`
 	Pic            *string `json:"pic"`
 	Status         int8    `json:"status"`
+	IsCrm          int8    `json:"is_crm"`
 
 	Remark            *string                        `json:"remark"`
 	OwnerName         *string                        `json:"owner_name"`

@@ -225,6 +225,7 @@ func (c *CustomerController) UpdateCustomer(ctx *fiber.Ctx) error {
 		Email:          req.Email,
 		Pic:            req.Pic,
 		Status:         req.Status,
+		IsCrm:          req.IsCrm,
 
 		Remark:         req.Remark,
 		OwnerName:      req.OwnerName,
