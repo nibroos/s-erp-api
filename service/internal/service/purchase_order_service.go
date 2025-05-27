@@ -87,8 +87,9 @@ func (s *PurchaseOrderService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormPu
 
 	var soDt []map[string]interface{}
 	var soDtBom []map[string]interface{}
-	var poDt []map[string]interface{}
+	// var poDt []map[string]interface{}
 	var poDtBom []map[string]interface{}
+	var roDt []map[string]interface{}
 
 	if len(refSoDtID) > 0 {
 		soDt, err = s.repo.GetRefPoDtByRefDtID(ctx, tx, "so_dts", "sales_order_id", refSoDtID, childSpan)
@@ -109,7 +110,7 @@ func (s *PurchaseOrderService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormPu
 	}
 
 	if len(refRoDtID) > 0 {
-		poDt, err = s.repo.GetRefPoDtByRefDtID(ctx, tx, "ro_dts", "request_order_id", refRoDtID, childSpan)
+		roDt, err = s.repo.GetRefPoDtByRefDtID(ctx, tx, "request_order_dts", "request_order_id", refRoDtID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -126,7 +127,7 @@ func (s *PurchaseOrderService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormPu
 		}
 	}
 
-	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefRoDtBom, err := utils.MapNewUpdatedRefsPo(ctx, req, soDt, soDtBom, poDt, poDtBom)
+	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefRoDtBom, err := utils.MapNewUpdatedRefsPo(ctx, req, soDt, soDtBom, roDt, poDtBom)
 
 	if len(newRefSoDt) > 0 {
 		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefSoDt, "so_dts", childSpan)
@@ -147,7 +148,7 @@ func (s *PurchaseOrderService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormPu
 	}
 
 	if len(newRefRoDt) > 0 {
-		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefRoDt, "po_dts", childSpan)
+		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefRoDt, "request_order_dts", childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -259,7 +260,7 @@ func (s *PurchaseOrderService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldPoDts
 
 	var soDt []map[string]interface{}
 	var soDtBom []map[string]interface{}
-	var poDt []map[string]interface{}
+	var roDt []map[string]interface{}
 	var poDtBom []map[string]interface{}
 
 	if len(refSoDtID) > 0 {
@@ -281,7 +282,7 @@ func (s *PurchaseOrderService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldPoDts
 	}
 
 	if len(refRoDtID) > 0 {
-		poDt, err = s.repo.GetRefPoDtByRefDtID(ctx, tx, "ro_dts", "request_order_id", refRoDtID, childSpan)
+		roDt, err = s.repo.GetRefPoDtByRefDtID(ctx, tx, "request_order_dts", "request_order_id", refRoDtID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -298,7 +299,7 @@ func (s *PurchaseOrderService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldPoDts
 		}
 	}
 
-	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefRoDtBom, err := utils.MapNewUpdatedReverseRefsPo(ctx, oldPoDts, soDt, soDtBom, poDt, poDtBom)
+	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefRoDtBom, err := utils.MapNewUpdatedReverseRefsPo(ctx, oldPoDts, soDt, soDtBom, roDt, poDtBom)
 
 	if len(newRefSoDt) > 0 {
 		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefSoDt, "so_dts", childSpan)
@@ -319,7 +320,7 @@ func (s *PurchaseOrderService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldPoDts
 	}
 
 	if len(newRefRoDt) > 0 {
-		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefRoDt, "po_dts", childSpan)
+		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefRoDt, "request_order_dts", childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -421,4 +422,16 @@ func (s *PurchaseOrderService) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[stri
 	}
 
 	return soDts, total, nil
+}
+
+func (s *PurchaseOrderService) GetRefIndexRoDts(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.RefPoIndexRoDtListDTO, int, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderService-GetRefIndexRoDts", opentracing.ChildOf(span.Context()))
+
+	roDts, total, err := s.repo.GetRefIndexRoDts(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	return roDts, total, nil
 }

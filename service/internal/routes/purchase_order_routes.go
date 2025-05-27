@@ -24,4 +24,5 @@ func SetupPurchaseOrderRoutes(purchaseOrders fiber.Router, gormDB *gorm.DB, sqlD
 	purchaseOrders.Post("/restore-purchase-order", purchaseOrderController.RestorePurchaseOrder)
 
 	purchaseOrders.Post("/index-ref-so-dt", purchaseOrderController.GetRefIndexSoDts)
+	purchaseOrders.Post("/index-ref-ro-dt", purchaseOrderController.GetRefIndexRoDts)
 }

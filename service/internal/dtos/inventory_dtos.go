@@ -235,6 +235,8 @@ type InventoryDetailDTO struct {
 	AccountName      *string                 `json:"account_name" db:"account_name"`
 	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
 	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
+
+	QtyOutOnIn *float64 `json:"qty_out_on_in" db:"qty_out_on_in"`
 }
 
 type InventoryInvDtListDTO struct {
@@ -677,6 +679,7 @@ type FormClosingStockStoreRequest struct {
 	StartClosingAt *string `json:"start_closing_at"`
 	EndClosingAt   string  `json:"end_closing_at"`
 	Password       string  `json:"password"`
+	IsFinalized    int8    `json:"is_finalized"`
 }
 
 type InventoryStatusDTO struct {
@@ -724,6 +727,7 @@ type SyncStockInventoryRequest struct {
 	Password       string  `json:"password"`
 	UserID         uint    `json:"user_id"`
 	BranchID       uint    `json:"branch_id"`
+	IsFinalized    int8    `json:"is_finalized"`
 }
 
 type InventoryPDFData struct {

@@ -265,7 +265,6 @@ services:
       - s-erp-api-network
     environment:
       - discovery.type=single-node  # Run in single-node mode
-      - ES_JAVA_OPTS=-Xms128m -Xmx256m  # Set min heap to 128MB and max heap to 256MB
       - xpack.ml.enabled=false  # Disable machine learning
       - xpack.security.enabled=false  # Disable security
       - xpack.monitoring.enabled=false  # Disable monitoring

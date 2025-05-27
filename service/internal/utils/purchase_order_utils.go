@@ -249,6 +249,7 @@ func MapUpdatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, updatedPu
 			RefID:                    reqPoDt.RefID,
 			RefSoDtID:                reqPoDt.RefSoDtID,
 			RefSoDtBomID:             reqPoDt.RefSoDtBomID,
+			RefRoDtID:                reqPoDt.RefRoDtID,
 			RefProductID:             reqPoDt.RefProductID,
 			RefProductBomID:          reqPoDt.RefProductBomID,
 			ProductID:                &productID,
@@ -327,9 +328,9 @@ func MapNewUpdatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, userID
 			refSoDtBomDtID = append(refSoDtBomDtID, *reqPoDt.RefSoDtBomID)
 		}
 
-		// if reqPoDt.RefRoDtID != nil {
-		// 	refRoDtID = append(refRoDtID, *reqPoDt.RefRoDtID)
-		// }
+		if reqPoDt.RefRoDtID != nil {
+			refRoDtID = append(refRoDtID, *reqPoDt.RefRoDtID)
+		}
 
 		// if reqPoDt.RefRoDtBomID != nil {
 		// 	refRoDtBomID = append(refRoDtBomID, *reqPoDt.RefRoDtBomID)
@@ -377,7 +378,7 @@ func MapNewUpdatedReverseRefsPo(ctx *fiber.Ctx, oldInvDts []dtos.PurchaseOrderPo
 			for _, poDt := range poDts {
 				if id, ok := poDt["id"].(int32); ok {
 					if *reqPoDt.RefRoDtID == uint(id) {
-						poDt["qty_in"] = poDt["qty_in"].(float64) - *reqPoDt.Qty
+						poDt["qty_po"] = poDt["qty_po"].(float64) - *reqPoDt.Qty
 						refRoDt = append(refRoDt, poDt)
 						break
 					}
@@ -443,21 +444,21 @@ func MapNewUpdatedRefsPo(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, soDt
 			}
 		}
 
-		// if reqPoDt.RefRoDtID != nil && *reqPoDt.RefRoDtID > 0 {
-		// 	for _, poDt := range poDts {
-		// 		if id, ok := poDt["id"].(int32); ok {
-		// 			if *reqPoDt.RefRoDtID == uint(id) {
+		if reqPoDt.RefRoDtID != nil && *reqPoDt.RefRoDtID > 0 {
+			for _, poDt := range poDts {
+				if id, ok := poDt["id"].(int32); ok {
+					if *reqPoDt.RefRoDtID == uint(id) {
 
-		// 				if poDt["qty_in"] == nil {
-		// 					poDt["qty_in"] = *new(float64)
-		// 				}
-		// 				poDt["qty_in"] = poDt["qty_in"].(float64) + *reqPoDt.Qty
-		// 				refRoDt = append(refRoDt, poDt)
-		// 				break
-		// 			}
-		// 		}
-		// 	}
-		// }
+						if poDt["qty_po"] == nil {
+							poDt["qty_po"] = *new(float64)
+						}
+						poDt["qty_po"] = poDt["qty_po"].(float64) + *reqPoDt.Qty
+						refRoDt = append(refRoDt, poDt)
+						break
+					}
+				}
+			}
+		}
 
 		// if reqPoDt.RefRoDtBomID != nil && *reqPoDt.RefRoDtBomID > 0 {
 		// 	for _, poDtBom := range poDtBoms {

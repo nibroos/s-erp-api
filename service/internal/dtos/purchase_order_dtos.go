@@ -71,6 +71,7 @@ type FormPoDtsRequest struct {
 	RefID                    *uint    `json:"ref_id"`
 	RefSoDtID                *uint    `json:"ref_so_dt_id"`
 	RefSoDtBomID             *uint    `json:"ref_so_dt_bom_id"`
+	RefRoDtID                *uint    `json:"ref_ro_dt_id"`
 	RefProductID             *uint    `json:"ref_product_id"`
 	RefProductBomID          *uint    `json:"ref_product_bom_id"`
 	ProductID                uint     `json:"product_id"`
@@ -547,6 +548,37 @@ type RefPoIndexSoDtListDTO struct {
 	ShippingAt   *string  `json:"shipping_at" db:"shipping_at"`
 	AgreeAt      *string  `json:"agree_at" db:"agree_at"`
 	DueAt        *string  `json:"due_at" db:"due_at"`
+	ItemSku      *string  `json:"item_sku" db:"item_sku"`
+	RefQty       *float64 `json:"ref_qty" db:"ref_qty"`
+	ItemType     *string  `json:"item_type" db:"item_type"`
+	Balance      *float64 `json:"balance" db:"balance"`
+}
+
+type RefPoIndexRoDtListDTO struct {
+	// ID               *uint    `json:"id" db:"id"`
+	RefRoDtID        *uint    `json:"ref_ro_dt_id" db:"ref_ro_dt_id"`
+	RequestOrderID   *uint    `json:"request_order_id" db:"request_order_id"`
+	CustomerID       *uint    `json:"customer_id" db:"customer_id"`
+	ItemUnitID       *uint    `json:"item_unit_id" db:"item_unit_id"`
+	ItemID           *uint    `json:"item_id" db:"item_id"`
+	ItemSubGroupName *string  `json:"item_sub_group_name" db:"item_sub_group_name"`
+	ItemGroupName    *string  `json:"item_group_name" db:"item_group_name"`
+	ItemName         *string  `json:"item_name" db:"item_name"`
+	ItemCode         *string  `json:"item_code" db:"item_code"`
+	UnitName         *string  `json:"unit_name" db:"unit_name"`
+	Remark           *string  `json:"remark" db:"remark"`
+	QtyPo            *float64 `json:"qty_po" db:"qty_po"`
+	PriceSell        *float64 `json:"price_sell" db:"price_sell"`
+	PriceBuy         *float64 `json:"price_buy" db:"price_buy"`
+	SubtotalSell     *float64 `json:"subtotal_sell" db:"subtotal_sell"`
+	SubtotalBuy      *float64 `json:"subtotal_buy" db:"subtotal_buy"`
+
+	RefID        *uint    `json:"ref_id" db:"ref_id"`
+	CustomerName *string  `json:"customer_name" db:"customer_name"`
+	RefType      *string  `json:"ref_type" db:"ref_type"`
+	RefProductID *uint    `json:"ref_product_id" db:"ref_product_id"`
+	RefNum       *string  `json:"ref_num" db:"ref_num"`
+	RequestDate  *string  `json:"request_date" db:"request_date"`
 	ItemSku      *string  `json:"item_sku" db:"item_sku"`
 	RefQty       *float64 `json:"ref_qty" db:"ref_qty"`
 	ItemType     *string  `json:"item_type" db:"item_type"`

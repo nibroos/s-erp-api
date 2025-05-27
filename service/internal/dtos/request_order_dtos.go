@@ -184,6 +184,8 @@ type RequestOrderDetailDTO struct {
 	Company          CompanyProfileDetailDTO `json:"company"`
 	BranchName       *string                 `json:"branch_name" db:"branch_name"`
 	WarehouseName    *string                 `json:"warehouse_name" db:"warehouse_name"`
+
+	QtyPo *float64 `json:"qty_po" db:"qty_po"`
 }
 
 type RequestOrderDtListDTO struct {
@@ -333,17 +335,19 @@ type RefSalesOrderForRequestOrderListDTO struct {
 	UpdatedAt        *string   `json:"updated_at" db:"updated_at"`
 	DeleteAt         *string   `json:"deleted_at" db:"deleted_at"`
 
-	CustomerID    *uint   `json:"customer_id" db:"customer_id"`
-	OrderTypeID   *uint   `json:"order_type_id" db:"order_type_id"`
-	HeadRemark    *string `json:"head_remark" db:"head_remark"`
-	SalesOrderNo  *string `json:"sales_order_no" db:"sales_order_no"`
-	PoBuyerNo     *string `json:"po_buyer_no" db:"po_buyer_no"`
-	CustomerName  *string `json:"customer_name" db:"customer_name"`
-	OrderTypeName *string `json:"order_type_name" db:"order_type_name"`
-	OrderDate     *string `json:"order_date" db:"order_date"`
-	ShippingDate  *string `json:"shipping_date" db:"shipping_date"`
-	ItemSku       *string `json:"item_sku" db:"item_sku"`
-	DueAt         *string `json:"due_at" db:"due_at"`
+	WarehouseID   *string  `json:"warehouse_id" db:"warehouse_id"`
+	EndQty        *float64 `json:"end_qty" db:"end_qty"`
+	CustomerID    *uint    `json:"customer_id" db:"customer_id"`
+	OrderTypeID   *uint    `json:"order_type_id" db:"order_type_id"`
+	HeadRemark    *string  `json:"head_remark" db:"head_remark"`
+	SalesOrderNo  *string  `json:"sales_order_no" db:"sales_order_no"`
+	PoBuyerNo     *string  `json:"po_buyer_no" db:"po_buyer_no"`
+	CustomerName  *string  `json:"customer_name" db:"customer_name"`
+	OrderTypeName *string  `json:"order_type_name" db:"order_type_name"`
+	OrderDate     *string  `json:"order_date" db:"order_date"`
+	ShippingDate  *string  `json:"shipping_date" db:"shipping_date"`
+	ItemSku       *string  `json:"item_sku" db:"item_sku"`
+	DueAt         *string  `json:"due_at" db:"due_at"`
 }
 
 type GetRefProductForRequestOrderRequest struct {
@@ -396,6 +400,8 @@ type RefProductForRequestOrderListDTO struct {
 
 	BranchID *uint `json:"branch_id" db:"branch_id"`
 
+	WarehouseID   *string   `json:"warehouse_id" db:"warehouse_id"`
+	EndQty        *float64  `json:"end_qty" db:"end_qty"`
 	CreatedByName *string   `json:"created_by_name" db:"created_by_name"`
 	UpdatedByName *string   `json:"updated_by_name" db:"updated_by_name"`
 	CreatedByID   *uint     `json:"created_by_id" db:"created_by_id"`

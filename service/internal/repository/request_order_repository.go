@@ -84,6 +84,7 @@ func (r *RequestOrderRepository) GetRequestOrders(ctx *fiber.Ctx, filters map[st
 
 	filterKey := map[string]string{
 		"warehouse_id": "ro.warehouse_id",
+		"customer_id":  "so.customer_id",
 	}
 
 	for key, col := range filterKey {
@@ -96,6 +97,7 @@ func (r *RequestOrderRepository) GetRequestOrders(ctx *fiber.Ctx, filters map[st
 
 	filterIDsKey := map[string]string{
 		"warehouse_ids": "ro.warehouse_id",
+		"customer_ids":  "so.customer_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -161,6 +163,8 @@ func (r *RequestOrderRepository) GetRequestOrders(ctx *fiber.Ctx, filters map[st
 				LEFT JOIN request_order_dts rodt ON rodt.request_order_id = ro.id
 				LEFT JOIN branches b ON ro.branch_id = b.id
 				LEFT JOIN mix_values w ON ro.warehouse_id = w.id
+				LEFT JOIN so_dts sodt ON rodt.ref_id = sodt.id AND rodt.ref_type = 'so'
+				LEFT JOIN sales_orders so ON so.id = sodt.sales_order_id
 
         LEFT JOIN users cu ON ro.created_by_id = cu.id
         LEFT JOIN users uu ON ro.updated_by_id = uu.id
@@ -299,6 +303,7 @@ func (r *RequestOrderRepository) GetRequestOrderByID(ctx *fiber.Ctx, params *dto
 
             br.company_profile_id,
             w.name as warehouse_name,
+						rodt.qty_po,
 
             cu.name as created_by_name,
             uu.name as updated_by_name
@@ -429,7 +434,124 @@ func (r *RequestOrderRepository) GetRequestOrderDts(ctx *fiber.Ctx, requestOrder
 
 	requestOrderDts := []dtos.RequestOrderDtListDTO{}
 
-	query := `
+	realStockCTE := `
+		WITH end_date AS (
+				SELECT '` + time.Now().Format("2006-01-02") + `'::date AS closing_date
+		),
+		all_products AS (
+				SELECT p.id as item_id FROM products p WHERE p.deleted_at IS NULL
+		),
+		all_warehouses AS (
+				SELECT mv.id as warehouse_id 
+				FROM mix_values mv
+				LEFT JOIN groups g ON mv.group_id = g.id
+				WHERE g.name = 'warehouses'
+				AND mv.deleted_at IS NULL
+		),
+		product_warehouse_combinations AS (
+				SELECT ap.item_id, aw.warehouse_id
+				FROM all_products ap
+				CROSS JOIN all_warehouses aw
+		),
+		existing_closings AS (
+				SELECT 
+						st.id, st.item_id, st.warehouse_id,
+						TO_CHAR(st.closing_at, 'YYYY-MM-DD') as closing_at,
+						TO_CHAR(st.last_closing_at, 'YYYY-MM-DD') as last_closing_at,
+						st.begin_qty, st.in_qty, st.out_qty, st.adjustment_qty, st.end_qty,
+						st.price_sell, st.price_buy,
+						st.total_value_sell, st.total_value_buy,
+						st.created_at, st.updated_at, st.deleted_at
+				FROM stock_closings st
+				WHERE st.closing_at = (SELECT closing_date FROM end_date)
+				AND st.deleted_at IS NULL
+		),
+		latest_closings AS (
+				SELECT 
+						sc.item_id,
+						sc.warehouse_id,
+						sc.closing_at as last_closing_at,
+						sc.end_qty as begin_qty
+				FROM stock_closings sc
+				WHERE sc.closing_at = (
+						SELECT MAX(sc2.closing_at)
+						FROM stock_closings sc2
+						WHERE sc2.closing_at < (SELECT closing_date FROM end_date)
+						AND sc2.item_id = sc.item_id
+						AND sc2.warehouse_id = sc.warehouse_id
+						AND sc2.deleted_at IS NULL
+				)
+				AND sc.deleted_at IS NULL
+		),
+		inventory_movements AS (
+				SELECT 
+						id.item_id,
+						i.warehouse_id,
+						SUM(CASE 
+								WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN COALESCE(id.qty, 0)
+								ELSE 0 
+						END) as in_qty,
+						SUM(CASE 
+								WHEN iot.options_json->>'io_type' = 'INVENTORY_OUT' THEN COALESCE(id.qty, 0)
+								ELSE 0 
+						END) as out_qty,
+						MAX(id.price_buy) as price_buy,
+						MAX(id.price_sell) as price_sell
+				FROM inv_dts id
+				INNER JOIN inventories i ON id.inventory_id = i.id 
+				INNER JOIN mix_values iot ON i.io_type_id = iot.id
+				WHERE i.ingoing_at > (
+						SELECT COALESCE(
+								(SELECT MAX(sc.closing_at) 
+								FROM stock_closings sc 
+								WHERE sc.item_id = id.item_id 
+								AND sc.warehouse_id = i.warehouse_id 
+								AND sc.closing_at < (SELECT closing_date FROM end_date)
+								AND sc.deleted_at IS NULL
+								),
+								'1970-01-01'
+						)
+				)
+				AND i.ingoing_at <= (SELECT closing_date FROM end_date)
+				AND i.deleted_at IS NULL 
+				AND id.deleted_at IS NULL
+				GROUP BY id.item_id, i.warehouse_id
+		),
+		real_stock AS (
+				SELECT 
+						COALESCE(ec.id, 0) as id,
+						pwc.item_id,
+						pwc.warehouse_id,
+						COALESCE(
+								ec.closing_at, 
+								TO_CHAR((SELECT closing_date FROM end_date), 'YYYY-MM-DD')
+						) as closing_at,
+						COALESCE(
+								TO_CHAR(lc.last_closing_at, 'YYYY-MM-DD'),
+								'1970-01-01'
+						) as last_closing_at,
+						COALESCE(lc.begin_qty, 0) as begin_qty,
+						COALESCE(im.in_qty, 0) as in_qty,
+						COALESCE(im.out_qty, 0) as out_qty,
+						COALESCE(ec.adjustment_qty, 0) as adjustment_qty,
+						COALESCE(lc.begin_qty, 0) + COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(ec.adjustment_qty, 0) as end_qty,
+						COALESCE(ec.price_sell, im.price_sell) as price_sell,
+						COALESCE(ec.price_buy, im.price_buy) as price_buy,
+						(COALESCE(lc.begin_qty, 0) + COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(ec.adjustment_qty, 0)) * 
+								COALESCE(ec.price_sell, im.price_sell) as total_value_sell,
+						(COALESCE(lc.begin_qty, 0) + COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(ec.adjustment_qty, 0)) * 
+								COALESCE(ec.price_buy, im.price_buy) as total_value_buy,
+						CURRENT_TIMESTAMP as created_at,
+						NULL as updated_at,
+						NULL as deleted_at
+				FROM product_warehouse_combinations pwc
+				LEFT JOIN existing_closings ec ON pwc.item_id = ec.item_id AND pwc.warehouse_id = ec.warehouse_id
+				LEFT JOIN latest_closings lc ON pwc.item_id = lc.item_id AND pwc.warehouse_id = lc.warehouse_id
+				LEFT JOIN inventory_movements im ON pwc.item_id = im.item_id AND pwc.warehouse_id = im.warehouse_id
+		)
+		`
+
+	query := realStockCTE + `
 	SELECT 
 		rodt.id, rodt.product_uuid, rodt.request_order_id, rodt.item_unit_id, 
 		rodt.ref_id, rodt.product_id, rodt.item_id, rodt.ref_type, rodt.product_type, rodt.remark, 
@@ -458,6 +580,7 @@ func (r *RequestOrderRepository) GetRequestOrderDts(ctx *fiber.Ctx, requestOrder
 			ELSE NULL 
 		END as sales_order_id
 	FROM request_order_dts rodt
+	LEFT JOIN request_orders ro ON rodt.request_order_id = ro.id
 	LEFT JOIN products p ON rodt.item_id = p.id
 	LEFT JOIN products p_product ON rodt.product_id = p_product.id
 	LEFT JOIN item_units iu ON rodt.item_unit_id = iu.id
@@ -468,6 +591,7 @@ func (r *RequestOrderRepository) GetRequestOrderDts(ctx *fiber.Ctx, requestOrder
 	LEFT JOIN so_dts sodtb_so ON sodtb.so_dt_id = sodtb_so.id
 	LEFT JOIN users cu ON rodt.created_by_id = cu.id
 	LEFT JOIN users uu ON rodt.updated_by_id = uu.id
+	LEFT JOIN real_stock rs ON rodt.item_id = rs.item_id AND ro.warehouse_id = rs.warehouse_id
 	WHERE rodt.request_order_id = $1
 	`
 
@@ -607,10 +731,127 @@ func (r *RequestOrderRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 		baseCondition += fmt.Sprintf(" AND sodt.id IN (%s)", filters["ids"])
 	}
 
-	warehouseCondition := ""
-	if value, ok := filters["warehouse_id"]; ok && value != "" {
-		warehouseCondition = fmt.Sprintf(" AND sc.warehouse_id = %s", value)
-	}
+	// warehouseCondition := ""
+	// if value, ok := filters["warehouse_id"]; ok && value != "" {
+	// 	warehouseCondition = fmt.Sprintf(" AND sc.warehouse_id = %s", value)
+	// }
+
+	realStockCTE := `
+		WITH end_date AS (
+				SELECT '` + time.Now().Format("2006-01-02") + `'::date AS closing_date
+		),
+		all_products AS (
+				SELECT p.id as item_id FROM products p WHERE p.deleted_at IS NULL
+		),
+		all_warehouses AS (
+				SELECT mv.id as warehouse_id 
+				FROM mix_values mv
+				LEFT JOIN groups g ON mv.group_id = g.id
+				WHERE g.name = 'warehouses'
+				AND mv.deleted_at IS NULL
+		),
+		product_warehouse_combinations AS (
+				SELECT ap.item_id, aw.warehouse_id
+				FROM all_products ap
+				CROSS JOIN all_warehouses aw
+		),
+		existing_closings AS (
+				SELECT 
+						st.id, st.item_id, st.warehouse_id,
+						TO_CHAR(st.closing_at, 'YYYY-MM-DD') as closing_at,
+						TO_CHAR(st.last_closing_at, 'YYYY-MM-DD') as last_closing_at,
+						st.begin_qty, st.in_qty, st.out_qty, st.adjustment_qty, st.end_qty,
+						st.price_sell, st.price_buy,
+						st.total_value_sell, st.total_value_buy,
+						st.created_at, st.updated_at, st.deleted_at
+				FROM stock_closings st
+				WHERE st.closing_at = (SELECT closing_date FROM end_date)
+				AND st.deleted_at IS NULL
+		),
+		latest_closings AS (
+				SELECT 
+						sc.item_id,
+						sc.warehouse_id,
+						sc.closing_at as last_closing_at,
+						sc.end_qty as begin_qty
+				FROM stock_closings sc
+				WHERE sc.closing_at = (
+						SELECT MAX(sc2.closing_at)
+						FROM stock_closings sc2
+						WHERE sc2.closing_at < (SELECT closing_date FROM end_date)
+						AND sc2.item_id = sc.item_id
+						AND sc2.warehouse_id = sc.warehouse_id
+						AND sc2.deleted_at IS NULL
+				)
+				AND sc.deleted_at IS NULL
+		),
+		inventory_movements AS (
+				SELECT 
+						id.item_id,
+						i.warehouse_id,
+						SUM(CASE 
+								WHEN iot.options_json->>'io_type' = 'INVENTORY_IN' THEN COALESCE(id.qty, 0)
+								ELSE 0 
+						END) as in_qty,
+						SUM(CASE 
+								WHEN iot.options_json->>'io_type' = 'INVENTORY_OUT' THEN COALESCE(id.qty, 0)
+								ELSE 0 
+						END) as out_qty,
+						MAX(id.price_buy) as price_buy,
+						MAX(id.price_sell) as price_sell
+				FROM inv_dts id
+				INNER JOIN inventories i ON id.inventory_id = i.id 
+				INNER JOIN mix_values iot ON i.io_type_id = iot.id
+				WHERE i.ingoing_at > (
+						SELECT COALESCE(
+								(SELECT MAX(sc.closing_at) 
+								FROM stock_closings sc 
+								WHERE sc.item_id = id.item_id 
+								AND sc.warehouse_id = i.warehouse_id 
+								AND sc.closing_at < (SELECT closing_date FROM end_date)
+								AND sc.deleted_at IS NULL
+								),
+								'1970-01-01'
+						)
+				)
+				AND i.ingoing_at <= (SELECT closing_date FROM end_date)
+				AND i.deleted_at IS NULL 
+				AND id.deleted_at IS NULL
+				GROUP BY id.item_id, i.warehouse_id
+		),
+		real_stock AS (
+				SELECT 
+						COALESCE(ec.id, 0) as id,
+						pwc.item_id,
+						pwc.warehouse_id,
+						COALESCE(
+								ec.closing_at, 
+								TO_CHAR((SELECT closing_date FROM end_date), 'YYYY-MM-DD')
+						) as closing_at,
+						COALESCE(
+								TO_CHAR(lc.last_closing_at, 'YYYY-MM-DD'),
+								'1970-01-01'
+						) as last_closing_at,
+						COALESCE(lc.begin_qty, 0) as begin_qty,
+						COALESCE(im.in_qty, 0) as in_qty,
+						COALESCE(im.out_qty, 0) as out_qty,
+						COALESCE(ec.adjustment_qty, 0) as adjustment_qty,
+						COALESCE(lc.begin_qty, 0) + COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(ec.adjustment_qty, 0) as end_qty,
+						COALESCE(ec.price_sell, im.price_sell) as price_sell,
+						COALESCE(ec.price_buy, im.price_buy) as price_buy,
+						(COALESCE(lc.begin_qty, 0) + COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(ec.adjustment_qty, 0)) * 
+								COALESCE(ec.price_sell, im.price_sell) as total_value_sell,
+						(COALESCE(lc.begin_qty, 0) + COALESCE(im.in_qty, 0) - COALESCE(im.out_qty, 0) + COALESCE(ec.adjustment_qty, 0)) * 
+								COALESCE(ec.price_buy, im.price_buy) as total_value_buy,
+						CURRENT_TIMESTAMP as created_at,
+						NULL as updated_at,
+						NULL as deleted_at
+				FROM product_warehouse_combinations pwc
+				LEFT JOIN existing_closings ec ON pwc.item_id = ec.item_id AND pwc.warehouse_id = ec.warehouse_id
+				LEFT JOIN latest_closings lc ON pwc.item_id = lc.item_id AND pwc.warehouse_id = lc.warehouse_id
+				LEFT JOIN inventory_movements im ON pwc.item_id = im.item_id AND pwc.warehouse_id = im.warehouse_id
+		)
+		`
 
 	baseQueryItems := `
     SELECT
@@ -652,8 +893,8 @@ func (r *RequestOrderRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
         uu.name as updated_by_name,
         sodt.qty as order_product_qty,
         sodt.qty as order_item_qty,
-        COALESCE(sc_items.end_qty, 0) as wh_qty,
-        (sodt.qty - COALESCE(sc_items.end_qty, 0)) as req_qty,
+        COALESCE(rs.end_qty, 0) as wh_qty,
+        (sodt.qty - COALESCE(rs.end_qty, 0)) as req_qty,
         sales_orders.branch_id
     FROM so_dts sodt
     LEFT JOIN sales_orders ON sodt.sales_order_id = sales_orders.id
@@ -664,15 +905,7 @@ func (r *RequestOrderRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
     LEFT JOIN mix_values u ON iu.unit_id = u.id
     LEFT JOIN users cu ON sodt.created_by_id = cu.id
     LEFT JOIN users uu ON sodt.updated_by_id = uu.id
-    LEFT JOIN LATERAL (
-        SELECT sc.end_qty
-        FROM stock_closings sc
-        WHERE sc.item_id = sodt.item_id
-        ` + warehouseCondition + `
-        AND sc.deleted_at IS NULL
-        ORDER BY sc.closing_at DESC
-        LIMIT 1
-    ) sc_items ON true
+    LEFT JOIN real_stock rs ON rs.item_id = sodt.item_id AND rs.warehouse_id = sales_orders.warehouse_id
     WHERE sodt.item_type = 'item'
     AND sodt.deleted_at IS NULL
     ` + baseCondition
@@ -717,8 +950,8 @@ func (r *RequestOrderRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
         uu.name as updated_by_name,
         sodt.qty as order_product_qty,
         (sodt.qty * sodtb.qty) as order_item_qty,
-        COALESCE(sc_products.end_qty, 0) as wh_qty,
-        ((sodt.qty * sodtb.qty) - COALESCE(sc_products.end_qty, 0)) as req_qty,
+        COALESCE(rs.end_qty, 0) as wh_qty,
+        ((sodt.qty * sodtb.qty) - COALESCE(rs.end_qty, 0)) as req_qty,
         sales_orders.branch_id
     FROM so_dts sodt
     LEFT JOIN so_dt_boms sodtb ON sodt.id = sodtb.so_dt_id
@@ -731,15 +964,7 @@ func (r *RequestOrderRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
     LEFT JOIN mix_values u ON iu.unit_id = u.id
     LEFT JOIN users cu ON sodt.created_by_id = cu.id
     LEFT JOIN users uu ON sodt.updated_by_id = uu.id
-    LEFT JOIN LATERAL (
-        SELECT sc.end_qty
-        FROM stock_closings sc
-        WHERE sc.item_id = sodtb.item_id
-        ` + warehouseCondition + `
-        AND sc.deleted_at IS NULL
-        ORDER BY sc.closing_at DESC
-        LIMIT 1
-    ) sc_products ON true
+    LEFT JOIN real_stock rs ON rs.item_id = sodtb.item_id AND rs.warehouse_id = sales_orders.warehouse_id
     WHERE sodt.item_type = 'product'
     AND sodtb.id IS NOT NULL
     AND sodt.deleted_at IS NULL
@@ -747,8 +972,8 @@ func (r *RequestOrderRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 
 	combinedQuery := "(" + baseQueryItems + ") UNION ALL (" + baseQueryProducts + ")"
 
-	query := "SELECT * FROM (" + combinedQuery + ") AS combined_result WHERE 1=1"
-	countQuery := "SELECT COUNT(*) FROM (" + combinedQuery + ") AS count_alias WHERE 1=1"
+	query := realStockCTE + " " + "SELECT * FROM (" + combinedQuery + ") AS combined_result WHERE 1=1"
+	countQuery := realStockCTE + " " + "SELECT COUNT(*) FROM (" + combinedQuery + ") AS count_alias WHERE 1=1"
 
 	var args []interface{}
 	i := 1
@@ -1259,18 +1484,6 @@ func (r *RequestOrderRepository) GetWidgetRequestOrders(ctx *fiber.Ctx, filters 
 		condition += fmt.Sprintf(" AND ro.id IN (%s)", filters["ids"])
 	}
 
-	filterKey := map[string]string{
-		"warehouse_id": "ro.warehouse_id",
-	}
-
-	for key, col := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s = $%d", col, i)
-			args = append(args, value)
-			i++
-		}
-	}
-
 	for key, value := range filters {
 		switch key {
 		case "request_no", "remark", "requested":
@@ -1294,8 +1507,22 @@ func (r *RequestOrderRepository) GetWidgetRequestOrders(ctx *fiber.Ctx, filters 
 		i++
 	}
 
+	filterKey := map[string]string{
+		"warehouse_id": "ro.warehouse_id",
+		"customer_id":  "so.customer_id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
 	filterIDsKey := map[string]string{
 		"warehouse_ids": "ro.warehouse_id",
+		"customer_ids":  "so.customer_id",
 	}
 
 	for key, valueID := range filterIDsKey {
@@ -1337,6 +1564,8 @@ func (r *RequestOrderRepository) GetWidgetRequestOrders(ctx *fiber.Ctx, filters 
             0 as grand_total
         FROM request_orders ro
         LEFT JOIN request_order_dts rodt ON rodt.request_order_id = ro.id
+				LEFT JOIN so_dts sodt ON rodt.ref_id = sodt.id AND rodt.ref_type = 'so'
+				LEFT JOIN sales_orders so ON so.id = sodt.sales_order_id
         WHERE ro.deleted_at IS NULL
         ` + condition + queryGlobal + `
     ),

@@ -353,3 +353,31 @@ func (c *PurchaseOrderController) GetRefIndexSoDts(ctx *fiber.Ctx) error {
 
 	return utils.GetResponse(ctx, quoDts, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)
 }
+
+func (c *PurchaseOrderController) GetRefIndexRoDts(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("PurchaseOrderController-GetRefIndexRoDts", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("PurchaseOrderController-GetRefIndexRoDts: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	quoDts, total, err := c.service.GetRefIndexRoDts(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch sales order", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, quoDts, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)
+}

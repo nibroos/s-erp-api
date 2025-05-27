@@ -621,6 +621,7 @@ func (r *InventoryRepository) GetInventoryByID(ctx *fiber.Ctx, params *dtos.GetI
 
 				-- io_type
 				ot.options_json->>'io_type' as io_type,
+				ivd.qty_out as qty_out_on_in,
 
 				cu.name as created_by_name,
 				uu.name as updated_by_name

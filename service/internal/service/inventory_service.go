@@ -207,7 +207,7 @@ func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 
 	if oldInventory.TotalQty != newInv.TotalQty || *oldInventory.IngoingAt != *newInv.IngoingAt {
 		log.Println("UpdateInventory-PublishSyncCreateStockClosings", oldInventory.TotalQty, newInv.TotalQty, *oldInventory.IngoingAt, *newInv.IngoingAt)
-		err = s.PublishSyncCreateStockClosings(ctx, tx, oldInventory, newInv, userID, branchID, childSpan)
+		err = s.PublishSyncCreateStockClosings(ctx, tx, oldInventory, newInv, userID, branchID, 0, childSpan)
 		if err != nil {
 			utils.LogErrors(childSpan, err)
 		}
@@ -1065,7 +1065,7 @@ func (s *InventoryService) GetInventoriesStatus(ctx *fiber.Ctx, filters map[stri
 	return mappedInvDt, total, nil
 }
 
-func (s *InventoryService) PublishSyncCreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, oldInv *dtos.InventoryDetailDTO, newInv *dtos.InventoryDetailDTO, userID uint, branchID uint, span opentracing.Span) error {
+func (s *InventoryService) PublishSyncCreateStockClosings(ctx *fiber.Ctx, tx *gorm.DB, oldInv *dtos.InventoryDetailDTO, newInv *dtos.InventoryDetailDTO, userID uint, branchID uint, IsFinalized int, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("InventoryService-SyncCreateStockClosings", opentracing.ChildOf(span.Context()))
 
 	var req dtos.SyncStockInventoryRequest
@@ -1074,6 +1074,7 @@ func (s *InventoryService) PublishSyncCreateStockClosings(ctx *fiber.Ctx, tx *go
 	req.Password = os.Getenv("RABBITMQ_PASSWORD")
 	req.UserID = userID
 	req.BranchID = branchID
+	IsFinalized = IsFinalized
 
 	err := utils.PublishSyncCreateStockClosings(ctx, s.rabbitmq, req)
 	if err != nil {
@@ -1093,6 +1094,7 @@ func (s *InventoryService) BackgroundSyncCreateStockClosingsByRangeDate(ctx *fib
 	req.Password = params.Password
 	req.UserID = userID
 	req.BranchID = branchID
+	req.IsFinalized = params.IsFinalized
 
 	err := utils.PublishSyncCreateStockClosings(ctx, s.rabbitmq, req)
 	if err != nil {
