@@ -616,7 +616,7 @@ func (r *TicketRepository) GetScheduleTasksByScheduleID(ctx *fiber.Ctx, filters 
 	}
 
 	filterIDsOrKey := map[string][]string{
-		// "vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		// "vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -645,7 +645,7 @@ func (r *TicketRepository) GetScheduleTasksByScheduleID(ctx *fiber.Ctx, filters 
 		"remark": "st.remark",
 	}
 
-	for key, _ := range filterKeyLike {
+	for key := range filterKeyLike {
 		if value, ok := filters[key]; ok && value != "" {
 			condition += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
 			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
@@ -1170,7 +1170,7 @@ func (r *TicketRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]strin
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1210,7 +1210,7 @@ func (r *TicketRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]strin
 		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
+		customCondition += join
 	}
 
 	baseQuery := `

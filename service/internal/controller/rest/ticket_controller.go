@@ -52,11 +52,6 @@ func (c *TicketController) GetTickets(ctx *fiber.Ctx) error {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Ticket", http.StatusInternalServerError)
 	}
 
-	ticketIDs := make([]uint, 0)
-	for _, ticket := range tickets {
-		ticketIDs = append(ticketIDs, uint(ticket.ID))
-	}
-
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
 	return utils.GetResponse(ctx, tickets, paginationMeta, "Ticket fetched successfully", http.StatusOK, nil, nil)
@@ -117,9 +112,6 @@ func (c *TicketController) GetTicketByID(ctx *fiber.Ctx) error {
 	if err != nil {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Email List", http.StatusInternalServerError)
 	}
-
-	createdTicketIDs := make([]uint, 0)
-	createdTicketIDs = append(createdTicketIDs, ticket.ID)
 
 	filters := ctx.Locals("filters").(map[string]string)
 	ticketArray := []interface{}{ticket}
@@ -664,9 +656,6 @@ func (c *TicketController) GetScheduleByID(ctx *fiber.Ctx) error {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Schedule", http.StatusInternalServerError)
 	}
 
-	createdTicketIDs := make([]uint, 0)
-	createdTicketIDs = append(createdTicketIDs, *schedule.SalesOrderID)
-
 	filters := ctx.Locals("filters").(map[string]string)
 	ticketArray := []interface{}{schedule}
 
@@ -693,6 +682,9 @@ func (c *TicketController) GetScheduleAppByID(ctx *fiber.Ctx) error {
 	}
 
 	ID, err := utils.ParseInterfaceToUint(req.ID)
+	if err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Schedule not found", http.StatusBadRequest, "Invalid ID format", nil)
+	}
 
 	if ID == 0 {
 		return utils.GetResponse(ctx, nil, nil, "Schedule not found", http.StatusBadRequest, "ID is required", nil)

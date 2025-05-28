@@ -991,3 +991,11 @@ func FormatNumberSeparator(n float64, args ...int) string {
 
 	// return formatted
 }
+
+func EmptyStringPointer(s *string) *string {
+	emptyString := ""
+	if s == nil {
+		return &emptyString
+	}
+	return &emptyString
+}

@@ -62,7 +62,18 @@ func (s *QuotationService) CreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotat
 	childSpan := opentracing.StartSpan("QuotationService-CreateQuotation", opentracing.ChildOf(span.Context()))
 
 	customerQuoCreatedThisMonthNumber, err := s.repo.GetCustomerQuotationCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, tx, err
+	}
+
 	quoGlobalCreatedThisMonthNumber, err := s.repo.GetGlobalQuotationCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, tx, err
+	}
 
 	quotation, err := utils.MapCreateQuotation(ctx, req, userID, branchID, customerQuoCreatedThisMonthNumber, quoGlobalCreatedThisMonthNumber, childSpan)
 	if err != nil {
@@ -123,10 +134,7 @@ func (s *QuotationService) UpdateQuotation(ctx *fiber.Ctx, req dtos.UpdateQuotat
 		return nil, err
 	}
 
-	// Bulk/Create Update Batch QuoDts
-	quoDts, err := s.MapCreateUpdateQuoDts(ctx, req, &quotation, userID, childSpan)
-
-	tx, err = s.BulkCreateUpdateQuoDts(ctx, req, &quotation, userID, quoDts, quotation.ID, tx, childSpan)
+	tx, err = s.BulkCreateUpdateQuoDts(ctx, req, &quotation, userID, quotation.ID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -230,11 +238,11 @@ func (s *QuotationService) CsvGetQuotations(ctx *fiber.Ctx, filters map[string]s
 
 	// filters is_csv
 	filters["is_csv"] = "1"
-	quotations, _, err := s.GetQuotations(ctx, filters, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		return nil, err
-	}
+	// quotations, _, err := s.GetQuotations(ctx, filters, childSpan)
+	// if err != nil {
+	// 	defer childSpan.Finish()
+	// 	return nil, err
+	// }
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
@@ -253,12 +261,12 @@ func (s *QuotationService) CsvGetQuotations(ctx *fiber.Ctx, filters map[string]s
 
 	csv += "ID,Branch,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
 	// Build CSV rows
-	for _, quotation := range quotations {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-			quotation.ID,
-			utils.GetPtrVal(quotation.Remark),
-		)
-	}
+	// for _, quotation := range quotations {
+	// 	csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+	// 		quotation.ID,
+	// 		utils.GetPtrVal(quotation.Remark),
+	// 	)
+	// }
 
 	return []byte(csv), nil
 }
@@ -274,9 +282,7 @@ func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotation
 		return nil, quoDts, err
 	}
 
-	quoDtsModel := []models.QuoDt{}
-
-	tx, quoDtsModel, err = s.repo.CreateQuoDts(tx, quoDts, createdQuotation.ID, childSpan)
+	tx, quoDtsModel, err := s.repo.CreateQuoDts(tx, quoDts, createdQuotation.ID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -287,7 +293,7 @@ func (s *QuotationService) CreateQuoDts(ctx *fiber.Ctx, req dtos.CreateQuotation
 }
 
 // bulk create/update boms for a quotation
-func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, updatedQuotation *models.Quotation, userID uint, quoDts []models.QuoDt, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *QuotationService) BulkCreateUpdateQuoDts(ctx *fiber.Ctx, req dtos.UpdateQuotationRequest, updatedQuotation *models.Quotation, userID uint, quotationID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("QuotationService-BulkCreateUpdateQuoDts", opentracing.ChildOf(span.Context()))
 
 	// Bulk/Create Update Batch QuoDts

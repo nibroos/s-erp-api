@@ -390,8 +390,8 @@ func (r *VatRepository) GetVatHistories(ctx *fiber.Ctx, filters map[string]strin
 		query += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
 	}
 	if value, ok := filters["global"]; ok && value != "" {
-		query += fmt.Sprintf(" AND (name ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
-		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR remark ILIKE $%d)", i, i+1, i+2)
+		query += fmt.Sprintf(" AND (name ILIKE $%d OR remark ILIKE $%d)", i, i+1)
+		countQuery += fmt.Sprintf(" AND (name ILIKE $%d OR remark ILIKE $%d)", i, i+1)
 		args = append(args, "%"+value+"%", "%"+value+"%", "%"+value+"%")
 		i += 3
 	}

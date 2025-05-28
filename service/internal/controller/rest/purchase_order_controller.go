@@ -44,11 +44,6 @@ func (c *PurchaseOrderController) GetPurchaseOrders(ctx *fiber.Ctx) error {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch purchase orders", http.StatusInternalServerError)
 	}
 
-	purchaseOrderIDs := make([]uint, 0)
-	for _, purchaseOrder := range purchaseOrders {
-		purchaseOrderIDs = append(purchaseOrderIDs, uint(purchaseOrder.ID))
-	}
-
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
 	return utils.GetResponse(ctx, purchaseOrders, paginationMeta, "Purchase orders fetched successfully", http.StatusOK, nil, nil)

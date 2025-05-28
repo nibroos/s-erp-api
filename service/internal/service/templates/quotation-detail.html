@@ -284,11 +284,10 @@
 					<th width="5%" class="text-center">NO</th>
 					<th width="45%" style="text-align: left;">PRODUCT NAME</th>
 					<th width="20%" style="text-align: left;">REMARK</th>
-					<th width="10%" style="text-align: left;">UNIT</th>
-					<th width="10%" class="text-right">DISC (%)</th>
-					<th width="10%" class="text-right">DISC Amount</th>
 					<th width="10%" class="text-right">QTY</th>
+					<th width="10%" style="text-align: left;">UNIT</th>
 					<th width="15%" class="text-right">PRICE</th>
+					<th width="10%" class="text-right">DISC</th>
 					<th width="15%" class="text-right">AMOUNT</th>
 				</tr>
 			</thead>
@@ -298,18 +297,17 @@
 					<td class="text-center">{{ inc $index}}</td>
 					<td>{{$item.ItemName}} </td>
 					<td class="">{{$item.Remark}} </td>
-					<td class="">{{$item.UnitName}} </td>
-					<td class="text-right">{{formatNumber $item.DiscPerc}} </td>
-					<td class="text-right">{{formatNumber $item.DiscAm}} </td>
 					<td class="text-right">{{formatNumber $item.Qty}} </td>
+					<td class="">{{$item.UnitName}} </td>
 					<td class="text-right">{{formatNumber $item.PriceSell}} </td>
+					<td class="text-right">{{formatNumber $item.SubDiscount}} </td>
 					<td class="text-right">{{formatNumber $item.SubtotalSell}} </td>
 				</tr>
 				{{ if $item.QuoDtsBoms }}
 				<tr style="padding: 0 !important;">
 					<td colspan="9" class="text-left" style="padding: 0 !important;">
 						<table class="sub-table" cellspacing="0" cellpadding="0">
-							<tr>
+							<tr style="background-color: #d1d1d1;">
 								<th width="5%" class="text-center">NO</th>
 								<th width="45%" style="text-align: left;">ITEM NAME</th>
 								<th width="20%" style="text-align: left;">REMARK</th>
@@ -360,10 +358,6 @@
 						<tr>
 							<td class="totals-label">TOTAL DISCOUNT</td>
 							<td class="text-right">{{formatNumber .Form.TotalDiscount}}</td>
-						</tr>
-						<tr>
-							<td class="totals-label">AFTER DISCOUNT</td>
-							<td class="text-right">{{formatNumber .Form.TotalAfterDisc}}</td>
 						</tr>
 						<tr>
 							<td class="totals-label">PPH23</td>
@@ -427,7 +421,8 @@
 									</tr>
 									<tr>
 										<td height="60" width="100%" class="text-center" style="text-align: center;">
-											<div>
+											<div
+												style="width: 70px; height: 70px; object-fit: contain; display: block; margin: 0 auto 5px auto;">
 												&nbsp;
 											</div>
 										</td>

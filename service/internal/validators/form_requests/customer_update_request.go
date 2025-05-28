@@ -20,7 +20,7 @@ func (r *CustomerUpdateRequest) Validate(req *dtos.FormCrmCustomerRequest, ctx *
 		"id":               []string{"required", "exists:customers,id"},
 		"customer_type_id": []string{"required", "exists:mix_values,id"},
 		"agent_id":         []string{"exists:customers,id"},
-		"code":             []string{"required"},
+		"code":             []string{},
 		"name":             []string{"required", "min:3"},
 		"shortname":        []string{"required"},
 		"address":          []string{},

@@ -454,6 +454,7 @@ type QuotationQuoDtListDTO struct {
 	DiscPercNum      *float64  `json:"disc_perc_num" db:"disc_perc_num"`
 	DiscPercAm       *float64  `json:"disc_perc_am" db:"disc_perc_am"`
 	DiscFinal        *float64  `json:"disc_final" db:"disc_final"`
+	SubDiscount      *float64  `json:"sub_discount" db:"sub_discount"`
 	DiscType         *string   `json:"disc_type" db:"disc_type"`
 	TotalAm          *float64  `json:"total_am" db:"total_am"`
 	CreatedByName    *string   `json:"created_by_name" db:"created_by_name"`

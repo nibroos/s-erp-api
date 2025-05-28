@@ -117,7 +117,7 @@ func (r *RequestOrderRepository) GetRequestOrders(ctx *fiber.Ctx, filters map[st
 
 	// And one for array conditions with OR
 	filterIDsOrArrayKey := map[string][]string{
-		"product_ids": []string{"rodt.item_id", "rodt.product_id"},
+		"product_ids": {"rodt.item_id", "rodt.product_id"},
 	}
 
 	// Handle array OR conditions

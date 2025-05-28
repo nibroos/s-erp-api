@@ -71,7 +71,7 @@ func (s *InventoryService) CreateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 
 	log.Println("CreateInventory-customerID", customerID)
 	if req.CustomerID != nil {
-		customerInvCreatedThisMonthNumber, err = s.repo.GetCustomerInventoryCreatedThisMonth(ctx, tx, *customerID, childSpan)
+		customerInvCreatedThisMonthNumber, _ = s.repo.GetCustomerInventoryCreatedThisMonth(ctx, tx, *customerID, childSpan)
 	}
 
 	inventory, err := utils.MapCreateInventory(ctx, req, userID, branchID, customerInvCreatedThisMonthNumber, childSpan)
@@ -111,10 +111,7 @@ func (s *InventoryService) CreateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 			}
 		}
 
-		createdInventoryIDs := make([]uint, 0)
-		createdInventoryIDs = append(createdInventoryIDs, inventory.ID)
-
-		tx, err = s.updateRefQtyInOut(ctx, req, createdInventoryIDs, userID, tx, childSpan)
+		tx, err = s.updateRefQtyInOut(ctx, req, userID, tx, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			tx.Rollback()
@@ -148,6 +145,11 @@ func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 	}
 
 	oldInventory, err := s.GetInventoryByID(ctx, &dtos.GetInventoryParams{ID: *req.ID}, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 
 	log.Println("UpdateInventory-oldInventory", oldInventory.TotalQty, *oldInventory.IngoingAt)
 	if err := s.repo.UpdateInventory(tx, &inventory, childSpan); err != nil {
@@ -175,7 +177,7 @@ func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 		return nil, err
 	}
 
-	tx, err = s.updateRefReverseQtyInOut(ctx, oldInvDts, createdInventoryIDs, userID, tx, childSpan)
+	tx, err = s.updateRefReverseQtyInOut(ctx, oldInvDts, userID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -196,7 +198,7 @@ func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 		return nil, err
 	}
 
-	tx, err = s.updateRefQtyInOut(ctx, req, createdInventoryIDs, userID, tx, childSpan)
+	tx, err = s.updateRefQtyInOut(ctx, req, userID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -204,6 +206,11 @@ func (s *InventoryService) UpdateInventory(ctx *fiber.Ctx, req dtos.FormInventor
 	}
 
 	newInv, err := s.GetInventoryByID(ctx, &dtos.GetInventoryParams{ID: *req.ID}, tx, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 
 	if oldInventory.TotalQty != newInv.TotalQty || *oldInventory.IngoingAt != *newInv.IngoingAt {
 		log.Println("UpdateInventory-PublishSyncCreateStockClosings", oldInventory.TotalQty, newInv.TotalQty, *oldInventory.IngoingAt, *newInv.IngoingAt)
@@ -277,7 +284,7 @@ func (s *InventoryService) UpdateResetStocksOnUpdateInventory(ctx *fiber.Ctx, re
 	return tx, nil
 }
 
-func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtListDTO, createdInventoryIDs []uint, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []dtos.InventoryInvDtListDTO, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-updateRefReverseQtyInOut", opentracing.ChildOf(span.Context()))
 
 	refSoDtID, refSoDtBomID, refRoDtID, refPoDtID, refPoDtBomID, refInvDtID, err := utils.MapOldUpdateInvDts(ctx, oldInvDts, userID, span)
@@ -351,6 +358,11 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 	}
 
 	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefPoDt, newRefPoDtBom, newRefInvDt, err := utils.MapNewUpdatedReverseRefs(ctx, oldInvDts, soDt, soDtBom, roDt, poDt, poDtBom, invDt)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 
 	log.Println("updateRefReverseQtyInOut-soDt", soDt, "soDtBom", soDtBom, "poDt", poDt, "poDtBom", poDtBom, "invDt", invDt)
 	log.Println("updateRefReverseQtyInOut-newRef-soDt", newRefSoDt, "newRef-soDtBom", newRefSoDtBom, "newRef-poDt", newRefPoDt, "newRef-poDtBom", newRefPoDtBom, "newRef-invDt", newRefInvDt)
@@ -428,7 +440,7 @@ func (s *InventoryService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldInvDts []
 	return tx, nil
 }
 
-func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInventoryRequest, createdInventoryIDs []uint, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInventoryRequest, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("InventoryService-updateRefQtyInOut", opentracing.ChildOf(span.Context()))
 
 	// Bulk/Create Update Batch InvDts
@@ -503,6 +515,11 @@ func (s *InventoryService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormInvent
 	}
 
 	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefPoDt, newRefPoDtBom, newRefInvDt, err := utils.MapNewUpdatedRefs(ctx, req, soDt, soDtBom, roDt, poDt, poDtBom, invDt)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 
 	log.Println("updateRefQtyInOut-newRef-soDt", newRefSoDt, "newRef-soDtBom", newRefSoDtBom, "newRef-roDt", newRefRoDt, "newRef-poDt", newRefPoDt, "newRef-poDtBom", newRefPoDtBom, "newRef-invDt", newRefInvDt)
 
@@ -667,11 +684,11 @@ func (s *InventoryService) CsvGetInventories(ctx *fiber.Ctx, filters map[string]
 
 	// filters is_csv
 	filters["is_csv"] = "1"
-	inventories, _, err := s.GetInventories(ctx, filters, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		return nil, err
-	}
+	// inventories, _, err := s.GetInventories(ctx, filters, childSpan)
+	// if err != nil {
+	// 	defer childSpan.Finish()
+	// 	return nil, err
+	// }
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
@@ -689,13 +706,13 @@ func (s *InventoryService) CsvGetInventories(ctx *fiber.Ctx, filters map[string]
 	csv += "\n"
 
 	csv += "ID,Branch,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
-	// Build CSV rows
-	for _, inventory := range inventories {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-			inventory.ID,
-			utils.GetPtrVal(inventory.Remark),
-		)
-	}
+	// // Build CSV rows
+	// for _, inventory := range inventories {
+	// 	csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+	// 		inventory.ID,
+	// 		utils.GetPtrVal(inventory.Remark),
+	// 	)
+	// }
 
 	return []byte(csv), nil
 }
@@ -807,7 +824,7 @@ func (s *InventoryService) DeleteInvDtsByInventoryID(ctx *fiber.Ctx, params *dto
 		return err
 	}
 
-	tx, err = s.updateRefReverseQtyInOut(ctx, oldInvDts, inventoryIDs, userID, tx, childSpan)
+	tx, err = s.updateRefReverseQtyInOut(ctx, oldInvDts, userID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -1074,7 +1091,7 @@ func (s *InventoryService) PublishSyncCreateStockClosings(ctx *fiber.Ctx, tx *go
 	req.Password = os.Getenv("RABBITMQ_PASSWORD")
 	req.UserID = userID
 	req.BranchID = branchID
-	IsFinalized = IsFinalized
+	// IsFinalized = IsFinalized
 
 	err := utils.PublishSyncCreateStockClosings(ctx, s.rabbitmq, req)
 	if err != nil {

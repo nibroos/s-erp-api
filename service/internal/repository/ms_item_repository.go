@@ -154,7 +154,7 @@ func (r *MsItemRepository) GetMsItems(ctx *fiber.Ctx, filters map[string]string,
 		filterKey["branch_id"] = "branch_id"
 	}
 
-	for key, _ := range filterKey {
+	for key := range filterKey {
 		if value, ok := filters[key]; ok && value != "" {
 			query += fmt.Sprintf(" AND %s = $%d", value, i)
 			countQuery += fmt.Sprintf(" AND %s = $%d", value, i)

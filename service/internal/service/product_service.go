@@ -184,7 +184,7 @@ func (s *ProductService) CsvGetProducts(ctx *fiber.Ctx, filters map[string]strin
 	csv += "ID,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
 	// Build CSV rows
 	for _, product := range products {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%f,%f\n",
 			product.ID,
 			utils.GetPtrVal(product.Code),
 			utils.GetPtrVal(product.FactoryCode),
@@ -294,6 +294,11 @@ func (s *ProductService) BulkCreateUpdateItemUnits(ctx *fiber.Ctx, req dtos.Upda
 	// map to add ID if product_id & unit_id exist
 	itemUnits := req.Units
 	itemUnits, err = utils.MapItemUnitsByProductIDsAndUnitIDs(ctx, req.ID, oldItemUnits, itemUnits, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
 
 	// map
 	bulkCreateItemUnits, bulkUpdateItemUnits, itemUnitIDs, err := utils.MapCreateUpdateItemUnits(ctx, itemUnits, req.ID, childSpan)

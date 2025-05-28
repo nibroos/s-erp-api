@@ -367,12 +367,6 @@ func (c *ProductController) UpdateProduct(ctx *fiber.Ctx) error {
 		tx.Rollback()
 		response := utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError)
 		utils.LogResponse(apiSpan, response)
-		return utils.GetResponse(ctx, nil, nil, "Failed to create master items", http.StatusInternalServerError, err.Error(), nil)
-	}
-
-	if err != nil {
-		tx.Rollback()
-		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		if err.Error() == "product name already exists" {
 			return ctx.Status(http.StatusConflict).JSON(fiber.Map{"errors": err.Error(), "message": "Master product already exists", "status": http.StatusConflict})
 		}

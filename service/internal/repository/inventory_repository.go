@@ -133,7 +133,7 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
+		"vat_ids": {"iv.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -152,7 +152,7 @@ func (r *InventoryRepository) GetInventories(ctx *fiber.Ctx, filters map[string]
 
 	// And one for array conditions with OR
 	filterIDsOrArrayKey := map[string][]string{
-		"product_ids": []string{"ivd.ref_product_id", "ivd.item_id"},
+		"product_ids": {"ivd.ref_product_id", "ivd.item_id"},
 	}
 
 	// Handle array OR conditions
@@ -418,7 +418,7 @@ func (r *InventoryRepository) GetStocks(ctx *fiber.Ctx, filters map[string]strin
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
+		"vat_ids": {"iv.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -442,7 +442,7 @@ func (r *InventoryRepository) GetStocks(ctx *fiber.Ctx, filters map[string]strin
 		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
+		customCondition += join
 	}
 
 	// orderColumnKeys := map[string]string{
@@ -1041,7 +1041,7 @@ func (r *InventoryRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[strin
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1365,7 +1365,7 @@ func (r *InventoryRepository) GetRefIndexRoDts(ctx *fiber.Ctx, filters map[strin
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"ro.vat_id", "sd.vat_id"},
+		"vat_ids": {"ro.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1643,7 +1643,7 @@ func (r *InventoryRepository) GetRefIndexPoDts(ctx *fiber.Ctx, filters map[strin
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1935,7 +1935,7 @@ func (r *InventoryRepository) GetRefSoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters m
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "sd.vat_id"},
+		"vat_ids": {"q.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -2509,7 +2509,7 @@ func (r *InventoryRepository) GetRefOutDtByRefDtID(ctx *fiber.Ctx, tx *gorm.DB, 
 	i := 1
 
 	if len(detailIDs) > 0 {
-		query += fmt.Sprintf(" AND id = ANY($1)")
+		query += " AND id = ANY($1)"
 		args = append(args, pq.Array(detailIDs))
 		i++
 	}
@@ -2546,7 +2546,7 @@ func (r *InventoryRepository) GetRefInDtByRefDtID(ctx *fiber.Ctx, tx *gorm.DB, t
 	i := 1
 
 	if len(detailIDs) > 0 {
-		query += fmt.Sprintf(" AND id = ANY($1)")
+		query += " AND id = ANY($1)"
 		args = append(args, pq.Array(detailIDs))
 		i++
 	}
@@ -2589,7 +2589,7 @@ func (r *InventoryRepository) GetRefInHeadByRefDtID(ctx *fiber.Ctx, tx *gorm.DB,
 	i := 1
 
 	if len(detailIDs) > 0 {
-		query += fmt.Sprintf(" AND dt_id = ANY($1)")
+		query += " AND dt_id = ANY($1)"
 		args = append(args, pq.Array(detailIDs))
 		i++
 	}
@@ -2697,7 +2697,7 @@ func (r *InventoryRepository) GetRefIndexInvDts(ctx *fiber.Ctx, filters map[stri
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
+		"vat_ids": {"iv.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -2725,7 +2725,7 @@ func (r *InventoryRepository) GetRefIndexInvDts(ctx *fiber.Ctx, filters map[stri
 		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
+		customCondition += join
 	}
 
 	baseQuery := `
@@ -3283,7 +3283,7 @@ func (r *InventoryRepository) GetStockClosings(ctx *fiber.Ctx, filters map[strin
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
+		"vat_ids": {"iv.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -3516,7 +3516,7 @@ func (r *InventoryRepository) GetStockClosingsBackup(ctx *fiber.Ctx, filters map
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
+		"vat_ids": {"iv.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -3939,7 +3939,7 @@ func (r *InventoryRepository) GetInventoriesStatus(ctx *fiber.Ctx, filters map[s
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
+		"vat_ids": {"iv.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -3958,7 +3958,7 @@ func (r *InventoryRepository) GetInventoriesStatus(ctx *fiber.Ctx, filters map[s
 
 	// And one for array conditions with OR
 	filterIDsOrArrayKey := map[string][]string{
-		"product_ids": []string{"ivd.ref_product_id", "ivd.item_id"},
+		"product_ids": {"ivd.ref_product_id", "ivd.item_id"},
 	}
 
 	// Handle array OR conditions
@@ -4296,7 +4296,7 @@ func (r *InventoryRepository) GetInventoriesStatusDt(ctx *fiber.Ctx, filters map
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"iv.vat_id", "sd.vat_id"},
+		"vat_ids": {"iv.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -4539,12 +4539,12 @@ func (r *InventoryRepository) GetLatestInventory(ctx *fiber.Ctx, tx *gorm.DB, fi
 	}
 
 	var wg sync.WaitGroup
-	var countErr, selectErr error
+	var selectErr error
 
 	orderColumn := utils.GetStringOrDefault(filters["order_column"], "ingoing_at")
 	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
 	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
-	query += fmt.Sprintf(" LIMIT 1")
+	query += " LIMIT 1"
 
 	wg.Add(1)
 	go func() {
@@ -4560,14 +4560,7 @@ func (r *InventoryRepository) GetLatestInventory(ctx *fiber.Ctx, tx *gorm.DB, fi
 	}()
 
 	wg.Wait()
-
-	if countErr != nil || selectErr != nil {
-		defer childSpan.Finish()
-	}
-
-	if countErr != nil {
-		return nil, countErr
-	}
+	defer childSpan.Finish()
 
 	if selectErr != nil {
 		return nil, selectErr

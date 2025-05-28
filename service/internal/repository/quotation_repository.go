@@ -127,7 +127,7 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+		"vat_ids": {"q.vat_id", "qd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -146,7 +146,7 @@ func (r *QuotationRepository) GetQuotations(ctx *fiber.Ctx, filters map[string]s
 
 	// And one for array conditions with OR
 	filterIDsOrArrayKey := map[string][]string{
-		"product_ids": []string{"pi.id", "it.id"},
+		"product_ids": {"pi.id", "it.id"},
 	}
 
 	// Handle array OR conditions
@@ -433,7 +433,7 @@ func (r *QuotationRepository) GetWidgetQuotations(ctx *fiber.Ctx, filters map[st
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+		"vat_ids": {"q.vat_id", "qd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -807,6 +807,8 @@ func (r *QuotationRepository) GetQuoDtsByQuotationIDs(ctx *fiber.Ctx, tx *gorm.D
 		qd.is_vat, qd.is_pph23, qd.is_lock_markup, qd.is_lock_price_sell, qd.is_lock_price_buy,
 		qd.created_at, qd.updated_at, qd.deleted_at,
 
+		qd.disc_am + qd.disc_perc_am as sub_discount,
+
 		qd.id as quo_dt_id,
 		isg.id as item_sub_group_id,
 		ig.id as item_group_id,
@@ -1076,7 +1078,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 		"due_at":        "q.due_at",
 	}
 
-	for key, _ := range filterKey {
+	for key := range filterKey {
 		if value, ok := filters[key]; ok && value != "" {
 			condition += fmt.Sprintf(" AND %s = $%d", value, i)
 			args = append(args, value)
@@ -1111,7 +1113,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+		"vat_ids": {"q.vat_id", "qd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1141,7 +1143,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 		"remark": "q.remark",
 	}
 
-	for key, _ := range filterKeyLike {
+	for key := range filterKeyLike {
 		if value, ok := filters[key]; ok && value != "" {
 			condition += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
 			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)

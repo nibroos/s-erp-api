@@ -193,8 +193,8 @@ func (s *BranchItemService) CsvGetBranchItems(ctx *fiber.Ctx, filters map[string
 			utils.GetFloatPtrVal(branchItem.MinimumStock),
 			utils.GetFloatPtrVal(branchItem.PriceSell),
 			utils.GetFloatPtrVal(branchItem.PriceBuy),
-			branchItem.CreatedAt,
-			branchItem.UpdatedAt,
+			utils.GetPtrVal(branchItem.CreatedAt),
+			utils.GetPtrVal(branchItem.UpdatedAt),
 		)
 	}
 

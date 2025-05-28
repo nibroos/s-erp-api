@@ -52,11 +52,6 @@ func (c *InventoryController) GetInventories(ctx *fiber.Ctx) error {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Inventory", http.StatusInternalServerError)
 	}
 
-	inventoryIDs := make([]uint, 0)
-	for _, inventory := range inventories {
-		inventoryIDs = append(inventoryIDs, uint(inventory.ID))
-	}
-
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
 	return utils.GetResponse(ctx, inventories, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)

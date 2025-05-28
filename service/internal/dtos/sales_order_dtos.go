@@ -657,6 +657,7 @@ type SalesOrderSoDtListDTO struct {
 	DiscPerc         *float64 `json:"disc_perc" db:"disc_perc"`
 	DiscPercNum      *float64 `json:"disc_perc_num" db:"disc_perc_num"`
 	DiscPercAm       *float64 `json:"disc_perc_am" db:"disc_perc_am"`
+	SubDiscount      *float64 `json:"sub_discount" db:"sub_discount"`
 	DiscFinal        *float64 `json:"disc_final" db:"disc_final"`
 	DiscType         *string  `json:"disc_type" db:"disc_type"`
 	TotalAm          *float64 `json:"total_am" db:"total_am"`

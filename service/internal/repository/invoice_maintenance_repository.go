@@ -45,7 +45,7 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 
 	isAdmin := utils.IsAdmin(ctx)
 
-	invoiceMaintenances := []dtos.InvoiceMaintenanceListDTO{}
+	var invoiceMaintenances []dtos.InvoiceMaintenanceListDTO
 
 	var total int
 
@@ -89,6 +89,7 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 		"payment_term_id": "im.payment_term_id",
 		"vat_id":          "im.vat_id",
 		"pph23_id":        "im.pph23_id",
+		"approved_status": "im.approved_status",
 	}
 
 	for key, col := range filterKey {
@@ -128,7 +129,7 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenances(ctx *fiber.Ctx, fi
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"im.vat_id", "imdt.vat_id"},
+		"vat_ids": {"im.vat_id", "imdt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -411,7 +412,7 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceDtsRawByIDs(ctx *fib
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"im.vat_id", "imdt.vat_id"},
+		"vat_ids": {"im.vat_id", "imdt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1049,7 +1050,7 @@ func (r *InvoiceMaintenanceRepository) GetRefSalesOrderForInvoiceMaintenance(ctx
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sodt.vat_id"},
+		"vat_ids": {"so.vat_id", "sodt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1810,7 +1811,7 @@ func (r *InvoiceMaintenanceRepository) GetWidgetInvoiceMaintenances(ctx *fiber.C
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"im.vat_id", "imdt.vat_id"},
+		"vat_ids": {"im.vat_id", "imdt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {

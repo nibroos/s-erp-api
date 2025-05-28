@@ -1091,10 +1091,7 @@ func MapNewSalesOrderFiles(ctx *fiber.Ctx, files []*multipart.FileHeader, refID 
 	childSpan := opentracing.StartSpan("MapNewSalesOrderFiles", opentracing.ChildOf(span.Context()))
 
 	deviceType := []string{"web"}
-	if ctx.Get("device_type") != "" {
-		// push device type
-		deviceType = append(deviceType, ctx.FormValue("device_type"))
-	}
+	deviceType = append(deviceType, ctx.FormValue("device_type"))
 
 	// newFiles := []map[string]interface{}{}
 	newFiles := []*models.Letter{}

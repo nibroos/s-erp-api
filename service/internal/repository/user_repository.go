@@ -115,7 +115,7 @@ func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, spa
 	args = append(args, perPage, (currentPage-1)*perPage)
 
 	var wg sync.WaitGroup
-	var countErr, selectErr error
+	var selectErr error
 
 	wg.Add(2)
 
@@ -146,13 +146,7 @@ func (r *UserRepository) GetUsers(ctx *fiber.Ctx, filters map[string]string, spa
 	// Wait for both goroutines to finish
 	wg.Wait()
 
-	if countErr != nil || selectErr != nil {
-		defer childSpan.Finish()
-	}
-
-	if countErr != nil {
-		return nil, 0, countErr
-	}
+	defer childSpan.Finish()
 
 	if selectErr != nil {
 		return nil, 0, selectErr

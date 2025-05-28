@@ -1132,6 +1132,12 @@ func (s *InvoiceMaintenanceService) PublishBulkSendEmailApproved(ctx *fiber.Ctx,
 	}
 
 	mappedEmails, err := utils.MapBulkSendEmailApprovedModelToDTO(ctx, emails, userID, branchID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		utils.LogErrors(childSpan, err)
+		tx.Rollback()
+		return err
+	}
 	req.SentEmails = mappedEmails
 	req.SenderID = userID
 	// log.Println("PublishSendEmailSolutionTicket-req.SentEmailID", req.SentEmailID)
@@ -1481,8 +1487,8 @@ func (s *InvoiceMaintenanceService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceMaintena
 			return nil, err
 		}
 
-		createdInvoiceMaintenanceIDs := make([]uint, 0)
-		createdInvoiceMaintenanceIDs = append(createdInvoiceMaintenanceIDs, invoiceMaintenance.ID)
+		// createdInvoiceMaintenanceIDs := make([]uint, 0)
+		// createdInvoiceMaintenanceIDs = append(createdInvoiceMaintenanceIDs, invoiceMaintenance.ID)
 		dtsFilters := map[string]string{
 			"invoice_maintenance_ids": fmt.Sprintf("%d", invoiceMaintenance.ID),
 			"is_csv":                  "1",
@@ -1539,7 +1545,7 @@ func (s *InvoiceMaintenanceService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceMaintena
 	qrCodeFilename := fmt.Sprintf("barcodes-%s-%s.png", *form.Title, time.Now().Format("20060102150405"))
 	qrCodePath := filepath.Join(uploadDir, qrCodeFilename)
 	qrCodePublicPath := utils.MapStringToURL(&qrCodePath)
-	log.Println("qrCodePublicPath", *qrCodePublicPath)
+	// log.Println("qrCodePublicPath", *qrCodePublicPath)
 
 	grandTotal := utils.FormatNumberSeparator(form.GrandTotal)
 	qrCodeContent := fmt.Sprintf("To: %s\nInvoice No: %s\nGrand Total: %s.%s\nLink: %s",
@@ -1551,20 +1557,29 @@ func (s *InvoiceMaintenanceService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceMaintena
 	)
 
 	qrCode, _ := qr.Encode(qrCodeContent, qr.M, qr.Auto)
-	qrCode, _ = barcode.Scale(qrCode, 200, 200)
+	qrCode, _ = barcode.Scale(qrCode, 600, 600)
 
 	// create the output file
 	qrCodeImg, err := os.Create(qrCodePath)
-	defer qrCodeImg.Close()
 	if err != nil {
 		defer childSpan.Finish()
 		utils.LogErrors(childSpan, err)
 		log.Println("Error creating qrCodeImg:", err)
 		return nil, err
 	}
+	// Only defer Close() after we know the file was created successfully
+	defer func() {
+		if qrCodeImg != nil {
+			qrCodeImg.Close()
+		}
+	}()
 
 	// encode the barcode as png
 	png.Encode(qrCodeImg, qrCode)
+
+	if form.ApprovedStatus != nil && *form.ApprovedStatus != "APPROVED" {
+		qrCodePublicPath = utils.EmptyStringPointer(qrCodePublicPath)
+	}
 
 	data := dtos.InvoiceMaintenancePDFData{
 		Num:    num,
@@ -1573,7 +1588,7 @@ func (s *InvoiceMaintenanceService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceMaintena
 	}
 
 	htmlFileName := "invoice-maintenance-detail"
-	log.Println("Pdf-htmlFileName-im", htmlFileName)
+	// log.Println("Pdf-htmlFileName-im", htmlFileName)
 
 	// 2. Render HTML template with data
 	// templateFile, err := templateFS.Open("templates/sales-order-detail.html")

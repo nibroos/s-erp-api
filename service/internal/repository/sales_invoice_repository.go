@@ -120,7 +120,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"si.vat_id", "sidt.vat_id"},
+		"vat_ids": {"si.vat_id", "sidt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -746,7 +746,7 @@ func (r *SalesInvoiceRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sodt.vat_id"},
+		"vat_ids": {"so.vat_id", "sodt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1098,7 +1098,7 @@ func (r *SalesInvoiceRepository) GetRefInventoryOutDts(ctx *fiber.Ctx, filters m
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"inv.vat_id", "invdt.vat_id"},
+		"vat_ids": {"inv.vat_id", "invdt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1790,7 +1790,7 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"si.vat_id", "sidt.vat_id"},
+		"vat_ids": {"si.vat_id", "sidt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {

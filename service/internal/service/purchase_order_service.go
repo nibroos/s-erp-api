@@ -40,6 +40,11 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx *fiber.Ctx, req dtos.Form
 	defer childSpan.Finish()
 
 	customerSoCreatedThisMonthNumber, err := s.repo.GetCustomerPurchaseOrderCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 
 	purchaseOrder, err := utils.MapCreatePurchaseOrder(ctx, req, userID, branchID, customerSoCreatedThisMonthNumber, childSpan)
 	if err != nil {
@@ -61,10 +66,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx *fiber.Ctx, req dtos.Form
 		return nil, err
 	}
 
-	createdPurchaseOrderIDs := make([]uint, 0)
-	createdPurchaseOrderIDs = append(createdPurchaseOrderIDs, purchaseOrder.ID)
-
-	tx, err = s.updateRefQtyInOut(ctx, req, createdPurchaseOrderIDs, userID, tx, childSpan)
+	tx, err = s.updateRefQtyInOut(ctx, req, userID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -74,7 +76,7 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx *fiber.Ctx, req dtos.Form
 	return createdPurchaseOrder, nil
 }
 
-func (s *PurchaseOrderService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, createdPurchaseOrderIDs []uint, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *PurchaseOrderService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("PurchaseOrderService-updateRefQtyInOut", opentracing.ChildOf(span.Context()))
 
 	// Bulk/Create Update Batch InvDts
@@ -128,6 +130,11 @@ func (s *PurchaseOrderService) updateRefQtyInOut(ctx *fiber.Ctx, req dtos.FormPu
 	}
 
 	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefRoDtBom, err := utils.MapNewUpdatedRefsPo(ctx, req, soDt, soDtBom, roDt, poDtBom)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 
 	if len(newRefSoDt) > 0 {
 		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefSoDt, "so_dts", childSpan)
@@ -201,9 +208,6 @@ func (s *PurchaseOrderService) UpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.Form
 
 	poDtIDs, _ := utils.GetPoIDs(req)
 
-	// Get all inv dts by purchaseOrder IDs
-	createdPurchaseIDs := make([]uint, 0)
-	createdPurchaseIDs = append(createdPurchaseIDs, purchaseOrder.ID)
 	// params *dtos.GetPurchaseOrderPoDtParams
 	isDeleted := 0
 	params := &dtos.GetPurchaseOrderPoDtParams{
@@ -218,7 +222,7 @@ func (s *PurchaseOrderService) UpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.Form
 		return nil, err
 	}
 
-	tx, err = s.updateRefReverseQtyInOut(ctx, oldPoDts, createdPurchaseIDs, userID, tx, childSpan)
+	tx, err = s.updateRefReverseQtyInOut(ctx, oldPoDts, userID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -238,7 +242,7 @@ func (s *PurchaseOrderService) UpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.Form
 		return nil, err
 	}
 
-	tx, err = s.updateRefQtyInOut(ctx, req, createdPurchaseIDs, userID, tx, childSpan)
+	tx, err = s.updateRefQtyInOut(ctx, req, userID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
@@ -248,7 +252,7 @@ func (s *PurchaseOrderService) UpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.Form
 	return &purchaseOrder, nil
 }
 
-func (s *PurchaseOrderService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldPoDts []dtos.PurchaseOrderPoDtListDTO, createdInventoryIDs []uint, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
+func (s *PurchaseOrderService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldPoDts []dtos.PurchaseOrderPoDtListDTO, userID uint, tx *gorm.DB, span opentracing.Span) (*gorm.DB, error) {
 	childSpan := opentracing.StartSpan("PurchaseOrderService-updateRefReverseQtyInOut", opentracing.ChildOf(span.Context()))
 
 	refSoDtID, refSoDtBomID, refRoDtID, refRoDtBomID, err := utils.MapOldUpdatePoDts(ctx, oldPoDts, userID, span)
@@ -300,6 +304,11 @@ func (s *PurchaseOrderService) updateRefReverseQtyInOut(ctx *fiber.Ctx, oldPoDts
 	}
 
 	newRefSoDt, newRefSoDtBom, newRefRoDt, newRefRoDtBom, err := utils.MapNewUpdatedReverseRefsPo(ctx, oldPoDts, soDt, soDtBom, roDt, poDtBom)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 
 	if len(newRefSoDt) > 0 {
 		err = s.repo.BulkUpdateReverseInvRefDtsQty(ctx, tx, newRefSoDt, "so_dts", childSpan)
@@ -347,9 +356,6 @@ func (s *PurchaseOrderService) DeletePurchaseOrder(ctx *fiber.Ctx, tx *gorm.DB, 
 	claims := utils.GetClaims(ctx, childSpan)
 	userID := uint(claims["user_id"].(float64))
 
-	purchaseOrderIDs := make([]uint, 0)
-	purchaseOrderIDs = append(purchaseOrderIDs, id)
-
 	isDeleted := 0
 	params := &dtos.GetPurchaseOrderPoDtParams{
 		PurchaseOrderID: id,
@@ -363,7 +369,7 @@ func (s *PurchaseOrderService) DeletePurchaseOrder(ctx *fiber.Ctx, tx *gorm.DB, 
 		return err
 	}
 
-	tx, err = s.updateRefReverseQtyInOut(ctx, oldPoDts, purchaseOrderIDs, userID, tx, childSpan)
+	tx, err = s.updateRefReverseQtyInOut(ctx, oldPoDts, userID, tx, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()

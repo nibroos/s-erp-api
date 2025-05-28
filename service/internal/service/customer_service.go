@@ -282,7 +282,7 @@ func (s *CustomerService) CsvGetCustomers(ctx *fiber.Ctx, filters map[string]str
 	csv += "ID,Code,Name,Customer Type,Agent,Address,Phone,Email,PIC,Created At,Updated At\n"
 	// Build CSV rows
 	for _, customer := range customers {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%v,%v\n",
 			customer.ID,
 			utils.GetPtrVal(customer.Code),
 			customer.Name,

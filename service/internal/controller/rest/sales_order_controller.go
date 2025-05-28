@@ -47,11 +47,6 @@ func (c *SalesOrderController) GetSalesOrders(ctx *fiber.Ctx) error {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Sales Order", http.StatusInternalServerError)
 	}
 
-	salesOrderIDs := make([]uint, 0)
-	for _, salesOrder := range salesOrders {
-		salesOrderIDs = append(salesOrderIDs, uint(salesOrder.ID))
-	}
-
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
 	return utils.GetResponse(ctx, salesOrders, paginationMeta, "Sales Order fetched successfully", http.StatusOK, nil, nil)
@@ -716,9 +711,6 @@ func (c *SalesOrderController) GetScheduleByID(ctx *fiber.Ctx) error {
 		utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Schedule", http.StatusInternalServerError)
 	}
 
-	createdSalesOrderIDs := make([]uint, 0)
-	createdSalesOrderIDs = append(createdSalesOrderIDs, *schedule.SalesOrderID)
-
 	filters := ctx.Locals("filters").(map[string]string)
 	salesOrderArray := []interface{}{schedule}
 
@@ -745,6 +737,9 @@ func (c *SalesOrderController) GetScheduleAppByID(ctx *fiber.Ctx) error {
 	}
 
 	ID, err := utils.ParseInterfaceToUint(req.ID)
+	if err != nil {
+		return utils.GetResponse(ctx, nil, nil, "Schedule not found", http.StatusBadRequest, "Invalid ID format", nil)
+	}
 
 	if ID == 0 {
 		return utils.GetResponse(ctx, nil, nil, "Schedule not found", http.StatusBadRequest, "ID is required", nil)

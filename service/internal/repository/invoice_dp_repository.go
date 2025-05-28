@@ -120,7 +120,7 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"idp.vat_id", "idt.vat_id"},
+		"vat_ids": {"idp.vat_id", "idt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -733,7 +733,7 @@ func (r *InvoiceDpRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[st
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sodt.vat_id"},
+		"vat_ids": {"so.vat_id", "sodt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1394,7 +1394,7 @@ func (r *InvoiceDpRepository) GetWidgetInvoiceDps(ctx *fiber.Ctx, filters map[st
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"idp.vat_id", "idt.vat_id"},
+		"vat_ids": {"idp.vat_id", "idt.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {

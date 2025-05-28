@@ -62,7 +62,18 @@ func (s *TicketService) CreateTicket(ctx *fiber.Ctx, req dtos.FormTicketRequest,
 	childSpan := opentracing.StartSpan("TicketService-CreateTicket", opentracing.ChildOf(span.Context()))
 
 	customerSoCreatedThisMonthNumber, err := s.repo.GetCustomerTicketCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, tx, err
+	}
+
 	globalSoCreatedThisMonthNumber, err := s.repo.GetGlobalTicketCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, tx, err
+	}
 
 	ticket, err := utils.MapCreateUpdateTicket(ctx, req, nil, userID, branchID, customerSoCreatedThisMonthNumber, globalSoCreatedThisMonthNumber, childSpan)
 	if err != nil {
@@ -376,7 +387,17 @@ func (s *TicketService) UpdateTicket(ctx *fiber.Ctx, req dtos.FormTicketRequest,
 	childSpan := opentracing.StartSpan("TicketService-UpdateTicket", opentracing.ChildOf(span.Context()))
 
 	customerSoCreatedThisMonthNumber, err := s.repo.GetCustomerTicketCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 	globalSoCreatedThisMonthNumber, err := s.repo.GetGlobalTicketCreatedThisMonth(ctx, tx, *req.CustomerID, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, err
+	}
 
 	ticket, err := utils.MapCreateUpdateTicket(ctx, req, req.ID, userID, branchID, customerSoCreatedThisMonthNumber, globalSoCreatedThisMonthNumber, childSpan)
 	if err != nil {
@@ -583,11 +604,11 @@ func (s *TicketService) CsvGetTickets(ctx *fiber.Ctx, filters map[string]string,
 
 	// filters is_csv
 	filters["is_csv"] = "1"
-	tickets, _, err := s.GetTickets(ctx, filters, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		return nil, err
-	}
+	// tickets, _, err := s.GetTickets(ctx, filters, childSpan)
+	// if err != nil {
+	// 	defer childSpan.Finish()
+	// 	return nil, err
+	// }
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
@@ -605,13 +626,13 @@ func (s *TicketService) CsvGetTickets(ctx *fiber.Ctx, filters map[string]string,
 	csv += "\n"
 
 	csv += "ID,Branch,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
-	// Build CSV rows
-	for _, ticket := range tickets {
-		csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-			ticket.ID,
-			utils.GetPtrVal(ticket.Remark),
-		)
-	}
+	// // Build CSV rows
+	// for _, ticket := range tickets {
+	// 	csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+	// 		ticket.ID,
+	// 		utils.GetPtrVal(ticket.Remark),
+	// 	)
+	// }
 
 	return []byte(csv), nil
 }
@@ -769,6 +790,11 @@ func (s *TicketService) UpdateTicketSchedule(ctx *fiber.Ctx, req dtos.UpdateSale
 
 		// Bulk/Create Update Batch Steps
 		scheduleSteps, err := utils.MapUpdateScheduleSteps(ctx, req.Steps, userID, *schedule.ID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
 
 		tx, err = s.BulkCreateUpdateScheduleSteps(ctx, req, &schedule, userID, scheduleSteps, *schedule.ID, tx, childSpan)
 		if err != nil {
@@ -820,6 +846,11 @@ func (s *TicketService) UpdateSchedule(ctx *fiber.Ctx, req dtos.UpdateScheduleRe
 
 		// Bulk/Create Update Batch Steps
 		scheduleSteps, err := utils.MapUpdateScheduleSteps(ctx, req.Steps, userID, *ticketSchedule.ID, childSpan)
+		if err != nil {
+			defer childSpan.Finish()
+			tx.Rollback()
+			return nil, err
+		}
 
 		tx, err = s.BulkCreateUpdateSingleScheduleSteps(ctx, req, &ticketSchedule, userID, scheduleSteps, *ticketSchedule.ID, tx, childSpan)
 		if err != nil {
@@ -1450,17 +1481,6 @@ func (s *TicketService) ConsumeSendEmailSolutionTicket(req dtos.FormTicketReques
 
 	// Handle email sending process with error handling
 	if err := func() error {
-
-		type TemplateData struct {
-			Name         string
-			Message      string
-			Subject      string
-			ButtonURL    string
-			ButtonText   string
-			PrimaryColor string
-			ButtonColor  string
-			SentTime     time.Time
-		}
 
 		attachments := utils.MapAttachmentsTicket(ctx, req.SolutionAttachments, req.SelectedSolutionAttachments)
 

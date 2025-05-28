@@ -127,8 +127,8 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
-		// "product_ids": []string{"pi.id", "it.id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
+		// "product_ids": {"pi.id", "it.id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -147,7 +147,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	// And one for array conditions with OR
 	filterIDsOrArrayKey := map[string][]string{
-		"product_ids": []string{"pi.id", "it.id"},
+		"product_ids": {"pi.id", "it.id"},
 	}
 
 	// Handle array OR conditions
@@ -195,7 +195,7 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
+		customCondition += join
 	}
 
 	baseQuery := `
@@ -677,6 +677,8 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 		sd.vat_perc, sd.vat_perc_am, sd.pph23_perc, sd.pph23_perc_am, sd.markup_perc, sd.markup_perc_am, sd.is_vat, sd.is_pph23, sd.is_lock_price_sell, sd.is_lock_markup,
 		sd.created_at, sd.updated_at, sd.deleted_at,
 
+		sd.disc_am + sd.disc_perc_am as sub_discount,
+
 		p.customer_id,
 
 		sd.id as so_dt_id,
@@ -958,7 +960,7 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -988,7 +990,7 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 		"remark":         "so.remark",
 	}
 
-	for key, _ := range filterKeyLike {
+	for key := range filterKeyLike {
 		if value, ok := filters[key]; ok && value != "" {
 			condition += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
 			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
@@ -1214,7 +1216,7 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+		"vat_ids": {"q.vat_id", "qd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1482,7 +1484,7 @@ func (r *SalesOrderRepository) GetRefQuoDtsBomByQuoDtIDs(ctx *fiber.Ctx, filters
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"q.vat_id", "qd.vat_id"},
+		"vat_ids": {"q.vat_id", "qd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1874,7 +1876,7 @@ func (r *SalesOrderRepository) GetScheduleTasksByScheduleID(ctx *fiber.Ctx, filt
 	}
 
 	filterIDsOrKey := map[string][]string{
-		// "vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		// "vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1903,7 +1905,7 @@ func (r *SalesOrderRepository) GetScheduleTasksByScheduleID(ctx *fiber.Ctx, filt
 		"remark": "st.remark",
 	}
 
-	for key, _ := range filterKeyLike {
+	for key := range filterKeyLike {
 		if value, ok := filters[key]; ok && value != "" {
 			condition += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
 			// countQuery += fmt.Sprintf(" AND %s ILIKE $%d", value, i)
@@ -2437,7 +2439,7 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -2804,7 +2806,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -2842,7 +2844,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[
 		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
+		customCondition += join
 	}
 
 	filterLikeKeys := map[string]string{
@@ -3037,7 +3039,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrdersByStatus(ctx *fiber.Ctx, filt
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -3075,7 +3077,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrdersByStatus(ctx *fiber.Ctx, filt
 		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
+		customCondition += join
 	}
 
 	filterLikeKeys := map[string]string{
@@ -3270,7 +3272,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrdersByOrderType(ctx *fiber.Ctx, f
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -3308,7 +3310,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrdersByOrderType(ctx *fiber.Ctx, f
 		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
+		customCondition += join
 	}
 
 	filterLikeKeys := map[string]string{
@@ -3500,7 +3502,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrdersByBestCustomer(ctx *fiber.Ctx
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -3538,7 +3540,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrdersByBestCustomer(ctx *fiber.Ctx
 		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
+		customCondition += join
 	}
 
 	filterLikeKeys := map[string]string{
@@ -3768,7 +3770,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrdersByBestCustomerTotal(ctx *fibe
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -3806,7 +3808,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrdersByBestCustomerTotal(ctx *fibe
 		// "is_task_exists": " AND st.is_checked = 1",
 	}
 	for _, join := range filterKeyCustom {
-		customCondition += fmt.Sprintf("%s", join)
+		customCondition += join
 	}
 
 	filterLikeKeys := map[string]string{

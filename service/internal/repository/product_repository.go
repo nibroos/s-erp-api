@@ -847,7 +847,7 @@ func (r *ProductRepository) GetBomsByProductIDs(ctx *fiber.Ctx, filters map[stri
 		"status":  "status",
 	}
 
-	for key, _ := range filterKey {
+	for key := range filterKey {
 		if value, ok := filters[key]; ok && value != "" {
 			query += fmt.Sprintf(" AND %s = $%d", value, i)
 			args = append(args, value)
@@ -977,7 +977,7 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
 		"item_group_id":     "isg.parent_id",
 	}
 
-	for key, _ := range filterKey {
+	for key := range filterKey {
 		if value, ok := filters[key]; ok && value != "" {
 			conditionCombine += fmt.Sprintf(" AND %s = $%d", value, i)
 			// countQuery += fmt.Sprintf(" AND %s = $%d", value, i)

@@ -121,7 +121,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"po.vat_id", "pd.vat_id"},
+		"vat_ids": {"po.vat_id", "pd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -140,7 +140,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 
 	// And one for array conditions with OR
 	filterIDsOrArrayKey := map[string][]string{
-		"product_ids": []string{"pi.id"},
+		"product_ids": {"pi.id"},
 	}
 
 	// Handle array OR conditions
@@ -803,7 +803,7 @@ func (r *PurchaseOrderRepository) GetWidgetPurchaseOrders(ctx *fiber.Ctx, filter
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"po.vat_id", "pd.vat_id"},
+		"vat_ids": {"po.vat_id", "pd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1049,7 +1049,7 @@ func (r *PurchaseOrderRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[s
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1361,7 +1361,7 @@ func (r *PurchaseOrderRepository) GetRefIndexRoDts(ctx *fiber.Ctx, filters map[s
 	}
 
 	filterIDsOrKey := map[string][]string{
-		"vat_ids": []string{"so.vat_id", "sd.vat_id"},
+		"vat_ids": {"so.vat_id", "sd.vat_id"},
 	}
 
 	for key, valueIDs := range filterIDsOrKey {
@@ -1560,7 +1560,7 @@ func (r *PurchaseOrderRepository) GetRefPoDtByRefDtID(ctx *fiber.Ctx, tx *gorm.D
 	i := 1
 
 	if len(detailIDs) > 0 {
-		query += fmt.Sprintf(" AND id = ANY($1)")
+		query += " AND id = ANY($1)"
 		args = append(args, pq.Array(detailIDs))
 		i++
 	}

@@ -46,11 +46,6 @@ func (c *QuotationController) GetQuotations(ctx *fiber.Ctx) error {
 		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch quotation", http.StatusInternalServerError)
 	}
 
-	quotationIDs := make([]uint, 0)
-	for _, quotation := range quotations {
-		quotationIDs = append(quotationIDs, uint(quotation.ID))
-	}
-
 	paginationMeta := utils.CreatePaginationMeta(filters, total)
 
 	return utils.GetResponse(ctx, quotations, paginationMeta, "quotation fetched successfully", http.StatusOK, nil, nil)
