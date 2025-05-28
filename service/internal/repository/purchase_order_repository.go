@@ -201,7 +201,6 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 					vat.name as vat_name,
 					pph.name as pph23_name,
 					pt.name as purchase_type_name,
-					c.name as customer_name,
 
 					pd.remark as po_dt_remark,
 					pd.gen_code as po_dt_gen_code,
@@ -335,13 +334,20 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderByID(ctx *fiber.Ctx, params *d
 	baseQuery := `
     FROM ( 
 			SELECT DISTINCT ON (po.id)
-				po.id, po.customer_id, po.purchase_type_id, po.currency_id, po.vat_id, po.payment_term_id, po.shipping_term_id, po.pph23_id, po.branch_id,
+				po.id, po.customer_id, po.purchase_type_id, po.currency_id, po.vat_id, po.payment_term_id, po.shipping_term_id, po.pph23_id, po.branch_id, po.payment_id,
 				po.po_no, po.po_no_ori, po.rev_no, po.shipping_destination, po.remark, 
 				po.status, po.exchange_rate, po.pph23_percentage, po.vat_percentage, po.total_qty, po.subtotal, po.total_discount, po.total_pph23, po.total_vat, po.grand_total, po.created_by_id, po.updated_by_id, po.deleted_by_id, po.created_at, po.updated_at, po.deleted_at,
 				TO_CHAR(po.po_date, 'YYYY-MM-DD') as po_date,
 				TO_CHAR(po.delivery_date, 'YYYY-MM-DD') as delivery_date,
 				po.discount_amount, po.discount_percentage, po.discount_percentage_amount, po.discount_final_header, po.discount_amount_product, po.discount_type, po.total_amount_products,
 				po.is_vat,
+
+				br.company_profile_id,
+				c.name as customer_name,
+				c.phone as phone,
+				c.address as address,
+				py.account_name,
+				py.name as bank_name,
 
 				cu.name as created_by_name,
 				uu.name as updated_by_name
@@ -355,7 +361,9 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderByID(ctx *fiber.Ctx, params *d
 			LEFT JOIN mix_values vat ON po.vat_id = vat.id
 			LEFT JOIN mix_values pph ON po.pph23_id = pph.id
 			LEFT JOIN mix_values pt ON po.purchase_type_id = pt.id
+			LEFT JOIN bank_informations py ON po.payment_id = py.id
 			LEFT JOIN customers c ON po.customer_id = c.id
+			LEFT JOIN branches br ON po.branch_id = br.id
 
 			LEFT JOIN users cu ON po.created_by_id = cu.id
 			LEFT JOIN users uu ON po.updated_by_id = uu.id
@@ -408,16 +416,20 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderPoDts(ctx *fiber.Ctx, tx *gorm
 	poDts := []dtos.PurchaseOrderPoDtListDTO{}
 
 	query := `
-	SELECT 
+	SELECT DISTINCT ON (pd.id)
 		pd.id, pd.product_uuid, pd.po_id, pd.item_unit_id, pd.vat_id, pd.pph23_id, pd.ref_id, pd.product_id, pd.bom_id, pd.ref_so_dt_id, pd.ref_so_dt_bom_id,pd.ref_ro_dt_id, pd.ref_product_id, pd.ref_product_bom_id,
 		pd.product_type, pd.product_json, pd.ref_type, pd.ref_json, pd.gen_code, pd.remark,
 		pd.need_qty, pd.qty, pd.price, pd.subtotal, pd.discount_amount, pd.discount_percentage, pd.discount_percentage_num,
 		pd.discount_percentage_amount, pd.discount_final, pd.discount_type, pd.is_vat, pd.is_pph23, pd.total_amount,
 		pd.created_by_id, pd.updated_by_id, pd.deleted_by_id, pd.created_at, pd.updated_at, pd.deleted_at,
+
+		pd.discount_percentage_amount + pd.discount_amount as sub_discount,
 		
 		p.name as product_name,
 		p.code as product_code,
 		mv.name as unit_name,
+
+		p.name as item_name,
 
 		COALESCE(
 		 sd.qty_po, rod.qty_po, 0
@@ -506,6 +518,8 @@ func (r *PurchaseOrderRepository) UpdatePurchaseOrder(tx *gorm.DB, purchaseOrder
 		"vat_id":                     purchaseOrder.VatID,
 		"is_vat":                     purchaseOrder.IsVat,
 		"payment_term_id":            purchaseOrder.PaymentTermID,
+		"payment_id":                 purchaseOrder.PaymentID,
+		"branch_id":                  purchaseOrder.BranchID,
 		"shipping_term_id":           purchaseOrder.ShippingTermID,
 		"pph23_id":                   purchaseOrder.Pph23ID,
 		"po_no":                      purchaseOrder.PoNo,

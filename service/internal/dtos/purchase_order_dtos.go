@@ -148,6 +148,7 @@ type FormPurchaseOrderRequest struct {
 	ShippingTermID           *uint              `json:"shipping_term_id"`
 	Pph23ID                  *uint              `json:"pph23_id"`
 	BranchID                 *uint              `json:"branch_id"`
+	PaymentID                *uint              `json:"payment_id"`
 	IsVat                    *int               `json:"is_vat"`
 	RevNo                    *int               `json:"rev_no"`
 	PoNo                     *string            `json:"po_no"`
@@ -175,7 +176,19 @@ type FormPurchaseOrderRequest struct {
 	GrandTotal               *float64           `json:"grand_total"`
 	PoDts                    []FormPoDtsRequest `json:"po_dts"`
 
-	CustomerCode string `json:"customer_code"`
+	CustomerCode   string                  `json:"customer_code"`
+	CustomerName   string                  `json:"customer_name"`
+	Phone          string                  `json:"phone"`
+	Address        string                  `json:"address"`
+	Company        CompanyProfileDetailDTO `json:"company"`
+	OrderTypeName  string                  `json:"order_type_name"`
+	CurrencyName   string                  `json:"currency_name"`
+	VatName        string                  `json:"vat_name"`
+	Pph23Name      string                  `json:"pph23_name"`
+	BankName       string                  `json:"bank_name"`
+	AccountName    string                  `json:"account_name"`
+	TotalAfterDisc *float64                `json:"total_after_disc"`
+	IsIDOnly       *int                    `json:"is_id_only"`
 }
 
 type UpdatePoDtsRequest struct {
@@ -339,6 +352,7 @@ type PurchaseOrderListDTO struct {
 	ShippingTermName *string `json:"shipping_term_name" db:"shipping_term_name"`
 	PoDtRemark       *string `json:"po_dt_remark" db:"po_dt_remark"`
 	PoDtGenCode      *string `json:"po_dt_gen_code" db:"po_dt_gen_code"`
+	CompanyProfileID *uint   `json:"company_profile_id" db:"company_profile_id"`
 }
 
 type PurchaseOrderDetailDTO struct {
@@ -352,6 +366,7 @@ type PurchaseOrderDetailDTO struct {
 	ShippingTermID           *uint    `json:"shipping_term_id" db:"shipping_term_id"`
 	Pph23ID                  *uint    `json:"pph23_id" db:"pph23_id"`
 	BranchID                 *uint    `json:"branch_id" db:"branch_id"`
+	PaymentID                *uint    `json:"payment_id" db:"payment_id"`
 	IsVat                    *int     `json:"is_vat" db:"is_vat"`
 	RevNo                    *int     `json:"rev_no" db:"rev_no"`
 	PoNo                     *string  `json:"po_no" db:"po_no"`
@@ -387,6 +402,21 @@ type PurchaseOrderDetailDTO struct {
 	UpdatedAt     *string                    `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string                    `json:"deleted_at" db:"deleted_at"`
 	PoDts         []PurchaseOrderPoDtListDTO `json:"po_dts"`
+
+	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
+	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
+	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
+	Phone            *string                 `json:"phone" db:"phone"`
+	Address          *string                 `json:"address" db:"address"`
+	Company          CompanyProfileDetailDTO `json:"company"`
+	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
+	CurrencyName     *string                 `json:"currency_name" db:"currency_name"`
+	VatName          *string                 `json:"vat_name" db:"vat_name"`
+	Pph23Name        *string                 `json:"pph23_name" db:"pph23_name"`
+	BankName         *string                 `json:"bank_name" db:"bank_name"`
+	AccountName      *string                 `json:"account_name" db:"account_name"`
+	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
+	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
 }
 
 type PurchaseOrderPoDtListDTO struct {
@@ -441,8 +471,10 @@ type PurchaseOrderPoDtListDTO struct {
 	UpdatedAt     *string   `json:"updated_at" db:"updated_at"`
 	DeleteAt      *string   `json:"deleted_at" db:"deleted_at"`
 
-	RefQty *float64 `json:"ref_qty" db:"ref_qty"`
-	RefNum *string  `json:"ref_num" db:"ref_num"`
+	RefQty      *float64 `json:"ref_qty" db:"ref_qty"`
+	RefNum      *string  `json:"ref_num" db:"ref_num"`
+	ItemName    *string  `json:"item_name" db:"item_name"`
+	SubDiscount *float64 `json:"sub_discount" db:"sub_discount"`
 }
 
 type PurchaseOrderPoDtListUpdateDTO struct {
@@ -583,4 +615,10 @@ type RefPoIndexRoDtListDTO struct {
 	RefQty       *float64 `json:"ref_qty" db:"ref_qty"`
 	ItemType     *string  `json:"item_type" db:"item_type"`
 	Balance      *float64 `json:"balance" db:"balance"`
+}
+
+type PurchaseOrderPDFData struct {
+	Num string `json:"num"`
+	// Form PurchaseOrderRequest
+	Form PurchaseOrderDetailDTO
 }

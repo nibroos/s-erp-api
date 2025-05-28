@@ -20,7 +20,7 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 	app.Get("/api/v1/test-panic", func(c *fiber.Ctx) error {
 		// Simulate a nil pointer dereference
 		var ptr *string
-		_ = *ptr // This will trigger a panic
+		_ = ptr // This will trigger a panic
 		return c.SendString("This won't be reached")
 	})
 

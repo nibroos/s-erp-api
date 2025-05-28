@@ -1453,12 +1453,8 @@ func (s *TicketService) ConsumeSendEmailSolutionTicket(req dtos.FormTicketReques
 			UpdatedByID:  req.CreatedByID,
 		}
 
-		email := &models.SentEmail{
-			ID: *req.SentEmailID,
-		}
-
 		// MapFormSentEmailSolution
-		email, err = utils.MapFormSentEmailSolution(ctx, req, &emailObject, *req.Schedule.CreatedByID, *req.BranchID, childSpan)
+		email, err := utils.MapFormSentEmailSolution(ctx, req, &emailObject, *req.Schedule.CreatedByID, *req.BranchID, childSpan)
 		if err != nil {
 			defer childSpan.Finish()
 			utils.LogErrors(childSpan, err)

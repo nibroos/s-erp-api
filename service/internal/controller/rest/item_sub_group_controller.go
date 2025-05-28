@@ -404,14 +404,6 @@ func (c *ItemSubGroupController) IsItemSubGroupByID(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Item subgroup not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	var data dtos.IsItemSubGroupDTO
-
-	data.Detail = *itemSubGroup
-	data.IsExist = true
-	if itemSubGroup != nil {
-		data.IsExist = false
-	}
-
 	filters := ctx.Locals("filters").(map[string]string)
 	paginationMeta := utils.CreatePaginationMeta(filters, 1)
 

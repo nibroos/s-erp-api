@@ -22,6 +22,7 @@ func SetupPurchaseOrderRoutes(purchaseOrders fiber.Router, gormDB *gorm.DB, sqlD
 	purchaseOrders.Post("/update-purchase-order", purchaseOrderController.UpdatePurchaseOrder)
 	purchaseOrders.Post("/delete-purchase-order", purchaseOrderController.DeletePurchaseOrder)
 	purchaseOrders.Post("/restore-purchase-order", purchaseOrderController.RestorePurchaseOrder)
+	purchaseOrders.Post("/pdf-purchase-order", purchaseOrderController.Pdf)
 
 	purchaseOrders.Post("/index-ref-so-dt", purchaseOrderController.GetRefIndexSoDts)
 	purchaseOrders.Post("/index-ref-ro-dt", purchaseOrderController.GetRefIndexRoDts)

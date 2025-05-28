@@ -2089,6 +2089,7 @@ type CreateProductRequest struct {
 
 type UpdateBomsRequest struct {
 	ID            *uint   `json:"id"`
+	BomID         *uint   `json:"bom_id"`
 	ProductItemID uint    `json:"product_item_id"`
 	ItemUnitID    uint    `json:"item_unit_id"`
 	Qty           float64 `json:"qty"`

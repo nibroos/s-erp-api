@@ -35,7 +35,7 @@ func (r *ProductUpdateRequest) Validate(req *dtos.UpdateProductRequest, ctx *fib
 		"status":                 []string{},
 		"expired_at":             []string{"date:yyyy-MM-dd"},
 		"boms":                   []string{"array"},
-		"boms.*.id":              []string{"exists:boms,id"},
+		"boms.*.bom_id":          []string{"exists:boms,id"},
 		"boms.*.product_item_id": []string{"exists:products,id"},
 		"boms.*.item_unit_id":    []string{"exists:item_units,id"},
 		"boms.*.qty":             []string{"numeric"},

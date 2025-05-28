@@ -13,6 +13,7 @@ type PurchaseOrder struct {
 	VatID                    *uint          `json:"vat_id" gorm:"column:vat_id"`
 	Pph23ID                  *uint          `json:"pph23_id" gorm:"column:pph23_id"`
 	PaymentTermID            *uint          `json:"payment_term_id" gorm:"column:payment_term_id"`
+	PaymentID                *uint          `json:"payment_id" gorm:"column:payment_id"`
 	ShippingTermID           *uint          `json:"shipping_term_id" gorm:"column:shipping_term_id"`
 	BranchID                 *uint          `json:"branch_id" gorm:"column:branch_id"`
 	IsVat                    *int           `json:"is_vat" gorm:"column:is_vat"`

@@ -28,6 +28,7 @@ func MapCreatePurchaseOrder(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, u
 		PaymentTermID:            req.PaymentTermID,
 		ShippingTermID:           req.ShippingTermID,
 		Pph23ID:                  req.Pph23ID,
+		PaymentID:                req.PaymentID,
 		IsVat:                    req.IsVat,
 		PoNo:                     &poNo,
 		PoNoOri:                  &poNo,
@@ -111,6 +112,7 @@ func MapUpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, u
 		PaymentTermID:            req.PaymentTermID,
 		ShippingTermID:           req.ShippingTermID,
 		Pph23ID:                  req.Pph23ID,
+		PaymentID:                req.PaymentID,
 		IsVat:                    req.IsVat,
 		PoNo:                     &poNo,
 		RevNo:                    &revNo,
@@ -305,11 +307,7 @@ func GetPoIDs(req dtos.FormPurchaseOrderRequest) ([]*uint, []*uint) {
 
 func MapFilterPoDts(poDts []dtos.PurchaseOrderPoDtListDTO) []dtos.PurchaseOrderPoDtListDTO {
 	combinedPoDts := []dtos.PurchaseOrderPoDtListDTO{}
-
-	for _, poDt := range poDts {
-		combinedPoDts = append(combinedPoDts, poDt)
-	}
-
+	combinedPoDts = append(combinedPoDts, poDts...)
 	return combinedPoDts
 }
 
