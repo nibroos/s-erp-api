@@ -1135,7 +1135,10 @@ func (r *InvoiceMaintenanceRepository) GetRefSalesOrderForInvoiceMaintenance(ctx
 
 		LEFT JOIN users cu ON sodt.created_by_id = cu.id
 		LEFT JOIN users uu ON sodt.updated_by_id = uu.id
-				WHERE 1=1 AND so.order_type_id = 130
+		LEFT JOIN invoice_maintenance_dts imdt ON imdt.ref_dt_id = sodt.id AND imdt.ref_type = 'so' AND imdt.deleted_at IS NULL
+				WHERE 1=1
+				AND imdt.id IS NULL 
+				AND so.order_type_id = 130
                 AND ot.name = 'Maintenance'` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 

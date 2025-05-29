@@ -808,10 +808,12 @@ func (r *InvoiceDpRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[st
                 LEFT JOIN mix_values u ON iu.unit_id = u.id
                 LEFT JOIN mix_values v ON sodt.vat_id = v.id
                 LEFT JOIN mix_values pph ON sodt.pph23_id = pph.id
+								LEFT JOIN invoice_dp_dts idt ON idt.ref_dt_id = sodt.id AND idt.ref_type = 'so' AND idt.deleted_at IS NULL
 
         LEFT JOIN users cu ON sodt.created_by_id = cu.id
         LEFT JOIN users uu ON sodt.updated_by_id = uu.id
-                WHERE 1=1` + condition + queryGlobal + `
+                WHERE idt.id IS NULL AND sodt.deleted_at IS NULL
+								` + condition + queryGlobal + `
     ) AS alias WHERE 1=1 AND deleted_at IS NULL`
 
 	query := `SELECT *

@@ -830,10 +830,11 @@ func (r *SalesInvoiceRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN mix_values v ON sodt.vat_id = v.id
 				LEFT JOIN mix_values pph ON sodt.pph23_id = pph.id
+				LEFT JOIN sales_invoice_dts sidt ON sodt.id = sidt.ref_dt_id AND sidt.ref_type = 'so' AND sidt.deleted_at IS NULL
 
 		LEFT JOIN users cu ON sodt.created_by_id = cu.id
 		LEFT JOIN users uu ON sodt.updated_by_id = uu.id
-				WHERE 1=1
+				WHERE 1=1 AND sidt.id IS NULL
 				AND so.order_type_id != 130
 				AND ot.name != 'Maintenance'` + condition + queryGlobal + `
 	) AS alias WHERE 1=1 AND deleted_at IS NULL`
