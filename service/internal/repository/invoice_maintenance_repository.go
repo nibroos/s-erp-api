@@ -761,7 +761,7 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceDts(ctx *fiber.Ctx, 
 	query := `
 	SELECT 
 		imdt.id, imdt.product_uuid, imdt.invoice_maintenance_id, imdt.item_unit_id, imdt.vat_id, imdt.pph23_id, 
-		imdt.ref_id, imdt.ref_dt_id, imdt.product_id, imdt.ref_type, imdt.product_type, imdt.remark, 
+		imdt.ref_id, imdt.ref_dt_id, imdt.product_id, imdt.product_id as item_id, imdt.ref_type, imdt.product_type, imdt.remark, 
 		imdt.is_vat, imdt.is_pph23, imdt.qty, imdt.price, imdt.subtotal,
 		imdt.discount, imdt.total_amount, imdt.total_dp, imdt.total_balance, imdt.created_by_id, imdt.updated_by_id, imdt.deleted_by_id, 
 		imdt.created_at, imdt.updated_at, imdt.deleted_at,

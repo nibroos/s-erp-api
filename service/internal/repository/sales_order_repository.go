@@ -1248,6 +1248,20 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 		}
 	}
 
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+
+		filterDateTypeKey := map[string]string{
+			"due_at":     "q.due_at",
+			"expired_at": "q.expired_at",
+		}
+
+		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (qd.id)
@@ -1723,7 +1737,6 @@ func (r *SalesOrderRepository) GetCustomerSalesOrderCreatedThisMonth(ctx *fiber.
 			SELECT COUNT(*) as total
 			FROM sales_orders so
 			WHERE so.customer_id = $1 AND so.created_at >= date_trunc('month', CURRENT_DATE)
-			AND so.deleted_at IS NULL
 		) AS alias WHERE 1=1`
 
 	query := `SELECT *
@@ -1749,7 +1762,6 @@ func (r *SalesOrderRepository) GetGlobalSalesOrderCreatedThisMonth(ctx *fiber.Ct
 			SELECT COUNT(*) as total
 			FROM sales_orders so
 			WHERE so.created_at >= date_trunc('month', CURRENT_DATE)
-			AND so.deleted_at IS NULL
 		) AS alias WHERE 1=1`
 
 	query := `SELECT *

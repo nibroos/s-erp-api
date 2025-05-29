@@ -618,9 +618,12 @@ func (r *InventoryRepository) GetInventoryByID(ctx *fiber.Ctx, params *dtos.GetI
 				cur.name as currency_name,
 				vat.name as vat_name,
 				pph.name as pph23_name,
+				w.name as warehouse_name,
 
 				-- io_type
 				ot.options_json->>'io_type' as io_type,
+				-- io_type_short
+				CASE WHEN ot.options_json->>'io_type' = 'INVENTORY_IN' THEN 'IN' ELSE 'OUT' END as io_type_short,
 				ivd.qty_out as qty_out_on_in,
 
 				cu.name as created_by_name,
@@ -635,6 +638,7 @@ func (r *InventoryRepository) GetInventoryByID(ctx *fiber.Ctx, params *dtos.GetI
 			LEFT JOIN mix_values vat ON iv.vat_id = vat.id
 			LEFT JOIN mix_values pph ON iv.pph23_id = pph.id
 			LEFT JOIN mix_values ot ON iv.io_type_id = ot.id
+			LEFT JOIN mix_values w ON iv.warehouse_id = w.id
 			LEFT JOIN customers c ON iv.customer_id = c.id
 			LEFT JOIN branches br ON iv.branch_id = br.id
 

@@ -191,6 +191,7 @@ type InventoryDetailDTO struct {
 	InventoryNo    string   `json:"inventory_no" db:"inventory_no"`
 	InventoryNoOri *string  `json:"inventory_no_ori" db:"inventory_no_ori"`
 	IoType         *string  `json:"io_type" db:"io_type"`
+	IoTypeShort    *string  `json:"io_type_short" db:"io_type_short"`
 	DoNo           *string  `json:"do_no" db:"do_no"`
 	SuratJalanNo   *string  `json:"surat_jalan_no" db:"surat_jalan_no"`
 	InvoiceNo      *string  `json:"invoice_no" db:"invoice_no"`
@@ -234,6 +235,7 @@ type InventoryDetailDTO struct {
 	BankName         *string                 `json:"bank_name" db:"bank_name"`
 	AccountName      *string                 `json:"account_name" db:"account_name"`
 	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
+	WarehouseName    *string                 `json:"warehouse_name" db:"warehouse_name"`
 	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
 
 	QtyOutOnIn *float64 `json:"qty_out_on_in" db:"qty_out_on_in"`

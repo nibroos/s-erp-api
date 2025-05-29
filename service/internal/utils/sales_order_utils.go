@@ -236,6 +236,13 @@ func MapUpdateSoDts(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, updatedSal
 			soDtID = *reqSoDt.SoDtID
 		}
 
+		// qtyOut 0
+		qtyOut := reqSoDt.QtyOut
+		if reqSoDt.QtyOut == nil {
+			qtyOut = new(float64)
+			*qtyOut = 0.0
+		}
+
 		soDtModel := models.SoDt{
 			ID:              soDtID,
 			ProductUuid:     reqSoDt.ProductUuid,
@@ -262,6 +269,7 @@ func MapUpdateSoDts(ctx *fiber.Ctx, req dtos.UpdateSalesOrderRequest, updatedSal
 			IsLockMarkup:    reqSoDt.IsLockMarkup,
 			IsLockPriceSell: reqSoDt.IsLockPriceSell,
 			Qty:             reqSoDt.Qty,
+			QtyOut:          qtyOut,
 			PriceSell:       reqSoDt.PriceSell,
 			PriceBuy:        reqSoDt.PriceBuy,
 			SubtotalSell:    reqSoDt.SubtotalSell,

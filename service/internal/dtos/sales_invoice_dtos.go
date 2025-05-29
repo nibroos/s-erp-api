@@ -331,6 +331,7 @@ type SalesInvoiceDtListDTO struct {
 	RefNum *string `json:"ref_num" db:"ref_num"`
 
 	SoDtsBoms []SalesOrderSoDtBomListDTO `json:"so_dts_boms"`
+	ItemID    *uint                      `json:"item_id" db:"item_id"`
 }
 
 type SalesInvoiceDtListUpdateDTO struct {

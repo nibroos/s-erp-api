@@ -1274,7 +1274,7 @@ func (r *QuotationRepository) LockQuoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, quoDtBo
 func (r *QuotationRepository) GetCustomerQuotationCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
 	childSpan := opentracing.StartSpan("QuotationRepository-GetCustomerQuotationCreatedThisMonth", opentracing.ChildOf(span.Context()))
 
-	query := `SELECT COUNT(*) FROM quotations WHERE customer_id = $1 AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW()) AND deleted_at IS NULL`
+	query := `SELECT COUNT(*) FROM quotations WHERE customer_id = $1 AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())`
 
 	var count int
 
@@ -1290,7 +1290,7 @@ func (r *QuotationRepository) GetCustomerQuotationCreatedThisMonth(ctx *fiber.Ct
 func (r *QuotationRepository) GetGlobalQuotationCreatedThisMonth(ctx *fiber.Ctx, tx *gorm.DB, customerID uint, span opentracing.Span) (int, error) {
 	childSpan := opentracing.StartSpan("QuotationRepository-GetCustomerQuotationCreatedThisMonth", opentracing.ChildOf(span.Context()))
 
-	query := `SELECT COUNT(*) FROM quotations WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW()) AND deleted_at IS NULL`
+	query := `SELECT COUNT(*) FROM quotations WHERE EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW()) AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())`
 
 	var count int
 

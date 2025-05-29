@@ -455,7 +455,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceDts(ctx *fiber.Ctx, salesInvoice
 	query := `
 	SELECT 
 		sidt.id, sidt.product_uuid, sidt.sales_invoice_id, sidt.item_unit_id, sidt.vat_id, sidt.pph23_id, 
-		sidt.ref_id, sidt.ref_dt_id, sidt.product_id, sidt.ref_type, sidt.product_type, sidt.remark, 
+		sidt.ref_id, sidt.ref_dt_id, sidt.product_id, sidt.product_id as item_id, sidt.ref_type, sidt.product_type, sidt.remark, 
 		sidt.is_vat, sidt.is_pph23, sidt.qty, sidt.price, sidt.subtotal,
 		sidt.discount, sidt.total_amount, sidt.total_dp, sidt.total_balance, sidt.created_by_id, sidt.updated_by_id, sidt.deleted_by_id, 
 		sidt.created_at, sidt.updated_at, sidt.deleted_at,

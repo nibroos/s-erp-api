@@ -450,7 +450,7 @@ func (r *InvoiceDpRepository) GetInvoiceDpDts(ctx *fiber.Ctx, invoiceDpID uint, 
 	query := `
 	SELECT 
 		idt.id, idt.product_uuid, idt.invoice_dp_id, idt.item_unit_id, idt.vat_id, idt.pph23_id, 
-		idt.ref_id, idt.ref_dt_id, idt.product_id, idt.ref_type, idt.product_type, idt.remark, 
+		idt.ref_id, idt.ref_dt_id, idt.product_id, idt.product_id as item_id, idt.ref_type, idt.product_type, idt.remark, 
 		idt.dp_percentage, idt.is_vat, idt.is_pph23, idt.qty, idt.price, idt.subtotal,
 		idt.discount, idt.total_amount, idt.total_dp, idt.created_by_id, idt.updated_by_id, idt.deleted_by_id, 
 		idt.created_at, idt.updated_at, idt.deleted_at,

@@ -83,6 +83,8 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 		return nil, tx, err
 	}
 
+	log.Println("salesOrder4446", salesOrder)
+
 	propJson := map[string]interface{}{
 		"ref_type": "sales_orders",
 	}
@@ -119,6 +121,8 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 	}
 	// }()
 
+	log.Println("salesOrder44451", salesOrder)
+
 	if len(req.SoDts) > 0 {
 		// bulk create item soDts ref ms items / product->boms
 		var soDts []models.SoDt
@@ -132,44 +136,47 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 
 		quoDtIDs := utils.GetLockSalesOrderQuoIDs(req)
 		quoDtIDsString := utils.JoinUintPtrsToString(quoDtIDs, ",")
+
 		filters := map[string]string{"ids": quoDtIDsString}
-		getQuoDtsQtyUpdate, err := s.repo.GetQuoDtQtyUpdate(ctx, tx, filters, childSpan)
-		if err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return nil, tx, err
-		}
-
-		mapUpdateQuoDtsQty := utils.MapUpdateQuoDtsQty(getQuoDtsQtyUpdate, req)
-
-		// bulk update quo dts qty_so = qty_so - qty
-		if len(mapUpdateQuoDtsQty) > 0 {
-			if err := s.repo.BulkUpdateQuoDtsQty(ctx, tx, mapUpdateQuoDtsQty, childSpan); err != nil {
-				defer childSpan.Finish()
-				tx.Rollback()
-				return nil, tx, err
-			}
-
-			paramQuotation := map[string]string{"sales_order_id": fmt.Sprintf("%d", salesOrder.ID)}
-			// get quotation_id
-			quotationID, err := s.repo.GetQuotationIDBySalesOrderID(ctx, tx, paramQuotation, childSpan)
+		if len(quoDtIDs) > 0 {
+			getQuoDtsQtyUpdate, err := s.repo.GetQuoDtQtyUpdate(ctx, tx, filters, childSpan)
 			if err != nil {
 				defer childSpan.Finish()
 				tx.Rollback()
 				return nil, tx, err
 			}
 
-			// params dtos.UpdateQuotationStatusRequest
-			updateQuoParams := dtos.UpdateQuotationStatusRequest{
-				ID:     quotationID,
-				Status: "APPROVED",
-			}
+			mapUpdateQuoDtsQty := utils.MapUpdateQuoDtsQty(getQuoDtsQtyUpdate, req)
 
-			// update status header quotations
-			if err := s.repo.UpdateQuoStatus(ctx, tx, updateQuoParams, childSpan); err != nil {
-				defer childSpan.Finish()
-				tx.Rollback()
-				return nil, tx, err
+			// bulk update quo dts qty_so = qty_so - qty
+			if len(mapUpdateQuoDtsQty) > 0 {
+				if err := s.repo.BulkUpdateQuoDtsQty(ctx, tx, mapUpdateQuoDtsQty, childSpan); err != nil {
+					defer childSpan.Finish()
+					tx.Rollback()
+					return nil, tx, err
+				}
+
+				paramQuotation := map[string]string{"sales_order_id": fmt.Sprintf("%d", salesOrder.ID)}
+				// get quotation_id
+				quotationID, err := s.repo.GetQuotationIDBySalesOrderID(ctx, tx, paramQuotation, childSpan)
+				if err != nil {
+					defer childSpan.Finish()
+					tx.Rollback()
+					return nil, tx, err
+				}
+
+				// params dtos.UpdateQuotationStatusRequest
+				updateQuoParams := dtos.UpdateQuotationStatusRequest{
+					ID:     quotationID,
+					Status: "APPROVED",
+				}
+
+				// update status header quotations
+				if err := s.repo.UpdateQuoStatus(ctx, tx, updateQuoParams, childSpan); err != nil {
+					defer childSpan.Finish()
+					tx.Rollback()
+					return nil, tx, err
+				}
 			}
 		}
 
@@ -181,6 +188,8 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 			return nil, tx, err
 		}
 	}
+
+	log.Println("salesOrder444", salesOrder)
 
 	return &salesOrder, tx, nil
 }
@@ -635,6 +644,7 @@ func (s *SalesOrderService) CreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrde
 		tx.Rollback()
 		return nil, soDts, err
 	}
+	log.Println("salesOrder44453", soDts)
 
 	tx, soDtsModel, err := s.repo.CreateSoDts(tx, soDts, createdSalesOrder.ID, childSpan)
 	if err != nil {
@@ -642,6 +652,7 @@ func (s *SalesOrderService) CreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrde
 		tx.Rollback()
 		return nil, soDtsModel, err
 	}
+	log.Println("salesOrder44454", soDts)
 
 	return tx, soDtsModel, nil
 }
@@ -692,6 +703,7 @@ func (s *SalesOrderService) BulkCreateUpdateSoDts(ctx *fiber.Ctx, req dtos.Updat
 			return nil, err
 		}
 	}
+	log.Println("bulkUpdateSoDts abc", bulkUpdateSoDts)
 
 	if len(bulkUpdateSoDts) > 0 {
 		if tx, err := s.repo.UpdateSoDts(tx, bulkUpdateSoDts, childSpan); err != nil {
