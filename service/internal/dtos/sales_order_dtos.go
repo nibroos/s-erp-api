@@ -59,6 +59,11 @@ type CreateSoDtsRequest struct {
 	DiscType        *string                  `json:"disc_type"`
 	TotalAm         *float64                 `json:"total_am"`
 	SoDtsBoms       []CreateSoDtsBomsRequest `json:"so_dts_boms"`
+
+	ItemUnitUnitID     *uint    `json:"item_unit_unit_id"`
+	ItemUnitConversion *float64 `json:"item_unit_conversion"`
+	ItemUnitMargin     *float64 `json:"item_unit_margin"`
+	UnitID             *uint    `json:"unit_id"`
 }
 type CreateSoDtsBomsRequest struct {
 	ProductUuid  string  `json:"product_uuid"`
@@ -677,7 +682,8 @@ type SalesOrderSoDtListDTO struct {
 
 	SoDtsBoms []SalesOrderSoDtBomListDTO `json:"so_dts_boms"`
 
-	RefNum *string `json:"ref_num" db:"ref_num"`
+	RefNum         *string `json:"ref_num" db:"ref_num"`
+	ItemUnitUnitID *uint   `json:"item_unit_unit_id" db:"item_unit_unit_id"`
 }
 
 type SalesOrderSoDtListUpdateDTO struct {
@@ -863,25 +869,28 @@ type RefIndexQuoDtListDTO struct {
 	UpdatedAt        *string   `json:"updated_at" db:"updated_at"`
 	DeleteAt         *string   `json:"deleted_at" db:"deleted_at"`
 
-	CustomerID     *uint    `json:"customer_id" db:"customer_id"`
-	OrderTypeID    *uint    `json:"order_type_id" db:"order_type_id"`
-	CurrencyID     *uint    `json:"currency_id" db:"currency_id"`
-	PaymentID      *uint    `json:"payment_id" db:"payment_id"`
-	HeadVatID      *uint    `json:"head_vat_id" db:"head_vat_id"`
-	HeadPph23ID    *uint    `json:"head_pph23_id" db:"head_pph23_id"`
-	HeadVatPerc    *float64 `json:"head_vat_perc" db:"head_vat_perc"`
-	HeadPph23Perc  *float64 `json:"head_pph23_perc" db:"head_pph23_perc"`
-	HeadDiscAm     *float64 `json:"head_disc_am" db:"head_disc_am"`
-	HeadDiscPerc   *float64 `json:"head_disc_perc" db:"head_disc_perc"`
-	HeadMarkupPerc *float64 `json:"head_markup_perc" db:"head_markup_perc"`
-	HeadRemark     *string  `json:"head_remark" db:"head_remark"`
-	RefNum         *string  `json:"ref_num" db:"ref_num"`
-	HeadIsVat      *int     `json:"head_is_vat" db:"head_is_vat"`
-	ExchangeRate   *float64 `json:"exchange_rate" db:"exchange_rate"`
-	QuoNo          *string  `json:"quo_no" db:"quo_no"`
-	CustomerName   *string  `json:"customer_name" db:"customer_name"`
-	ItemSku        *string  `json:"item_sku" db:"item_sku"`
-	DueAt          *string  `json:"due_at" db:"due_at"`
+	CustomerID         *uint    `json:"customer_id" db:"customer_id"`
+	OrderTypeID        *uint    `json:"order_type_id" db:"order_type_id"`
+	CurrencyID         *uint    `json:"currency_id" db:"currency_id"`
+	PaymentID          *uint    `json:"payment_id" db:"payment_id"`
+	HeadVatID          *uint    `json:"head_vat_id" db:"head_vat_id"`
+	HeadPph23ID        *uint    `json:"head_pph23_id" db:"head_pph23_id"`
+	HeadVatPerc        *float64 `json:"head_vat_perc" db:"head_vat_perc"`
+	HeadPph23Perc      *float64 `json:"head_pph23_perc" db:"head_pph23_perc"`
+	HeadDiscAm         *float64 `json:"head_disc_am" db:"head_disc_am"`
+	HeadDiscPerc       *float64 `json:"head_disc_perc" db:"head_disc_perc"`
+	HeadMarkupPerc     *float64 `json:"head_markup_perc" db:"head_markup_perc"`
+	HeadRemark         *string  `json:"head_remark" db:"head_remark"`
+	RefNum             *string  `json:"ref_num" db:"ref_num"`
+	HeadIsVat          *int     `json:"head_is_vat" db:"head_is_vat"`
+	ExchangeRate       *float64 `json:"exchange_rate" db:"exchange_rate"`
+	QuoNo              *string  `json:"quo_no" db:"quo_no"`
+	CustomerName       *string  `json:"customer_name" db:"customer_name"`
+	ItemSku            *string  `json:"item_sku" db:"item_sku"`
+	DueAt              *string  `json:"due_at" db:"due_at"`
+	ItemUnitUnitID     *uint    `json:"item_unit_unit_id" db:"item_unit_unit_id"`
+	ItemUnitConversion *float64 `json:"item_unit_conversion" db:"item_unit_conversion"`
+	ItemUnitMargin     *float64 `json:"item_unit_margin" db:"item_unit_margin"`
 
 	QuoDtsBoms []QuotationQuoDtBomListDTO `json:"quo_dts_boms"`
 }

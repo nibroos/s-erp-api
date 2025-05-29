@@ -130,13 +130,37 @@ func GetLockSalesOrderQuoIDs(req dtos.CreateSalesOrderRequest) []*uint {
 	return quoDtIDs
 }
 
-func MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, error) {
+func MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, []map[string]interface{}, error) {
+	// func MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, []models.ItemUnit, error) {
 	soDtsModel := []models.SoDt{}
+	// updatedItemUnits := []models.ItemUnit{}
+	updatedItemUnits := []map[string]interface{}{}
 
 	for _, soDt := range req.SoDts {
 		genCode := "-"
 		itemJson := "{}"
 		refJSON := "{}"
+
+		// updatedItemUnits = append(updatedItemUnits, models.ItemUnit{
+		// 	ID:          *soDt.ItemUnitID,
+		// 	UpdatedByID: &userID,
+		// 	PriceSell:   soDt.PriceSell,
+		// })
+
+		margin := *soDt.PriceSell - *soDt.PriceBuy
+
+		updatedItemUnits = append(updatedItemUnits, map[string]interface{}{
+			"id":            soDt.ItemUnitID,
+			"product_id":    soDt.ItemID,
+			"unit_id":       soDt.ItemUnitUnitID,
+			"price_sell":    soDt.PriceSell,
+			"price_buy":     soDt.PriceBuy,
+			"conversion":    soDt.ItemUnitConversion,
+			"margin":        margin,
+			"status":        1,
+			"updated_by_id": userID,
+			"updated_at":    time.Now(),
+		})
 
 		soDtModel := models.SoDt{
 			ProductUuid:     soDt.ProductUuid,
@@ -182,7 +206,7 @@ func MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSal
 
 	}
 
-	return soDtsModel, nil
+	return soDtsModel, updatedItemUnits, nil
 }
 
 func MapCreateSoDtBoms(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSoDts []models.SoDt, userID uint, span opentracing.Span) []map[string]interface{} {

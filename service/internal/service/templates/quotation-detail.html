@@ -285,7 +285,6 @@
 					<th width="9.5%" class="text-right">QTY</th>
 					<th width="9.5%" style="text-align: left;">UNIT</th>
 					<th width="15%" class="text-right">PRICE</th>
-					<th width="10%" class="text-right">DISC</th>
 					<th width="50%" class="text-right" style="width: 50%">AMOUNT</th>
 				</tr>
 			</thead>
@@ -297,7 +296,6 @@
 					<td class="text-right">{{formatNumber $item.Qty}}</td>
 					<td class="">{{$item.UnitName}}</td>
 					<td class="text-right">{{formatNumber $item.PriceSell}}</td>
-					<td class="text-right">{{formatNumber $item.SubDiscount}}</td>
 					<td class="text-right">{{formatNumber $item.SubtotalSell}}</td>
 				</tr>
 				{{ if $item.QuoDtsBoms }}

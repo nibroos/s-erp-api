@@ -67,8 +67,18 @@ func (s *PurchaseOrderService) CreatePurchaseOrder(ctx *fiber.Ctx, req dtos.Form
 		return nil, err
 	}
 
-	poDts, err := utils.MapCreatePoDts(ctx, req, createdPurchaseOrder, userID, childSpan)
+	poDts, updatedItemUnits, err := utils.MapCreatePoDts(ctx, req, createdPurchaseOrder, userID, childSpan)
 	if err != nil {
+		return nil, err
+	}
+
+	err = s.utilRepo.Upsert(tx, "item_units", "id", updatedItemUnits, childSpan)
+	// err = s.utilRepo.BatchUpsertModels(tx, updatedItemUnits, childSpan)
+	// err = s.utilRepo.BatchUpdatePresentedColumns(tx, "item_units", "id", updatedItemUnits, childSpan)
+	// err = s.utilRepo.BatchUpdatePresentedModelColumns(tx, updatedItemUnits, "id", childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
 		return nil, err
 	}
 

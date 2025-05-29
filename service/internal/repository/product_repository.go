@@ -217,6 +217,9 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 					isg.name as item_sub_group_name,
 					ig.name as item_group_name,
 					'products' as ref_type,
+					iu.unit_id as item_unit_unit_id,
+					iu.conversion as item_unit_conversion,
+					iu.price_sell - iu.price_buy as item_unit_margin,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -1013,6 +1016,8 @@ func (r *ProductRepository) GetProductBom(ctx *fiber.Ctx, filters map[string]str
             isg.name as item_sub_group_name,
 						COALESCE(bi.price_sell, iu.price_sell) as price_sell,
 						COALESCE(bi.price_buy, iu.price_buy) as price_buy,
+						iu.unit_id as item_unit_unit_id,
+						iu.conversion as item_unit_conversion,
             ig.name as item_group_name,
             cu.name as created_by_name,
             uu.name as updated_by_name

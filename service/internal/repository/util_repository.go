@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -322,5 +323,83 @@ func (r *UtilRepository) BatchUpsertModels(tx *gorm.DB, models interface{}, span
 		return result.Error
 	}
 
+	return nil
+}
+
+func (r *UtilRepository) UpdatePresentedColumns(tx *gorm.DB, table string, idColumn string, data []map[string]interface{}, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UtilRepository-UpdatePresentedColumns", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	for _, row := range data {
+		id, ok := row[idColumn]
+		if !ok {
+			continue // skip if no id
+		}
+		// Remove idColumn from update fields
+		updateFields := map[string]interface{}{}
+		for k, v := range row {
+			if k == idColumn {
+				continue
+			}
+			// Only update if value is not nil
+			if v != nil {
+				updateFields[k] = v
+			}
+		}
+		if len(updateFields) == 0 {
+			continue // nothing to update
+		}
+		if err := tx.Table(table).Where(fmt.Sprintf("%s = ?", idColumn), id).Updates(updateFields).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return err
+		}
+	}
+	return nil
+}
+
+// BatchUpdatePresentedModelColumns updates only the presented (non-nil) fields for each model in the slice.
+// modelSlice must be a slice of pointers to structs (e.g. []*models.ItemUnit).
+// idField is the struct field name for the primary key (e.g. "ID").
+func (r *UtilRepository) BatchUpdatePresentedModelColumns(tx *gorm.DB, modelSlice interface{}, idField string, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("UtilRepository-BatchUpdatePresentedModelColumns", opentracing.ChildOf(span.Context()))
+	defer childSpan.Finish()
+
+	val := reflect.ValueOf(modelSlice)
+	if val.Kind() != reflect.Slice {
+		return fmt.Errorf("modelSlice must be a slice")
+	}
+
+	for i := 0; i < val.Len(); i++ {
+		elem := val.Index(i)
+		if elem.Kind() == reflect.Ptr {
+			elem = elem.Elem()
+		}
+		idVal := elem.FieldByName(idField)
+		if !idVal.IsValid() || idVal.IsZero() {
+			continue // skip if no id
+		}
+
+		updates := map[string]interface{}{}
+		for j := 0; j < elem.NumField(); j++ {
+			field := elem.Type().Field(j)
+			fieldVal := elem.Field(j)
+			if field.Name == idField {
+				continue
+			}
+			// Only update if not zero (for pointer: not nil, for value: not zero)
+			if !fieldVal.IsZero() {
+				updates[field.Name] = fieldVal.Interface()
+			}
+		}
+		if len(updates) == 0 {
+			continue
+		}
+		modelType := elem.Type()
+		modelPtr := reflect.New(modelType).Interface()
+		if err := tx.Model(modelPtr).Where(fmt.Sprintf("%s = ?", idField), idVal.Interface()).Updates(updates).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return err
+		}
+	}
 	return nil
 }

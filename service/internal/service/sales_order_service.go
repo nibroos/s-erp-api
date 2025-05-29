@@ -83,8 +83,6 @@ func (s *SalesOrderService) CreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSale
 		return nil, tx, err
 	}
 
-	log.Println("salesOrder4446", salesOrder)
-
 	propJson := map[string]interface{}{
 		"ref_type": "sales_orders",
 	}
@@ -638,13 +636,12 @@ func (s *SalesOrderService) CsvGetSalesOrders(ctx *fiber.Ctx, filters map[string
 func (s *SalesOrderService) CreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, userID uint, createdSalesOrder *models.SalesOrder, tx *gorm.DB, span opentracing.Span) (*gorm.DB, []models.SoDt, error) {
 	childSpan := opentracing.StartSpan("SalesOrderService-CreateSoDts", opentracing.ChildOf(span.Context()))
 
-	soDts, err := s.MapCreateSoDts(ctx, req, createdSalesOrder, userID, childSpan)
+	soDts, updatedItemUnits, err := utils.MapCreateSoDts(ctx, req, createdSalesOrder, userID, childSpan)
 	if err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, soDts, err
 	}
-	log.Println("salesOrder44453", soDts)
 
 	tx, soDtsModel, err := s.repo.CreateSoDts(tx, soDts, createdSalesOrder.ID, childSpan)
 	if err != nil {
@@ -652,7 +649,16 @@ func (s *SalesOrderService) CreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrde
 		tx.Rollback()
 		return nil, soDtsModel, err
 	}
-	log.Println("salesOrder44454", soDts)
+
+	err = s.utilRepo.Upsert(tx, "item_units", "id", updatedItemUnits, childSpan)
+	// err = s.utilRepo.BatchUpsertModels(tx, updatedItemUnits, childSpan)
+	// err = s.utilRepo.BatchUpdatePresentedColumns(tx, "item_units", "id", updatedItemUnits, childSpan)
+	// err = s.utilRepo.BatchUpdatePresentedModelColumns(tx, updatedItemUnits, "id", childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return nil, soDtsModel, err
+	}
 
 	return tx, soDtsModel, nil
 }
@@ -703,7 +709,6 @@ func (s *SalesOrderService) BulkCreateUpdateSoDts(ctx *fiber.Ctx, req dtos.Updat
 			return nil, err
 		}
 	}
-	log.Println("bulkUpdateSoDts abc", bulkUpdateSoDts)
 
 	if len(bulkUpdateSoDts) > 0 {
 		if tx, err := s.repo.UpdateSoDts(tx, bulkUpdateSoDts, childSpan); err != nil {
@@ -737,18 +742,6 @@ func (s *SalesOrderService) GetUpdatedSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *g
 		return nil, err
 	}
 	return soDts, nil
-}
-
-func (s *SalesOrderService) MapCreateSoDts(ctx *fiber.Ctx, req dtos.CreateSalesOrderRequest, createdSalesOrder *models.SalesOrder, userID uint, span opentracing.Span) ([]models.SoDt, error) {
-	childSpan := opentracing.StartSpan("SalesOrderService-MapCreateSoDts", opentracing.ChildOf(span.Context()))
-
-	soDtsModel, err := utils.MapCreateSoDts(ctx, req, createdSalesOrder, userID, childSpan)
-	if err != nil {
-		defer childSpan.Finish()
-		return nil, err
-	}
-
-	return soDtsModel, nil
 }
 
 func (s *SalesOrderService) MapCreateSoDtBoms(ctx *fiber.Ctx, tx *gorm.DB, req dtos.CreateSalesOrderRequest, createdSoDts []models.SoDt, userID uint, span opentracing.Span) []map[string]interface{} {
@@ -999,8 +992,6 @@ func (s *SalesOrderService) UpdateSalesOrderSchedule(ctx *fiber.Ctx, req dtos.Up
 			return nil, err
 		}
 	}
-
-	log.Println("schedule.ID 1", schedule.ID)
 
 	if schedule.ID != nil && *schedule.ID > 0 {
 		if err := s.repo.UpdateSalesOrderSchedule(tx, &schedule, childSpan); err != nil {

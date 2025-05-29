@@ -692,6 +692,7 @@ func (r *SalesOrderRepository) GetSoDtsBySalesOrderIDs(ctx *fiber.Ctx, tx *gorm.
 		pi.code as item_code,
 
 		q.quo_no as ref_num,
+		iu.unit_id as item_unit_unit_id,
 
 		cu.name as created_by_name,
 		uu.name as updated_by_name
@@ -1299,6 +1300,9 @@ func (r *SalesOrderRepository) GetRefIndexQuoDts(ctx *fiber.Ctx, filters map[str
 					pi.name as item_name,
 					pi.code as item_code,
 					pi.sku as item_sku,
+					iu.unit_id as item_unit_unit_id,
+					iu.conversion as item_unit_conversion,
+					iu.price_sell - iu.price_buy as item_unit_margin,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name

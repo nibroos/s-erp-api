@@ -145,8 +145,9 @@ func MapUpdatePurchaseOrder(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, u
 	return purchaseOrder, nil
 }
 
-func MapCreatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, createdPurchaseOrder *models.PurchaseOrder, userID uint, span opentracing.Span) ([]models.PoDt, error) {
+func MapCreatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, createdPurchaseOrder *models.PurchaseOrder, userID uint, span opentracing.Span) ([]models.PoDt, []map[string]interface{}, error) {
 	poDtsModel := []models.PoDt{}
+	updatedItemUnits := []map[string]interface{}{}
 
 	for _, poDt := range req.PoDts {
 		genCode := "-"
@@ -168,6 +169,20 @@ func MapCreatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, createdPu
 			isPph23Uint := uint(*poDt.IsPph23)
 			isPph23 = &isPph23Uint
 		}
+
+		margin := *poDt.PriceSell - *poDt.Price
+
+		updatedItemUnits = append(updatedItemUnits, map[string]interface{}{
+			"id":            poDt.ItemUnitID,
+			"product_id":    poDt.ProductID,
+			"unit_id":       poDt.ItemUnitUnitID,
+			"price_buy":     poDt.Price,
+			"conversion":    poDt.ItemUnitConversion,
+			"margin":        margin,
+			"status":        1,
+			"updated_by_id": userID,
+			"updated_at":    time.Now(),
+		})
 
 		poDtModel := models.PoDt{
 			ProductUuid:              poDt.ProductUuid,
@@ -211,7 +226,7 @@ func MapCreatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, createdPu
 		poDtsModel = append(poDtsModel, poDtModel)
 	}
 
-	return poDtsModel, nil
+	return poDtsModel, updatedItemUnits, nil
 }
 
 func MapUpdatePoDts(ctx *fiber.Ctx, req dtos.FormPurchaseOrderRequest, updatedPurchaseOrder *models.PurchaseOrder, userID uint, span opentracing.Span) ([]models.PoDt, error) {

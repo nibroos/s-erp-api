@@ -99,6 +99,10 @@ type FormPoDtsRequest struct {
 	IsVat                    *int8    `json:"is_vat"`
 	IsPph23                  *int8    `json:"is_pph23"`
 	TotalAmount              *float64 `json:"total_amount"`
+
+	PriceSell          *float64 `json:"price_sell"`
+	ItemUnitUnitID     *uint    `json:"item_unit_unit_id"`
+	ItemUnitConversion *float64 `json:"item_unit_conversion"`
 }
 
 type CreatePurchaseOrderRequest struct {
@@ -586,6 +590,9 @@ type RefPoIndexSoDtListDTO struct {
 	RefQty       *float64 `json:"ref_qty" db:"ref_qty"`
 	ItemType     *string  `json:"item_type" db:"item_type"`
 	Balance      *float64 `json:"balance" db:"balance"`
+
+	ItemUnitUnitID     *uint    `json:"item_unit_unit_id" db:"item_unit_unit_id"`
+	ItemUnitConversion *float64 `json:"item_unit_conversion" db:"item_unit_conversion"`
 }
 
 type RefPoIndexRoDtListDTO struct {
@@ -617,6 +624,9 @@ type RefPoIndexRoDtListDTO struct {
 	RefQty       *float64 `json:"ref_qty" db:"ref_qty"`
 	ItemType     *string  `json:"item_type" db:"item_type"`
 	Balance      *float64 `json:"balance" db:"balance"`
+
+	ItemUnitUnitID     *uint    `json:"item_unit_unit_id" db:"item_unit_unit_id"`
+	ItemUnitConversion *float64 `json:"item_unit_conversion" db:"item_unit_conversion"`
 }
 
 type PurchaseOrderPDFData struct {

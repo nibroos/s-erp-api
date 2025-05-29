@@ -1181,6 +1181,12 @@ func (r *PurchaseOrderRepository) GetRefIndexSoDts(ctx *fiber.Ctx, filters map[s
 			pi.name as item_name,
 			pi.code as item_code,
 			pi.sku as item_sku,
+
+			iu.unit_id as item_unit_unit_id,
+			iu.price_sell as price_sell,
+			iu.price_buy as price_buy,
+			iu.conversion as item_unit_conversion,
+
 			'so' as ref_type
 		` + baseQuery + condition + queryGlobal
 
@@ -1418,6 +1424,7 @@ func (r *PurchaseOrderRepository) GetRefIndexRoDts(ctx *fiber.Ctx, filters map[s
 						sd.qty_po,
 						sd.req_qty AS ref_qty,
 						COALESCE(sd.req_qty, 0) - COALESCE(sd.qty_po, 0) as balance, 
+
 						sd.remark
 					FROM request_order_dts sd
     ) AS sd 
@@ -1443,6 +1450,10 @@ func (r *PurchaseOrderRepository) GetRefIndexRoDts(ctx *fiber.Ctx, filters map[s
 			pi.name as item_name,
 			pi.code as item_code,
 			pi.sku as item_sku,
+			iu.unit_id as item_unit_unit_id,
+			iu.price_sell as price_sell,
+			iu.price_buy as price_buy,
+			iu.conversion as item_unit_conversion,
 			'so' as ref_type
 		` + baseQuery + condition + queryGlobal
 
