@@ -999,3 +999,22 @@ func EmptyStringPointer(s *string) *string {
 	}
 	return &emptyString
 }
+
+// SplitString
+func SplitString(s string, sep string) []string {
+	if s == "" {
+		return []string{}
+	}
+	// Split the string by the separator
+	parts := strings.Split(s, sep)
+
+	// Remove empty parts
+	var result []string
+	for _, part := range parts {
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+
+	return result
+}

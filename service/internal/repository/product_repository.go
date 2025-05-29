@@ -200,6 +200,14 @@ func (r *ProductRepository) GetProducts(ctx *fiber.Ctx, filters map[string]strin
 		}
 	}
 
+	// except ig.name ANY
+	if value, ok := filters["except_item_group_names"]; ok && value != "" {
+		exceptGroups := pq.Array(utils.SplitString(value, ","))
+		condition += fmt.Sprintf(" AND ig.name != ALL($%d)", i)
+		args = append(args, exceptGroups)
+		i++
+	}
+
 	query := `SELECT *
     FROM ( 
         SELECT DISTINCT ON (m.id)

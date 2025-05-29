@@ -503,6 +503,28 @@ func (s *SalesOrderService) UpdateSalesOrder(ctx *fiber.Ctx, req dtos.UpdateSale
 func (s *SalesOrderService) DeleteSalesOrder(ctx *fiber.Ctx, params *dtos.GetSalesOrderParams, tx *gorm.DB, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("SalesOrderService-DeleteSalesOrder", opentracing.ChildOf(span.Context()))
 
+	paramQuotation := map[string]string{"sales_order_id": fmt.Sprintf("%d", params.ID)}
+	// get quotation_id
+	quotationID, err := s.repo.GetQuotationIDBySalesOrderID(ctx, tx, paramQuotation, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
+	// params dtos.UpdateQuotationStatusRequest
+	updateQuoParams := dtos.UpdateQuotationStatusRequest{
+		ID:     quotationID,
+		Status: "WAITING",
+	}
+
+	// update status header quotations
+	if err := s.repo.UpdateQuoStatus(ctx, tx, updateQuoParams, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
+	}
+
 	if err := s.repo.DeleteSalesOrder(tx, params, childSpan); err != nil {
 		defer childSpan.Finish()
 		tx.Rollback()

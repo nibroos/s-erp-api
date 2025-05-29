@@ -752,6 +752,21 @@ func (r *InvoiceDpRepository) GetRefSalesOrderDts(ctx *fiber.Ctx, filters map[st
 		}
 	}
 
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+		filterDateTypeKey := map[string]string{
+			"shipping_at": "so.shipping_at",
+			"order_at":    "so.order_at",
+			"due_at":      "so.due_at",
+			"agree_at":    "so.agree_at",
+		}
+
+		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (sodt.id)
