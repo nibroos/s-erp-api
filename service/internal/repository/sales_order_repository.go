@@ -383,6 +383,7 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 				c.name as customer_name,
 				c.code as customer_code,
 				c.phone as phone,
+				c.pic as pic,
 				c.address as address,
 				ot.name as order_type_name,
 				cur.name as currency_name,

@@ -315,6 +315,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceByID(ctx *fiber.Ctx, params *dto
             c.name as customer_name,
             c.code as customer_code,
             c.phone,
+            c.pic,
             c.address,
             cur.name as currency_name,
             v.name as vat_name,
@@ -468,7 +469,11 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceDts(ctx *fiber.Ctx, salesInvoice
 		cu.name as created_by_name,
 		uu.name as updated_by_name,
 
-		CASE WHEN sidt.ref_type = 'so' THEN so.sales_order_no ELSE NULL END as ref_num
+		CASE 
+			WHEN sidt.ref_type = 'so' THEN so.sales_order_no 
+			WHEN sidt.ref_type = 'inv_out' THEN inv.inventory_no
+		ELSE NULL 
+		END as ref_num
 	FROM sales_invoice_dts sidt
 	LEFT JOIN products p ON sidt.product_id = p.id
 	LEFT JOIN item_units iu ON sidt.item_unit_id = iu.id
@@ -476,6 +481,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceDts(ctx *fiber.Ctx, salesInvoice
 	LEFT JOIN mix_values v ON sidt.vat_id = v.id
 	LEFT JOIN mix_values pph ON sidt.pph23_id = pph.id
 	LEFT JOIN sales_orders so ON sidt.ref_id = so.id AND sidt.ref_type = 'so'
+	LEFT JOIN inventories inv ON sidt.ref_id = inv.id AND sidt.ref_type = 'inv_out'
 	LEFT JOIN users cu ON sidt.created_by_id = cu.id
 	LEFT JOIN users uu ON sidt.updated_by_id = uu.id
 	WHERE sidt.sales_invoice_id = $1
@@ -1113,6 +1119,22 @@ func (r *SalesInvoiceRepository) GetRefInventoryOutDts(ctx *fiber.Ctx, filters m
 			}
 			condition += ")"
 		}
+	}
+
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+
+		filterDateTypeKey := map[string]string{
+			"ingoing_at": "inv.ingoing_at",
+			"invoice_at": "inv.invoice_at",
+			"do_at":      "inv.do_at",
+			"expired_at": "invdt.expired_at",
+		}
+
+		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
 	}
 
 	baseQuery := `

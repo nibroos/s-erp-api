@@ -614,6 +614,7 @@ func (r *InventoryRepository) GetInventoryByID(ctx *fiber.Ctx, params *dtos.GetI
 				c.name as customer_name,
 				c.code as customer_code,
 				c.phone as phone,
+				c.pic as pic,
 				c.address as address,
 				cur.name as currency_name,
 				vat.name as vat_name,

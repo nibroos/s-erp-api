@@ -247,10 +247,10 @@
 						</tr>
 						<tr class="info-row">
 							<td width="30%">
-								<div class="info-label">ADDRESS</div>
+								<div class="info-label">PIC</div>
 							</td>
 							<td width="70%">
-								<div>{{.Form.Address}}</div>
+								<div>{{.Form.Pic}}</div>
 							</td>
 						</tr>
 					</table>
@@ -259,7 +259,7 @@
 					<table class="table-container" border="0" cellspacing="0" cellpadding="0">
 						<tr class="info-row">
 							<td width="30%">
-								<div class="info-label">DUE DATE</div>
+								<div class="info-label">QUOT DATE</div>
 							</td>
 							<td width="70%">
 								<div>{{.Form.DueAt}}</div>
@@ -277,50 +277,40 @@
 				</td>
 			</tr>
 		</table>
-
 		<table class="main-table" border="1" cellspacing="0" cellpadding="0" style="margin-top: 1rem;">
 			<thead>
 				<tr>
 					<th width="5%" class="text-center">NO</th>
-					<th width="45%" style="text-align: left;">PRODUCT NAME</th>
-					<th width="20%" style="text-align: left;">REMARK</th>
-					<th width="10%" class="text-right">QTY</th>
-					<th width="10%" style="text-align: left;">UNIT</th>
+					<th width="35%" style="text-align: left;">PRODUCT NAME</th>
+					<th width="9.5%" class="text-right">QTY</th>
+					<th width="9.5%" style="text-align: left;">UNIT</th>
 					<th width="15%" class="text-right">PRICE</th>
 					<th width="10%" class="text-right">DISC</th>
-					<th width="15%" class="text-right">AMOUNT</th>
+					<th width="50%" class="text-right" style="width: 50%">AMOUNT</th>
 				</tr>
 			</thead>
 			<tbody>
 				{{range $index, $item := .Form.QuoDts}}
 				<tr>
 					<td class="text-center">{{ inc $index}}</td>
-					<td>{{$item.ItemName}} </td>
-					<td class="">{{$item.Remark}} </td>
-					<td class="text-right">{{formatNumber $item.Qty}} </td>
-					<td class="">{{$item.UnitName}} </td>
-					<td class="text-right">{{formatNumber $item.PriceSell}} </td>
-					<td class="text-right">{{formatNumber $item.SubDiscount}} </td>
-					<td class="text-right">{{formatNumber $item.SubtotalSell}} </td>
+					<td><span>{{$item.ItemName}}</span></td>
+					<td class="text-right">{{formatNumber $item.Qty}}</td>
+					<td class="">{{$item.UnitName}}</td>
+					<td class="text-right">{{formatNumber $item.PriceSell}}</td>
+					<td class="text-right">{{formatNumber $item.SubDiscount}}</td>
+					<td class="text-right">{{formatNumber $item.SubtotalSell}}</td>
 				</tr>
 				{{ if $item.QuoDtsBoms }}
 				<tr style="padding: 0 !important;">
-					<td colspan="9" class="text-left" style="padding: 0 !important;">
+					<td colspan="7" class="text-left" style="padding: 0 !important;">
 						<table class="sub-table" cellspacing="0" cellpadding="0">
-							<tr style="background-color: #d1d1d1;">
-								<th width="5%" class="text-center">NO</th>
-								<th width="45%" style="text-align: left;">ITEM NAME</th>
-								<th width="20%" style="text-align: left;">REMARK</th>
-								<th width="10%" style="text-align: left;">UNIT</th>
-								<th width="10%" class="text-right">QTY</th>
-							</tr>
 							{{range $index, $subitem := $item.QuoDtsBoms}}
 							<tr>
-								<td class="text-center">{{ inc $index}}</td>
-								<td>{{$subitem.ItemName}} </td>
-								<td class="">{{$subitem.Remark}} </td>
-								<td class="">{{$subitem.UnitName}} </td>
-								<td class="text-right">{{formatNumber $subitem.Qty}} </td>
+								<td width="5%" class="text-center">&#8627;</td>
+								<td width="35.2%"><span>{{$subitem.ItemName}}</span></td>
+								<td width="9.6%" class="text-right" style="white-space:nowrap;">{{formatNumber $subitem.Qty}}</td>
+								<td width="9.5%" class="" style="white-space:nowrap;">{{$subitem.UnitName}}</td>
+								<td class="text-right" colspan="3"></td>
 							</tr>
 							{{end}}
 						</table>

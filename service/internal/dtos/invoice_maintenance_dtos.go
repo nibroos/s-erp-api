@@ -288,6 +288,7 @@ type InvoiceMaintenanceDetailDTO struct {
 	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
 	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
 	Phone            *string                 `json:"phone" db:"phone"`
+	Pic              *string                 `json:"pic" db:"pic"`
 	Address          *string                 `json:"address" db:"address"`
 	Company          CompanyProfileDetailDTO `json:"company"`
 	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
@@ -349,6 +350,7 @@ type InvoiceMaintenanceDetailNoBomDTO struct {
 	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
 	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
 	Phone            *string                 `json:"phone" db:"phone"`
+	Pic              *string                 `json:"pic" db:"pic"`
 	Address          *string                 `json:"address" db:"address"`
 	Company          CompanyProfileDetailDTO `json:"company"`
 	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`

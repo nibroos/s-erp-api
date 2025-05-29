@@ -275,6 +275,7 @@ type InvoiceDpDetailDTO struct {
 	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
 	Phone            *string                 `json:"phone" db:"phone"`
 	Address          *string                 `json:"address" db:"address"`
+	Pic              *string                 `json:"pic" db:"pic"`
 	Company          CompanyProfileDetailDTO `json:"company"`
 	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
 	CurrencyName     *string                 `json:"currency_name" db:"currency_name"`

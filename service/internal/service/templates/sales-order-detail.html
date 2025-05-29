@@ -250,10 +250,10 @@
 						</tr>
 						<tr class="info-row">
 							<td width="30%">
-								<div class="info-label">ADDRESS</div>
+								<div class="info-label">PIC</div>
 							</td>
 							<td width="70%">
-								<div>{{.Form.Address}}</div>
+								<div>{{.Form.Pic}}</div>
 							</td>
 						</tr>
 					</table>
@@ -276,70 +276,44 @@
 								<div>{{.Form.ShippingAt}}</div>
 							</td>
 						</tr>
-						<tr class="info-row">
-							<td width="30%">
-								<div class="info-label">ORDER TYPE</div>
-							</td>
-							<td width="70%">
-								<div>{{.Form.OrderTypeName}}</div>
-							</td>
-						</tr>
-						<tr class="info-row">
-							<td width="30%">
-								<div class="info-label">STATUS</div>
-							</td>
-							<td width="70%">
-								<div>{{.Form.Status}}</div>
-							</td>
-						</tr>
 					</table>
 				</td>
 			</tr>
 		</table>
-
 		<table class="main-table" border="1" cellspacing="0" cellpadding="0" style="margin-top: 1rem;">
 			<thead>
 				<tr>
 					<th width="5%" class="text-center">NO</th>
-					<th width="45%" style="text-align: left;">PRODUCT NAME</th>
-					<th width="20%" style="text-align: left;">REMARK</th>
-					<th width="10%" class="text-right">QTY</th>
-					<th width="10%" style="text-align: left;">UNIT</th>
+					<th width="35%" style="text-align: left;">PRODUCT NAME</th>
+					<th width="9.5%" class="text-right">QTY</th>
+					<th width="9.5%" style="text-align: left;">UNIT</th>
 					<th width="15%" class="text-right">PRICE</th>
 					<th width="10%" class="text-right">DISC</th>
-					<th width="15%" class="text-right">AMOUNT</th>
+					<th width="50%" class="text-right" style="width: 50%">AMOUNT</th>
 				</tr>
 			</thead>
 			<tbody>
 				{{range $index, $item := .Form.SoDts}}
 				<tr>
 					<td class="text-center">{{ inc $index}}</td>
-					<td>{{$item.ItemName}} </td>
-					<td class="">{{$item.Remark}} </td>
-					<td class="text-right">{{formatNumber $item.Qty}} </td>
-					<td class="">{{$item.UnitName}} </td>
-					<td class="text-right">{{formatNumber $item.PriceSell}} </td>
-					<td class="text-right">{{formatNumber $item.SubDiscount}} </td>
-					<td class="text-right">{{formatNumber $item.SubtotalSell}} </td>
+					<td><span>{{$item.ItemName}}</span></td>
+					<td class="text-right">{{formatNumber $item.Qty}}</td>
+					<td class="">{{$item.UnitName}}</td>
+					<td class="text-right">{{formatNumber $item.PriceSell}}</td>
+					<td class="text-right">{{formatNumber $item.SubDiscount}}</td>
+					<td class="text-right">{{formatNumber $item.SubtotalSell}}</td>
 				</tr>
 				{{ if $item.SoDtsBoms }}
 				<tr style="padding: 0 !important;">
-					<td colspan="9" class="text-left" style="padding: 0 !important;">
+					<td colspan="7" class="text-left" style="padding: 0 !important;">
 						<table class="sub-table" cellspacing="0" cellpadding="0">
-							<tr style="background-color: #d1d1d1;">
-								<th width="5%" class="text-center">NO</th>
-								<th width="45%" style="text-align: left;">ITEM NAME</th>
-								<th width="20%" style="text-align: left;">REMARK</th>
-								<th width="10%" style="text-align: left;">UNIT</th>
-								<th width="10%" class="text-right">QTY</th>
-							</tr>
 							{{range $index, $subitem := $item.SoDtsBoms}}
 							<tr>
-								<td class="text-center">{{ inc $index}}</td>
-								<td>{{$subitem.ItemName}} </td>
-								<td class="">{{$subitem.Remark}} </td>
-								<td class="">{{$subitem.UnitName}} </td>
-								<td class="text-right">{{formatNumber $subitem.Qty}} </td>
+								<td width="5%" class="text-center">&#8627;</td>
+								<td width="35.2%"><span>{{$subitem.ItemName}}</span></td>
+								<td width="9.6%" class="text-right" style="white-space:nowrap;">{{formatNumber $subitem.Qty}}</td>
+								<td width="9.5%" class="" style="white-space:nowrap;">{{$subitem.UnitName}}</td>
+								<td class="text-right" colspan="3"></td>
 							</tr>
 							{{end}}
 						</table>
@@ -436,7 +410,7 @@
 							<td width="100%" style="text-align: right;">
 								<table border="0" cellspacing="0" cellpadding="0" style="margin-left: auto;">
 									<tr>
-										<td class="text-center" style="min-width: 150px;">APPROVE</td>
+										<td class="text-center" style="min-width: 150px;">{{.Form.Company.CompanyName}}</td>
 									</tr>
 									<tr>
 										<td height="60" width="100%" class="text-center" style="text-align: center;">

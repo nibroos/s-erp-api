@@ -250,10 +250,10 @@
 						</tr>
 						<tr class="info-row">
 							<td width="30%">
-								<div class="info-label">ADDRESS</div>
+								<div class="info-label">PIC</div>
 							</td>
 							<td width="70%">
-								<div>{{.Form.Address}}</div>
+								<div>{{.Form.Pic}}</div>
 							</td>
 						</tr>
 					</table>
@@ -285,11 +285,10 @@
 			<thead>
 				<tr>
 					<th width="5%" class="text-center">NO</th>
-					<th width="45%" style="text-align: left;">PRODUCT NAME</th>
-					<th width="20%" style="text-align: left;">REMARK</th>
+					<th width="35%" style="text-align: left;">PRODUCT NAME</th>
 					<th width="10%" class="text-right">QTY</th>
 					<th width="10%" style="text-align: left;">UNIT</th>
-					<th width="15%" class="text-right">PRICE</th>
+					<th width="10%" class="text-right">PRICE</th>
 					<th width="10%" class="text-right">DISC</th>
 					<th width="15%" class="text-right">AMOUNT</th>
 				</tr>
@@ -299,7 +298,6 @@
 				<tr>
 					<td class="text-center">{{ inc $index}}</td>
 					<td>{{$item.ItemName}} </td>
-					<td class="">{{$item.Remark}} </td>
 					<td class="text-right">{{formatNumber $item.Qty}} </td>
 					<td class="">{{$item.UnitName}} </td>
 					<td class="text-right">{{formatNumber $item.Price}} </td>
@@ -396,7 +394,7 @@
 							<td width="100%" style="text-align: right;">
 								<table border="0" cellspacing="0" cellpadding="0" style="margin-left: auto;">
 									<tr>
-										<td class="text-center" style="min-width: 150px;">APPROVE</td>
+										<td class="text-center" style="min-width: 150px;">{{.Form.Company.CompanyName}}</td>
 									</tr>
 									<tr>
 										<td height="60" width="100%" class="text-center" style="text-align: center;">
