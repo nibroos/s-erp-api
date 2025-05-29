@@ -66,7 +66,8 @@ func GeneratePurchaseOrderNoOnCreatePurchaseOrder(ctx *fiber.Ctx, req dtos.FormP
 	}
 
 	// SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
-	surname := req.CustomerCode
+	// surname := req.CustomerCode
+	surname := "Yubi"
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
 	orderedNumber++

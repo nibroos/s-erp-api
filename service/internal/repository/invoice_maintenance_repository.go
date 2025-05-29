@@ -548,6 +548,7 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceByID(ctx *fiber.Ctx,
 						vat.name as vat_name,
 						pph.name as pph23_name,
 						py.account_name,
+						py.account_number,
 						py.name as bank_name,
 						
             cu.name as created_by_name,
@@ -626,6 +627,7 @@ func (r *InvoiceMaintenanceRepository) GetInvoiceMaintenanceByNoBomID(ctx *fiber
 						pph.name as pph23_name,
 						py.account_name,
 						py.name as bank_name,
+						py.account_number,
 						
             cu.name as created_by_name,
             uu.name as updated_by_name

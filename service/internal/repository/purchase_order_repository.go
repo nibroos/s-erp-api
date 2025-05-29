@@ -196,6 +196,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 					pi.id as product_id,
 					pd.vat_id as po_dt_vat_id,
 
+					c.name as customer_name,
 					pi.name as product_name,
 					cur.name as currency_name,
 					vat.name as vat_name,

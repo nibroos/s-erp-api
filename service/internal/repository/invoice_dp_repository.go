@@ -312,6 +312,7 @@ func (r *InvoiceDpRepository) GetInvoiceDpByID(ctx *fiber.Ctx, params *dtos.GetI
 
 			b.name as bank_name,
             b.account_name,
+            b.account_number,
 
             cu.name as created_by_name,
             uu.name as updated_by_name,

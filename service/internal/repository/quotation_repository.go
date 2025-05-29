@@ -585,6 +585,7 @@ func (r *QuotationRepository) GetQuotationByID(ctx *fiber.Ctx, params *dtos.GetQ
 					vat.name as vat_name,
 					pph.name as pph23_name,
 					py.account_name,
+					py.account_number,
 					py.name as bank_name,
 
 					cu.name as created_by_name,

@@ -390,6 +390,7 @@ func (r *SalesOrderRepository) GetSalesOrderByID(ctx *fiber.Ctx, params *dtos.Ge
 				vat.name as vat_name,
 				pph.name as pph23_name,
 				py.account_name,
+				py.account_number,
 				py.name as bank_name,
 
 				cu.name as created_by_name,
@@ -1025,7 +1026,7 @@ func (r *SalesOrderRepository) GetSoDtsBomBySalesOrders(ctx *fiber.Ctx, filters 
 				LEFT JOIN so_dts sd ON sd.id = sdb.so_dt_id
 				LEFT JOIN sales_orders so ON so.id = sd.sales_order_id
 				LEFT JOIN products pi ON sd.item_id = pi.id
-				LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
+				LEFT JOIN item_units iu ON sdb.item_unit_id = iu.id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN products it ON sdb.item_id = it.id
 				LEFT JOIN mix_values isg ON it.item_sub_group_id = isg.id

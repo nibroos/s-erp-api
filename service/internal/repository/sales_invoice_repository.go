@@ -322,6 +322,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoiceByID(ctx *fiber.Ctx, params *dto
             pph.name as pph23_name,
             b.name as bank_name,
             b.account_name,
+            b.account_number,
 			br.company_profile_id
 
         FROM sales_invoices si
