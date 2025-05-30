@@ -173,6 +173,7 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 					b.name as branch_name,
 
 					idt.remark as invoice_dp_dt_remark,
+					ot.name as order_type_name,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -186,6 +187,8 @@ func (r *InvoiceDpRepository) GetInvoiceDps(ctx *fiber.Ctx, filters map[string]s
 				LEFT JOIN mix_values pph ON idp.pph23_id = pph.id
 				LEFT JOIN branches b ON idp.branch_id = b.id
 				LEFT JOIN bank_informations bk ON idp.bank_id = bk.id
+				LEFT JOIN sales_orders so ON idt.ref_id = so.id AND idt.ref_type = 'so'
+				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
 
         LEFT JOIN users cu ON idp.created_by_id = cu.id
         LEFT JOIN users uu ON idp.updated_by_id = uu.id
@@ -1097,6 +1100,20 @@ func (r *InvoiceDpRepository) ResetSoDtsTotalDp(tx *gorm.DB, deletedInvoiceDpDtI
 		}
 
 		if err := tx.Exec(query, soDtIDs).Error; err != nil {
+			utils.LogErrors(childSpan, err)
+			return tx, err
+		}
+
+		// status update
+		statusQuery := `
+				UPDATE sales_orders so
+				SET status = 'PROCESS'
+				FROM so_dts sodt
+				WHERE so.id = sodt.sales_order_id
+				AND sodt.id IN (?)
+				`
+
+		if err := tx.Exec(statusQuery, soDtIDs).Error; err != nil {
 			utils.LogErrors(childSpan, err)
 			return tx, err
 		}

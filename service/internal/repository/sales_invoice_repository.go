@@ -174,6 +174,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 					b.name as branch_name,
 
 					sidt.remark as sales_invoice_dt_remark,
+					COALESCE(ot.name, so2_ot.name) as order_type_name,
 
 					cu.name as created_by_name,
 					uu.name as updated_by_name
@@ -187,6 +188,12 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 				LEFT JOIN mix_values pph ON si.pph23_id = pph.id
 				LEFT JOIN branches b ON si.branch_id = b.id
 				LEFT JOIN bank_informations bk ON si.bank_id = bk.id
+				LEFT JOIN sales_orders so ON sidt.ref_id = so.id AND sidt.ref_type = 'so'
+				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+				LEFT JOIN inv_dts invdt ON sidt.ref_dt_id = invdt.id AND sidt.ref_type = 'inv_out' AND invdt.deleted_at IS NULL
+				LEFT JOIN so_dts sodt ON invdt.ref_so_dt_id = sodt.id AND invdt.ref_type = 'so' AND sodt.deleted_at IS NULL
+				LEFT JOIN sales_orders so2 ON sodt.sales_order_id = so2.id AND so2.deleted_at IS NULL
+				LEFT JOIN mix_values so2_ot ON so2.order_type_id = so2_ot.id
 
         LEFT JOIN users cu ON si.created_by_id = cu.id
         LEFT JOIN users uu ON si.updated_by_id = uu.id
@@ -1183,6 +1190,7 @@ func (r *SalesInvoiceRepository) GetRefInventoryOutDts(ctx *fiber.Ctx, filters m
 				u.name as unit_name,
 				v.name as vat_name,
 				pph.name as pph23_name,
+				ot.name as order_type_name,
 				
 				cu.name as created_by_name,
 				uu.name as updated_by_name
@@ -1198,6 +1206,9 @@ func (r *SalesInvoiceRepository) GetRefInventoryOutDts(ctx *fiber.Ctx, filters m
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN mix_values v ON invdt.vat_id = v.id
 				LEFT JOIN mix_values pph ON invdt.pph23_id = pph.id
+				JOIN so_dts sodt ON invdt.ref_so_dt_id = sodt.id AND sodt.deleted_at IS NULL
+				JOIN sales_orders so ON sodt.sales_order_id = so.id AND so.deleted_at IS NULL
+				JOIN mix_values ot ON so.order_type_id = ot.id
 
 		LEFT JOIN users cu ON invdt.created_by_id = cu.id
 		LEFT JOIN users uu ON invdt.updated_by_id = uu.id

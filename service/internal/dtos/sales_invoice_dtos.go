@@ -222,6 +222,7 @@ type SalesInvoiceListDTO struct {
 	Pph23Name            *string `json:"pph23_name" db:"pph23_name"`
 	BranchName           *string `json:"branch_name" db:"branch_name"`
 	SalesInvoiceDtRemark *string `json:"sales_invoice_dt_remark" db:"sales_invoice_dt_remark"`
+	OrderTypeName        *string `json:"order_type_name" db:"order_type_name"`
 }
 
 type SalesInvoiceDetailDTO struct {
@@ -594,6 +595,7 @@ type RefInventoryOutForInvoiceListDTO struct {
 	OutDate        *string  `json:"out_date" db:"out_date"`
 	ItemSku        *string  `json:"item_sku" db:"item_sku"`
 	DueAt          *string  `json:"due_at" db:"due_at"`
+	OrderTypeName  *string  `json:"order_type_name" db:"order_type_name"`
 }
 
 type SalesInvoicePDFData struct {

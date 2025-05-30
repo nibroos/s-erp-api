@@ -223,6 +223,7 @@ type InvoiceDpListDTO struct {
 	Pph23Name         *string `json:"pph23_name" db:"pph23_name"`
 	BranchName        *string `json:"branch_name" db:"branch_name"`
 	InvoiceDpDtRemark *string `json:"invoice_dp_dt_remark" db:"invoice_dp_dt_remark"`
+	OrderTypeName     *string `json:"order_type_name" db:"order_type_name"`
 }
 
 type InvoiceDpDetailDTO struct {
