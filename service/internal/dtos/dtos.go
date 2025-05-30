@@ -2905,3 +2905,8 @@ type GetBankInformationsWithCompanyRequest struct {
 	OrderColumn    string `json:"order_column" default:"id"`
 	OrderDirection string `json:"order_direction" default:"asc"`
 }
+
+type IndexHeaderStatusListDTO struct {
+	ID     int  `json:"id" db:"id"`
+	Status int8 `json:"status" db:"status"`
+}

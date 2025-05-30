@@ -391,7 +391,7 @@ func GenerateQuoNoOnCreateQuotation(ctx *fiber.Ctx, req dtos.CreateQuotationRequ
 	orderGlobal := fmt.Sprintf("%d", orderedNumberGlobal)
 	order := fmt.Sprintf("%d", orderedNumber)
 
-	str := fmt.Sprintf("%s/%s/%s-%s-%s", surname, orderGlobal, year, month, order)
+	str := fmt.Sprintf("QUO/%s/%s-%s-%s-%s", orderGlobal, surname, year, month, order)
 
 	return str
 }

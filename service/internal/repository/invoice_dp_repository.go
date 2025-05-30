@@ -1567,3 +1567,18 @@ func (r *InvoiceDpRepository) ResetSoDtsTotalDpForCancelled(tx *gorm.DB, invoice
 func (r *InvoiceDpRepository) Commit(tx *gorm.DB) error {
 	return tx.Commit().Error
 }
+
+// UpdateQuoStatus
+func (r *InvoiceDpRepository) UpdateSoStatus(ctx *fiber.Ctx, tx *gorm.DB, updateSalesOrderIDs []map[string]interface{}, span opentracing.Span) error {
+	childSpan := opentracing.StartSpan("InvoiceDpRepository-UpdateSoStatus", opentracing.ChildOf(span.Context()))
+
+	// upsert
+	if err := r.utilRepo.Upsert(tx, "sales_orders", "id", updateSalesOrderIDs, childSpan); err != nil {
+		utils.LogErrors(childSpan, err)
+		return err
+	}
+
+	return nil
+}
+
+// GetSalesOrderByRefDtIDAndRefType

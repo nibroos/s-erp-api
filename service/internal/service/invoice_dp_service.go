@@ -407,8 +407,15 @@ func (s *InvoiceDpService) CreateInvoiceDpDts(ctx *fiber.Ctx, req dtos.CreateInv
 	childSpan := opentracing.StartSpan("InvoiceDpService-CreateInvoiceDpDts", opentracing.ChildOf(span.Context()))
 	defer childSpan.Finish()
 
-	invoiceDpDts, err := utils.MapCreateInvoiceDpDts(ctx, req, createdInvoiceDp, userID, childSpan)
+	invoiceDpDts, updateSalesOrderIDs, err := utils.MapCreateInvoiceDpDts(ctx, req, createdInvoiceDp, userID, childSpan)
 	if err != nil {
+		tx.Rollback()
+		return nil, nil, err
+	}
+
+	// update status header quotations
+	if err := s.repo.UpdateSoStatus(ctx, tx, updateSalesOrderIDs, childSpan); err != nil {
+		defer childSpan.Finish()
 		tx.Rollback()
 		return nil, nil, err
 	}

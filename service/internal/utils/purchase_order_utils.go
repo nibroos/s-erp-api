@@ -74,7 +74,7 @@ func GeneratePurchaseOrderNoOnCreatePurchaseOrder(ctx *fiber.Ctx, req dtos.FormP
 	order := fmt.Sprintf("%d", orderedNumber)
 
 	// str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
-	str := fmt.Sprintf("PO/%s/%s-%s-%s", surname, year, month, order)
+	str := fmt.Sprintf("PO/%s-%s-%s-%s", surname, year, month, order)
 
 	return str
 }

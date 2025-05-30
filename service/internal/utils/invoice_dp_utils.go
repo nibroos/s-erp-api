@@ -38,8 +38,10 @@ func GetLockInvoiceDpSalesOrderIDs(req dtos.CreateInvoiceDpRequest) []*uint {
 	return soDtIDs
 }
 
-func MapCreateInvoiceDpDts(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, createdInvoiceDp *models.InvoiceDp, userID uint, span opentracing.Span) ([]models.InvoiceDpDt, error) {
+func MapCreateInvoiceDpDts(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, createdInvoiceDp *models.InvoiceDp, userID uint, span opentracing.Span) ([]models.InvoiceDpDt, []map[string]interface{}, error) {
 	invoiceDpDtsModel := []models.InvoiceDpDt{}
+	updateSalesOrderIDs := []map[string]interface{}{}
+	// filter unique sales order IDs
 
 	for _, invoiceDpDt := range req.InvoiceDpDts {
 		refJSONStr := "{}"
@@ -74,9 +76,28 @@ func MapCreateInvoiceDpDts(ctx *fiber.Ctx, req dtos.CreateInvoiceDpRequest, crea
 			CreatedByID:  &userID,
 		}
 		invoiceDpDtsModel = append(invoiceDpDtsModel, invoiceDpDtModel)
+		updateSalesOrderIDs = append(updateSalesOrderIDs, map[string]interface{}{
+			"id":     invoiceDpDt.RefID,
+			"status": "INVOICE",
+		})
 	}
 
-	return invoiceDpDtsModel, nil
+	uniqueSalesOrderIDs := []map[string]interface{}{}
+	seen := make(map[uint]bool)
+
+	for _, entry := range updateSalesOrderIDs {
+		idPtr, ok := entry["id"].(*uint)
+		if !ok || idPtr == nil {
+			continue
+		}
+		id := *idPtr
+		if !seen[id] {
+			uniqueSalesOrderIDs = append(uniqueSalesOrderIDs, entry)
+			seen[id] = true
+		}
+	}
+
+	return invoiceDpDtsModel, uniqueSalesOrderIDs, nil
 }
 
 func MapUpdateInvoiceDpDts(ctx *fiber.Ctx, req dtos.UpdateInvoiceDpRequest, updatedInvoiceDp *models.InvoiceDp, userID uint, span opentracing.Span) ([]models.InvoiceDpDt, error) {

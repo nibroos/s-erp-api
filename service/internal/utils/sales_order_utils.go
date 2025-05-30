@@ -521,6 +521,7 @@ func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesO
 
 	// SURNAME-YEAR-MONTH-ORDER-REV-(NUM) -> SURNAME-2001-12-20-REV-1
 	// surname := req.CustomerCode
+	trx := "SO"
 	surname := "Yubi"
 	year := time.Now().Format("2006")
 	month := time.Now().Format("01")
@@ -528,7 +529,7 @@ func GeneratePoBuyerNoNoOnCreateSalesOrder(ctx *fiber.Ctx, req dtos.CreateSalesO
 	orderGlobal := fmt.Sprintf("%d", globalOrderedNumber)
 
 	// str := fmt.Sprintf("%s-%s-%s-%s", surname, year, month, order)
-	str := fmt.Sprintf("%s/%s/%s-%s-%s", surname, orderGlobal, year, month, order)
+	str := fmt.Sprintf("%s/%s/%s-%s-%s-%s", trx, orderGlobal, surname, year, month, order)
 
 	return str
 }
