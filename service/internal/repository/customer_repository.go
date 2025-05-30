@@ -2,10 +2,12 @@ package repository
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/nibroos/s-erp-api/service/internal/utils"
@@ -54,6 +56,28 @@ func (r *CustomerRepository) GetCustomers(ctx *fiber.Ctx, filters map[string]str
 			args = append(args, value)
 			i++
 		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_type_ids": "m.customer_type_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// log.Println("product_bom_ids", value)
+			condition += fmt.Sprintf(" AND %s IN (%s)", valueID, value)
+		}
+	}
+
+	if value, ok := filters["customer_type_names"]; ok && value != "" {
+		names := utils.SplitString(value, ",")
+		for i, n := range names {
+			names[i] = strings.ToUpper(strings.TrimSpace(n))
+		}
+		customerTypeNames := pq.Array(names)
+		condition += fmt.Sprintf(" AND UPPER(ct.name) = ANY($%d)", i)
+		args = append(args, customerTypeNames)
+		i++
 	}
 
 	baseQuery := `FROM ( 
