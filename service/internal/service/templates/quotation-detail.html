@@ -304,8 +304,8 @@
 						<table class="sub-table" cellspacing="0" cellpadding="0">
 							{{range $index, $subitem := $item.QuoDtsBoms}}
 							<tr>
-								<td width="5%" class="text-center">&#8627;</td>
-								<td width="35.2%"><span>{{$subitem.ItemName}}</span></td>
+								<td width="5%" class="text-center">&nbsp;</td>
+								<td width="35.2%">&#8627; <span>{{$subitem.ItemName}}</span></td>
 								<td width="9.6%" class="text-right" style="white-space:nowrap;">{{formatNumber $subitem.Qty}}</td>
 								<td width="9.5%" class="" style="white-space:nowrap;">{{$subitem.UnitName}}</td>
 								<td class="text-right" colspan="3"></td>
