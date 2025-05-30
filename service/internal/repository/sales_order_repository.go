@@ -2526,13 +2526,15 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 					` + selectJoinCondition + `
 
 					ot.name as order_type_name,
-					c.name as customer_name
+					COALESCE(cs.name, c.name, ct.name) as customer_name
 
 				FROM schedules s
 				LEFT JOIN sales_orders so ON s.sales_order_id = so.id AND so.deleted_at IS NULL AND s.module_type = 'sales_orders'
 				LEFT JOIN tickets t ON s.sales_order_id = t.id AND t.deleted_at IS NULL AND s.module_type = 'tickets'
 				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
 				LEFT JOIN customers c ON so.customer_id = c.id
+				LEFT JOIN customers cs ON s.customer_id = cs.id
+				LEFT JOIN customers ct ON t.customer_id = ct.id
 				` + joinCondition + `
 				WHERE 1=1` + condition + queryGlobal + customCondition + `
 				AND s.deleted_at IS NULL
