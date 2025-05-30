@@ -421,6 +421,7 @@ type PurchaseOrderDetailDTO struct {
 	Pph23Name        *string                 `json:"pph23_name" db:"pph23_name"`
 	BankName         *string                 `json:"bank_name" db:"bank_name"`
 	AccountName      *string                 `json:"account_name" db:"account_name"`
+	AccountNumber    *string                 `json:"account_number" db:"account_number"`
 	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
 	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
 }

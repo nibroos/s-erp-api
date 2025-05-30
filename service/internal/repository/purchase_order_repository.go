@@ -349,6 +349,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderByID(ctx *fiber.Ctx, params *d
 				c.pic as pic,
 				c.address as address,
 				py.account_name,
+				py.account_number,
 				py.name as bank_name,
 
 				cu.name as created_by_name,
