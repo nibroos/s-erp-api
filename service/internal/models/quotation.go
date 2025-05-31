@@ -18,6 +18,8 @@ type Quotation struct {
 	QuoNo         *string        `json:"quo_no" gorm:"column:quo_no"`
 	Title         string         `json:"title" gorm:"column:title"`
 	Remark        *string        `json:"remark" gorm:"column:remark"`
+	TermDesc      *string        `json:"term_desc" gorm:"column:term_desc"`
+	LicenseDesc   *string        `json:"license_desc" gorm:"column:license_desc"`
 	Status        string         `json:"status" gorm:"column:status"`
 	ExchangeRate  *float64       `json:"exchange_rate" gorm:"column:exchange_rate"`
 	VatPerc       *float64       `json:"vat_perc" gorm:"column:vat_perc"`

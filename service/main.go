@@ -255,6 +255,19 @@ func main() {
 			// Keep the goroutine running
 			select {}
 		}()
+
+		go func() {
+			healthApp := fiber.New()
+			healthHandler := &consumer.ConsumerHealth{
+				DB:       gormDB,
+				RabbitMQ: rabbitmq.Connection,
+			}
+			healthApp.Get("/health", healthHandler.Handler)
+			log.Println("Starting consumer health endpoint on :4010/health")
+			if err := healthApp.Listen(":4010"); err != nil {
+				log.Printf("Health endpoint error: %v", err)
+			}
+		}()
 	} else {
 		// Start REST server
 		wg.Add(1)

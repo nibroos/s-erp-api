@@ -1167,6 +1167,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 					it.specification as item_specification,
 					it.qty_stock as item_qty_stock,
 					u.name as unit_name,
+					u.name as item_unit_name,
 
 					isg.name as item_sub_group_name,
 					ig.name as item_group_name,
@@ -1178,7 +1179,7 @@ func (r *QuotationRepository) GetQuoDtsBomByQuotations(ctx *fiber.Ctx, filters m
 				LEFT JOIN quo_dts qd ON qd.id = qdb.quo_dt_id
 				LEFT JOIN quotations q ON q.id = qd.quotation_id
 				LEFT JOIN products pi ON qd.item_id = pi.id
-				LEFT JOIN item_units iu ON qd.item_unit_id = iu.id
+				LEFT JOIN item_units iu ON qdb.item_unit_id = iu.id
 				LEFT JOIN mix_values u ON iu.unit_id = u.id
 				LEFT JOIN products it ON qdb.item_id = it.id
 				LEFT JOIN mix_values isg ON it.item_sub_group_id = isg.id

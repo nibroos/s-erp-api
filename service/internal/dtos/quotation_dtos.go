@@ -87,6 +87,8 @@ type CreateQuotationRequest struct {
 	QuoNo         *string               `json:"quo_no"`
 	Title         string                `json:"title"`
 	Remark        *string               `json:"remark"`
+	TermDesc      *string               `json:"term_desc"`
+	LicenseDesc   *string               `json:"license_desc"`
 	Status        string                `json:"status"`
 	ExchangeRate  *float64              `json:"exchange_rate"`
 	DiscAm        *float64              `json:"disc_am"`
@@ -186,6 +188,8 @@ type UpdateQuotationRequest struct {
 	QuoNo         *string               `json:"quo_no"`
 	Title         string                `json:"title"`
 	Remark        *string               `json:"remark"`
+	TermDesc      *string               `json:"term_desc"`
+	LicenseDesc   *string               `json:"license_desc"`
 	Status        string                `json:"status"`
 	ExchangeRate  *float64              `json:"exchange_rate"`
 	DiscAm        *float64              `json:"disc_am"`
@@ -225,6 +229,8 @@ type FormQuotationRequest struct {
 	QuoNo         *string               `json:"quo_no"`
 	Title         string                `json:"title"`
 	Remark        *string               `json:"remark"`
+	TermDesc      *string               `json:"term_desc"`
+	LicenseDesc   *string               `json:"license_desc"`
 	Status        string                `json:"status"`
 	ExchangeRate  *float64              `json:"exchange_rate"`
 	DiscAm        *float64              `json:"disc_am"`
@@ -367,6 +373,8 @@ type QuotationDetailDTO struct {
 	QuoNo         *string                 `json:"quo_no" db:"quo_no"`
 	Title         string                  `json:"title" db:"title"`
 	Remark        *string                 `json:"remark" db:"remark"`
+	TermDesc      *string                 `json:"term_desc" db:"term_desc"`
+	LicenseDesc   *string                 `json:"license_desc" db:"license_desc"`
 	Status        string                  `json:"status" db:"status"`
 	ExchangeRate  float64                 `json:"exchange_rate" db:"exchange_rate"`
 	VatPerc       *float64                `json:"vat_perc" db:"vat_perc"`
@@ -566,6 +574,8 @@ type QuotationQuoDtBomListDTO struct {
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt     *string   `json:"updated_at" db:"updated_at"`
 	DeletedAt     *string   `json:"deleted_at" db:"deleted_at"`
+
+	ItemUnitName *string `json:"item_unit_name" db:"item_unit_name"`
 }
 
 type GetQuotationsResult struct {

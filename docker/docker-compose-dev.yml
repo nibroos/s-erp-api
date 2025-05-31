@@ -73,6 +73,8 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
       SERVICE_TYPE: consumer
+    ports:
+      - "4010:4010"
     volumes:
       - ./../service:/apps
     restart: unless-stopped
