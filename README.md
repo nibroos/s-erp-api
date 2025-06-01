@@ -103,6 +103,45 @@ systemctl status stock_daily.service
 journalctl -u stock_daily.service -f
 ```
 
+### Auto Restart Service
+To make your script persistent even after a system restart, you should run it as a systemd service
+```bash
+# Create the service file
+sudo nano /etc/systemd/system/auto-restart-s-erp-api.service
+```
+
+Then, copy and paste the following content into the file:
+
+```bash
+[Unit]
+Description=Auto Restart s-erp-api Docker Service on Healthcheck Failure
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/home/nibros/projects/s-erp-api/scripts/auto_restart_service.sh
+Restart=always
+User=nibros
+Environment=PATH=/usr/bin:/usr/local/bin
+WorkingDirectory=/home/nibros/projects/s-erp-api/scripts
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Reload systemd and enable the service,
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable auto-restart-s-erp-api.service
+sudo systemctl start auto-restart-s-erp-api.service
+```
+
+To check the status of the service, you can use:
+```bash
+systemctl status auto-restart-s-erp-api.service
+```
+
 
 <h1 align="center">
     <br>

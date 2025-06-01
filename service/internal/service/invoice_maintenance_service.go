@@ -1529,7 +1529,10 @@ func (s *InvoiceMaintenanceService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceMaintena
 		return nil, err
 	}
 
-	fileName := fmt.Sprintf("invoice-maintenance-%s.pdf", time.Now().Format("20060102150405"))
+	replacedTitle := strings.ReplaceAll(*form.Title, "/", "_")
+	form.Title = &replacedTitle
+
+	fileName := fmt.Sprintf("%s-%s.pdf", *form.Title, time.Now().Format("20060102150405"))
 	pdfPath := filepath.Join(uploadDir, fileName)
 	pdfPublicPath := utils.MapStringToURL(&pdfPath)
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/lib/pq"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/opentracing/opentracing-go"
@@ -433,4 +434,357 @@ func MapDotStringToURL(path *string) *string {
 		path = &newPath
 	}
 	return path
+}
+
+// Get condition for quotation
+func GetQuotationCondition(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]interface{}, int, string, string, error) {
+	childSpan := span.Tracer().StartSpan("quotation_utils-GetQuotationCondition", opentracing.ChildOf(span.Context()))
+	var err error
+
+	condition := ""
+	var args []interface{}
+	queryGlobal := ""
+	i := 1
+
+	filterDBColumnKey := []string{
+		"q.quo_no", "q.title", "q.remark",
+		"pi.name",
+		"it.name",
+		"qd.remark",
+		"qd.gen_code",
+		"qdb.remark",
+		"qdb.gen_code",
+	}
+
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND q.id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":        "q.status",
+		"customer_id":   "q.customer_id",
+		"order_type_id": "q.order_type_id",
+		"currency_id":   "q.currency_id",
+		"vat_id":        "q.vat_id",
+		"payment_id":    "q.payment_id",
+		"pph23_id":      "q.pph23_id",
+		"expired_at":    "q.expired_at",
+		"due_at":        "q.due_at",
+	}
+
+	for key, valueID := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", valueID, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":   "q.customer_id",
+		"order_type_ids": "q.order_type_id",
+		"currency_ids":   "q.currency_id",
+		"payment_ids":    "q.payment_id",
+		"pph23_ids":      "q.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := SplitStringArrayOfInts(ids)
+			if err != nil {
+				LogErrors(childSpan, err)
+				return nil, i, "", "", err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": {"q.vat_id", "qd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	// And one for array conditions with OR
+	filterIDsOrArrayKey := map[string][]string{
+		"product_ids": {"pi.id", "it.id"},
+	}
+
+	// Handle array OR conditions
+	for key, valueIDs := range filterIDsOrArrayKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := SplitStringArrayOfInts(ids)
+			if err != nil {
+				LogErrors(childSpan, err)
+				return nil, i, "", "", err
+			}
+
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s = ANY($%d)", valueID, i)
+				args = append(args, pq.Array(intIDs))
+				i++
+			}
+			condition += ")"
+		}
+	}
+
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+		filterDateTypeKey := map[string]string{
+			"due_at":     "q.due_at",
+			"expired_at": "q.expired_at",
+		}
+
+		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	return args, i, condition, queryGlobal, err
+}
+
+func GetQuotationDetailsIDs(quotations []dtos.QuotationDetailDTO) []uint {
+	quotationsIDs := []uint{}
+	for _, quotation := range quotations {
+		if quotation.ID > 0 {
+			quotationsIDs = append(quotationsIDs, quotation.ID)
+		}
+	}
+	return quotationsIDs
+}
+
+func MapFilterQuoDtToQuotations(quoDts []dtos.QuotationQuoDtListDTO, quotations []dtos.QuotationDetailDTO) []dtos.QuotationDetailDTO {
+	// quotations := []dtos.SalesOrderAttachmentsDTO{}
+	for i, quotation := range quotations {
+		newQuoDts := make([]dtos.QuotationQuoDtListDTO, 0)
+		for _, quoDt := range quoDts {
+			if *quoDt.QuotationID == quotation.ID {
+				newQuoDts = append(newQuoDts, quoDt)
+			}
+		}
+		quotation.QuoDts = newQuoDts
+		quotations[i] = quotation
+	}
+
+	return quotations
+}
+
+func MapGetQuotationDetails(quotations []dtos.QuotationDetailDTO, quoDts []dtos.QuotationQuoDtListDTO, quoDtBoms []dtos.QuotationQuoDtBomListDTO) []dtos.QuotationDetailDTO {
+	// quotations := []dtos.SalesOrderAttachmentsDTO{}
+	for i, quotation := range quotations {
+		newQuoDts := make([]dtos.QuotationQuoDtListDTO, 0)
+		for _, quoDt := range quoDts {
+			if *quoDt.QuotationID == quotation.ID {
+				newQuoDtBoms := make([]dtos.QuotationQuoDtBomListDTO, 0)
+				for _, quoDtBom := range quoDtBoms {
+					if *quoDtBom.QuoDtID == *quoDt.ID {
+						newQuoDtBoms = append(newQuoDtBoms, quoDtBom)
+					}
+				}
+				quoDt.QuoDtsBoms = newQuoDtBoms
+				newQuoDts = append(newQuoDts, quoDt)
+			}
+		}
+		quotation.QuoDts = newQuoDts
+		quotations[i] = quotation
+	}
+
+	return quotations
+}
+
+// Build CSV rows, dtos.QuotationListDTO, csv pointer
+func BuildQuotationAllCSVRows(quotations []dtos.QuotationListDTO, csv *string) error {
+	rows := [][]string{}
+	// ID,Quotation No,Title,Order Type,Customer,Expired Date,Quot Date,Currency,Total,Status,Created By,Updated By\n
+	header := []string{
+		"ID", "Quotation No", "Title", "Order Type", "Customer", "Expired Date", "Quot Date",
+		"Currency", "Total", "Status", "Created By", "Updated By",
+	}
+	rows = append(rows, header)
+
+	for _, quotation := range quotations {
+		ID := fmt.Sprintf("%d", quotation.ID)
+		QuoNo := GetPtrVal(quotation.QuoNo)
+		Title := quotation.Title
+		OrderTypeName := GetPtrVal(quotation.OrderTypeName)
+		CustomerName := GetPtrVal(quotation.CustomerName)
+		ExpiredAt := GetPtrVal(quotation.ExpiredAt)
+		DueAt := GetPtrVal(quotation.DueAt)
+		CurrencyName := GetPtrVal(quotation.CurrencyName)
+		Status := GetPtrVal(&quotation.Status)
+		CreatedByName := GetPtrVal(quotation.CreatedByName)
+		UpdatedByName := GetPtrVal(quotation.UpdatedByName)
+
+		// EscapeCsvField
+		ID = EscapeCsvField(ID)
+		QuoNo = EscapeCsvField(QuoNo)
+		Title = EscapeCsvField(Title)
+		OrderTypeName = EscapeCsvField(OrderTypeName)
+		CustomerName = EscapeCsvField(CustomerName)
+		ExpiredAt = EscapeCsvField(ExpiredAt)
+		DueAt = EscapeCsvField(DueAt)
+		CurrencyName = EscapeCsvField(CurrencyName)
+		Status = EscapeCsvField(Status)
+		CreatedByName = EscapeCsvField(CreatedByName)
+		UpdatedByName = EscapeCsvField(UpdatedByName)
+
+		row := []string{
+			ID, QuoNo, Title, OrderTypeName, CustomerName, ExpiredAt, DueAt,
+			CurrencyName, fmt.Sprintf("%f", *quotation.GrandTotal), Status, CreatedByName, UpdatedByName,
+		}
+
+		rows = append(rows, row)
+	}
+
+	// Convert rows to CSV format
+	csvContent := ""
+	for _, row := range rows {
+		csvContent += strings.Join(row, ",") + "\n"
+	}
+
+	*csv = csvContent
+
+	return nil
+}
+
+// Build CSV rows, dtos.QuotationListDTO, csv pointer
+func BuildQuotationDetailCSVRows(quotations []dtos.QuotationDetailDTO, csv *string) error {
+	rows := [][]string{}
+	header := []string{
+		"No", "Quotation No", "Title", "Order Type", "Customer", "Expired Date", "Quot Date",
+		"Currency", "Total", "Status", "Created By", "Updated By",
+		"Product/Item Name", "Qty", "Price", "Subtotal",
+		"BOM Item Name", "BOM Qty",
+	}
+	rows = append(rows, header)
+
+	for iQuotation, quotation := range quotations {
+
+		No := fmt.Sprintf("%d", iQuotation+1)
+		QuoNo := GetPtrVal(quotation.QuoNo)
+		Title := quotation.Title
+		OrderTypeName := GetPtrVal(quotation.OrderTypeName)
+		CustomerName := GetPtrVal(quotation.CustomerName)
+		ExpiredAt := GetPtrVal(quotation.ExpiredAt)
+		DueAt := GetPtrVal(quotation.DueAt)
+		CurrencyName := GetPtrVal(quotation.CurrencyName)
+		Status := GetPtrVal(&quotation.Status)
+		CreatedByName := GetPtrVal(quotation.CreatedByName)
+		UpdatedByName := GetPtrVal(quotation.UpdatedByName)
+
+		for iQuoDt, quoDt := range quotation.QuoDts {
+			ProductItemName := GetPtrVal(quoDt.ItemName)
+			Qty := fmt.Sprintf("%f", *quoDt.Qty)
+			PriceSell := fmt.Sprintf("%f", *quoDt.PriceSell)
+			TotalAm := fmt.Sprintf("%f", *quoDt.SubtotalSell)
+
+			if len(quoDt.QuoDtsBoms) == 0 {
+
+				if iQuoDt == 0 {
+					row := []string{
+						No, QuoNo, Title, OrderTypeName, CustomerName, ExpiredAt, DueAt,
+						CurrencyName, fmt.Sprintf("%f", quotation.GrandTotal), Status, CreatedByName, UpdatedByName,
+						ProductItemName, Qty, PriceSell, TotalAm,
+						"", "", "", "",
+					}
+					rows = append(rows, row)
+				} else {
+					row := []string{
+						"", "", "", "", "", "", "",
+						"", "", "", "", "",
+						ProductItemName, Qty, PriceSell, TotalAm,
+						"", "", "", "",
+					}
+					rows = append(rows, row)
+				}
+			} else {
+				for iBom, bom := range quoDt.QuoDtsBoms {
+					BomItemName := GetPtrVal(bom.ItemName)
+					BomQty := fmt.Sprintf("%f", bom.Qty)
+
+					if iQuoDt == 0 && iBom == 0 {
+						row := []string{
+							No, QuoNo, Title, OrderTypeName, CustomerName, ExpiredAt, DueAt,
+							CurrencyName, fmt.Sprintf("%f", quotation.GrandTotal), Status, CreatedByName, UpdatedByName,
+							ProductItemName, Qty, PriceSell, TotalAm,
+							BomItemName, BomQty,
+						}
+						rows = append(rows, row)
+					} else if iBom == 0 {
+						row := []string{
+							"", "", "", "", "", "", "",
+							"", "", "", "", "",
+							ProductItemName, Qty, PriceSell, TotalAm,
+							BomItemName, BomQty,
+						}
+						rows = append(rows, row)
+					} else {
+						row := []string{
+							"", "", "", "", "", "", "",
+							"", "", "", "", "",
+							"", "", "", "",
+							BomItemName, BomQty,
+						}
+						rows = append(rows, row)
+					}
+				}
+			}
+		}
+		if len(quotation.QuoDts) == 0 {
+			row := []string{
+				No, QuoNo, Title, OrderTypeName, CustomerName, ExpiredAt, DueAt,
+				CurrencyName, fmt.Sprintf("%f", quotation.GrandTotal), Status, CreatedByName, UpdatedByName,
+				"", "", "", "",
+				"", "",
+			}
+			rows = append(rows, row)
+		}
+	}
+
+	// Convert rows to CSV format
+	csvContent := ""
+	for _, row := range rows {
+		csvContent += strings.Join(row, ",") + "\n"
+	}
+
+	*csv = csvContent
+
+	return nil
 }

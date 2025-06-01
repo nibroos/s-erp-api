@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -44,6 +45,36 @@ func (s *SalesOrderService) GetSalesOrders(ctx *fiber.Ctx, filters map[string]st
 		defer childSpan.Finish()
 		return nil, 0, err
 	}
+	return salesOrders, total, nil
+}
+
+func (s *SalesOrderService) GetSalesOrdersDetails(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderDetailDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-GetSalesOrdersDetails", opentracing.ChildOf(span.Context()))
+
+	salesOrders, total, err := s.repo.GetSalesOrderDetails(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	salesOrderIDs := utils.GetSalesOrderDetailsIDs(salesOrders)
+
+	// Get QuoDts by salesOrder IDs
+	soDts, _, err := s.repo.GetSalesOrderDetailsDts(ctx, filters, salesOrderIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	// Get QuoDtBoms by salesOrder IDs
+	soDtBoms, _, err := s.repo.GetSalesOrderDetailsDtBoms(ctx, filters, salesOrderIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	salesOrders = utils.MapGetSalesOrderDetails(salesOrders, soDts, soDtBoms)
+
 	return salesOrders, total, nil
 }
 
@@ -621,11 +652,24 @@ func (s *SalesOrderService) CsvGetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	// filters is_csv
 	filters["is_csv"] = "1"
-	// salesOrders, _, err := s.GetSalesOrders(ctx, filters, childSpan)
-	// if err != nil {
-	// 	defer childSpan.Finish()
-	// 	return nil, err
-	// }
+
+	exportType := utils.GetStringOrDefault(filters["export_type"], "all")
+
+	if exportType == "detail" {
+		return s.CsvGetDetail(ctx, filters, childSpan)
+	}
+
+	return s.CsvGetAll(ctx, filters, childSpan)
+}
+
+// CsvGetAll
+func (s *SalesOrderService) CsvGetAll(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-CsvGetAll", opentracing.ChildOf(span.Context()))
+	salesOrders, _, err := s.GetSalesOrders(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
@@ -639,17 +683,47 @@ func (s *SalesOrderService) CsvGetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Master SalesOrder\n"
+	csv += "Sales Orders\n"
 	csv += "\n"
 
-	csv += "ID,Branch,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
+	utils.BuildSalesOrderAllCSVRows(salesOrders, &csv)
+
+	return []byte(csv), nil
+}
+
+func (s *SalesOrderService) CsvGetDetail(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("SalesOrderService-CsvGetDetail", opentracing.ChildOf(span.Context()))
+	quotations, _, err := s.GetSalesOrdersDetails(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	// get company profile
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err != nil {
+		defer childSpan.Finish()
+	} else {
+		appName = *companyProfile.CompanyName
+	}
+
+	csv := fmt.Sprintf("%s\n", appName)
+	csv += "\n"
+	csv += "Sales Orders\n"
+	csv += "\n"
+
+	// csv += "ID,Sales Order No,Order Type,Customer,Expired Date,Quot Date,Currency,Total,Status,Created By,Updated By\n"
+
 	// // Build CSV rows
-	// for _, salesOrder := range salesOrders {
-	// 	csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-	// 		salesOrder.ID,
-	// 		utils.GetPtrVal(salesOrder.Remark),
+	// for _, quotation := range quotations {
+	// 	csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%.2f,%s,%s,%s\n",
+	// 		quotation.ID,
+	// 		utils.GetPtrVal(quotation.Remark),
 	// 	)
 	// }
+	utils.BuildSalesOrderDetailCSVRows(quotations, &csv)
 
 	return []byte(csv), nil
 }
@@ -1873,7 +1947,9 @@ func (s *SalesOrderService) Pdf(ctx *fiber.Ctx, req dtos.SalesOrderDetailDTO, us
 	}
 
 	// 4. Save PDF to the "public" folder
-	fileName := fmt.Sprintf("so-%s.pdf", time.Now().Format("20060102150405"))
+	replacedPoBuyerNo := strings.ReplaceAll(*form.PoBuyerNo, "/", "_")
+	form.PoBuyerNo = &replacedPoBuyerNo
+	fileName := fmt.Sprintf("%s-%s.pdf", *form.PoBuyerNo, time.Now().Format("20060102150405"))
 	// pdfPath := filepath.Join("public", pdfName)
 	pdfPath := filepath.Join(uploadDir, fileName)
 	if err := pdfg.WriteFile(pdfPath); err != nil {

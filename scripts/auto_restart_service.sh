@@ -4,7 +4,7 @@ HEALTH_URL="http://localhost:4001/api/v1/health"
 CONSUMER_HEALTH_URL="http://localhost:4010/health"
 CONTAINER_NAME="s-erp-api-service-1"
 CONSUMER_CONTAINER_NAME="s-erp-api-consumer-service-1"
-INTERVAL=5 # seconds
+INTERVAL=20 # seconds
 
 while true; do
   rest_response=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL")

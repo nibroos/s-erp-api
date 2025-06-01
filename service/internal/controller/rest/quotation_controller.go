@@ -51,6 +51,34 @@ func (c *QuotationController) GetQuotations(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, quotations, paginationMeta, "quotation fetched successfully", http.StatusOK, nil, nil)
 }
 
+func (c *QuotationController) GetQuotationDetails(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("QuotationController-GetQuotationDetails", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("QuotationController-GetQuotationDetails: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	quotations, total, err := c.service.GetQuotationDetails(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch quotation", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, quotations, paginationMeta, "quotation fetched successfully", http.StatusOK, nil, nil)
+}
+
 func (c *QuotationController) GetQuotationByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("QuotationController-GetQuotationByID", opentracing.ChildOf(apiSpan.Context()))
@@ -372,6 +400,9 @@ func (c *QuotationController) CsvGetQuotations(ctx *fiber.Ctx) error {
 		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
 		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
 	}
+
+	ctx.Set("Content-Type", "text/csv")
+	ctx.Set("Content-Disposition", "attachment; filename=quotations.csv")
 
 	return ctx.Send(quotations)
 }

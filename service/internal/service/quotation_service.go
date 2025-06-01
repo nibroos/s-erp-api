@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -44,6 +45,36 @@ func (s *QuotationService) GetQuotations(ctx *fiber.Ctx, filters map[string]stri
 		defer childSpan.Finish()
 		return nil, 0, err
 	}
+	return quotations, total, nil
+}
+
+func (s *QuotationService) GetQuotationDetails(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.QuotationDetailDTO, int, error) {
+	childSpan := opentracing.StartSpan("QuotationService-GetQuotationDetails", opentracing.ChildOf(span.Context()))
+
+	quotations, total, err := s.repo.GetQuotationDetails(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	quotationIDs := utils.GetQuotationDetailsIDs(quotations)
+
+	// Get QuoDts by quotation IDs
+	quoDts, err := s.repo.GetQuotationDetailsDts(ctx, filters, quotationIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	// Get QuoDtBoms by quotation IDs
+	quoDtBoms, err := s.repo.GetQuotationDetailsDtBoms(ctx, filters, quotationIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	quotations = utils.MapGetQuotationDetails(quotations, quoDts, quoDtBoms)
+
 	return quotations, total, nil
 }
 
@@ -238,11 +269,24 @@ func (s *QuotationService) CsvGetQuotations(ctx *fiber.Ctx, filters map[string]s
 
 	// filters is_csv
 	filters["is_csv"] = "1"
-	// quotations, _, err := s.GetQuotations(ctx, filters, childSpan)
-	// if err != nil {
-	// 	defer childSpan.Finish()
-	// 	return nil, err
-	// }
+
+	exportType := utils.GetStringOrDefault(filters["export_type"], "all")
+
+	if exportType == "detail" {
+		return s.CsvGetDetail(ctx, filters, childSpan)
+	}
+
+	return s.CsvGetAll(ctx, filters, childSpan)
+}
+
+// CsvGetAll
+func (s *QuotationService) CsvGetAll(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("QuotationService-CsvGetAll", opentracing.ChildOf(span.Context()))
+	quotations, _, err := s.GetQuotations(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
 
 	// get company profile
 	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
@@ -256,17 +300,47 @@ func (s *QuotationService) CsvGetQuotations(ctx *fiber.Ctx, filters map[string]s
 
 	csv := fmt.Sprintf("%s\n", appName)
 	csv += "\n"
-	csv += "Master Quotation\n"
+	csv += "Quotation\n"
 	csv += "\n"
 
-	csv += "ID,Branch,Code,Factory Code,Name,Sku,Barcode,Unit,Specification,Desc,Remark,Price Sell,Price Buy\n"
-	// Build CSV rows
+	utils.BuildQuotationAllCSVRows(quotations, &csv)
+
+	return []byte(csv), nil
+}
+
+func (s *QuotationService) CsvGetDetail(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("QuotationService-CsvGetDetail", opentracing.ChildOf(span.Context()))
+	quotations, _, err := s.GetQuotationDetails(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	// get company profile
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err != nil {
+		defer childSpan.Finish()
+	} else {
+		appName = *companyProfile.CompanyName
+	}
+
+	csv := fmt.Sprintf("%s\n", appName)
+	csv += "\n"
+	csv += "Quotation\n"
+	csv += "\n"
+
+	csv += "ID,Quotation No,Title,Order Type,Customer,Expired Date,Quot Date,Currency,Total,Status,Created By,Updated By\n"
+
+	// // Build CSV rows
 	// for _, quotation := range quotations {
-	// 	csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+	// 	csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%.2f,%s,%s,%s\n",
 	// 		quotation.ID,
 	// 		utils.GetPtrVal(quotation.Remark),
 	// 	)
 	// }
+	utils.BuildQuotationDetailCSVRows(quotations, &csv)
 
 	return []byte(csv), nil
 }
@@ -755,7 +829,11 @@ func (s *QuotationService) Pdf(ctx *fiber.Ctx, req dtos.QuotationDetailDTO, user
 	}
 
 	// 4. Save PDF to the "public" folder
-	fileName := fmt.Sprintf("so-%s.pdf", time.Now().Format("20060102150405"))
+	// replace "/" with "_" in the title
+
+	form.Title = strings.ReplaceAll(form.Title, "/", "_")
+
+	fileName := fmt.Sprintf("%s-%s.pdf", form.Title, time.Now().Format("20060102150405"))
 	// pdfPath := filepath.Join("public", pdfName)
 	pdfPath := filepath.Join(uploadDir, fileName)
 	if err := pdfg.WriteFile(pdfPath); err != nil {

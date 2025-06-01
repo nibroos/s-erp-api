@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"text/template"
@@ -925,7 +926,10 @@ func (s *InvoiceDpService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceDpDetailDTO, tx *
 		return nil, err
 	}
 
-	fileName := fmt.Sprintf("invoice-dp-%s.pdf", time.Now().Format("20060102150405"))
+	replacedTitle := strings.ReplaceAll(*form.Title, "/", "_")
+	form.Title = &replacedTitle
+
+	fileName := fmt.Sprintf("%s-%s.pdf", *form.Title, time.Now().Format("20060102150405"))
 	pdfPath := filepath.Join(uploadDir, fileName)
 	if err := pdfg.WriteFile(pdfPath); err != nil {
 		defer childSpan.Finish()

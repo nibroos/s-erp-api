@@ -19,6 +19,7 @@ func SetupSalesOrderRoutes(salesOrders fiber.Router, gormDB *gorm.DB, sqlDB *sql
 	// salesOrders.Post("/index-project-app", salesOrderController.GetProjectsApp)
 	salesOrders.Post("/show-project-app", salesOrderController.GetSalesOrderByID)
 	salesOrders.Post("/index-sales-order", salesOrderController.GetSalesOrders)
+	salesOrders.Post("/index-detail-sales-order", salesOrderController.GetSalesOrdersDetails)
 	salesOrders.Post("/widget-sales-order", salesOrderController.GetWidgetSalesOrders)
 	salesOrders.Post("/widget-sales-order-by-status", salesOrderController.GetWidgetSalesOrdersByStatus)
 	salesOrders.Post("/widget-sales-order-by-order-type", salesOrderController.GetWidgetSalesOrdersByOrderType)
