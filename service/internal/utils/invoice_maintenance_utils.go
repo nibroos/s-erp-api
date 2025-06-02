@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/nibroos/s-erp-api/service/internal/config"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -615,4 +616,334 @@ func GetSelectedDtsInvoiceMaintenance(parent dtos.InvoiceMaintenanceListDTO, inv
 	}
 
 	return selectedDts
+}
+
+// Get condition for quotation
+func GetInvoiceMaintenanceCondition(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]interface{}, int, string, string, string, string, error) {
+	childSpan := span.Tracer().StartSpan("quotation_utils-GetInvoiceMaintenanceCondition", opentracing.ChildOf(span.Context()))
+	var err error
+
+	condition := ""
+	var args []interface{}
+	queryGlobal := ""
+	joinCondition := ""
+	customCondition := ""
+	i := 1
+
+	filterDBColumnKey := []string{
+		"im.invoice_no", "im.remark", "im.status", "im.title",
+		"c.name",
+		"imdt.remark",
+	}
+
+	if value, ok := filters["global"]; ok && value != "" {
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND im.id IN (%s)", filters["ids"])
+	}
+
+	if filters["invoice_maintenance_ids"] != "" {
+		condition += fmt.Sprintf(" AND im.id IN (%s)", filters["invoice_maintenance_ids"])
+	}
+
+	filterKey := map[string]string{
+		"customer_id":     "im.customer_id",
+		"currency_id":     "im.currency_id",
+		"payment_term_id": "im.payment_term_id",
+		"vat_id":          "im.vat_id",
+		"pph23_id":        "im.pph23_id",
+		"approved_status": "im.approved_status",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	if value, ok := filters["status"]; ok && value != "" {
+		condition += fmt.Sprintf(" AND im.status = $%d", i)
+		args = append(args, value)
+		i++
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":     "im.customer_id",
+		"currency_ids":     "im.currency_id",
+		"payment_term_ids": "im.payment_term_id",
+		"pph23_ids":        "im.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			ids := strings.Split(value, ",")
+			intIDs, err := SplitStringArrayOfInts(ids)
+			if err != nil {
+				LogErrors(childSpan, err)
+				return nil, 0, "", "", "", "", err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs))
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": {"im.vat_id", "imdt.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	// if date_type, start_date, end_date filled
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+
+		filterDateTypeKey := map[string]string{
+			"invoice_date": "im.invoice_date",
+			"due_date":     "im.due_date",
+		}
+
+		dateTypeColumn := "im.invoice_date"
+		for key := range filterDateTypeKey {
+			if key == filters["date_type"] {
+				dateTypeColumn = filterDateTypeKey[filters["date_type"]]
+			}
+		}
+
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	return args, i, condition, queryGlobal, joinCondition, customCondition, err
+}
+
+func GetInvoiceMaintenanceDetailsIDs(quotations []dtos.InvoiceMaintenanceDetailDTO) []uint {
+	quotationsIDs := []uint{}
+	for _, quotation := range quotations {
+		if quotation.ID > 0 {
+			quotationsIDs = append(quotationsIDs, quotation.ID)
+		}
+	}
+	return quotationsIDs
+}
+
+func MapFilterQuoDtToInvoiceMaintenances(quoDts []dtos.InvoiceMaintenanceDtListDTO, quotations []dtos.InvoiceMaintenanceDetailDTO) []dtos.InvoiceMaintenanceDetailDTO {
+	// quotations := []dtos.InvoiceMaintenanceAttachmentsDTO{}
+	for i, quotation := range quotations {
+		newDts := make([]dtos.InvoiceMaintenanceDtListDTO, 0)
+		for _, quoDt := range quoDts {
+			if *quoDt.InvoiceMaintenanceID == quotation.ID {
+				newDts = append(newDts, quoDt)
+			}
+		}
+		quotation.InvoiceMaintenanceDts = newDts
+		quotations[i] = quotation
+	}
+
+	return quotations
+}
+
+func MapGetInvoiceMaintenanceDetails(salesOrders []dtos.InvoiceMaintenanceDetailDTO, soDts []dtos.InvoiceMaintenanceDtListDTO, soDtBoms []dtos.SalesOrderSoDtBomListDTO) []dtos.InvoiceMaintenanceDetailDTO {
+	// salesOrders := []dtos.InvoiceMaintenanceAttachmentsDTO{}
+	for i, salesOrder := range salesOrders {
+		newDts := make([]dtos.InvoiceMaintenanceDtListDTO, 0)
+		for _, soDt := range soDts {
+			if *soDt.InvoiceMaintenanceID == salesOrder.ID {
+				newDtBoms := make([]dtos.SalesOrderSoDtBomListDTO, 0)
+				for _, soDtBom := range soDtBoms {
+					if *soDtBom.SoDtID == *soDt.RefDtID {
+						newDtBoms = append(newDtBoms, soDtBom)
+					}
+				}
+				soDt.SoDtsBoms = newDtBoms
+				newDts = append(newDts, soDt)
+			}
+		}
+		salesOrder.InvoiceMaintenanceDts = newDts
+		salesOrders[i] = salesOrder
+	}
+
+	return salesOrders
+}
+
+// Build CSV rows, dtos.InvoiceMaintenanceListDTO, csv pointer
+func BuildInvoiceMaintenanceAllCSVRows(salesOrders []dtos.InvoiceMaintenanceListDTO, csv *string) error {
+	rows := [][]string{}
+	header := []string{
+		"No", "Invoice No", "Customer", "Order Type", "Title", "Invoice Date", "Due Date",
+		"Currency", "Total", "Status", "Created By", "Updated By",
+	}
+	rows = append(rows, header)
+
+	for idx, salesOrder := range salesOrders {
+		ID := fmt.Sprintf("%d", idx+1)
+		InvoiceNo := GetPtrVal(salesOrder.InvoiceNo)
+		CustomerName := GetPtrVal(salesOrder.CustomerName)
+		Title := GetPtrVal(salesOrder.Title)
+		InvoiceDate := GetPtrVal(salesOrder.InvoiceDate)
+		DueDate := GetPtrVal(salesOrder.DueDate)
+		CurrencyName := GetPtrVal(salesOrder.CurrencyName)
+		Status := GetPtrVal(salesOrder.Status)
+		CreatedByName := GetPtrVal(salesOrder.CreatedByName)
+		UpdatedByName := GetPtrVal(salesOrder.UpdatedByName)
+
+		// EscapeCsvField
+		// ID = EscapeCsvField(ID)
+		InvoiceNo = EscapeCsvField(InvoiceNo)
+		CustomerName = EscapeCsvField(CustomerName)
+		Title = EscapeCsvField(Title)
+		InvoiceDate = EscapeCsvField(InvoiceDate)
+		DueDate = EscapeCsvField(DueDate)
+		CurrencyName = EscapeCsvField(CurrencyName)
+		Status = EscapeCsvField(Status)
+		CreatedByName = EscapeCsvField(CreatedByName)
+		UpdatedByName = EscapeCsvField(UpdatedByName)
+
+		row := []string{
+			ID, InvoiceNo, CustomerName, Title, InvoiceDate, DueDate,
+			CurrencyName, fmt.Sprintf("%f", *salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
+		}
+
+		rows = append(rows, row)
+	}
+
+	// Convert rows to CSV format
+	csvContent := ""
+	for _, row := range rows {
+		csvContent += strings.Join(row, ";") + "\n"
+	}
+
+	*csv = csvContent
+
+	return nil
+}
+
+// Build CSV rows, dtos.InvoiceMaintenanceListDTO, csv pointer
+func BuildInvoiceMaintenanceDetailCSVRows(salesOrders []dtos.InvoiceMaintenanceDetailDTO, csv *string) error {
+	rows := [][]string{}
+	header := []string{
+		"No", "Invoice No", "Customer", "Title", "Invoice Date", "Due Date",
+		"Currency", "Total", "Status", "Created By", "Updated By",
+		"Product/Item Name", "Qty", "Price", "Subtotal",
+		"BOM Item Name", "BOM Qty",
+	}
+	rows = append(rows, header)
+
+	for iInvoiceMaintenance, salesOrder := range salesOrders {
+
+		No := fmt.Sprintf("%d", iInvoiceMaintenance+1)
+		InvoiceNo := GetPtrVal(salesOrder.InvoiceNo)
+		CustomerName := GetPtrVal(salesOrder.CustomerName)
+		Title := GetPtrVal(salesOrder.Title)
+		InvoiceDate := GetPtrVal(salesOrder.InvoiceDate)
+		DueDate := GetPtrVal(salesOrder.DueDate)
+		CurrencyName := GetPtrVal(salesOrder.CurrencyName)
+		Status := GetPtrVal(salesOrder.Status)
+		CreatedByName := GetPtrVal(salesOrder.CreatedByName)
+		UpdatedByName := GetPtrVal(salesOrder.UpdatedByName)
+
+		for iDt, quoDt := range salesOrder.InvoiceMaintenanceDts {
+			ProductItemName := GetPtrVal(quoDt.ItemName)
+			Qty := fmt.Sprintf("%f", *quoDt.Qty)
+			Price := fmt.Sprintf("%f", *quoDt.Price)
+			TotalAm := fmt.Sprintf("%f", *quoDt.Subtotal)
+
+			if len(quoDt.SoDtsBoms) == 0 {
+
+				if iDt == 0 {
+					row := []string{
+						No, InvoiceNo, CustomerName, Title, InvoiceDate, DueDate,
+						CurrencyName, fmt.Sprintf("%f", salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
+						ProductItemName, Qty, Price, TotalAm,
+						"", "", "", "",
+					}
+					rows = append(rows, row)
+				} else {
+					row := []string{
+						"", "", "", "", "", "",
+						"", "", "", "", "",
+						ProductItemName, Qty, Price, TotalAm,
+						"", "", "", "",
+					}
+					rows = append(rows, row)
+				}
+			} else {
+				for iBom, bom := range quoDt.SoDtsBoms {
+					BomItemName := GetPtrVal(bom.ItemName)
+					BomQty := fmt.Sprintf("%f", bom.Qty)
+
+					if iDt == 0 && iBom == 0 {
+						row := []string{
+							No, InvoiceNo, CustomerName, Title, InvoiceDate, DueDate,
+							CurrencyName, fmt.Sprintf("%f", salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
+							ProductItemName, Qty, Price, TotalAm,
+							BomItemName, BomQty,
+						}
+						rows = append(rows, row)
+					} else if iBom == 0 {
+						row := []string{
+							"", "", "", "", "", "",
+							"", "", "", "", "",
+							ProductItemName, Qty, Price, TotalAm,
+							BomItemName, BomQty,
+						}
+						rows = append(rows, row)
+					} else {
+						row := []string{
+							"", "", "", "", "", "",
+							"", "", "", "", "",
+							"", "", "", "",
+							BomItemName, BomQty,
+						}
+						rows = append(rows, row)
+					}
+				}
+			}
+		}
+		if len(salesOrder.InvoiceMaintenanceDts) == 0 {
+			row := []string{
+				No, InvoiceNo, CustomerName, Title, InvoiceDate, DueDate,
+				CurrencyName, fmt.Sprintf("%f", salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
+				"", "", "", "",
+				"", "",
+			}
+			rows = append(rows, row)
+		}
+	}
+
+	// Convert rows to CSV format
+	csvContent := ""
+	for _, row := range rows {
+		csvContent += strings.Join(row, ";") + "\n"
+	}
+
+	*csv = csvContent
+
+	return nil
 }

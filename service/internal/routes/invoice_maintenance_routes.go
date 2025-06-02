@@ -17,6 +17,7 @@ func SetupInvoiceMaintenanceRoutes(invoiceMaintenances fiber.Router, gormDB *gor
 	invoiceMaintenanceController := rest.NewInvoiceMaintenanceController(invoiceMaintenanceService, invoiceMaintenanceRepo, tracer)
 
 	invoiceMaintenances.Post("/index-invoice-maintenance", invoiceMaintenanceController.GetInvoiceMaintenances)
+	invoiceMaintenances.Post("/index-detail-invoice-maintenance", invoiceMaintenanceController.GetInvoiceMaintenancesDetails)
 	invoiceMaintenances.Post("/show-invoice-maintenance", invoiceMaintenanceController.GetInvoiceMaintenanceByID)
 	invoiceMaintenances.Post("/create-invoice-maintenance", invoiceMaintenanceController.CreateInvoiceMaintenance)
 	invoiceMaintenances.Post("/update-invoice-maintenance", invoiceMaintenanceController.UpdateInvoiceMaintenance)

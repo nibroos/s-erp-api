@@ -49,6 +49,33 @@ func (c *InvoiceDpController) GetInvoiceDps(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, invoiceDps, paginationMeta, "Invoice DP fetched successfully", http.StatusOK, nil, nil)
 }
 
+func (c *InvoiceDpController) GetInvoiceDpsDetails(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InvoiceDpController-GetInvoiceDpsDetails", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("InvoiceDpController-GetInvoiceDpsDetails: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	invoiceDps, total, err := c.service.GetInvoiceDpsDetails(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch invoice DP", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, invoiceDps, paginationMeta, "Invoice DP fetched successfully", http.StatusOK, nil, nil)
+}
+
 func (c *InvoiceDpController) GetInvoiceDpByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("InvoiceDpController-GetInvoiceDpByID", opentracing.ChildOf(apiSpan.Context()))

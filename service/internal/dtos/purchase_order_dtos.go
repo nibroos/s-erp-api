@@ -424,6 +424,13 @@ type PurchaseOrderDetailDTO struct {
 	AccountNumber    *string                 `json:"account_number" db:"account_number"`
 	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
 	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
+
+	ProductID        *string `json:"product_id" db:"product_id"`
+	PoDtVatID        *string `json:"po_dt_vat_id" db:"po_dt_vat_id"`
+	PurchaseTypeName *string `json:"purchase_type_name" db:"purchase_type_name"`
+	ProductName      *string `json:"product_name" db:"product_name"`
+	PaymentTermName  *string `json:"payment_term_name" db:"payment_term_name"`
+	ShippingTermName *string `json:"shipping_term_name" db:"shipping_term_name"`
 }
 
 type PurchaseOrderPoDtListDTO struct {

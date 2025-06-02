@@ -1600,7 +1600,7 @@ func BuildSalesOrderAllCSVRows(salesOrders []dtos.SalesOrderListDTO, csv *string
 	// Convert rows to CSV format
 	csvContent := ""
 	for _, row := range rows {
-		csvContent += strings.Join(row, ",") + "\n"
+		csvContent += strings.Join(row, ";") + "\n"
 	}
 
 	*csv = csvContent
@@ -1704,7 +1704,7 @@ func BuildSalesOrderDetailCSVRows(salesOrders []dtos.SalesOrderDetailDTO, csv *s
 	// Convert rows to CSV format
 	csvContent := ""
 	for _, row := range rows {
-		csvContent += strings.Join(row, ",") + "\n"
+		csvContent += strings.Join(row, ";") + "\n"
 	}
 
 	*csv = csvContent

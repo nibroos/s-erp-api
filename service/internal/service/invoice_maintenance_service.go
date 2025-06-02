@@ -992,100 +992,6 @@ func (s *InvoiceMaintenanceService) ExcelGetInvoiceMaintenances(ctx *fiber.Ctx, 
 	return buffer.Bytes(), nil
 }
 
-func (s *InvoiceMaintenanceService) CsvGetInvoiceMaintenances(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
-	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-CsvGetInvoiceMaintenances", opentracing.ChildOf(span.Context()))
-	defer childSpan.Finish()
-
-	filters["is_csv"] = "1"
-	invoiceMaintenances, _, err := s.GetInvoiceMaintenances(ctx, filters, childSpan)
-	if err != nil {
-		return nil, err
-	}
-
-	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
-	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
-	appName := "App"
-	if err == nil && companyProfile != nil && companyProfile.CompanyName != nil {
-		appName = *companyProfile.CompanyName
-	}
-
-	csv := fmt.Sprintf("%s\n", appName)
-	csv += "\n"
-	csv += "Invoice Maintenances\n"
-	csv += "\n"
-
-	csv += "Customer,Invoice No,Title,Invoice Date,Due Date,Bank,Currency,Exchange Rate,VAT,PPh23,Qty,Sub Amount,DP Amount,Balance,Grand Total,Status,Created By\n"
-
-	for _, invoice := range invoiceMaintenances {
-		customerName := utils.GetPtrVal(invoice.CustomerName)
-		invoiceNo := utils.GetPtrVal(invoice.InvoiceNo)
-		title := utils.GetPtrVal(invoice.Title)
-		invoiceDate := utils.GetPtrVal(invoice.InvoiceDate)
-		dueDate := utils.GetPtrVal(invoice.DueDate)
-
-		bankName := utils.GetPtrVal(invoice.BankName)
-		accountNumber := utils.GetPtrVal(invoice.AccountNumber)
-		accountName := utils.GetPtrVal(invoice.AccountName)
-
-		bankInfo := bankName
-		if accountNumber != "" {
-			if bankInfo != "" {
-				bankInfo += " - "
-			}
-			bankInfo += accountNumber
-		}
-		if accountName != "" {
-			if bankInfo != "" {
-				bankInfo += " - "
-			}
-			bankInfo += accountName
-		}
-
-		currencyName := utils.GetPtrVal(invoice.CurrencyName)
-		totalVat := utils.GetFloatPtrVal(invoice.TotalVat)
-		totalPph23 := utils.GetFloatPtrVal(invoice.TotalPph23)
-		status := utils.GetPtrVal(invoice.Status)
-		createdByName := utils.GetPtrVal(invoice.CreatedByName)
-
-		exchangeRate := utils.GetFloatPtrVal(invoice.ExchangeRate)
-		totalQty := utils.GetFloatPtrVal(invoice.TotalQty)
-		subtotal := utils.GetFloatPtrVal(invoice.Subtotal)
-		totalDpProducts := utils.GetFloatPtrVal(invoice.TotalDpProducts)
-		totalBalanceProducts := utils.GetFloatPtrVal(invoice.TotalBalanceProducts)
-		grandTotal := utils.GetFloatPtrVal(invoice.GrandTotal)
-
-		customerName = utils.EscapeCsvField(customerName)
-		invoiceNo = utils.EscapeCsvField(invoiceNo)
-		title = utils.EscapeCsvField(title)
-		bankInfo = utils.EscapeCsvField(bankInfo)
-		currencyName = utils.EscapeCsvField(currencyName)
-		status = utils.EscapeCsvField(status)
-		createdByName = utils.EscapeCsvField(createdByName)
-
-		csv += fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s\n",
-			customerName,
-			invoiceNo,
-			title,
-			invoiceDate,
-			dueDate,
-			bankInfo,
-			currencyName,
-			exchangeRate,
-			totalVat,
-			totalPph23,
-			totalQty,
-			subtotal,
-			totalDpProducts,
-			totalBalanceProducts,
-			grandTotal,
-			status,
-			createdByName,
-		)
-	}
-
-	return []byte(csv), nil
-}
-
 func (s *InvoiceMaintenanceService) PublishBulkSendEmailApproved(ctx *fiber.Ctx, req dtos.BulkSendEmailApprovedInvoiceMaintenancesRequest, userID uint, branchID uint, tx *gorm.DB, span opentracing.Span) error {
 	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-PublishBulkSendEmailApproved", opentracing.ChildOf(span.Context()))
 
@@ -1717,4 +1623,116 @@ func (s *InvoiceMaintenanceService) Pdf(ctx *fiber.Ctx, req dtos.InvoiceMaintena
 	}
 
 	return &pdfPath, nil
+}
+
+// github.com/xuri/excelize/v2
+func (s *InvoiceMaintenanceService) CsvGetInvoiceMaintenances(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-CsvGetInvoiceMaintenances", opentracing.ChildOf(span.Context()))
+
+	// filters is_csv
+	filters["is_csv"] = "1"
+
+	exportType := utils.GetStringOrDefault(filters["export_type"], "all")
+
+	if exportType == "detail" {
+		return s.CsvGetDetail(ctx, filters, childSpan)
+	}
+
+	return s.CsvGetAll(ctx, filters, childSpan)
+}
+
+// CsvGetAll
+func (s *InvoiceMaintenanceService) CsvGetAll(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-CsvGetAll", opentracing.ChildOf(span.Context()))
+	salesOrders, _, err := s.GetInvoiceMaintenances(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	// get company profile
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err != nil {
+		defer childSpan.Finish()
+	} else {
+		appName = *companyProfile.CompanyName
+	}
+
+	csv := fmt.Sprintf("%s\n", appName)
+	csv += "\n"
+	csv += "Invoice Maintenance\n"
+	csv += "\n"
+
+	utils.BuildInvoiceMaintenanceAllCSVRows(salesOrders, &csv)
+
+	return []byte(csv), nil
+}
+
+func (s *InvoiceMaintenanceService) CsvGetDetail(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-CsvGetDetail", opentracing.ChildOf(span.Context()))
+	quotations, _, err := s.GetInvoiceMaintenancesDetails(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	// get company profile
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err != nil {
+		defer childSpan.Finish()
+	} else {
+		appName = *companyProfile.CompanyName
+	}
+
+	csv := fmt.Sprintf("%s\n", appName)
+	csv += "\n"
+	csv += "Invoice Maintenance\n"
+	csv += "\n"
+
+	// csv += "ID,Sales Invoice No,Order Type,Customer,Expired Date,Quot Date,Currency,Total,Status,Created By,Updated By\n"
+
+	// // Build CSV rows
+	// for _, quotation := range quotations {
+	// 	csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%.2f,%s,%s,%s\n",
+	// 		quotation.ID,
+	// 		utils.GetPtrVal(quotation.Remark),
+	// 	)
+	// }
+	utils.BuildInvoiceMaintenanceDetailCSVRows(quotations, &csv)
+
+	return []byte(csv), nil
+}
+
+func (s *InvoiceMaintenanceService) GetInvoiceMaintenancesDetails(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.InvoiceMaintenanceDetailDTO, int, error) {
+	childSpan := opentracing.StartSpan("InvoiceMaintenanceService-GetInvoiceMaintenancesDetails", opentracing.ChildOf(span.Context()))
+
+	salesOrders, total, err := s.repo.GetInvoiceMaintenancesDetails(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	salesInvoiceIDs := utils.GetInvoiceMaintenanceDetailsIDs(salesOrders)
+
+	// Get QuoDts by salesOrder IDs
+	siDts, _, err := s.repo.GetInvoiceMaintenanceDetailsDts(ctx, filters, salesInvoiceIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	// Get QuoDtBoms by salesOrder IDs
+	siDtBoms, _, err := s.repo.GetInvoiceMaintenanceDetailsDtBoms(ctx, filters, salesInvoiceIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	salesOrders = utils.MapGetInvoiceMaintenanceDetails(salesOrders, siDts, siDtBoms)
+
+	return salesOrders, total, nil
 }

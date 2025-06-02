@@ -273,6 +273,7 @@ type InvoiceMaintenanceDetailDTO struct {
 	TotalPph23               float64  `json:"total_pph23" db:"total_pph23"`
 	TotalVat                 float64  `json:"total_vat" db:"total_vat"`
 	GrandTotal               float64  `json:"grand_total" db:"grand_total"`
+	TotalAdjustment          *float64 `json:"total_adjustment" db:"total_adjustment"`
 
 	CreatedByID           *uint                         `json:"created_by_id" db:"created_by_id"`
 	UpdatedByID           *uint                         `json:"updated_by_id" db:"updated_by_id"`
@@ -283,6 +284,17 @@ type InvoiceMaintenanceDetailDTO struct {
 	UpdatedAt             *string                       `json:"updated_at" db:"updated_at"`
 	DeleteAt              *string                       `json:"deleted_at" db:"deleted_at"`
 	InvoiceMaintenanceDts []InvoiceMaintenanceDtListDTO `json:"invoice_maintenance_dts"`
+
+	ApprovedByID *string `json:"approved_by_id" db:"approved_by_id"`
+
+	CustomerEmail              *string `json:"customer_email" db:"customer_email"`
+	CustomerAddress            *string `json:"customer_address" db:"customer_address"`
+	PaymentTermName            *string `json:"payment_term_name" db:"payment_term_name"`
+	BranchName                 *string `json:"branch_name" db:"branch_name"`
+	InvoiceMaintenanceDtRemark *string `json:"invoice_maintenance_dt_remark" db:"invoice_maintenance_dt_remark"`
+	DaysRemaining              *int    `json:"days_remaining" db:"days_remaining"`
+	StatusExpired              *string `json:"status_expired" db:"status_expired"`
+	ApprovedByName             *string `json:"approved_by_name" db:"approved_by_name"`
 
 	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
 	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`

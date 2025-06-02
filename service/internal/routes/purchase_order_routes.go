@@ -16,6 +16,7 @@ func SetupPurchaseOrderRoutes(purchaseOrders fiber.Router, gormDB *gorm.DB, sqlD
 	purchaseOrderController := rest.NewPurchaseOrderController(purchaseOrderService, purchaseOrderRepo, tracer)
 
 	purchaseOrders.Post("/index-purchase-order", purchaseOrderController.GetPurchaseOrders)
+	purchaseOrders.Post("/index-detail-purchase-order", purchaseOrderController.GetPurchaseOrdersDetails)
 	purchaseOrders.Post("/widget-purchase-order", purchaseOrderController.GetWidgetPurchaseOrders)
 	purchaseOrders.Post("/create-purchase-order", purchaseOrderController.CreatePurchaseOrder)
 	purchaseOrders.Post("/show-purchase-order", purchaseOrderController.GetPurchaseOrderByID)
@@ -23,6 +24,7 @@ func SetupPurchaseOrderRoutes(purchaseOrders fiber.Router, gormDB *gorm.DB, sqlD
 	purchaseOrders.Post("/delete-purchase-order", purchaseOrderController.DeletePurchaseOrder)
 	purchaseOrders.Post("/restore-purchase-order", purchaseOrderController.RestorePurchaseOrder)
 	purchaseOrders.Post("/pdf-purchase-order", purchaseOrderController.Pdf)
+	purchaseOrders.Post("/csv-purchase-order", purchaseOrderController.Csv)
 
 	purchaseOrders.Post("/index-ref-so-dt", purchaseOrderController.GetRefIndexSoDts)
 	purchaseOrders.Post("/index-ref-ro-dt", purchaseOrderController.GetRefIndexRoDts)

@@ -16,6 +16,7 @@ func SetupInvoiceDpRoutes(invoiceDps fiber.Router, gormDB *gorm.DB, sqlDB *sqlx.
 	invoiceDpController := rest.NewInvoiceDpController(invoiceDpService, invoiceDpRepo, tracer)
 
 	invoiceDps.Post("/index-invoice-dp", invoiceDpController.GetInvoiceDps)
+	invoiceDps.Post("/index-detail-invoice-dp", invoiceDpController.GetInvoiceDpsDetails)
 	invoiceDps.Post("/show-invoice-dp", invoiceDpController.GetInvoiceDpByID)
 	invoiceDps.Post("/create-invoice-dp", invoiceDpController.CreateInvoiceDp)
 	invoiceDps.Post("/update-invoice-dp", invoiceDpController.UpdateInvoiceDp)

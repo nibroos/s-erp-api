@@ -509,13 +509,13 @@ func MapGetSalesInvoiceDetails(salesOrders []dtos.SalesInvoiceDetailDTO, soDts [
 func BuildSalesInvoiceAllCSVRows(salesOrders []dtos.SalesInvoiceListDTO, csv *string) error {
 	rows := [][]string{}
 	header := []string{
-		"ID", "Invoice No", "Customer", "Order Type", "Title", "Invoice Date", "Due Date",
+		"No", "Invoice No", "Customer", "Order Type", "Title", "Invoice Date", "Due Date",
 		"Currency", "Total", "Status", "Created By", "Updated By",
 	}
 	rows = append(rows, header)
 
-	for _, salesOrder := range salesOrders {
-		ID := fmt.Sprintf("%d", salesOrder.ID)
+	for idx, salesOrder := range salesOrders {
+		ID := fmt.Sprintf("%d", idx+1)
 		InvoiceNo := GetPtrVal(salesOrder.InvoiceNo)
 		CustomerName := GetPtrVal(salesOrder.CustomerName)
 		OrderTypeName := GetPtrVal(salesOrder.OrderTypeName)

@@ -46,116 +46,10 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 
 	var total int
 
-	filterDBColumnKey := []string{
-		"si.invoice_no", "si.remark", "si.status", "si.title",
-		"c.name",
-		"sidt.remark",
-	}
-
-	var args []interface{}
-
-	queryGlobal := ""
-
-	i := 1
-	if value, ok := filters["global"]; ok && value != "" {
-		queryGlobal = " AND ("
-		for idx, column := range filterDBColumnKey {
-			if idx > 0 {
-				queryGlobal += " OR"
-			}
-			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
-			args = append(args, "%"+value+"%")
-			i++
-		}
-		queryGlobal += ")"
-	}
-
-	condition := ""
-
-	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND si.id IN (%s)", filters["ids"])
-	}
-
-	filterKey := map[string]string{
-		"customer_id":     "si.customer_id",
-		"currency_id":     "si.currency_id",
-		"payment_term_id": "si.payment_term_id",
-		"vat_id":          "si.vat_id",
-		"pph23_id":        "si.pph23_id",
-	}
-
-	for key, col := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s = $%d", col, i)
-			args = append(args, value)
-			i++
-		}
-	}
-
-	if value, ok := filters["status"]; ok && value != "" {
-		condition += fmt.Sprintf(" AND si.status = $%d", i)
-		args = append(args, value)
-		i++
-	}
-
-	filterIDsKey := map[string]string{
-		"customer_ids":     "si.customer_id",
-		"currency_ids":     "si.currency_id",
-		"payment_term_ids": "si.payment_term_id",
-		"pph23_ids":        "si.pph23_id",
-	}
-
-	for key, valueID := range filterIDsKey {
-		if value, ok := filters[key]; ok && value != "" {
-			ids := strings.Split(value, ",")
-			intIDs, err := utils.SplitStringArrayOfInts(ids)
-			if err != nil {
-				utils.LogErrors(childSpan, err)
-				return nil, 0, err
-			}
-
-			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
-			args = append(args, pq.Array(intIDs))
-			i++
-		}
-	}
-
-	filterIDsOrKey := map[string][]string{
-		"vat_ids": {"si.vat_id", "sidt.vat_id"},
-	}
-
-	for key, valueIDs := range filterIDsOrKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += " AND ("
-			for idx, valueID := range valueIDs {
-				if idx > 0 {
-					condition += " OR"
-				}
-				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
-				args = append(args, value)
-			}
-			condition += ")"
-		}
-	}
-
-	// if date_type, start_date, end_date filled
-	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
-
-		filterDateTypeKey := map[string]string{
-			"invoice_date": "si.invoice_date",
-			"due_date":     "si.due_date",
-		}
-
-		dateTypeColumn := "si.invoice_date"
-		for key := range filterDateTypeKey {
-			if key == filters["date_type"] {
-				dateTypeColumn = filterDateTypeKey[filters["date_type"]]
-			}
-		}
-
-		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
-		args = append(args, filters["start_date"], filters["end_date"])
-		i += 2
+	args, i, condition, queryGlobal, _, _, err := utils.GetSalesInvoiceCondition(ctx, filters, childSpan)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, 0, err
 	}
 
 	baseQuery := `
@@ -180,8 +74,12 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
-        FROM sales_invoices si
+				FROM sales_invoices si
 				LEFT JOIN sales_invoice_dts sidt ON sidt.sales_invoice_id = si.id
+				LEFT JOIN products p ON sidt.product_id = p.id
+				LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sidt.ref_dt_id AND sidt.ref_type = 'so' 
+				LEFT JOIN products it ON it.id = sdb.item_id
+
 				LEFT JOIN customers c ON si.customer_id = c.id
 				LEFT JOIN mix_values cur ON si.currency_id = cur.id
 				LEFT JOIN mix_values pt ON si.payment_term_id = pt.id
@@ -363,7 +261,7 @@ func (r *SalesInvoiceRepository) GetSalesInvoicesDetails(ctx *fiber.Ctx, filters
         LEFT JOIN users uu ON si.updated_by_id = uu.id
 				` + joinCondition + `
 				WHERE 1=1` + condition + queryGlobal + customCondition + `
-				AND so.deleted_at IS NULL
+				AND si.deleted_at IS NULL
     ) AS alias WHERE 1=1`
 
 	query := `SELECT *
@@ -2167,147 +2065,13 @@ func (r *SalesInvoiceRepository) RestoreInventoriesStatus(tx *gorm.DB, inventory
 func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesInvoiceStatusWidget, int, error) {
 	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetWidgetSalesInvoices", opentracing.ChildOf(span.Context()))
 
-	claims, _ := auth.GetAuthUser(ctx)
-	branchID := claims["bid"]
-
-	isAdmin := utils.IsAdmin(ctx)
-
 	var widgets []dtos.SalesInvoiceStatusWidget
 	var total int
 
-	filterDBColumnKey := []string{
-		"si.invoice_no", "si.remark", "si.status", "title",
-		"c.name",
-		"sidt.remark",
-	}
-
-	var args []interface{}
-
-	queryGlobal := ""
-
-	i := 1
-	if value, ok := filters["global"]; ok && value != "" {
-		queryGlobal = " AND ("
-		for idx, column := range filterDBColumnKey {
-			if idx > 0 {
-				queryGlobal += " OR"
-			}
-			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
-			args = append(args, "%"+value+"%")
-			i++
-		}
-		queryGlobal += ")"
-	}
-
-	condition := ""
-
-	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND si.id IN (%s)", filters["ids"])
-	}
-
-	filterKey := map[string]string{
-		"status":          "si.status",
-		"customer_id":     "si.customer_id",
-		"currency_id":     "si.currency_id",
-		"payment_term_id": "si.payment_term_id",
-		"vat_id":          "si.vat_id",
-		"pph23_id":        "si.pph23_id",
-	}
-
-	for key, col := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s = $%d", col, i)
-			args = append(args, value)
-			i++
-		}
-	}
-
-	if value, ok := filters["status"]; ok && value != "" {
-		condition += fmt.Sprintf(" AND si.status = $%d", i)
-		args = append(args, value)
-		i++
-	}
-
-	for key, value := range filters {
-		switch key {
-		case "invoice_no", "remark", "title":
-			if value != "" {
-				condition += fmt.Sprintf(" AND si.%s ILIKE $%d", key, i)
-				args = append(args, "%"+value+"%")
-				i++
-			}
-		}
-	}
-
-	if !isAdmin && branchID != nil {
-		condition += fmt.Sprintf(" AND si.branch_id = $%d", i)
-		args = append(args, branchID)
-		i++
-	}
-
-	if isAdmin && filters["branch_id"] != "" {
-		condition += fmt.Sprintf(" AND si.branch_id = $%d", i)
-		args = append(args, filters["branch_id"])
-		i++
-	}
-
-	filterIDsKey := map[string]string{
-		"customer_ids":     "si.customer_id",
-		"currency_ids":     "si.currency_id",
-		"payment_term_ids": "si.payment_term_id",
-		"pph23_ids":        "si.pph23_id",
-	}
-
-	for key, valueID := range filterIDsKey {
-		if value, ok := filters[key]; ok && value != "" {
-			ids := strings.Split(value, ",")
-			intIDs, err := utils.SplitStringArrayOfInts(ids)
-			if err != nil {
-				utils.LogErrors(childSpan, err)
-				return nil, 0, err
-			}
-
-			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
-			args = append(args, pq.Array(intIDs))
-			i++
-		}
-	}
-
-	filterIDsOrKey := map[string][]string{
-		"vat_ids": {"si.vat_id", "sidt.vat_id"},
-	}
-
-	for key, valueIDs := range filterIDsOrKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += " AND ("
-			for idx, valueID := range valueIDs {
-				if idx > 0 {
-					condition += " OR"
-				}
-				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
-				args = append(args, value)
-			}
-			condition += ")"
-		}
-	}
-
-	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
-
-		filterDateTypeKey := map[string]string{
-			"invoice_date": "si.invoice_date",
-			"due_date":     "si.due_date",
-		}
-
-		dateTypeColumn := "si.invoice_date"
-		for key := range filterDateTypeKey {
-			if key == filters["date_type"] {
-				dateTypeColumn = filterDateTypeKey[filters["date_type"]]
-			}
-		}
-
-		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
-		args = append(args, filters["start_date"], filters["end_date"])
-		i += 2
+	args, _, condition, queryGlobal, _, customCondition, err := utils.GetSalesInvoiceCondition(ctx, filters, childSpan)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, 0, err
 	}
 
 	query := `
@@ -2327,10 +2091,26 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
             si.total_qty,
             si.grand_total
         FROM sales_invoices si
-        LEFT JOIN sales_invoice_dts sidt ON sidt.sales_invoice_id = si.id
-        LEFT JOIN customers c ON si.customer_id = c.id
+				LEFT JOIN sales_invoice_dts sidt ON sidt.sales_invoice_id = si.id
+				LEFT JOIN products p ON sidt.product_id = p.id
+				LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sidt.ref_dt_id AND sidt.ref_type = 'so' 
+				LEFT JOIN products it ON it.id = sdb.item_id
+
+				LEFT JOIN customers c ON si.customer_id = c.id
+				LEFT JOIN mix_values cur ON si.currency_id = cur.id
+				LEFT JOIN mix_values pt ON si.payment_term_id = pt.id
+				LEFT JOIN mix_values vat ON si.vat_id = vat.id
+				LEFT JOIN mix_values pph ON si.pph23_id = pph.id
+				LEFT JOIN branches b ON si.branch_id = b.id
+				LEFT JOIN bank_informations bk ON si.bank_id = bk.id
+				LEFT JOIN sales_orders so ON sidt.ref_id = so.id AND sidt.ref_type = 'so'
+				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+				LEFT JOIN inv_dts invdt ON sidt.ref_dt_id = invdt.id AND sidt.ref_type = 'inv_out' AND invdt.deleted_at IS NULL
+				LEFT JOIN so_dts sodt ON invdt.ref_so_dt_id = sodt.id AND invdt.ref_type = 'so' AND sodt.deleted_at IS NULL
+				LEFT JOIN sales_orders so2 ON sodt.sales_order_id = so2.id AND so2.deleted_at IS NULL
+				LEFT JOIN mix_values so2_ot ON so2.order_type_id = so2_ot.id
         WHERE si.deleted_at IS NULL
-        ` + condition + queryGlobal + `
+        ` + condition + queryGlobal + customCondition + `
     ),
     sales_invoice_stats AS (
         SELECT
@@ -2358,7 +2138,7 @@ func (r *SalesInvoiceRepository) GetWidgetSalesInvoices(ctx *fiber.Ctx, filters 
 	var selectErr error
 	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-	err := r.sqlDB.SelectContext(ctx.Context(), &widgets, query, args...)
+	err = r.sqlDB.SelectContext(ctx.Context(), &widgets, query, args...)
 	if err != nil {
 		selectSpan.LogKV("query", query)
 		utils.LogErrors(selectSpan, err)

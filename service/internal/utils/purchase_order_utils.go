@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/lib/pq"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/models"
 	"github.com/opentracing/opentracing-go"
@@ -520,4 +521,318 @@ func MapOldUpdatePoDts(ctx *fiber.Ctx, oldInvDts []dtos.PurchaseOrderPoDtListDTO
 	}
 
 	return refSoDtID, refSoDtBomDtID, refRoDtID, refRoDtBomID, nil
+}
+
+// Get condition for quotation
+func GetPurchaseOrderCondition(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]interface{}, int, string, string, string, string, error) {
+	childSpan := span.Tracer().StartSpan("quotation_utils-GetPurchaseOrderCondition", opentracing.ChildOf(span.Context()))
+	var err error
+
+	joinCondition := ""
+	customCondition := ""
+	condition := ""
+	var args []interface{}
+	queryGlobal := ""
+	i := 1
+
+	filterDBColumnKey := []string{
+		"po.po_no", "po.remark", "po.shipping_destination",
+		"p.name",
+		"pd.remark",
+		"pd.gen_code",
+	}
+
+	if value, ok := filters["global"]; ok && value != "" {
+
+		queryGlobal = " AND ("
+		for idx, column := range filterDBColumnKey {
+			if idx > 0 {
+				queryGlobal += " OR"
+			}
+			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
+			args = append(args, "%"+value+"%")
+			i++
+		}
+		queryGlobal += ")"
+	}
+
+	if filters["ids"] != "" {
+		condition += fmt.Sprintf(" AND id IN (%s)", filters["ids"])
+	}
+
+	filterKey := map[string]string{
+		"status":           "po.status",
+		"customer_id":      "po.customer_id",
+		"purchase_type_id": "po.purchase_type_id",
+		"currency_id":      "po.currency_id",
+		"vat_id":           "po.vat_id",
+		"payment_term_id":  "po.payment_term_id",
+		"shipping_term_id": "po.shipping_term_id",
+		"pph23_id":         "po.pph23_id",
+	}
+
+	for key, col := range filterKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += fmt.Sprintf(" AND %s = $%d", col, i)
+			args = append(args, value)
+			i++
+		}
+	}
+
+	filterIDsKey := map[string]string{
+		"customer_ids":      "po.customer_id",
+		"purchase_type_ids": "po.purchase_type_id",
+		"currency_ids":      "po.currency_id",
+		"payment_term_ids":  "po.payment_term_id",
+		"shipping_term_ids": "po.shipping_term_id",
+		"pph23_ids":         "po.pph23_id",
+	}
+
+	for key, valueID := range filterIDsKey {
+		if value, ok := filters[key]; ok && value != "" {
+			ids := strings.Split(value, ",")
+			intIDs, err := SplitStringArrayOfInts(ids)
+			if err != nil {
+				LogErrors(childSpan, err)
+				return nil, 0, "", "", "", "", err
+			}
+
+			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
+			args = append(args, pq.Array(intIDs))
+			i++
+		}
+	}
+
+	filterIDsOrKey := map[string][]string{
+		"vat_ids": {"po.vat_id", "pd.vat_id"},
+	}
+
+	for key, valueIDs := range filterIDsOrKey {
+		if value, ok := filters[key]; ok && value != "" {
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
+				args = append(args, value)
+			}
+			condition += ")"
+		}
+	}
+
+	// And one for array conditions with OR
+	filterIDsOrArrayKey := map[string][]string{
+		"product_ids": {"p.id"},
+	}
+
+	// Handle array OR conditions
+	for key, valueIDs := range filterIDsOrArrayKey {
+		if value, ok := filters[key]; ok && value != "" {
+			// Split the string into an array of integers
+			ids := strings.Split(value, ",")
+			intIDs, err := SplitStringArrayOfInts(ids)
+			if err != nil {
+				LogErrors(childSpan, err)
+				return nil, 0, "", "", "", "", err
+			}
+
+			condition += " AND ("
+			for idx, valueID := range valueIDs {
+				if idx > 0 {
+					condition += " OR"
+				}
+				condition += fmt.Sprintf(" %s = ANY($%d)", valueID, i)
+				args = append(args, pq.Array(intIDs))
+				i++
+			}
+			condition += ")"
+		}
+	}
+
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+		dateColumn := ""
+		switch filters["date_type"] {
+		case "1":
+			dateColumn = "po.po_date"
+		case "2":
+			dateColumn = "po.delivery_date"
+		default:
+			dateColumn = "po.po_date"
+		}
+
+		condition += fmt.Sprintf(" AND %s BETWEEN $%d AND $%d", dateColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
+	return args, i, condition, queryGlobal, joinCondition, customCondition, err
+}
+
+func GetPurchaseOrderDetailsIDs(quotations []dtos.PurchaseOrderDetailDTO) []uint {
+	quotationsIDs := []uint{}
+	for _, quotation := range quotations {
+		if quotation.ID > 0 {
+			quotationsIDs = append(quotationsIDs, quotation.ID)
+		}
+	}
+	return quotationsIDs
+}
+
+func MapFilterQuoDtToPurchaseOrders(quoDts []dtos.PurchaseOrderPoDtListDTO, quotations []dtos.PurchaseOrderDetailDTO) []dtos.PurchaseOrderDetailDTO {
+	// quotations := []dtos.PurchaseOrderAttachmentsDTO{}
+	for i, quotation := range quotations {
+		newSoDts := make([]dtos.PurchaseOrderPoDtListDTO, 0)
+		for _, quoDt := range quoDts {
+			if *quoDt.PoID == quotation.ID {
+				newSoDts = append(newSoDts, quoDt)
+			}
+		}
+		quotation.PoDts = newSoDts
+		quotations[i] = quotation
+	}
+
+	return quotations
+}
+
+func MapGetPurchaseOrderDetails(salesOrders []dtos.PurchaseOrderDetailDTO, soDts []dtos.PurchaseOrderPoDtListDTO) []dtos.PurchaseOrderDetailDTO {
+	// salesOrders := []dtos.PurchaseOrderAttachmentsDTO{}
+	for i, salesOrder := range salesOrders {
+		newSoDts := make([]dtos.PurchaseOrderPoDtListDTO, 0)
+		for _, soDt := range soDts {
+			if *soDt.PoID == salesOrder.ID {
+				newSoDts = append(newSoDts, soDt)
+			}
+		}
+		salesOrder.PoDts = newSoDts
+		salesOrders[i] = salesOrder
+	}
+
+	return salesOrders
+}
+
+// Build CSV rows, dtos.PurchaseOrderListDTO, csv pointer
+func BuildPurchaseOrderAllCSVRows(salesOrders []dtos.PurchaseOrderListDTO, csv *string) error {
+	rows := [][]string{}
+	header := []string{
+		"ID", "Purchase No", "Supplier", "PO Date", "Delivery Date",
+		"Currency", "Total", "Status", "Created By", "Updated By",
+	}
+	rows = append(rows, header)
+
+	for _, salesOrder := range salesOrders {
+		ID := fmt.Sprintf("%d", salesOrder.ID)
+		PoNo := GetPtrVal(salesOrder.PoNo)
+		CustomerName := GetPtrVal(salesOrder.CustomerName)
+		PoDate := GetPtrVal(salesOrder.PoDate)
+		DeliveryDate := GetPtrVal(salesOrder.DeliveryDate)
+		CurrencyName := GetPtrVal(salesOrder.CurrencyName)
+		Status := GetPtrVal(&salesOrder.Status)
+		CreatedByName := GetPtrVal(salesOrder.CreatedByName)
+		UpdatedByName := GetPtrVal(salesOrder.UpdatedByName)
+
+		// EscapeCsvField
+		ID = EscapeCsvField(ID)
+		PoNo = EscapeCsvField(PoNo)
+		CustomerName = EscapeCsvField(CustomerName)
+		PoDate = EscapeCsvField(PoDate)
+		DeliveryDate = EscapeCsvField(DeliveryDate)
+		CurrencyName = EscapeCsvField(CurrencyName)
+		Status = EscapeCsvField(Status)
+		CreatedByName = EscapeCsvField(CreatedByName)
+		UpdatedByName = EscapeCsvField(UpdatedByName)
+
+		row := []string{
+			ID, PoNo, CustomerName, PoDate, DeliveryDate,
+			CurrencyName, fmt.Sprintf("%f", *salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
+		}
+
+		rows = append(rows, row)
+	}
+
+	// Convert rows to CSV format
+	csvContent := ""
+	for _, row := range rows {
+		csvContent += strings.Join(row, ";") + "\n"
+	}
+
+	*csv = csvContent
+
+	return nil
+}
+
+// Build CSV rows, dtos.PurchaseOrderListDTO, csv pointer
+func BuildPurchaseOrderDetailCSVRows(salesOrders []dtos.PurchaseOrderDetailDTO, csv *string) error {
+	rows := [][]string{}
+	header := []string{
+		"No", "Purchase No", "Customer", "PO Date", "Delivery Date",
+		"Currency", "Total", "Status", "Created By", "Updated By",
+		"Product/Item Name", "Qty", "Price", "Subtotal",
+	}
+	rows = append(rows, header)
+
+	for iPurchaseOrder, salesOrder := range salesOrders {
+
+		No := fmt.Sprintf("%d", iPurchaseOrder+1)
+		PoNo := GetPtrVal(salesOrder.PoNo)
+		CustomerName := GetPtrVal(salesOrder.CustomerName)
+		PoDate := GetPtrVal(salesOrder.PoDate)
+		DeliveryDate := GetPtrVal(salesOrder.DeliveryDate)
+		CurrencyName := GetPtrVal(salesOrder.CurrencyName)
+		Status := GetPtrVal(&salesOrder.Status)
+		CreatedByName := GetPtrVal(salesOrder.CreatedByName)
+		UpdatedByName := GetPtrVal(salesOrder.UpdatedByName)
+
+		No = EscapeCsvField(No)
+		PoNo = EscapeCsvField(PoNo)
+		CustomerName = EscapeCsvField(CustomerName)
+		PoDate = EscapeCsvField(PoDate)
+		DeliveryDate = EscapeCsvField(DeliveryDate)
+		CurrencyName = EscapeCsvField(CurrencyName)
+		Status = EscapeCsvField(Status)
+		CreatedByName = EscapeCsvField(CreatedByName)
+		UpdatedByName = EscapeCsvField(UpdatedByName)
+
+		for iSoDt, quoDt := range salesOrder.PoDts {
+			ProductItemName := GetPtrVal(quoDt.ItemName)
+			ProductItemName = EscapeCsvField(ProductItemName)
+			Qty := fmt.Sprintf("%f", *quoDt.Qty)
+			PriceSell := fmt.Sprintf("%f", *quoDt.Price)
+			TotalAm := fmt.Sprintf("%f", *quoDt.Subtotal)
+
+			if iSoDt == 0 {
+				row := []string{
+					No, PoNo, CustomerName, PoDate, DeliveryDate,
+					CurrencyName, fmt.Sprintf("%f", salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
+					ProductItemName, Qty, PriceSell, TotalAm,
+				}
+				rows = append(rows, row)
+			} else {
+				row := []string{
+					"", "", "", "", "", "",
+					"", "", "", "",
+					ProductItemName, Qty, PriceSell, TotalAm,
+				}
+				rows = append(rows, row)
+			}
+		}
+		if len(salesOrder.PoDts) == 0 {
+			row := []string{
+				No, PoNo, CustomerName, PoDate, DeliveryDate,
+				CurrencyName, fmt.Sprintf("%f", salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
+				"", "", "", "",
+			}
+			rows = append(rows, row)
+		}
+	}
+
+	// Convert rows to CSV format
+	csvContent := ""
+	for _, row := range rows {
+		csvContent += strings.Join(row, ";") + "\n"
+	}
+
+	*csv = csvContent
+
+	return nil
 }

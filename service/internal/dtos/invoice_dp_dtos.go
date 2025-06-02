@@ -271,21 +271,24 @@ type InvoiceDpDetailDTO struct {
 	DeleteAt      *string              `json:"deleted_at" db:"deleted_at"`
 	InvoiceDpDts  []InvoiceDpDtListDTO `json:"invoice_dp_dts"`
 
-	CompanyProfileID *uint                   `json:"company_profile_id" db:"company_profile_id"`
-	CustomerCode     *string                 `json:"customer_code" db:"customer_code"`
-	CustomerName     *string                 `json:"customer_name" db:"customer_name"`
-	Phone            *string                 `json:"phone" db:"phone"`
-	Address          *string                 `json:"address" db:"address"`
-	Pic              *string                 `json:"pic" db:"pic"`
-	Company          CompanyProfileDetailDTO `json:"company"`
-	OrderTypeName    *string                 `json:"order_type_name" db:"order_type_name"`
-	CurrencyName     *string                 `json:"currency_name" db:"currency_name"`
-	VatName          *string                 `json:"vat_name" db:"vat_name"`
-	Pph23Name        *string                 `json:"pph23_name" db:"pph23_name"`
-	BankName         *string                 `json:"bank_name" db:"bank_name"`
-	AccountName      *string                 `json:"account_name" db:"account_name"`
-	AccountNumber    *string                 `json:"account_number" db:"account_number"`
-	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
+	CompanyProfileID     *uint                   `json:"company_profile_id" db:"company_profile_id"`
+	CustomerCode         *string                 `json:"customer_code" db:"customer_code"`
+	CustomerName         *string                 `json:"customer_name" db:"customer_name"`
+	Phone                *string                 `json:"phone" db:"phone"`
+	Pic                  *string                 `json:"pic" db:"pic"`
+	Address              *string                 `json:"address" db:"address"`
+	Company              CompanyProfileDetailDTO `json:"company"`
+	OrderTypeName        *string                 `json:"order_type_name" db:"order_type_name"`
+	CurrencyName         *string                 `json:"currency_name" db:"currency_name"`
+	VatName              *string                 `json:"vat_name" db:"vat_name"`
+	Pph23Name            *string                 `json:"pph23_name" db:"pph23_name"`
+	BankName             *string                 `json:"bank_name" db:"bank_name"`
+	AccountName          *string                 `json:"account_name" db:"account_name"`
+	AccountNumber        *string                 `json:"account_number" db:"account_number"`
+	IsIDOnly             *int                    `json:"is_id_only" db:"is_id_only"`
+	PaymentTermName      *string                 `json:"payment_term_name" db:"payment_term_name"`
+	BranchName           *string                 `json:"branch_name" db:"branch_name"`
+	SalesInvoiceDtRemark *string                 `json:"sales_invoice_dt_remark" db:"sales_invoice_dt_remark"`
 }
 
 type InvoiceDpDtListDTO struct {

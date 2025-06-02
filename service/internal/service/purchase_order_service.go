@@ -672,3 +672,108 @@ func (s *PurchaseOrderService) Pdf(ctx *fiber.Ctx, req dtos.PurchaseOrderDetailD
 
 	return &pdfPath, nil
 }
+
+// github.com/xuri/excelize/v2
+func (s *PurchaseOrderService) Csv(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderService-Csv", opentracing.ChildOf(span.Context()))
+
+	// filters is_csv
+	filters["is_csv"] = "1"
+
+	exportType := utils.GetStringOrDefault(filters["export_type"], "all")
+
+	if exportType == "detail" {
+		return s.CsvGetDetail(ctx, filters, childSpan)
+	}
+
+	return s.CsvGetAll(ctx, filters, childSpan)
+}
+
+// CsvGetAll
+func (s *PurchaseOrderService) CsvGetAll(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderService-CsvGetAll", opentracing.ChildOf(span.Context()))
+	salesOrders, _, err := s.GetPurchaseOrders(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	// get company profile
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err != nil {
+		defer childSpan.Finish()
+	} else {
+		appName = *companyProfile.CompanyName
+	}
+
+	csv := fmt.Sprintf("%s\n", appName)
+	csv += "\n"
+	csv += "Purchase Orders\n"
+	csv += "\n"
+
+	utils.BuildPurchaseOrderAllCSVRows(salesOrders, &csv)
+
+	return []byte(csv), nil
+}
+
+func (s *PurchaseOrderService) CsvGetDetail(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]byte, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderService-CsvGetDetail", opentracing.ChildOf(span.Context()))
+	quotations, _, err := s.GetPurchaseOrdersDetails(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, err
+	}
+
+	// get company profile
+	companyProfileParams := dtos.GetCompanyProfileParams{ID: 1}
+	companyProfile, err := s.utilRepo.GetCompanyProfileByID(ctx, &companyProfileParams)
+	appName := "App"
+	if err != nil {
+		defer childSpan.Finish()
+	} else {
+		appName = *companyProfile.CompanyName
+	}
+
+	csv := fmt.Sprintf("%s\n", appName)
+	csv += "\n"
+	csv += "Purchase Orders\n"
+	csv += "\n"
+
+	// csv += "ID,Sales Order No,Order Type,Customer,Expired Date,Quot Date,Currency,Total,Status,Created By,Updated By\n"
+
+	// // Build CSV rows
+	// for _, quotation := range quotations {
+	// 	csv += fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s,%.2f,%s,%s,%s\n",
+	// 		quotation.ID,
+	// 		utils.GetPtrVal(quotation.Remark),
+	// 	)
+	// }
+	utils.BuildPurchaseOrderDetailCSVRows(quotations, &csv)
+
+	return []byte(csv), nil
+}
+
+func (s *PurchaseOrderService) GetPurchaseOrdersDetails(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.PurchaseOrderDetailDTO, int, error) {
+	childSpan := opentracing.StartSpan("PurchaseOrderService-GetPurchaseOrdersDetails", opentracing.ChildOf(span.Context()))
+
+	salesOrders, total, err := s.repo.GetPurchaseOrderDetails(ctx, filters, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	salesOrderIDs := utils.GetPurchaseOrderDetailsIDs(salesOrders)
+
+	// Get QuoDts by salesOrder IDs
+	soDts, _, err := s.repo.GetPurchaseOrderDetailsDts(ctx, filters, salesOrderIDs, childSpan)
+	if err != nil {
+		defer childSpan.Finish()
+		return nil, 0, err
+	}
+
+	salesOrders = utils.MapGetPurchaseOrderDetails(salesOrders, soDts)
+
+	return salesOrders, total, nil
+}
