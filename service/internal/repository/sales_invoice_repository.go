@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -296,6 +297,438 @@ func (r *SalesInvoiceRepository) GetSalesInvoices(ctx *fiber.Ctx, filters map[st
 	}
 
 	return salesInvoices, total, nil
+}
+
+func (r *SalesInvoiceRepository) GetSalesInvoicesDetails(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesInvoiceDetailDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSalesInvoicesDetails", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	products := []dtos.SalesInvoiceDetailDTO{}
+
+	var total int
+
+	args, i, condition, queryGlobal, joinCondition, customCondition, err := utils.GetSalesInvoiceCondition(ctx, filters, childSpan)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, 0, err
+	}
+
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (si.id)
+					si.id, si.customer_id, si.currency_id, si.payment_term_id, si.vat_id, si.pph23_id, si.branch_id, si.bank_id,
+					si.invoice_no, si.title, si.remark, si.status, bk.name as bank_name, bk.account_number as account_number, bk.account_name as account_name,
+					si.exchange_rate, si.pph23_percentage, si.vat_percentage, si.total_qty, si.subtotal, si.total_discount, si.total_pph23, si.total_vat, si.grand_total, si.created_by_id, si.updated_by_id, si.deleted_by_id, si.created_at, si.updated_at, si.deleted_at,
+					TO_CHAR(si.invoice_date, 'YYYY-MM-DD') as invoice_date, TO_CHAR(si.due_date, 'YYYY-MM-DD') as due_date,
+					si.discount_amount, si.discount_percentage, si.discount_percentage_amount, si.discount_final, si.discount_type, si.total_amount_products, si.total_dp_products, si.total_balance_products,
+
+					c.name as customer_name,
+					cur.name as currency_name,
+					pt.name as payment_term_name,
+					vat.name as vat_name,
+					pph.name as pph23_name,
+					b.name as branch_name,
+
+					sidt.remark as sales_invoice_dt_remark,
+					COALESCE(ot.name, so2_ot.name) as order_type_name,
+
+					cu.name as created_by_name,
+					uu.name as updated_by_name
+
+        FROM sales_invoices si
+				LEFT JOIN sales_invoice_dts sidt ON sidt.sales_invoice_id = si.id
+				LEFT JOIN products p ON sidt.product_id = p.id
+				LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sidt.ref_dt_id AND sidt.ref_type = 'so' 
+				LEFT JOIN products it ON it.id = sdb.item_id
+
+				LEFT JOIN customers c ON si.customer_id = c.id
+				LEFT JOIN mix_values cur ON si.currency_id = cur.id
+				LEFT JOIN mix_values pt ON si.payment_term_id = pt.id
+				LEFT JOIN mix_values vat ON si.vat_id = vat.id
+				LEFT JOIN mix_values pph ON si.pph23_id = pph.id
+				LEFT JOIN branches b ON si.branch_id = b.id
+				LEFT JOIN bank_informations bk ON si.bank_id = bk.id
+				LEFT JOIN sales_orders so ON sidt.ref_id = so.id AND sidt.ref_type = 'so'
+				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+				LEFT JOIN inv_dts invdt ON sidt.ref_dt_id = invdt.id AND sidt.ref_type = 'inv_out' AND invdt.deleted_at IS NULL
+				LEFT JOIN so_dts sodt ON invdt.ref_so_dt_id = sodt.id AND invdt.ref_type = 'so' AND sodt.deleted_at IS NULL
+				LEFT JOIN sales_orders so2 ON sodt.sales_order_id = so2.id AND so2.deleted_at IS NULL
+				LEFT JOIN mix_values so2_ot ON so2.order_type_id = so2_ot.id
+
+        LEFT JOIN users cu ON si.created_by_id = cu.id
+        LEFT JOIN users uu ON si.updated_by_id = uu.id
+				` + joinCondition + `
+				WHERE 1=1` + condition + queryGlobal + customCondition + `
+				AND so.deleted_at IS NULL
+    ) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	countQuery := `SELECT COUNT(*) as total
+		` + baseQuery
+
+	for key, value := range filters {
+		switch key {
+		case "invoice_no", "remark", "status", "title":
+			if value != "" {
+				query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+				args = append(args, "%"+value+"%")
+				i++
+			}
+		}
+	}
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	countArgs := append([]interface{}{}, args...)
+
+	var wg sync.WaitGroup
+	var countErr, selectErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if filters["is_csv"] != "1" {
+			countSpan := opentracing.StartSpan("CountQuery", opentracing.ChildOf(childSpan.Context()))
+
+			err := r.sqlDB.GetContext(ctx.Context(), &total, countQuery, countArgs...)
+			if err != nil {
+				utils.LogErrors(countSpan, err)
+				countSpan.LogKV("query", countQuery)
+				countErr = err
+			}
+		}
+	}()
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	orderColumn := utils.GetStringOrDefault(filters["order_column"], "invoice_date")
+	orderDirection := utils.GetStringOrDefault(filters["order_direction"], "desc")
+	query += fmt.Sprintf(" ORDER BY %s %s", orderColumn, orderDirection)
+
+	perPage := utils.GetIntOrDefault(filters["per_page"], 10)
+	currentPage := utils.GetIntOrDefault(filters["page"], 1)
+
+	if filters["is_csv"] != "1" {
+		query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", i, i+1)
+		args = append(args, perPage, (currentPage-1)*perPage)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+		err := r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+		if err != nil {
+			selectSpan.LogKV("query", query)
+			utils.LogErrors(selectSpan, err)
+			selectErr = err
+		}
+	}()
+
+	wg.Wait()
+
+	if countErr != nil || selectErr != nil {
+		defer childSpan.Finish()
+	}
+
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+
+	if selectErr != nil {
+		return nil, 0, selectErr
+	}
+
+	return products, total, nil
+}
+
+func (r *SalesInvoiceRepository) GetSalesInvoiceDetailsDts(ctx *fiber.Ctx, filters map[string]string, salesOrderIDs []uint, span opentracing.Span) ([]dtos.SalesInvoiceDtListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSalesInvoiceDetailsDts", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	products := []dtos.SalesInvoiceDtListDTO{}
+
+	var total int
+
+	args, i, condition, queryGlobal, joinCondition, customCondition, err := utils.GetSalesInvoiceCondition(ctx, filters, childSpan)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, 0, err
+	}
+
+	if len(salesOrderIDs) > 0 {
+		condition += fmt.Sprintf(" AND sidt.sales_invoice_id = ANY($%d)", i)
+		args = append(args, pq.Array(salesOrderIDs))
+		i++
+	}
+
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (sidt.id)
+					sidt.id, sidt.product_uuid, sidt.sales_invoice_id, sidt.item_unit_id, sidt.vat_id, sidt.pph23_id, 
+					sidt.ref_id, sidt.ref_dt_id, sidt.product_id, sidt.product_id as item_id, sidt.ref_type, sidt.product_type, sidt.remark, 
+					sidt.is_vat, sidt.is_pph23, sidt.qty, sidt.price, sidt.subtotal,
+					sidt.discount, sidt.total_amount, sidt.total_dp, sidt.total_balance, sidt.created_by_id, sidt.updated_by_id, sidt.deleted_by_id, 
+					sidt.created_at, sidt.updated_at, sidt.deleted_at,
+					
+					p.name as item_name, p.code as item_code,
+					u.name as unit_name,
+					vat.name as vat_name,
+					pph.name as pph23_name,
+					
+					cu.name as created_by_name,
+					uu.name as updated_by_name,
+
+					CASE 
+						WHEN sidt.ref_type = 'so' THEN so.sales_order_no 
+						WHEN sidt.ref_type = 'inv_out' THEN inv.inventory_no
+					ELSE NULL 
+					END as ref_num
+
+				FROM sales_invoice_dts sidt
+				LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sidt.ref_dt_id AND sidt.ref_type = 'so' 
+				LEFT JOIN products p ON sidt.product_id = p.id
+				LEFT JOIN products it ON it.id = sdb.item_id
+
+				LEFT JOIN item_units iu ON sidt.item_unit_id = iu.id
+				LEFT JOIN mix_values u ON iu.unit_id = u.id
+
+				LEFT JOIN sales_invoices si ON sidt.sales_invoice_id = si.id
+				LEFT JOIN customers c ON si.customer_id = c.id
+				LEFT JOIN mix_values cur ON si.currency_id = cur.id
+				LEFT JOIN mix_values pt ON si.payment_term_id = pt.id
+				LEFT JOIN mix_values vat ON si.vat_id = vat.id
+				LEFT JOIN mix_values pph ON si.pph23_id = pph.id
+				LEFT JOIN branches b ON si.branch_id = b.id
+				LEFT JOIN bank_informations bk ON si.bank_id = bk.id
+				LEFT JOIN sales_orders so ON sidt.ref_id = so.id AND sidt.ref_type = 'so'
+				LEFT JOIN inventories inv ON sidt.ref_id = inv.id AND sidt.ref_type = 'inv_out'
+
+				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+				LEFT JOIN inv_dts invdt ON sidt.ref_dt_id = invdt.id AND sidt.ref_type = 'inv_out' AND invdt.deleted_at IS NULL
+				LEFT JOIN so_dts sodt ON invdt.ref_so_dt_id = sodt.id AND invdt.ref_type = 'so' AND sodt.deleted_at IS NULL
+				LEFT JOIN sales_orders so2 ON sodt.sales_order_id = so2.id AND so2.deleted_at IS NULL
+				LEFT JOIN mix_values so2_ot ON so2.order_type_id = so2_ot.id
+				LEFT JOIN users cu ON sidt.created_by_id = cu.id
+				LEFT JOIN users uu ON sidt.updated_by_id = uu.id
+
+				` + joinCondition + `
+				WHERE 1=1` + condition + queryGlobal + customCondition + `
+				AND sidt.deleted_at IS NULL
+    ) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	countQuery := `SELECT COUNT(*) as total
+		` + baseQuery
+
+	// for key, value := range filters {
+	// 	switch key {
+	// 	case "po_buyer_no", "sales_order_no", "ship_dest", "remark":
+	// 		if value != "" {
+	// 			query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+	// 			countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+	// 			args = append(args, "%"+value+"%")
+	// 			i++
+	// 		}
+	// 	}
+	// }
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+	err = r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+	if err != nil {
+		selectSpan.LogKV("query", query)
+		utils.LogErrors(selectSpan, err)
+		return nil, 0, err
+	}
+
+	return products, total, nil
+}
+
+func (r *SalesInvoiceRepository) GetSalesInvoiceDetailsDtBoms(ctx *fiber.Ctx, filters map[string]string, salesOrderIDs []uint, span opentracing.Span) ([]dtos.SalesOrderSoDtBomListDTO, int, error) {
+	childSpan := opentracing.StartSpan("SalesInvoiceRepository-GetSalesInvoiceDetailsDtBoms", opentracing.ChildOf(span.Context()))
+
+	claims, _ := auth.GetAuthUser(ctx)
+	branchID := claims["bid"]
+
+	isAdmin := utils.IsAdmin(ctx)
+
+	products := []dtos.SalesOrderSoDtBomListDTO{}
+
+	var total int
+
+	args, i, condition, queryGlobal, joinCondition, customCondition, err := utils.GetSalesInvoiceCondition(ctx, filters, childSpan)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, 0, err
+	}
+
+	if len(salesOrderIDs) > 0 {
+		condition += fmt.Sprintf(" AND si.id = ANY($%d)", i)
+		args = append(args, pq.Array(salesOrderIDs))
+		i++
+	}
+
+	baseQuery := `
+    FROM ( 
+        SELECT DISTINCT ON (sdb.id)
+        sdb.id, sdb.product_uuid, sdb.sales_order_id, sdb.so_dt_id, 
+        sdb.product_id, sdb.item_id, sdb.item_unit_id, sdb.gen_code, sdb.remark, 
+        sdb.qty, sdb.qty_out, sdb.price_sell, sdb.price_buy, 
+        sdb.subtotal_sell, sdb.subtotal_buy, sdb.created_by_id, 
+        sdb.updated_by_id, sdb.deleted_by_id, sdb.created_at, sdb.updated_at, sdb.deleted_at,
+        
+        it.name as item_name, it.code as item_code, it.sku as item_sku,
+        it.barcode as item_barcode, it.factory_code as item_factory_code,
+        it.specification as item_specification,
+        u.name as unit_name,
+        
+        cu.name as created_by_name,
+        uu.name as updated_by_name
+
+        FROM so_dt_boms sdb
+
+				LEFT JOIN so_dts sd ON sdb.so_dt_id = sd.id
+				LEFT JOIN sales_invoice_dts sidt ON sd.id = sidt.ref_dt_id AND sidt.ref_type = 'so' 
+				LEFT JOIN products p ON sidt.product_id = p.id
+				LEFT JOIN products it ON it.id = sdb.item_id
+
+				LEFT JOIN item_units iu ON sidt.item_unit_id = iu.id
+				LEFT JOIN mix_values u ON iu.unit_id = u.id
+
+				LEFT JOIN sales_invoices si ON sidt.sales_invoice_id = si.id
+				LEFT JOIN customers c ON si.customer_id = c.id
+				LEFT JOIN mix_values cur ON si.currency_id = cur.id
+				LEFT JOIN mix_values pt ON si.payment_term_id = pt.id
+				LEFT JOIN mix_values vat ON si.vat_id = vat.id
+				LEFT JOIN mix_values pph ON si.pph23_id = pph.id
+				LEFT JOIN branches b ON si.branch_id = b.id
+				LEFT JOIN bank_informations bk ON si.bank_id = bk.id
+				LEFT JOIN sales_orders so ON sidt.ref_id = so.id AND sidt.ref_type = 'so'
+				LEFT JOIN inventories inv ON sidt.ref_id = inv.id AND sidt.ref_type = 'inv_out'
+
+				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+				LEFT JOIN inv_dts invdt ON sidt.ref_dt_id = invdt.id AND sidt.ref_type = 'inv_out' AND invdt.deleted_at IS NULL
+				LEFT JOIN so_dts sodt ON invdt.ref_so_dt_id = sodt.id AND invdt.ref_type = 'so' AND sodt.deleted_at IS NULL
+				LEFT JOIN sales_orders so2 ON sodt.sales_order_id = so2.id AND so2.deleted_at IS NULL
+				LEFT JOIN mix_values so2_ot ON so2.order_type_id = so2_ot.id
+
+				-- LEFT JOIN so_dts sd ON sdb.so_dt_id = sd.id
+				-- LEFT JOIN sales_invoice_dts sidt ON sd.id = sidt.ref_dt_id AND sd.ref_type = 'so' 
+				-- LEFT JOIN sales_invoices si ON sidt.sales_invoice_id = si.id
+				-- LEFT JOIN item_units iu ON sdb.item_unit_id = iu.id
+				-- LEFT JOIN mix_values u ON iu.unit_id = u.id
+
+				-- LEFT JOIN products p ON sidt.product_id = p.id
+				-- LEFT JOIN products it ON it.id = sdb.item_id
+
+				-- LEFT JOIN customers c ON si.customer_id = c.id
+				-- LEFT JOIN mix_values cur ON si.currency_id = cur.id
+				-- LEFT JOIN mix_values pt ON si.payment_term_id = pt.id
+				-- LEFT JOIN mix_values vat ON si.vat_id = vat.id
+				-- LEFT JOIN mix_values pph ON si.pph23_id = pph.id
+				-- LEFT JOIN branches b ON si.branch_id = b.id
+				-- LEFT JOIN bank_informations bk ON si.bank_id = bk.id
+				-- LEFT JOIN sales_orders so ON sidt.ref_id = so.id AND sidt.ref_type = 'so'
+				-- LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+				-- LEFT JOIN inv_dts invdt ON sidt.ref_dt_id = invdt.id AND sidt.ref_type = 'inv_out' AND invdt.deleted_at IS NULL
+				-- LEFT JOIN so_dts sodt ON invdt.ref_so_dt_id = sodt.id AND invdt.ref_type = 'so' AND sodt.deleted_at IS NULL
+				-- LEFT JOIN sales_orders so2 ON sodt.sales_order_id = so2.id AND so2.deleted_at IS NULL
+				-- LEFT JOIN mix_values so2_ot ON so2.order_type_id = so2_ot.id
+
+        LEFT JOIN users cu ON so.created_by_id = cu.id
+        LEFT JOIN users uu ON so.updated_by_id = uu.id
+				` + joinCondition + `
+				WHERE 1=1` + condition + queryGlobal + customCondition + `
+				AND sdb.deleted_at IS NULL
+    ) AS alias WHERE 1=1`
+
+	query := `SELECT *
+		` + baseQuery
+
+	countQuery := `SELECT COUNT(*) as total
+		` + baseQuery
+
+	// for key, value := range filters {
+	// 	switch key {
+	// 	case "po_buyer_no", "sales_order_no", "ship_dest", "remark":
+	// 		if value != "" {
+	// 			query += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+	// 			countQuery += fmt.Sprintf(" AND %s ILIKE $%d", key, i)
+	// 			args = append(args, "%"+value+"%")
+	// 			i++
+	// 		}
+	// 	}
+	// }
+
+	if !isAdmin && branchID != nil {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, branchID)
+		i++
+	}
+
+	if isAdmin && filters["branch_id"] != "" {
+		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
+		args = append(args, filters["branch_id"])
+		i++
+	}
+
+	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
+
+	err = r.sqlDB.SelectContext(ctx.Context(), &products, query, args...)
+	if err != nil {
+		selectSpan.LogKV("query", query)
+		utils.LogErrors(selectSpan, err)
+		return nil, 0, err
+	}
+
+	log.Println("result products:", len(products))
+
+	return products, total, nil
 }
 
 func (r *SalesInvoiceRepository) GetSalesInvoiceByID(ctx *fiber.Ctx, params *dtos.GetSalesInvoiceParams, tx *gorm.DB, span opentracing.Span) (*dtos.SalesInvoiceDetailDTO, error) {

@@ -49,6 +49,33 @@ func (c *SalesInvoiceController) GetSalesInvoices(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, salesInvoices, paginationMeta, "Sales invoices fetched successfully", http.StatusOK, nil, nil)
 }
 
+func (c *SalesInvoiceController) GetSalesInvoicesDetails(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("SalesInvoiceController-GetSalesInvoicesDetails", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("SalesInvoiceController-GetSalesInvoicesDetails: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	salesInvoices, total, err := c.service.GetSalesInvoicesDetails(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch sales invoices", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, salesInvoices, paginationMeta, "Sales invoices fetched successfully", http.StatusOK, nil, nil)
+}
+
 func (c *SalesInvoiceController) GetSalesInvoiceByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("SalesInvoiceController-GetSalesInvoiceByID", opentracing.ChildOf(apiSpan.Context()))

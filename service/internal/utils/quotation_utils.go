@@ -676,7 +676,7 @@ func BuildQuotationAllCSVRows(quotations []dtos.QuotationListDTO, csv *string) e
 	// Convert rows to CSV format
 	csvContent := ""
 	for _, row := range rows {
-		csvContent += strings.Join(row, ",") + "\n"
+		csvContent += strings.Join(row, ";") + "\n"
 	}
 
 	*csv = csvContent
@@ -781,7 +781,7 @@ func BuildQuotationDetailCSVRows(quotations []dtos.QuotationDetailDTO, csv *stri
 	// Convert rows to CSV format
 	csvContent := ""
 	for _, row := range rows {
-		csvContent += strings.Join(row, ",") + "\n"
+		csvContent += strings.Join(row, ";") + "\n"
 	}
 
 	*csv = csvContent

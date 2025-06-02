@@ -16,6 +16,7 @@ func SetupSalesInvoiceRoutes(salesInvoices fiber.Router, gormDB *gorm.DB, sqlDB 
 	salesInvoiceController := rest.NewSalesInvoiceController(salesInvoiceService, salesInvoiceRepo, tracer)
 
 	salesInvoices.Post("/index-sales-invoice", salesInvoiceController.GetSalesInvoices)
+	salesInvoices.Post("/index-detail-sales-invoice", salesInvoiceController.GetSalesInvoicesDetails)
 	salesInvoices.Post("/show-sales-invoice", salesInvoiceController.GetSalesInvoiceByID)
 	salesInvoices.Post("/create-sales-invoice", salesInvoiceController.CreateSalesInvoice)
 	salesInvoices.Post("/update-sales-invoice", salesInvoiceController.UpdateSalesInvoice)
