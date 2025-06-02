@@ -91,7 +91,6 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 		"vat_id":        "so.vat_id",
 		"payment_id":    "so.payment_id",
 		"pph23_id":      "so.pph23_id",
-		"due_at":        "so.due_at",
 	}
 
 	for key, col := range filterKey {
@@ -198,6 +197,21 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 		customCondition += join
 	}
 
+	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
+		filterDateTypeKey := map[string]string{
+			"order_at":    "so.order_at",
+			"shipping_at": "so.shipping_at",
+			"agree_at":    "so.agree_at",
+			"due_at":      "so.due_at",
+			"expired_at":  "so.expired_at",
+		}
+
+		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
+		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
+		args = append(args, filters["start_date"], filters["end_date"])
+		i += 2
+	}
+
 	baseQuery := `
     FROM ( 
         SELECT DISTINCT ON (so.id)
@@ -266,14 +280,6 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 				i++
 			}
 		}
-	}
-
-	// if date_type, start_date, end_date filled
-	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
-		query += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
-		countQuery += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", filters["date_type"], i, i+1)
-		args = append(args, filters["start_date"], filters["end_date"])
-		i += 2
 	}
 
 	if !isAdmin && branchID != nil {
