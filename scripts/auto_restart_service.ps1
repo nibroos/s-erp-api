@@ -2,7 +2,7 @@ $HealthUrl = "http://localhost:4001/api/v1/health"
 $ConsumerHealthUrl = "http://localhost:4010/health"
 $ContainerName = "s-erp-api-service-1"
 $ConsumerContainerName = "s-erp-api-consumer-service-1"
-$Interval = 5 # seconds
+$Interval = 30 # seconds
 
 while ($true) {
     # Check REST API health

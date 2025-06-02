@@ -263,10 +263,12 @@ func (s *SalesOrderService) CreateSchedule(ctx *fiber.Ctx, req dtos.UpdateSchedu
 			return tx, err
 		}
 
-		if tx, err = s.repo.CreateScheduleTasks(ctx, tx, tasks, childSpan); err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return tx, err
+		if len(tasks) > 0 {
+			if tx, err = s.repo.CreateScheduleTasks(ctx, tx, tasks, childSpan); err != nil {
+				defer childSpan.Finish()
+				tx.Rollback()
+				return tx, err
+			}
 		}
 	}
 
@@ -344,10 +346,12 @@ func (s *SalesOrderService) CreateScheduleNoRef(ctx *fiber.Ctx, req dtos.CreateS
 			return tx, err
 		}
 
-		if tx, err = s.repo.CreateScheduleTasks(ctx, tx, tasks, childSpan); err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return tx, err
+		if len(tasks) > 0 {
+			if tx, err = s.repo.CreateScheduleTasks(ctx, tx, tasks, childSpan); err != nil {
+				defer childSpan.Finish()
+				tx.Rollback()
+				return tx, err
+			}
 		}
 	}
 
@@ -1488,12 +1492,10 @@ func (s *SalesOrderService) BulkCreateUpdateScheduleTasks(ctx *fiber.Ctx, steps 
 	}
 
 	// delete soDts that are not in the list
-	if len(taskIDs) > 0 {
-		if err := s.repo.DeleteScheduleTasksWhereNotIn(ctx, tx, scheduleID, taskIDs, childSpan); err != nil {
-			defer childSpan.Finish()
-			tx.Rollback()
-			return err
-		}
+	if err := s.repo.DeleteScheduleTasksWhereNotIn(ctx, tx, scheduleID, taskIDs, childSpan); err != nil {
+		defer childSpan.Finish()
+		tx.Rollback()
+		return err
 	}
 
 	if len(bulkCreateScheduleTasks) > 0 {
