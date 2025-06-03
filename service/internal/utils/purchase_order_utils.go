@@ -726,6 +726,8 @@ func BuildPurchaseOrderAllCSVRows(salesOrders []dtos.PurchaseOrderListDTO, csv *
 		CustomerName := GetPtrVal(salesOrder.CustomerName)
 		PoDate := GetPtrVal(salesOrder.PoDate)
 		DeliveryDate := GetPtrVal(salesOrder.DeliveryDate)
+		PoBuyerNo := GetPtrVal(salesOrder.RefNumber)
+		RefCustomerName := GetPtrVal(salesOrder.RefCustomerName)
 		CurrencyName := GetPtrVal(salesOrder.CurrencyName)
 		Status := GetPtrVal(&salesOrder.Status)
 		CreatedByName := GetPtrVal(salesOrder.CreatedByName)
@@ -737,13 +739,15 @@ func BuildPurchaseOrderAllCSVRows(salesOrders []dtos.PurchaseOrderListDTO, csv *
 		CustomerName = EscapeCsvField(CustomerName)
 		PoDate = EscapeCsvField(PoDate)
 		DeliveryDate = EscapeCsvField(DeliveryDate)
+		PoBuyerNo = EscapeCsvField(PoBuyerNo)
+		RefCustomerName = EscapeCsvField(RefCustomerName)
 		CurrencyName = EscapeCsvField(CurrencyName)
 		Status = EscapeCsvField(Status)
 		CreatedByName = EscapeCsvField(CreatedByName)
 		UpdatedByName = EscapeCsvField(UpdatedByName)
 
 		row := []string{
-			ID, PoNo, CustomerName, PoDate, DeliveryDate,
+			ID, PoNo, CustomerName, PoDate, DeliveryDate, RefCustomerName, PoBuyerNo,
 			CurrencyName, fmt.Sprintf("%f", *salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
 		}
 
@@ -765,7 +769,7 @@ func BuildPurchaseOrderAllCSVRows(salesOrders []dtos.PurchaseOrderListDTO, csv *
 func BuildPurchaseOrderDetailCSVRows(salesOrders []dtos.PurchaseOrderDetailDTO, csv *string) error {
 	rows := [][]string{}
 	header := []string{
-		"No", "Purchase No", "Customer", "PO Date", "Delivery Date",
+		"No", "Purchase No", "Supplier", "PO Date", "Delivery Date", "PO Buyer No", "Customer",
 		"Currency", "Total", "Status", "Created By", "Updated By",
 		"Product/Item Name", "Qty", "Price", "Subtotal",
 	}
@@ -779,6 +783,8 @@ func BuildPurchaseOrderDetailCSVRows(salesOrders []dtos.PurchaseOrderDetailDTO, 
 		PoDate := GetPtrVal(salesOrder.PoDate)
 		DeliveryDate := GetPtrVal(salesOrder.DeliveryDate)
 		CurrencyName := GetPtrVal(salesOrder.CurrencyName)
+		PoBuyerNo := GetPtrVal(salesOrder.RefNumber)
+		RefCustomerName := GetPtrVal(salesOrder.RefCustomerName)
 		Status := GetPtrVal(&salesOrder.Status)
 		CreatedByName := GetPtrVal(salesOrder.CreatedByName)
 		UpdatedByName := GetPtrVal(salesOrder.UpdatedByName)
@@ -789,6 +795,8 @@ func BuildPurchaseOrderDetailCSVRows(salesOrders []dtos.PurchaseOrderDetailDTO, 
 		PoDate = EscapeCsvField(PoDate)
 		DeliveryDate = EscapeCsvField(DeliveryDate)
 		CurrencyName = EscapeCsvField(CurrencyName)
+		PoBuyerNo = EscapeCsvField(PoBuyerNo)
+		RefCustomerName = EscapeCsvField(RefCustomerName)
 		Status = EscapeCsvField(Status)
 		CreatedByName = EscapeCsvField(CreatedByName)
 		UpdatedByName = EscapeCsvField(UpdatedByName)
@@ -802,14 +810,14 @@ func BuildPurchaseOrderDetailCSVRows(salesOrders []dtos.PurchaseOrderDetailDTO, 
 
 			if iSoDt == 0 {
 				row := []string{
-					No, PoNo, CustomerName, PoDate, DeliveryDate,
+					No, PoNo, CustomerName, PoDate, DeliveryDate, RefCustomerName, PoBuyerNo,
 					CurrencyName, fmt.Sprintf("%f", salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
 					ProductItemName, Qty, PriceSell, TotalAm,
 				}
 				rows = append(rows, row)
 			} else {
 				row := []string{
-					"", "", "", "", "", "",
+					"", "", "", "", "", "", "", "",
 					"", "", "", "",
 					ProductItemName, Qty, PriceSell, TotalAm,
 				}
@@ -818,7 +826,7 @@ func BuildPurchaseOrderDetailCSVRows(salesOrders []dtos.PurchaseOrderDetailDTO, 
 		}
 		if len(salesOrder.PoDts) == 0 {
 			row := []string{
-				No, PoNo, CustomerName, PoDate, DeliveryDate,
+				No, PoNo, CustomerName, PoDate, DeliveryDate, CustomerName, PoBuyerNo,
 				CurrencyName, fmt.Sprintf("%f", salesOrder.GrandTotal), Status, CreatedByName, UpdatedByName,
 				"", "", "", "",
 			}

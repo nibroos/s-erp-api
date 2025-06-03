@@ -358,6 +358,8 @@ type PurchaseOrderListDTO struct {
 	PoDtRemark       *string `json:"po_dt_remark" db:"po_dt_remark"`
 	PoDtGenCode      *string `json:"po_dt_gen_code" db:"po_dt_gen_code"`
 	CompanyProfileID *uint   `json:"company_profile_id" db:"company_profile_id"`
+	RefCustomerName  *string `json:"ref_customer_name" db:"ref_customer_name"`
+	RefNumber        *string `json:"ref_number" db:"ref_number"`
 }
 
 type PurchaseOrderDetailDTO struct {
@@ -431,6 +433,8 @@ type PurchaseOrderDetailDTO struct {
 	ProductName      *string `json:"product_name" db:"product_name"`
 	PaymentTermName  *string `json:"payment_term_name" db:"payment_term_name"`
 	ShippingTermName *string `json:"shipping_term_name" db:"shipping_term_name"`
+	RefCustomerName  *string `json:"ref_customer_name" db:"ref_customer_name"`
+	RefNumber        *string `json:"ref_number" db:"ref_number"`
 }
 
 type PurchaseOrderPoDtListDTO struct {

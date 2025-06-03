@@ -48,168 +48,10 @@ func (r *SalesOrderRepository) GetSalesOrders(ctx *fiber.Ctx, filters map[string
 
 	var total int
 
-	filterDBColumnKey := []string{
-		"so.po_buyer_no", "so.sales_order_no", "so.remark", "so.ship_dest",
-		"pi.name",
-		"it.name",
-		"sd.remark",
-		"sd.gen_code",
-		"sdb.remark",
-		"sdb.gen_code",
-	}
-
-	var args []interface{}
-
-	queryGlobal := ""
-
-	i := 1
-	if value, ok := filters["global"]; ok && value != "" {
-
-		queryGlobal = " AND ("
-		for idx, column := range filterDBColumnKey {
-			if idx > 0 {
-				queryGlobal += " OR"
-			}
-			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
-			args = append(args, "%"+value+"%")
-			i++
-		}
-		queryGlobal += ")"
-	}
-
-	condition := ""
-
-	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND so.id IN (%s)", filters["ids"])
-	}
-
-	filterKey := map[string]string{
-		"status":        "so.status",
-		"customer_id":   "so.customer_id",
-		"order_type_id": "so.order_type_id",
-		"currency_id":   "so.currency_id",
-		"vat_id":        "so.vat_id",
-		"payment_id":    "so.payment_id",
-		"pph23_id":      "so.pph23_id",
-	}
-
-	for key, col := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s = $%d", col, i)
-			args = append(args, value)
-			i++
-		}
-	}
-
-	filterIDsKey := map[string]string{
-		"customer_ids":   "so.customer_id",
-		"order_type_ids": "so.order_type_id",
-		"currency_ids":   "so.currency_id",
-		"payment_ids":    "so.payment_id",
-		"pph23_ids":      "so.pph23_id",
-	}
-
-	for key, valueID := range filterIDsKey {
-		if value, ok := filters[key]; ok && value != "" {
-			// Split the string into an array of integers
-			ids := strings.Split(value, ",")
-			intIDs, err := utils.SplitStringArrayOfInts(ids)
-			if err != nil {
-				utils.LogErrors(childSpan, err)
-				return nil, 0, err
-			}
-
-			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
-			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
-			i++
-		}
-	}
-
-	filterIDsOrKey := map[string][]string{
-		"vat_ids": {"so.vat_id", "sd.vat_id"},
-		// "product_ids": {"pi.id", "it.id"},
-	}
-
-	for key, valueIDs := range filterIDsOrKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += " AND ("
-			for idx, valueID := range valueIDs {
-				if idx > 0 {
-					condition += " OR"
-				}
-				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
-				args = append(args, value)
-			}
-			condition += ")"
-		}
-	}
-
-	// And one for array conditions with OR
-	filterIDsOrArrayKey := map[string][]string{
-		"product_ids": {"pi.id", "it.id"},
-	}
-
-	// Handle array OR conditions
-	for key, valueIDs := range filterIDsOrArrayKey {
-		if value, ok := filters[key]; ok && value != "" {
-			// Split the string into an array of integers
-			ids := strings.Split(value, ",")
-			intIDs, err := utils.SplitStringArrayOfInts(ids)
-			if err != nil {
-				utils.LogErrors(childSpan, err)
-				return nil, 0, err
-			}
-
-			condition += " AND ("
-			for idx, valueID := range valueIDs {
-				if idx > 0 {
-					condition += " OR"
-				}
-				condition += fmt.Sprintf(" %s = ANY($%d)", valueID, i)
-				args = append(args, pq.Array(intIDs))
-				i++
-			}
-			condition += ")"
-		}
-	}
-
-	joinCondition := ""
-
-	filterKeyJoin := map[string]string{
-		"is_task_exists":         "JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL LEFT JOIN schedule_tasks stp ON stp.schedule_id = s.id AND stp.deleted_at IS NULL AND stp.entity_type = 'steps' LEFT JOIN schedule_tasks st ON st.parent_id = stp.id AND st.deleted_at IS NULL AND st.entity_type = 'tasks'",
-		"is_schedule_not_exists": "LEFT JOIN schedules s ON s.sales_order_id = so.id AND s.deleted_at IS NULL",
-	}
-	for key, join := range filterKeyJoin {
-		if filters[key] == "1" {
-			joinCondition += fmt.Sprintf(" %s", join)
-		}
-	}
-
-	if filters["is_schedule_not_exists"] == "1" {
-		condition += " AND s.id IS NULL"
-	}
-
-	customCondition := ""
-	filterKeyCustom := map[string]string{
-		// "is_task_exists": " AND st.is_checked = 1",
-	}
-	for _, join := range filterKeyCustom {
-		customCondition += join
-	}
-
-	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
-		filterDateTypeKey := map[string]string{
-			"order_at":    "so.order_at",
-			"shipping_at": "so.shipping_at",
-			"agree_at":    "so.agree_at",
-			"due_at":      "so.due_at",
-			"expired_at":  "so.expired_at",
-		}
-
-		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
-		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
-		args = append(args, filters["start_date"], filters["end_date"])
-		i += 2
+	args, i, condition, queryGlobal, joinCondition, customCondition, err := utils.GetSalesOrderCondition(ctx, filters, childSpan)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, 0, err
 	}
 
 	baseQuery := `
@@ -3137,163 +2979,14 @@ func (r *SalesOrderRepository) UpdateSalesOrderScheduleApp(tx *gorm.DB, schedule
 func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.SalesOrderStatusWidget, int, error) {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-GetWidgetSalesOrders", opentracing.ChildOf(span.Context()))
 
-	claims, _ := auth.GetAuthUser(ctx)
-	branchID := claims["bid"]
-
-	isAdmin := utils.IsAdmin(ctx)
-
 	var widgets []dtos.SalesOrderStatusWidget
 
 	var total int
 
-	filterDBColumnKey := []string{
-		"so.po_buyer_no", "so.sales_order_no", "so.remark", "so.ship_dest",
-		"pi.name",
-		"it.name",
-		"sd.remark",
-		"sd.gen_code",
-		"sdb.remark",
-		"sdb.gen_code",
-	}
-
-	var args []interface{}
-
-	queryGlobal := ""
-
-	i := 1
-	if value, ok := filters["global"]; ok && value != "" {
-
-		queryGlobal = " AND ("
-		for idx, column := range filterDBColumnKey {
-			if idx > 0 {
-				queryGlobal += " OR"
-			}
-			queryGlobal += fmt.Sprintf(" %s ILIKE $%d", column, i)
-			args = append(args, "%"+value+"%")
-			i++
-		}
-		queryGlobal += ")"
-	}
-
-	condition := ""
-
-	if filters["ids"] != "" {
-		condition += fmt.Sprintf(" AND so.id IN (%s)", filters["ids"])
-	}
-
-	filterKey := map[string]string{
-		"status":        "so.status",
-		"customer_id":   "so.customer_id",
-		"order_type_id": "so.order_type_id",
-		"currency_id":   "so.currency_id",
-		"vat_id":        "so.vat_id",
-		"payment_id":    "so.payment_id",
-		"pph23_id":      "so.pph23_id",
-		"due_at":        "so.due_at",
-	}
-
-	for key, col := range filterKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += fmt.Sprintf(" AND %s = $%d", col, i)
-			args = append(args, value)
-			i++
-		}
-	}
-
-	filterIDsKey := map[string]string{
-		"customer_ids":   "so.customer_id",
-		"order_type_ids": "so.order_type_id",
-		"currency_ids":   "so.currency_id",
-		"payment_ids":    "so.payment_id",
-		"pph23_ids":      "so.pph23_id",
-	}
-
-	for key, valueID := range filterIDsKey {
-		if value, ok := filters[key]; ok && value != "" {
-			// Split the string into an array of integers
-			ids := strings.Split(value, ",")
-			intIDs, err := utils.SplitStringArrayOfInts(ids)
-			if err != nil {
-				utils.LogErrors(childSpan, err)
-				return nil, 0, err
-			}
-
-			condition += fmt.Sprintf(" AND %s = ANY($%d)", valueID, i)
-			args = append(args, pq.Array(intIDs)) // Use pq.Array to pass the array to PostgreSQL
-			i++
-		}
-	}
-
-	filterIDsOrKey := map[string][]string{
-		"vat_ids": {"so.vat_id", "sd.vat_id"},
-	}
-
-	for key, valueIDs := range filterIDsOrKey {
-		if value, ok := filters[key]; ok && value != "" {
-			condition += " AND ("
-			for idx, valueID := range valueIDs {
-				if idx > 0 {
-					condition += " OR"
-				}
-				condition += fmt.Sprintf(" %s IN ($%d)", valueID, i)
-				args = append(args, value)
-			}
-			condition += ")"
-		}
-	}
-
-	// if date_type, start_date, end_date filled
-	if filters["date_type"] != "" && filters["start_date"] != "" && filters["end_date"] != "" {
-
-		filterDateTypeKey := map[string]string{
-			"shipping_at": "so.shipping_at",
-			"order_at":    "so.order_at",
-			"due_at":      "so.due_at",
-			"agree_at":    "so.agree_at",
-		}
-
-		dateTypeColumn := filterDateTypeKey[filters["date_type"]]
-		condition += fmt.Sprintf(" AND (%s BETWEEN $%d AND $%d)", dateTypeColumn, i, i+1)
-		args = append(args, filters["start_date"], filters["end_date"])
-		i += 2
-	}
-
-	customCondition := ""
-	filterKeyCustom := map[string]string{
-		// "is_task_exists": " AND st.is_checked = 1",
-	}
-	for _, join := range filterKeyCustom {
-		customCondition += join
-	}
-
-	filterLikeKeys := map[string]string{
-		"po_buyer_no":    "so.po_buyer_no",
-		"sales_order_no": "so.sales_order_no",
-		"ship_dest":      "so.ship_dest",
-		"remark":         "so.remark",
-		"customer_name":  "c.name",
-	}
-
-	for key, value := range filters {
-		if value != "" {
-			if column, ok := filterLikeKeys[key]; ok {
-				condition += fmt.Sprintf(" AND %s ILIKE $%d", column, i)
-				args = append(args, "%"+value+"%")
-				i++
-			}
-		}
-	}
-
-	if !isAdmin && branchID != nil {
-		condition += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
-		args = append(args, branchID)
-		i++
-	}
-
-	if isAdmin && filters["branch_id"] != "" {
-		condition += fmt.Sprintf(" AND (so.branch_id = $%d)", i)
-		args = append(args, filters["branch_id"])
-		i++
+	args, _, condition, queryGlobal, joinCondition, customCondition, err := utils.GetSalesOrderCondition(ctx, filters, childSpan)
+	if err != nil {
+		utils.LogErrors(childSpan, err)
+		return nil, 0, err
 	}
 
 	query := `
@@ -3319,8 +3012,21 @@ func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[
         LEFT JOIN products pi ON sd.item_id = pi.id
         LEFT JOIN so_dt_boms sdb ON sdb.so_dt_id = sd.id
         LEFT JOIN products it ON sdb.item_id = it.id
+
+				LEFT JOIN item_units iu ON sd.item_unit_id = iu.id
+
+				LEFT JOIN mix_values cur ON so.currency_id = cur.id
+				LEFT JOIN mix_values vat ON so.vat_id = vat.id
+				LEFT JOIN mix_values pph ON so.pph23_id = pph.id
+				LEFT JOIN mix_values ot ON so.order_type_id = ot.id
+				LEFT JOIN customers c ON so.customer_id = c.id
+
+        LEFT JOIN users cu ON so.created_by_id = cu.id
+        LEFT JOIN users uu ON so.updated_by_id = uu.id
+
+				` + joinCondition + `
         WHERE so.deleted_at IS NULL
-        ` + condition + queryGlobal + `
+        ` + customCondition + condition + queryGlobal + `
     ),
     sales_order_stats AS (
         SELECT 
@@ -3349,7 +3055,7 @@ func (r *SalesOrderRepository) GetWidgetSalesOrders(ctx *fiber.Ctx, filters map[
 
 	selectSpan := opentracing.StartSpan("SelectQuery", opentracing.ChildOf(childSpan.Context()))
 
-	err := r.sqlDB.SelectContext(ctx.Context(), &widgets, query, args...)
+	err = r.sqlDB.SelectContext(ctx.Context(), &widgets, query, args...)
 	if err != nil {
 		selectSpan.LogKV("query", query)
 		utils.LogErrors(selectSpan, err)

@@ -16,6 +16,7 @@ func SetupRequestOrderRoutes(requestOrders fiber.Router, gormDB *gorm.DB, sqlDB 
 	requestOrderController := rest.NewRequestOrderController(requestOrderService, requestOrderRepo, tracer)
 
 	requestOrders.Post("/index-request-order", requestOrderController.GetRequestOrders)
+	requestOrders.Post("/index-detail-request-order", requestOrderController.GetRequestOrdersDetails)
 	requestOrders.Post("/show-request-order", requestOrderController.GetRequestOrderByID)
 	requestOrders.Post("/create-request-order", requestOrderController.CreateRequestOrder)
 	requestOrders.Post("/update-request-order", requestOrderController.UpdateRequestOrder)
@@ -25,4 +26,5 @@ func SetupRequestOrderRoutes(requestOrders fiber.Router, gormDB *gorm.DB, sqlDB 
 	requestOrders.Post("/index-ref-product", requestOrderController.GetRefProductForRequestOrder)
 	requestOrders.Post("/widget-request-order", requestOrderController.GetWidgetRequestOrders)
 	requestOrders.Post("/pdf-request-order", requestOrderController.Pdf)
+	requestOrders.Post("/csv-request-order", requestOrderController.Csv)
 }

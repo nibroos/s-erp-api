@@ -67,6 +67,18 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 					pph.name as pph23_name,
 					pt.name as purchase_type_name,
 
+					-- ref_customer_name
+					COALESCE(
+						rsc.name,
+						''
+					) as ref_customer_name,
+
+					-- ref_number
+					COALESCE(
+						so.po_buyer_no,
+						''
+					) as ref_number,
+
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
@@ -84,6 +96,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrders(ctx *fiber.Ctx, filters map[
 				LEFT JOIN mix_values pph ON po.pph23_id = pph.id
 				LEFT JOIN mix_values pt ON po.purchase_type_id = pt.id
 				LEFT JOIN customers c ON po.customer_id = c.id
+				LEFT JOIN customers rsc ON rsc.id = so.customer_id  
 
         LEFT JOIN users cu ON po.created_by_id = cu.id
         LEFT JOIN users uu ON po.updated_by_id = uu.id
@@ -1521,6 +1534,18 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderDetails(ctx *fiber.Ctx, filter
 					pph.name as pph23_name,
 					pt.name as purchase_type_name,
 
+					-- ref_customer_name
+					COALESCE(
+						rsc.name,
+						''
+					) as ref_customer_name,
+
+					-- ref_number
+					COALESCE(
+						so.po_buyer_no,
+						''
+					) as ref_number,
+
 					cu.name as created_by_name,
 					uu.name as updated_by_name
 
@@ -1538,6 +1563,7 @@ func (r *PurchaseOrderRepository) GetPurchaseOrderDetails(ctx *fiber.Ctx, filter
 				LEFT JOIN mix_values pph ON po.pph23_id = pph.id
 				LEFT JOIN mix_values pt ON po.purchase_type_id = pt.id
 				LEFT JOIN customers c ON po.customer_id = c.id
+				LEFT JOIN customers rsc ON so.customer_id = rsc.id
 
         LEFT JOIN users cu ON po.created_by_id = cu.id
         LEFT JOIN users uu ON po.updated_by_id = uu.id

@@ -49,6 +49,33 @@ func (c *RequestOrderController) GetRequestOrders(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, requestOrders, paginationMeta, "Request orders fetched successfully", http.StatusOK, nil, nil)
 }
 
+func (c *RequestOrderController) GetRequestOrdersDetails(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("RequestOrderController-GetRequestOrdersDetails", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("RequestOrderController-GetRequestOrdersDetails: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	requestOrders, total, err := c.service.GetRequestOrdersDetails(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch request orders", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, requestOrders, paginationMeta, "Request orders fetched successfully", http.StatusOK, nil, nil)
+}
+
 func (c *RequestOrderController) GetRequestOrderByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("RequestOrderController-GetRequestOrderByID", opentracing.ChildOf(apiSpan.Context()))
@@ -389,4 +416,32 @@ func (c *RequestOrderController) Pdf(ctx *fiber.Ctx) error {
 	pdfPath = utils.MapStringToURL(pdfPath)
 
 	return utils.GetResponse(ctx, map[string]string{"link": *pdfPath}, nil, "PDF generated successfully", http.StatusOK, nil, nil)
+}
+
+func (c *RequestOrderController) Csv(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("RequestOrderController-Csv", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	salesOrders, err := c.service.Csv(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	ctx.Set("Content-Type", "text/csv")
+	ctx.Set("Content-Disposition", "attachment; filename=sales-orders.csv")
+
+	return ctx.Send(salesOrders)
 }
