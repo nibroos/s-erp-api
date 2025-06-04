@@ -57,6 +57,37 @@ func (c *InventoryController) GetInventories(ctx *fiber.Ctx) error {
 	return utils.GetResponse(ctx, inventories, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)
 }
 
+func (c *InventoryController) GetInventoriesDetails(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InventoryController-GetInventoriesDetails", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	log.Println("filters2", ctx.Locals("filters"))
+	filters, ok := ctx.Locals("filters").(map[string]string)
+
+	log.Println("filters", filters)
+
+	if !ok {
+		apiSpan.LogKV("response_body", string("InventoryController-GetInventoriesDetails: Invalid filters"))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	inventories, total, err := c.service.GetInventoriesDetails(ctx, filters, parentSpan)
+	if err != nil {
+		return utils.ErrGetReponse(ctx, apiSpan, err, "Failed to fetch Inventory", http.StatusInternalServerError)
+	}
+
+	paginationMeta := utils.CreatePaginationMeta(filters, total)
+
+	return utils.GetResponse(ctx, inventories, paginationMeta, "Inventory fetched successfully", http.StatusOK, nil, nil)
+}
+
 func (c *InventoryController) GetInventoryByID(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("InventoryController-GetInventoryByID", opentracing.ChildOf(apiSpan.Context()))
@@ -354,31 +385,6 @@ func (c *InventoryController) ExcelGetInventories(ctx *fiber.Ctx) error {
 	return ctx.Send(inventories)
 }
 
-func (c *InventoryController) CsvGetInventories(ctx *fiber.Ctx) error {
-	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
-	parentSpan := opentracing.StartSpan("CustomerTypeController-CsvGetInventories", opentracing.ChildOf(apiSpan.Context()))
-	defer func() {
-		// If no error, delete span
-		if utils.FilterOtel(ctx) {
-			defer apiSpan.Finish()
-			defer parentSpan.Finish()
-		}
-	}()
-
-	filters, ok := ctx.Locals("filters").(map[string]string)
-	if !ok {
-		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
-	}
-
-	inventories, err := c.service.CsvGetInventories(ctx, filters, parentSpan)
-	if err != nil {
-		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
-		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-
-	return ctx.Send(inventories)
-}
-
 func (c *InventoryController) GetRefIndexSoDts(ctx *fiber.Ctx) error {
 	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
 	parentSpan := opentracing.StartSpan("InventoryController-GetRefIndexSoDts", opentracing.ChildOf(apiSpan.Context()))
@@ -651,4 +657,32 @@ func (c *InventoryController) Pdf(ctx *fiber.Ctx) error {
 	link = utils.MapStringToURL(link)
 
 	return utils.GetResponse(ctx, map[string]string{"link": *link}, nil, "PDF generated successfully", http.StatusOK, nil, nil)
+}
+
+func (c *InventoryController) Csv(ctx *fiber.Ctx) error {
+	apiSpan := utils.StartSpanFromController(ctx, c.tracer, ctx.Path())
+	parentSpan := opentracing.StartSpan("InventoryController-Csv", opentracing.ChildOf(apiSpan.Context()))
+	defer func() {
+		// If no error, delete span
+		if utils.FilterOtel(ctx) {
+			defer apiSpan.Finish()
+			defer parentSpan.Finish()
+		}
+	}()
+
+	filters, ok := ctx.Locals("filters").(map[string]string)
+	if !ok {
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, "Invalid filters", http.StatusBadRequest), http.StatusBadRequest)
+	}
+
+	salesOrders, err := c.service.Csv(ctx, filters, parentSpan)
+	if err != nil {
+		utils.LogResponse(apiSpan, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError))
+		return utils.SendResponse(ctx, utils.WrapResponse(nil, nil, err.Error(), http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	ctx.Set("Content-Type", "text/csv")
+	ctx.Set("Content-Disposition", "attachment; filename=sales-orders.csv")
+
+	return ctx.Send(salesOrders)
 }

@@ -17,6 +17,7 @@ func SetupInventoryRoutes(inventories fiber.Router, gormDB *gorm.DB, sqlDB *sqlx
 	inventoryController := rest.NewInventoryController(inventoryService, inventoryRepo, rabbitmq, tracer)
 
 	inventories.Post("/index-inventory", inventoryController.GetInventories)
+	inventories.Post("/index-detail-inventory", inventoryController.GetInventoriesDetails)
 	inventories.Post("/index-inventory-status", inventoryController.GetInventoriesStatus)
 	inventories.Post("/show-inventory", inventoryController.GetInventoryByID)
 	inventories.Post("/create-inventory", inventoryController.CreateInventory)
@@ -24,7 +25,7 @@ func SetupInventoryRoutes(inventories fiber.Router, gormDB *gorm.DB, sqlDB *sqlx
 	inventories.Post("/delete-inventory", inventoryController.DeleteInventory)
 	inventories.Post("/restore-inventory", inventoryController.RestoreInventory)
 	inventories.Post("/excel-inventory", inventoryController.ExcelGetInventories)
-	inventories.Post("/csv-inventory", inventoryController.CsvGetInventories)
+	inventories.Post("/csv-inventory", inventoryController.Csv)
 	inventories.Post("/pdf-inventory", inventoryController.Pdf)
 	inventories.Post("/index-ref-so-dt", inventoryController.GetRefIndexSoDts)
 	inventories.Post("/index-ref-ro-dt", inventoryController.GetRefIndexRoDts)

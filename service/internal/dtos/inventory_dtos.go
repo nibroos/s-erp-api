@@ -238,6 +238,7 @@ type InventoryDetailDTO struct {
 	TotalAfterDisc   float64                 `json:"total_after_disc" db:"total_after_disc"`
 	WarehouseName    *string                 `json:"warehouse_name" db:"warehouse_name"`
 	IsIDOnly         *int                    `json:"is_id_only" db:"is_id_only"`
+	IoTypeName       *string                 `json:"io_type_name" db:"io_type_name"`
 
 	QtyOutOnIn *float64 `json:"qty_out_on_in" db:"qty_out_on_in"`
 }
