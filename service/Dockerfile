@@ -1,6 +1,6 @@
 FROM surnet/alpine-wkhtmltopdf:3.21.3-024b2b2-small AS wkhtmltopdf
 
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Set the SEEDER_DIR environment variable
 ENV SEEDER_DIR=/apps/internal/database/seeders

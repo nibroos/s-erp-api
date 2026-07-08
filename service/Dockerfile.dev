@@ -1,8 +1,8 @@
 FROM surnet/alpine-wkhtmltopdf:3.21.3-024b2b2-small AS wkhtmltopdf
 
-FROM golang:1.24-alpine AS base
+FROM golang:1.25-alpine AS base
 
-ENV GOLANG_VERSION=1.24.0
+ENV GOLANG_VERSION=1.25.0
 
 # libxrender1 \
 #     libjpeg62-turbo \

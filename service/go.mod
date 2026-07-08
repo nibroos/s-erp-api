@@ -1,6 +1,6 @@
 module github.com/nibroos/s-erp-api/service
 
-go 1.24
+go 1.25
 
 require (
 	github.com/go-playground/validator/v10 v10.22.1

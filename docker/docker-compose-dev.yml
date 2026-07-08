@@ -203,7 +203,7 @@ services:
   #     REDIS_DB: ${REDIS_DB}
 
   postgres-exporter:
-    image: bitnami/postgres-exporter:0.17.0
+    image: bitnami/postgres-exporter:latest
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
     ports:
