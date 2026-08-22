@@ -74,8 +74,10 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 COPY --from=builder /workdir/app /bin/app
 COPY --from=builder /workdir /apps
 
-# Copy the .env file
-COPY .env /apps/.env
+# No .env is baked in: service/.env is a symlink to ../docker/.env, which sits
+# outside the build context, so BuildKit cannot resolve it. Config comes from
+# compose (env_file + environment) instead, and main.go treats a missing .env as
+# non-fatal. This also keeps secrets out of the image layers.
 
 # Copy the make command
 COPY --from=builder /usr/bin/make /usr/bin/make

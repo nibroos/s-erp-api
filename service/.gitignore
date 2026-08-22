@@ -1,4 +1,6 @@
 tmp
 .env
+.env.local
 bin
 public
+coverage.out
