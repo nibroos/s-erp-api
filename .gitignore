@@ -1,0 +1,9 @@
+
+# Local secrets and build artefacts — must never be committed.
+# .env.local was staged by an `git add -A` during CI setup; it holds live
+# credentials for the service.
+service/.env.local
+**/.env.local
+service/coverage.out
+coverage/
+reports/

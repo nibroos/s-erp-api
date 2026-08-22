@@ -1,0 +1,7 @@
+vendor/
+**/*.pb.go
+**/*_generated.go
+**/mocks/
+docs/
+scripts/
+docker/logs/

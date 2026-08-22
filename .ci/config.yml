@@ -1,0 +1,70 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CI contract for s-erp-api.
+#
+# Go service under service/, nginx gateway under gateway/.
+# Jenkins reads this instead of hard-coding commands; see
+# jenkins-nb/shared-library/vars/ciConfig.groovy for the schema.
+# ─────────────────────────────────────────────────────────────────────────────
+
+runtime:
+  type: go
+  version: "1.25"
+  manager: go
+
+commands:
+  # All Go work happens in service/ — that is where go.mod lives.
+  install:   "cd service && go mod download"
+
+  # go vet is the honest baseline: this repo has no golangci-lint config, and
+  # inventing one here would fail the gate on rules nobody agreed to.
+  lint:      "cd service && go vet ./..."
+
+  # Go has no separate type-check step; a successful compile IS the type check.
+  typecheck: "cd service && go build ./..."
+
+  test:      "cd service && go test ./... 2>&1 | tee /dev/stderr | go-junit-report -set-exit-code > ../reports/junit/go.xml"
+
+  # Coverage is converted to Cobertura so the new-code gate (diff-cover) reads
+  # it exactly as it does for the JS repos. sonar.go.coverage.reportPaths still
+  # consumes the native profile.
+  coverage:  "cd service && go test ./... -coverprofile=coverage.out -covermode=atomic && gocover-cobertura < coverage.out > ../coverage/cobertura-coverage.xml"
+
+  build:     "cd service && go build -o /tmp/s-erp-service ./cmd/..."
+
+quality:
+  sonarqube:       true
+  semgrep:         true
+  dependency_scan: true
+  ai_review:       true
+
+coverage:
+  # 80% of NEW code — the lines this change touches. Project-wide coverage is
+  # 1.1% (internal/ai is 52.3%, everything else untested), so a project gate
+  # could never pass; a new-code gate can, from the first PR.
+  minimum: 80
+  enforce: true
+
+gates:
+  # Measured 2026-08-22 before enabling any of these:
+  #   go vet ./...    → clean
+  #   go build ./...  → clean
+  #   go test ./...   → 0 failing packages
+  # All three are safe to gate on from day one, unlike s-erp-ui.
+  lint:            true
+  typecheck:       true
+  test:            true
+  coverage:        true
+  qodana_critical: false   # Qodana needs a paid Cloud token; SonarQube replaces it
+  semgrep_high:    true
+  dependency_high: false   # report first, enable once the CVE backlog is triaged
+  ai_critical:     false   # advisory — never the only merge protection
+
+deployment:
+  enabled: true
+  branch: main
+  image: s-erp-api
+  app: s-erp-api
+  health_path: "/health"
+  targets:
+    - local
+    - remote
