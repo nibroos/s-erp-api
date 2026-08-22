@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -46,6 +47,13 @@ func (r *ConsumerRouter) SetupConsumers() error {
 	// Notification consumer
 	if err := r.setupBulkSendEmailApprovedInvoiceMaintenanceConsumer(); err != nil {
 		return err
+	}
+
+	// AI-reply worker — only when the queued path is enabled.
+	if os.Getenv("CHAT_AI_QUEUE") == "true" {
+		if err := r.setupChatAIReplyConsumer(); err != nil {
+			return err
+		}
 	}
 
 	// Other consumers...

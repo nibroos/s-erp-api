@@ -59,8 +59,9 @@ COPY --from=wkhtmltopdf /lib/libwkhtmltox* /lib/
 RUN cp /usr/share/zoneinfo/Asia/Bangkok /etc/localtime && \
     echo "Asia/Bangkok" > /etc/timezone
 
-# Install Air for hot-reloading
-RUN go install github.com/air-verse/air@latest
+# Install Air for hot-reloading. Pinned: air >= v1.67 requires Go >= 1.26; the
+# base image ships Go 1.25, and v1.62.0 is the newest that still builds on it.
+RUN go install github.com/air-verse/air@v1.62.0
 
 RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 RUN ln -s /go/bin/linux_amd64/migrate /usr/local/bin/migrate
@@ -71,8 +72,9 @@ WORKDIR /apps
 # Copy go.mod and go.sum files
 COPY go.mod go.sum ./
 
-# Download dependencies
-RUN go mod download
+# Download dependencies. Retry, then fall back to fetching straight from the
+# module origins (GitHub) if the proxy CDN resets mid-download.
+RUN go mod download || (sleep 5 && go mod download) || (sleep 10 && GOPROXY=direct GOFLAGS=-mod=mod go mod download)
 
 # Copy the source code
 COPY . .

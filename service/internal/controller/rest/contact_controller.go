@@ -14,11 +14,27 @@ import (
 	"github.com/nibroos/s-erp-api/service/internal/validators/form_requests"
 )
 
-type ContactController struct {
-	service *service.ContactService
+// ContactServiceProvider is the behaviour ContactController needs from the
+// contact service. It is declared here, on the consumer side, so the controller
+// can be exercised in unit tests with a stub while production keeps passing the
+// concrete *service.ContactService.
+type ContactServiceProvider interface {
+	ListContacts(ctx *fiber.Ctx, filters map[string]string) ([]dtos.ContactListDTO, int, error)
+	CreateContact(ctx *fiber.Ctx, contact *models.Contact) (*models.Contact, error)
+	GetContactByID(ctx *fiber.Ctx, params *dtos.GetContactParams) (*dtos.ContactDetailDTO, error)
+	UpdateContact(ctx *fiber.Ctx, contact *models.Contact) (*models.Contact, error)
+	DeleteContact(ctx *fiber.Ctx, id uint) error
+	RestoreContact(ctx *fiber.Ctx, id uint) error
 }
 
-func NewContactController(service *service.ContactService) *ContactController {
+// Compile-time proof the real service still satisfies what the controller needs.
+var _ ContactServiceProvider = (*service.ContactService)(nil)
+
+type ContactController struct {
+	service ContactServiceProvider
+}
+
+func NewContactController(service ContactServiceProvider) *ContactController {
 	return &ContactController{service: service}
 }
 
