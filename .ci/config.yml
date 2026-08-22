@@ -51,11 +51,16 @@ coverage:
   enforce: true
 
 gates:
-  # Measured 2026-08-22 before enabling any of these:
-  #   go vet ./...    → clean
-  #   go build ./...  → clean
-  #   go test ./...   → 0 failing packages
-  # All three are safe to gate on from day one, unlike s-erp-ui.
+  # Measured 2026-08-22 ON THIS BRANCH (branched off main) — not on a feature
+  # branch, which is where an earlier note in this file got it wrong:
+  #   go vet ./...    clean
+  #   go build ./...  clean
+  #   go test ./...   NO TEST FILES EXIST ON main
+  #
+  # The 6 _test.go files under service/internal/ai and controller/rest live on
+  # feat/ai-chat-jenkins and are not merged. Until they land, `test` passes
+  # vacuously and `coverage` has nothing to measure. The gates are configured
+  # correctly; there is simply nothing for them to fail on yet.
   lint:            true
   typecheck:       true
   test:            true
