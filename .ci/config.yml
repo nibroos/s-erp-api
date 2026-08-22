@@ -22,16 +22,15 @@ commands:
   # Go has no separate type-check step; a successful compile IS the type check.
   typecheck: "cd service && go build ./..."
 
-  # -v is REQUIRED: go-junit-report builds test cases from the per-test
-  # "=== RUN / --- PASS" lines, which `go test` only emits in verbose mode.
-  # Without it the XML has zero test cases and the report reads "no tests found"
-  # even though the suite ran and passed.
-  test:      "cd service && go test -v ./... 2>&1 | tee /dev/stderr | go-junit-report -set-exit-code > ../reports/junit/go.xml"
+  # The Tests stage runs `commands.coverage` when it is set, falling back to
+  # `commands.test` — so the two must not be different runs, or the loser's
+  # outputs never get produced. One script emits JUnit, the Go profile, and
+  # Cobertura in a single pass.
+  test:      "./.ci/test.sh"
 
-  # Coverage is converted to Cobertura so the new-code gate (diff-cover) reads
-  # it exactly as it does for the JS repos. sonar.go.coverage.reportPaths still
-  # consumes the native profile.
-  coverage:  "cd service && go test ./... -coverprofile=coverage.out -covermode=atomic && gocover-cobertura < coverage.out > ../coverage/cobertura-coverage.xml"
+  # Same script — see the note above. Cobertura feeds the new-code gate,
+  # coverage.out feeds sonar.go.coverage.reportPaths.
+  coverage:  "./.ci/test.sh"
 
   build:     "cd service && go build -o /tmp/s-erp-service ./cmd/..."
 
@@ -42,9 +41,12 @@ quality:
   ai_review:       true
 
 coverage:
-  # 80% of NEW code — the lines this change touches. Project-wide coverage is
-  # 1.1% (internal/ai is 52.3%, everything else untested), so a project gate
-  # could never pass; a new-code gate can, from the first PR.
+  # 80% of NEW code — the lines this change touches, not the whole project.
+  #
+  # main currently has no tests at all, so project coverage is 0%. That makes a
+  # project-wide gate impossible and a new-code gate essential: it asks only
+  # that code you ADD comes with tests, starting from the first PR that touches
+  # service/.
   minimum: 80
   enforce: true
 
