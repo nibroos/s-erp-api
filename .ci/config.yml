@@ -22,7 +22,11 @@ commands:
   # Go has no separate type-check step; a successful compile IS the type check.
   typecheck: "cd service && go build ./..."
 
-  test:      "cd service && go test ./... 2>&1 | tee /dev/stderr | go-junit-report -set-exit-code > ../reports/junit/go.xml"
+  # -v is REQUIRED: go-junit-report builds test cases from the per-test
+  # "=== RUN / --- PASS" lines, which `go test` only emits in verbose mode.
+  # Without it the XML has zero test cases and the report reads "no tests found"
+  # even though the suite ran and passed.
+  test:      "cd service && go test -v ./... 2>&1 | tee /dev/stderr | go-junit-report -set-exit-code > ../reports/junit/go.xml"
 
   # Coverage is converted to Cobertura so the new-code gate (diff-cover) reads
   # it exactly as it does for the JS repos. sonar.go.coverage.reportPaths still
