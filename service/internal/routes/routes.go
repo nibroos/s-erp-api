@@ -42,6 +42,10 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 		})
 	})
 
+	// 2FA email verification — proxied to s-erp-auth so UIs that use the main
+	// API base URL can complete the 2FA flow without an extra base URL.
+	SetupAuth2FAProxyRoutes(auth)
+
 	// util service
 	utilRepo := repository.NewUtilRepository(gormDB, sqlDB)
 	userRepo := repository.NewUserRepository(gormDB, sqlDB, utilRepo, tracer)
@@ -161,6 +165,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 
 	accountSettings := version.Group("/account-setting")
 	SetupAccountSettingRoutes(accountSettings)
+
+	// Per-account 2FA management (requires valid token).
+	SetupAuth2FAManagementProxyRoutes(auth)
 
 	purchaseOrders := version.Group("/purchase-orders")
 	SetupPurchaseOrderRoutes(purchaseOrders, gormDB, sqlDB, utilRepo, tracer)

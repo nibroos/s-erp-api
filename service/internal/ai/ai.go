@@ -5,6 +5,7 @@ package ai
 
 import (
 	"encoding/base64"
+	"log"
 	"os"
 	"strings"
 )
@@ -122,8 +123,10 @@ func New() Provider {
 	case "claude", "anthropic":
 		return NewClaudeProvider()
 	case "remote", "hosted":
+		log.Println("test provider remote")
 		return NewFallbackProvider(NewRemoteProvider(), NewLocalProvider())
 	default:
+		log.Println("test provider ddefault")
 		return NewLocalProvider()
 	}
 }
