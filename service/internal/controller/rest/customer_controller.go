@@ -2,8 +2,10 @@ package rest
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/nibroos/s-erp-api/service/internal/cache"
 	"github.com/nibroos/s-erp-api/service/internal/dtos"
 	"github.com/nibroos/s-erp-api/service/internal/middleware"
 	"github.com/nibroos/s-erp-api/service/internal/models"
@@ -14,6 +16,10 @@ import (
 	"github.com/opentracing/opentracing-go"
 	// "github.com/opentracing/opentracing-go/ext"
 )
+
+// customerCacheTTL bounds staleness for the read-through customer cache. Writes
+// (update/delete/restore) invalidate the key, so this is just a safety net.
+const customerCacheTTL = 10 * time.Minute
 
 type CustomerController struct {
 	service *service.CustomerService
@@ -150,6 +156,17 @@ func (c *CustomerController) GetCustomerByID(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Customer not found", http.StatusBadRequest, "ID is required", nil)
 	}
 
+	filters := ctx.Locals("filters").(map[string]string)
+	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+	cacheKey := cache.CustomerKey(req.ID)
+
+	// Cache hit: this is a frequently-read record, so serve the fully-assembled
+	// customer (detail + PIC emails + contracts) straight from Redis.
+	var cached dtos.CustomerDetailDTO
+	if cache.GetJSON(ctx.Context(), cacheKey, &cached) {
+		return utils.GetResponse(ctx, []interface{}{&cached}, paginationMeta, "Customer fetched successfully", http.StatusOK, nil, nil)
+	}
+
 	params := &dtos.GetCustomerParams{ID: req.ID}
 	customer, err := c.service.GetCustomerByID(ctx, params, parentSpan)
 	if err != nil {
@@ -172,10 +189,10 @@ func (c *CustomerController) GetCustomerByID(ctx *fiber.Ctx) error {
 		return utils.GetResponse(ctx, nil, nil, "Customer not found", http.StatusNotFound, err.Error(), nil)
 	}
 
-	customerArray := []interface{}{customer}
+	// Cache miss: warm the cache with the assembled record (best-effort).
+	cache.SetJSON(ctx.Context(), cacheKey, customer, customerCacheTTL)
 
-	filters := ctx.Locals("filters").(map[string]string)
-	paginationMeta := utils.CreatePaginationMeta(filters, 1)
+	customerArray := []interface{}{customer}
 
 	return utils.GetResponse(ctx, customerArray, paginationMeta, "Customer fetched successfully", http.StatusOK, nil, nil)
 }
@@ -255,6 +272,9 @@ func (c *CustomerController) UpdateCustomer(ctx *fiber.Ctx) error {
 
 	tx.Commit()
 
+	// Invalidate the cached copy so the next read reflects this update.
+	cache.Del(ctx.Context(), cache.CustomerKey(updatedCustomer.ID))
+
 	params := &dtos.GetCustomerParams{ID: updatedCustomer.ID}
 	getCustomer, err := c.service.GetCustomerByID(ctx, params, parentSpan)
 	if err != nil {
@@ -309,6 +329,8 @@ func (c *CustomerController) DeleteCustomer(ctx *fiber.Ctx) error {
 
 	tx.Commit()
 
+	cache.Del(ctx.Context(), cache.CustomerKey(req.ID))
+
 	return utils.GetResponse(ctx, nil, nil, "Customer deleted successfully", http.StatusOK, nil, nil)
 }
 
@@ -352,6 +374,8 @@ func (c *CustomerController) DeleteCrmCustomer(ctx *fiber.Ctx) error {
 	}
 
 	tx.Commit()
+
+	cache.Del(ctx.Context(), cache.CustomerKey(req.ID))
 
 	return utils.GetResponse(ctx, nil, nil, "Customer deleted successfully", http.StatusOK, nil, nil)
 }
@@ -398,6 +422,8 @@ func (c *CustomerController) RestoreCustomer(ctx *fiber.Ctx) error {
 	}
 
 	tx.Commit()
+
+	cache.Del(ctx.Context(), cache.CustomerKey(req.ID))
 
 	return utils.GetResponse(ctx, nil, nil, "Customer restored successfully", http.StatusOK, nil, nil)
 }

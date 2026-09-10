@@ -1,0 +1,317 @@
+name: s-erp-api
+
+services:
+
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+    image: nibroos/s-erp-gateway:1.0.250204
+    volumes:
+      - ./logs/nginx:/var/log/nginx
+    ports:
+      - "50061:50051" # Expose gRPC port
+      - "4011:4001"   # Expose HTTP REST port
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - service
+
+  service:
+    build:
+      context: ../service
+      dockerfile: Dockerfile
+    image: nibroos/s-erp-service:1.0.250517
+    networks:
+      - s-erp-api-network
+      - s-erp-redis-network
+    depends_on:
+      - postgres
+    volumes:
+      - public-s-erp-api:/apps/public
+    ports:
+      - "50051:50051"
+      - "4001:4001"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB_TEST: ${POSTGRES_DB_TEST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      GATEWAY_PORT: ${GATEWAY_PORT}
+      SERVICE_GRPC_PORT: ${SERVICE_GRPC_PORT}
+      SERVICE_REST_PORT: ${SERVICE_REST_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      SERVICE_TYPE: main
+      SEEDER_DIR: /apps/internal/database/seeders
+      # Chat AI replies: false = generate in-process (bounded); true = dispatch to
+      # the consumer-service via RabbitMQ, delivered back via Redis fan-out. Keep
+      # in sync with the consumer-service's CHAT_AI_QUEUE.
+      CHAT_AI_QUEUE: ${CHAT_AI_QUEUE:-false}
+      AI_MAX_CONCURRENCY: ${AI_MAX_CONCURRENCY:-2}
+      # Object storage for chat attachments.
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-chat-attachments}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      # Browser-facing host for presigned URLs — set to your storage domain,
+      # e.g. storage.example.com (served by nginx -> minio). MINIO_PUBLIC_USE_SSL
+      # should be true when that domain is behind HTTPS.
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-minio:9000}
+      MINIO_PUBLIC_USE_SSL: ${MINIO_PUBLIC_USE_SSL:-false}
+      # Elastic APM (s-erp-elk stack), reached over the host gateway so the ELK
+      # box can live on a separate VM in prod (set ELASTIC_APM_SERVER_URL).
+      ELASTIC_APM_SERVER_URL: ${ELASTIC_APM_SERVER_URL:-http://host.docker.internal:8200}
+      ELASTIC_APM_SERVICE_NAME: s-erp-api
+      ELASTIC_APM_ENVIRONMENT: ${APP_ENV:-production}
+      ELASTIC_APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-}
+      # Capture the HTTP request body on transactions (off|errors|transactions|all).
+      ELASTIC_APM_CAPTURE_BODY: ${APM_CAPTURE_BODY:-all}
+      # Also attach the response body (capped ~2KB) as the response_body label.
+      APM_CAPTURE_RESPONSE_BODY: ${APM_CAPTURE_RESPONSE_BODY:-true}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: on-failure
+
+  consumer-service:
+    build:
+      context: ../service
+      dockerfile: Dockerfile
+      network: host
+    image: nibroos/s-erp-service:1.0.250517
+    networks:
+      - s-erp-api-network
+      # Redis is required for the AI-reply worker to deliver replies back to the
+      # API instances' sockets (chat fan-out). If the model runs on its own
+      # network (local Ollama), add that network here too; a hosted provider
+      # (Claude / a URL) needs no extra network.
+      - s-erp-redis-network
+    depends_on:
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    # AI / MinIO / provider config comes from .env, same as the API service.
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      SERVICE_TYPE: consumer
+      # Enable the AI-reply worker. MUST match the API service's CHAT_AI_QUEUE.
+      CHAT_AI_QUEUE: ${CHAT_AI_QUEUE:-false}
+      AI_MAX_CONCURRENCY: ${AI_MAX_CONCURRENCY:-2}
+      # Database (read-only ai schema + chat writes).
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      # Redis (chat fan-out delivery).
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      # Object storage (the worker downloads images for the vision model).
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-chat-attachments}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+    volumes:
+      - public-s-erp-api:/apps/public
+    # Scale AI throughput horizontally: each replica processes one reply at a
+    # time (prefetch=1), so N replicas ≈ N concurrent generations.
+    # deploy:
+    #   replicas: 2
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17.4-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: ${POSTGRES_DB:-s_erp_api}
+    networks:
+      - s-erp-api-network
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-s-erp-api:/var/lib/postgresql/data
+    restart: on-failure
+
+  minio:
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    container_name: minio-s-erp-api
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    networks:
+      - s-erp-api-network
+    volumes:
+      - minio-s-erp-api:/data
+    # Not published to the host — reached internally as minio:9000 and exposed
+    # to browsers only through nginx (see the storage server block in
+    # gateway/nginx-prod.conf). Uncomment to expose the console for debugging.
+    # ports:
+    #   - "9101:9001"
+    restart: on-failure
+
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: rabbitmq-s-erp-api
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      SERVICE_TYPE: consumer
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - s-erp-api-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: bitnami/postgres-exporter:0.17.0
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - postgres
+    restart: on-failure
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    expose:
+      - 9100
+    networks:
+      - s-erp-api-network
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - postgres-exporter
+    restart: on-failure
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    ports:
+      - "3005:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - s-erp-api-network
+    depends_on:
+      - prometheus
+    environment:
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: postgres:5432
+      GF_DATABASE_NAME: grafana
+      GF_DATABASE_USER: grafana
+      GF_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+    restart: on-failure
+
+  # Observability moved to the independent s-erp-elk project. Logs go there via
+  # Filebeat; traces/DB-spans/errors go to its APM Server (the `service` above
+  # ships them through ELASTIC_APM_SERVER_URL). Jaeger + the local Elasticsearch
+  # were retired — Elastic APM replaces them.
+
+  # redis:
+  #   image: "redis:alpine"
+  #   container_name: redis-s-erp-api
+  #   networks:
+  #     - s-erp-api-network
+  #   ports:
+  #     - "${REDIS_PORT:-6379}:6379"
+  #   volumes:
+  #     - ./redis.conf:/usr/local/etc/redis/redis.conf
+  #   command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
+  #   environment:
+  #     REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  # scheduler:
+  #   build:
+  #     context: ../service
+  #     dockerfile: Dockerfile
+  #   networks:
+  #     - s-erp-api-network
+  #   depends_on:
+  #     - postgres
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #     POSTGRES_DB: ${POSTGRES_DB}
+  #     POSTGRES_DB_TEST: ${POSTGRES_DB_TEST}
+  #     POSTGRES_PORT: ${POSTGRES_PORT}
+  #     POSTGRES_HOST: ${POSTGRES_HOST}
+  #     GATEWAY_PORT: ${GATEWAY_PORT}
+  #     SERVICE_GRPC_PORT: ${SERVICE_GRPC_PORT}
+  #     SERVICE_REST_PORT: ${SERVICE_REST_PORT}
+  #     MASTER_SERVICE_GRPC_PORT: ${MASTER_SERVICE_GRPC_PORT}
+  #     MASTER_SERVICE_REST_PORT: ${MASTER_SERVICE_REST_PORT}
+  #     ACTIVITIES_SERVICE_GRPC_PORT: ${ACTIVITIES_SERVICE_GRPC_PORT}
+  #     ACTIVITIES_SERVICE_REST_PORT: ${ACTIVITIES_SERVICE_REST_PORT}
+  #     JWT_SECRET: ${JWT_SECRET}
+  #     REDIS_HOST: ${REDIS_HOST}
+  #     REDIS_PORT: ${REDIS_PORT}
+  #     REDIS_PASSWORD: ${REDIS_PASSWORD}
+  #     REDIS_DB: ${REDIS_DB}
+  #     SERVICE_TYPE: scheduler
+
+volumes:
+  postgres-s-erp-api:
+  public-s-erp-api:
+  grafana-storage:
+  # jaeger-logs:
+  # elasticsearch-data moved to the s-erp-elk project.
+  rabbitmq-data:
+  minio-s-erp-api:
+
+networks:
+  s-erp-api-network:
+    driver: bridge
+  # Standalone s-erp-redis cache (its own project owns this network).
+  s-erp-redis-network:
+    external: true
+    name: s-erp-redis-network

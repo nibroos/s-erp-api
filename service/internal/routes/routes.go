@@ -42,6 +42,10 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 		})
 	})
 
+	// 2FA email verification — proxied to s-erp-auth so UIs that use the main
+	// API base URL can complete the 2FA flow without an extra base URL.
+	SetupAuth2FAProxyRoutes(auth)
+
 	// util service
 	utilRepo := repository.NewUtilRepository(gormDB, sqlDB)
 	userRepo := repository.NewUserRepository(gormDB, sqlDB, utilRepo, tracer)
@@ -49,6 +53,12 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 	// Setup auth routes
 	auth.Post("/login", rest.NewUserController(service.NewUserService(repository.NewUserRepository(gormDB, sqlDB, utilRepo, tracer), utilRepo, tracer), userRepo, tracer).Login)
 	auth.Post("/register", rest.NewUserController(service.NewUserService(repository.NewUserRepository(gormDB, sqlDB, utilRepo, tracer), utilRepo, tracer), userRepo, tracer).Register)
+
+	// Chat websocket endpoint. Registered before the header-based JWT
+	// middleware because it authenticates via a ?token= query parameter
+	// (browsers cannot set the Authorization header on a websocket handshake).
+	chatController := newChatController(gormDB, sqlDB, rabbitmq)
+	SetupChatWSRoute(version, chatController)
 
 	// Protected routes
 	app.Use(middleware.JWTMiddleware())
@@ -154,7 +164,10 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 	SetupWarehouseRoutes(warehouses, gormDB, sqlDB, utilRepo, tracer)
 
 	accountSettings := version.Group("/account-setting")
-	SetupAccountSettingRoutes(accountSettings, gormDB, sqlDB, utilRepo, tracer)
+	SetupAccountSettingRoutes(accountSettings)
+
+	// Per-account 2FA management (requires valid token).
+	SetupAuth2FAManagementProxyRoutes(auth)
 
 	purchaseOrders := version.Group("/purchase-orders")
 	SetupPurchaseOrderRoutes(purchaseOrders, gormDB, sqlDB, utilRepo, tracer)
@@ -173,6 +186,9 @@ func SetupRoutes(app *fiber.App, gormDB *gorm.DB, sqlDB *sqlx.DB, rabbitmq *conf
 
 	requestOrders := version.Group("/request-orders")
 	SetupRequestOrderRoutes(requestOrders, gormDB, sqlDB, utilRepo, tracer)
+
+	chats := version.Group("/chats")
+	SetupChatRoutes(chats, chatController)
 
 	// Scheduler route
 	// cron := cron.New()

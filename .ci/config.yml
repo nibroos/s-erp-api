@@ -1,0 +1,81 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CI contract for s-erp-api.
+#
+# Go service under service/, nginx gateway under gateway/.
+# Jenkins reads this instead of hard-coding commands; see
+# jenkins-nb/shared-library/vars/ciConfig.groovy for the schema.
+# ─────────────────────────────────────────────────────────────────────────────
+
+runtime:
+  type: go
+  version: "1.25"
+  manager: go
+
+commands:
+  # All Go work happens in service/ — that is where go.mod lives.
+  install:   "cd service && go mod download"
+
+  # go vet is the honest baseline: this repo has no golangci-lint config, and
+  # inventing one here would fail the gate on rules nobody agreed to.
+  lint:      "cd service && go vet ./..."
+
+  # Go has no separate type-check step; a successful compile IS the type check.
+  typecheck: "cd service && go build ./..."
+
+  # The Tests stage runs `commands.coverage` when it is set, falling back to
+  # `commands.test` — so the two must not be different runs, or the loser's
+  # outputs never get produced. One script emits JUnit, the Go profile, and
+  # Cobertura in a single pass.
+  test:      "./.ci/test.sh"
+
+  # Same script — see the note above. Cobertura feeds the new-code gate,
+  # coverage.out feeds sonar.go.coverage.reportPaths.
+  coverage:  "./.ci/test.sh"
+
+  build:     "cd service && go build -o /tmp/s-erp-service ./cmd/..."
+
+quality:
+  sonarqube:       true
+  semgrep:         true
+  dependency_scan: true
+  ai_review:       true
+
+coverage:
+  # 80% of NEW code — the lines this change touches, not the whole project.
+  #
+  # main currently has no tests at all, so project coverage is 0%. That makes a
+  # project-wide gate impossible and a new-code gate essential: it asks only
+  # that code you ADD comes with tests, starting from the first PR that touches
+  # service/.
+  minimum: 80
+  enforce: true
+
+gates:
+  # Measured 2026-08-22 ON THIS BRANCH (branched off main) — not on a feature
+  # branch, which is where an earlier note in this file got it wrong:
+  #   go vet ./...    clean
+  #   go build ./...  clean
+  #   go test ./...   NO TEST FILES EXIST ON main
+  #
+  # The 6 _test.go files under service/internal/ai and controller/rest live on
+  # feat/ai-chat-jenkins and are not merged. Until they land, `test` passes
+  # vacuously and `coverage` has nothing to measure. The gates are configured
+  # correctly; there is simply nothing for them to fail on yet.
+  lint:            true
+  typecheck:       true
+  test:            true
+  coverage:        true
+  qodana_critical: false   # Qodana needs a paid Cloud token; SonarQube replaces it
+  semgrep_high:    true
+  dependency_high: false   # report first, enable once the CVE backlog is triaged
+  ai_critical:     false   # advisory — never the only merge protection
+
+deployment:
+  enabled: true
+  branch: main
+  image: s-erp-api
+  app: s-erp-api
+  health_path: "/health"
+  targets:
+    - local
+    - remote

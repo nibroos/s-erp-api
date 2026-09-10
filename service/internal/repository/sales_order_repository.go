@@ -2597,11 +2597,6 @@ func (r *SalesOrderRepository) UpdateAttachmentsDesc(ctx *fiber.Ctx, tx *gorm.DB
 func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]string, span opentracing.Span) ([]dtos.CalendarListDTO, int, error) {
 	childSpan := opentracing.StartSpan("SalesOrderRepository-GetCalendars", opentracing.ChildOf(span.Context()))
 
-	claims, _ := auth.GetAuthUser(ctx)
-	branchID := claims["bid"]
-
-	isAdmin := utils.IsAdmin(ctx)
-
 	calendars := []dtos.CalendarListDTO{}
 
 	var total int
@@ -2797,20 +2792,6 @@ func (r *SalesOrderRepository) GetCalendars(ctx *fiber.Ctx, filters map[string]s
 				i++
 			}
 		}
-	}
-
-	if !isAdmin && branchID != nil {
-		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		args = append(args, branchID)
-		i++
-	}
-
-	if isAdmin && filters["branch_id"] != "" {
-		query += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		countQuery += fmt.Sprintf(" AND (branch_id = $%d)", i)
-		args = append(args, filters["branch_id"])
-		i++
 	}
 
 	countArgs := append([]interface{}{}, args...)
